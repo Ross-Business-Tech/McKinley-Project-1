@@ -34,3 +34,25 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# --- McKinley prototype ---
+# Keep placeholder env files; every real .env stays local (keys live only in backend/.env).
+!.env.example
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+# Local databases and the supplied workbook (synthetic, but distributed separately)
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+backend/data/*.xlsx
+backend/data/*.csv
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo

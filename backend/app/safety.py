@@ -1,0 +1,219 @@
+"""Deterministic redaction, injection screening, pre-model policy gates and post-model output checks.
+
+These rules are intentionally simple and auditable. They supplement, not replace, model instructions.
+"""
+
+import re
+
+from app.models import OutputCheck, PolicySignal
+
+# ---- redaction ---------------------------------------------------------------
+
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+_CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+_PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-])?\b\d{3}[ .-]\d{4}\b")
+_DOB = re.compile(
+    r"\b(?:dob|date of birth|born on)\b[:\s]*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}", re.IGNORECASE
+)
+
+
+def redact(text: str) -> str:
+    """Mask contact details and sensitive identifiers. Order matters: SSN/card before phone."""
+    text = _EMAIL.sub("[email redacted]", text)
+    text = _SSN.sub("[SSN redacted]", text)
+    text = _CARD.sub("[card number redacted]", text)
+    text = _DOB.sub("[DOB redacted]", text)
+    text = _PHONE.sub("[phone redacted]", text)
+    return text
+
+
+def contains_pii(text: str) -> list[str]:
+    found = []
+    for name, pat in (("email", _EMAIL), ("ssn", _SSN), ("card", _CARD), ("phone", _PHONE), ("dob", _DOB)):
+        if pat.search(text):
+            found.append(name)
+    return found
+
+
+# ---- injection screen for untrusted data fields ----------------------------------
+
+_INJECTION = re.compile(
+    r"ignore (all|any|previous|prior|the above)|disregard|system prompt|you are now|new instructions|"
+    r"api[ _-]?key|secret|password|reveal|jailbreak|developer mode|</?\s*(system|safe_context)|"
+    r"\boverride\b|act as",
+    re.IGNORECASE,
+)
+
+
+def looks_like_injection(text: str) -> bool:
+    return bool(_INJECTION.search(text))
+
+
+def sanitize_field(text: str, max_len: int = 120) -> str | None:
+    """Return a redacted, length-capped value, or None when the value should be dropped."""
+    if not text:
+        return None
+    clean = " ".join(str(text).split())
+    if looks_like_injection(clean):
+        return None
+    clean = redact(clean)
+    return clean[:max_len] + ("…" if len(clean) > max_len else "")
+
+
+# ---- pre-model policy gates (run on the user message) ------------------------------
+
+_GATES: list[tuple[str, str, re.Pattern[str], str]] = [
+    (
+        "emergency_hazard",
+        "safety_emergency",
+        re.compile(
+            r"smell(s|ing)? (of )?gas|gas (leak|smell)|\bfire\b|smoke (is )?(coming|filling)|sparks?|"
+            r"electrical (burning|fire)|burning smell|flood(ing|ed)?|water (is )?(pouring|everywhere)|"
+            r"carbon monoxide|\bco alarm\b|can'?t breathe|ceiling (collapsed|caving)",
+            re.IGNORECASE,
+        ),
+        "Message describes a possible acute hazard; emergency channels must be prioritized.",
+    ),
+    (
+        "human_requested",
+        "human_requested",
+        re.compile(
+            r"(talk|speak|connect)( me)? (to|with) (a |an |the )?(person|human|real person|someone|manager|"
+            r"agent|staff|representative)|\b(human|real person) please\b|can someone (call|explain|help)",
+            re.IGNORECASE,
+        ),
+        "Resident or prospect asked for a person.",
+    ),
+    (
+        "sensitive_data_request",
+        "sensitive_data_request",
+        re.compile(
+            r"\b(ssn|social security|credit card|card number|cvv|bank account|routing number|"
+            r"date of birth|\bdob\b)\b",
+            re.IGNORECASE,
+        ),
+        "Message references highly sensitive identifiers; never collect or repeat them in chat.",
+    ),
+    (
+        "fair_housing_or_legal",
+        "fair_housing_or_legal",
+        re.compile(
+            r"discriminat|fair housing|lawyer|attorney|sue\b|lawsuit|evict|reasonable accommodation|"
+            r"disabilit|service animal|emotional support animal|\besa\b",
+            re.IGNORECASE,
+        ),
+        "Fair-housing, accommodation or legal topic needs authorized staff.",
+    ),
+    (
+        "financial_or_lease",
+        "financial_or_lease",
+        re.compile(
+            r"payment plan|can'?t (afford|pay)|late fee|dispute|refund|security deposit|break (my|the) lease|"
+            r"renewal (offer|price|cost|rate)|rent increase|worried about the cost",
+            re.IGNORECASE,
+        ),
+        "Financial or lease-term question cannot be decided by the assistant.",
+    ),
+    (
+        "voucher_eligibility",
+        "policy_or_eligibility",
+        re.compile(r"voucher|section 8|housing choice|subsid", re.IGNORECASE),
+        "Voucher eligibility details must be verified by staff (all properties accept vouchers).",
+    ),
+    (
+        "repeat_language",
+        "repeat_issue",
+        re.compile(r"\bagain\b|multiple times|keeps (happening|breaking)|still (broken|not)|third time|"
+                   r"second time", re.IGNORECASE),
+        "Message describes a recurring problem.",
+    ),
+]
+
+
+def pre_model_gates(message: str) -> list[PolicySignal]:
+    return [
+        PolicySignal(code=code, category=cat, detail=detail)  # type: ignore[arg-type]
+        for code, cat, pat, detail in _GATES
+        if pat.search(message)
+    ]
+
+
+# ---- post-model output checks -------------------------------------------------------
+
+_BANNED_TERMS = re.compile(r"\bbed\s?rooms?\b|\bunit\s?types?\b|\b[1-4]\s?BR\b|\bstudio unit type\b", re.IGNORECASE)
+_APOS = "['\u2019]"  # straight or curly apostrophe
+_ACTION_CLAIMS = re.compile(
+    rf"\bI(?:{_APOS}ve| have)? (?:just |already )?(?:notified|alerted|contacted|emailed|texted|called|messaged|"
+    r"escalated|forwarded|submitted|created|opened|filed|scheduled|booked|dispatched|reserved|transferred|"
+    r"passed (?:this|it|your \w+) (?:along|on))\b|"
+    r"\b(?:work order|ticket|request|appointment|tour) (?:has been|is now|was) "
+    r"(?:created|submitted|opened|scheduled|booked|confirmed)\b|"
+    r"\b(?:a technician|maintenance|someone|the team|staff) (?:is|has been|will be) (?:on (?:their|the) way|"
+    r"dispatched)\b|"
+    rf"\bI(?:{_APOS}ll| will) (?:go ahead and |now )?(?:call|text|email|notify|schedule|book|escalate|connect|"
+    r"pass|forward|submit|send|arrange|contact|reach out|file|create|open|set up|put in|let (?:the|our) \w+ know)\b|"
+    rf"\b(?:we|they|the team|someone|staff){_APOS}?(?:ll| will) (?:reach out|contact you|call you|text you|"
+    r"email you|follow up with you|be in touch|get back to you|send you)\b",
+    re.IGNORECASE,
+)
+_PRICE = re.compile(r"\$\s?\d[\d,]*(?:\.\d{2})?")
+_CLOCK_TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:a\.?m\.?|p\.?m\.?)\b", re.IGNORECASE)
+_RISKY_DIY = re.compile(
+    r"disassembl|take apart|remove the (cartridge|valve|panel|cover)|unscrew the|replace the (washer|cartridge)|"
+    r"shut off the (gas|breaker)|open the (electrical|breaker) panel|recharge (the )?refrigerant|"
+    r"turn off the main water valve and",
+    re.IGNORECASE,
+)
+
+
+def output_checks(reply: str, allowed_text: str = "") -> list[OutputCheck]:
+    """Check a model reply. `allowed_text` = safe context text; times/prices found there are not 'invented'."""
+    checks: list[OutputCheck] = []
+
+    term = _BANNED_TERMS.search(reply)
+    checks.append(OutputCheck(
+        code="terminology",
+        passed=term is None,
+        detail=f"Found non-McKinley term: '{term.group(0)}'" if term else "Uses beds / floor plans vocabulary",
+    ))
+
+    claim = _ACTION_CLAIMS.search(reply)
+    checks.append(OutputCheck(
+        code="no_false_action_claim",
+        passed=claim is None,
+        detail=f"Possible claimed action: '{claim.group(0)}'" if claim else "No claimed side-effect actions",
+    ))
+
+    invented_prices = [p for p in _PRICE.findall(reply) if p not in allowed_text]
+    checks.append(OutputCheck(
+        code="no_invented_price",
+        passed=not invented_prices,
+        detail=f"Price not in verified context: {invented_prices}" if invented_prices else "No unverified prices",
+    ))
+
+    invented_times = [t for t in _CLOCK_TIME.findall(reply) if t.lower() not in allowed_text.lower()]
+    checks.append(OutputCheck(
+        code="no_invented_time",
+        passed=not invented_times,
+        detail=(f"Clock time not in verified context: {invented_times}" if invented_times
+                else "No unverified appointment times"),
+    ))
+
+    pii = contains_pii(reply)
+    checks.append(OutputCheck(
+        code="no_pii",
+        passed=not pii,
+        detail=f"Reply contained: {pii} (redacted before display)" if pii else "No contact/PII patterns",
+    ))
+
+    diy = _RISKY_DIY.search(reply)
+    checks.append(OutputCheck(
+        code="no_risky_diy",
+        passed=diy is None,
+        detail=f"Possible risky DIY instruction: '{diy.group(0)}'" if diy else "No risky repair instructions",
+    ))
+    return checks
+
+
+CRITICAL_CHECKS = {"no_pii", "no_false_action_claim", "no_risky_diy"}
