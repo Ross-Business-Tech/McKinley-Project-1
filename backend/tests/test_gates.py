@@ -328,3 +328,105 @@ def test_gate_api_config_scenarios_and_evaluate(client):
     assert res["summary"]["jev"]["fallbacks"] == res["summary"]["jev"]["scenarios"]  # no key -> all fallback
     assert "mock" in res["summary"]["llm"]["sources"]
     assert client.post("/api/gates/evaluate", json={"providers": ["evil"]}).status_code == 422
+
+
+# ---- regressions from the independent QA review (2026-11-05) ---------------------------------
+
+@pytest.mark.parametrize("msg", [
+    "It smells like gas in my kitchen", "I smell smoke in the hallway", "The smoke alarm is going off",
+    "Mi apartamento está inundado", "Se está quemando el enchufe",
+    "ｇａｓ ｌｅａｋ in the kitchen", "g​as leak in the kitchen",  # fullwidth / zero-width evasion
+])
+def test_qa_emergency_phrasings_escalate(msg):
+    for ctx in (RESIDENT, PROSPECT, UNKNOWN):
+        d = classify_rules(msg, ctx)
+        assert d.urgency == "emergency" and d.requires_human, (msg, ctx.audience)
+
+
+@pytest.mark.parametrize("msg", ["Does the pool have sparkling water?", "That was humorous", "Is this a flood zone?",
+                                 "Do you have a gas stove or electric?", "Is there a fireplace?",
+                                 "My smoke detector is chirping"])
+def test_qa_no_false_emergency(msg):
+    assert classify_rules(msg, RESIDENT).urgency != "emergency", msg
+
+
+def test_qa_issue_is_not_a_lawsuit():
+    d = classify_rules("I have an issue with my kitchen sink", RESIDENT)
+    assert "fair_housing_or_legal" not in d.risk_flags
+    assert d.intent == "maintenance" and select_workflow(d).id == "maintenance"
+    assert "fair_housing_or_legal" in classify_rules("I'm going to sue you", RESIDENT).risk_flags
+
+
+@pytest.mark.parametrize("msg", ["I use a wheelchair, can you add grab bars?",
+                                 "Can I have a support dog? I have anxiety",
+                                 "Necesito una adaptación por discapacidad"])
+def test_qa_accommodation_without_keywords_routes_to_staff(msg):
+    d = classify_rules(msg, RESIDENT)
+    assert "fair_housing_or_legal" in d.risk_flags and d.requires_human and select_workflow(d).id == "human_handoff"
+
+
+@pytest.mark.parametrize("payload", [
+    {"intent": "general", "urgency": "low", "requires_human": False, "risk_flags": 5, "confidence": 0.9},
+    {"intent": "general", "urgency": "low", "requires_human": False, "risk_flags": [], "confidence": "nan"},
+])
+def test_qa_malformed_llm_gate_output_never_crashes(payload, monkeypatch):
+    import json as _json
+
+    from app.llm.mock import MockProvider
+    orig = MockProvider._gate
+
+    def bad(self, turn, target):
+        r = orig(self, turn, target)
+        r.extra["content"] = _json.dumps(payload)
+        return r
+    monkeypatch.setattr(MockProvider, "_gate", bad)
+    d = svc(decision_gate_provider="llm").classify("There is a fire in the kitchen", RESIDENT)
+    assert d.urgency == "emergency" and d.requires_human
+    assert d.confidence <= 1.0 and (d.fallback_used or d.decision_source == "mock")
+    if payload["confidence"] == "nan":
+        assert "low_confidence" in d.risk_flags  # NaN is treated as 0, never as full confidence
+
+
+def test_qa_jev_out_of_range_values_never_crash():
+    def weird(req):
+        answers = {"intent": {"answer": "maintenance", "confidence": 1.5}, "urgency": {"answer": "low"},
+                   "needs_human": {"probability": "high"}}
+        return httpx.Response(200, json={"answers": answers})
+    d = _jev(weird).classify("hi", RESIDENT, classify_rules("hi", RESIDENT))
+    assert d.confidence == 1.0 and d.requires_human is False
+
+
+def test_qa_gate_log_hides_session_ids(client):
+    client.post("/api/chat", json={"message": "my faucet drips", "persona_id": "R001", "mode": "aware",
+                                   "session_id": "victim-session-123"})
+    log = client.get("/api/gates/log").json()
+    assert log and "victim-session-123" not in str(log) and "session_id" not in log[0]
+
+
+def test_qa_whitespace_message_rejected(client):
+    assert client.post("/api/chat", json={"message": "   \n ", "mode": "aware"}).status_code == 422
+
+
+def test_qa_more_false_action_claims_and_offer_negation():
+    for reply in ("I've put in a work order for you.", "Your work order #4821 has been created.",
+                  "I've sent this to the maintenance team."):
+        assert not {c.code: c for c in output_checks(reply)}["no_false_action_claim"].passed, reply
+    assert not {c.code: c for c in output_checks("Our piano lounge offers a discount")}["no_invented_offer"].passed
+
+
+def test_qa_gate_override_can_be_disabled(settings, workbook):
+    from fastapi.testclient import TestClient
+
+    from app.db import Store
+    from app.main import app
+    from app.state import build_state, set_state
+
+    settings.gate_override_enabled = False
+    set_state(build_state(settings=settings, gateway=LLMGateway(settings), workbook=workbook,
+                          store=Store(settings.db_path)))
+    with TestClient(app) as c:
+        r = c.post("/api/chat", json={"message": "simulate gate failure", "mode": "aware",
+                                      "persona_id": "R001", "gate_provider": "llm"}).json()
+        assert r["gate"]["requested_provider"] == "rules" and not r["gate"]["fallback_used"]
+        assert set(c.post("/api/gates/evaluate", json={"providers": ["llm"]}).json()["summary"]) == {"rules"}
+    set_state(None)  # type: ignore[arg-type]

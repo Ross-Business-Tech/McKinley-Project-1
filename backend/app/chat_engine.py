@@ -32,7 +32,7 @@ from app.models import (
 )
 from app.personas import build_context
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
-from app.safety import contains_pii, output_checks, pre_model_gates, redact
+from app.safety import contains_pii, normalize_for_matching, output_checks, pre_model_gates, redact
 from app.workflows import (
     EMERGENCY_NOTICE,
     WORKFLOW_VERSION,
@@ -60,7 +60,7 @@ class EngineDeps:
 
 
 def clean_message(message: str) -> str:
-    return redact(_TAG.sub("", message)).strip()
+    return redact(_TAG.sub("", normalize_for_matching(message))).strip()
 
 
 def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
@@ -130,7 +130,7 @@ def run_turn(
 
     # 1. receive: strip delimiter tags, redact PII patterns before anything else sees the text
     msg = clean_message(message)
-    pii_found = contains_pii(_TAG.sub("", message))
+    pii_found = contains_pii(_TAG.sub("", normalize_for_matching(message)))
     trace.add("1_receive", "ok", f"{len(msg)} chars after cleaning")
 
     # 2. identity: audience comes ONLY from the trusted app context (demo persona), never from the message/model
@@ -163,7 +163,8 @@ def run_turn(
             prior_low_confidence=bool(prior and "low_confidence" in prior.get("risk_flags", [])),
         )
         assert deps.gates is not None
-        gate = deps.gates.classify(msg, gctx, gate_provider)
+        override = gate_provider if settings.gate_override_enabled else None
+        gate = deps.gates.classify(msg, gctx, override)
         trace.add("5_gate", "fallback" if gate.fallback_used else "ok",
                   f"{gate.decision_source}: intent={gate.intent}, urgency={gate.urgency}, "
                   f"human={gate.requires_human}" + (f" (fallback: {gate.fallback_reason})" if gate.fallback_used

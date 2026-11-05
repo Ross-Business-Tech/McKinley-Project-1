@@ -1,5 +1,6 @@
 """Selects the configured gate (DECISION_GATE_PROVIDER), applies the safety floor and falls back to rules."""
 
+import logging
 import time
 
 from app.config import Settings
@@ -12,6 +13,7 @@ from app.llm import LLMGateway, Target
 from app.models import GateDecision
 
 GATE_PROVIDERS = ["rules", "llm", "jev"]
+log = logging.getLogger("mckinley.gates")
 
 
 class DecisionGateService:
@@ -59,6 +61,10 @@ class DecisionGateService:
             return rules
         try:
             external = gate.classify(message, ctx, rules)
+            return apply_safety_floor(external.model_copy(update={"requested_provider": name}), rules, ctx)
         except GateUnavailable as e:
             return rules.model_copy(update={"fallback_used": True, "fallback_reason": f"{e.code}: {e.message}"})
-        return apply_safety_floor(external.model_copy(update={"requested_provider": name}), rules, ctx)
+        except Exception as e:  # malformed provider output must never break a turn; type only, no content
+            log.warning("gate %s failed: %s", name, type(e).__name__)
+            return rules.model_copy(update={"fallback_used": True,
+                                            "fallback_reason": f"GATE_ERROR: {type(e).__name__}"})

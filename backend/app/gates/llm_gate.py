@@ -1,6 +1,7 @@
 """Structured-output LLM gate using the existing provider-agnostic gateway (one extra model call per turn)."""
 
 import json
+import math
 import re
 from typing import Any
 
@@ -58,10 +59,12 @@ def coerce_decision(data: dict[str, Any], ctx: GateContext, source: str, request
     if intent not in INTENTS or urgency not in URGENCIES:
         raise GateUnavailable("GATE_BAD_OUTPUT", f"Out-of-vocabulary intent/urgency: {intent!r}/{urgency!r}")
     try:
-        confidence = max(0.0, min(1.0, float(data.get("confidence", 0))))
+        confidence = float(data.get("confidence", 0))
     except (TypeError, ValueError):
         confidence = 0.0
-    flags = [f for f in data.get("risk_flags") or [] if f in EXTERNAL_FLAG_VOCAB]
+    confidence = max(0.0, min(1.0, confidence)) if math.isfinite(confidence) else 0.0  # NaN/inf -> 0, never 1
+    raw_flags = data.get("risk_flags")
+    flags = [f for f in raw_flags if f in EXTERNAL_FLAG_VOCAB] if isinstance(raw_flags, list) else []
     reason = str(data.get("handoff_reason") or "")[:300] or None
     return GateDecision(
         audience=ctx.audience, intent=intent, urgency=urgency,

@@ -4,6 +4,7 @@ These rules are intentionally simple and auditable. They supplement, not replace
 """
 
 import re
+import unicodedata
 
 from app.models import OutputCheck, PolicySignal
 
@@ -68,10 +69,13 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "emergency_hazard",
         "safety_emergency",
         re.compile(
-            r"smell(s|ing)? (of )?gas|gas (leak|smell)|\bfire\b|smoke (is )?(coming|filling)|sparks?|"
-            r"electrical (burning|fire)|burning smell|flood(ing|ed)?|water (is )?(pouring|everywhere)|"
+            r"smell(s|ing)? (like |of )?(gas|smoke|burning)|gas (leak|smell)|\bfire\b|"
+            r"smoke (is )?(coming|filling|pouring)|(smoke|fire|co) (alarm|detector) (is )?(going off|sounding|"
+            r"won'?t stop)|\bsparks?\b|\bsparking\b|electrical (burning|fire)|burning smell|"
+            r"\bflood(ing|ed)?\b(?! (zone|insurance|plain))|water (is )?(pouring|everywhere)|"
             r"carbon monoxide|\bco alarm\b|can'?t breathe|ceiling (collapsed|caving)|"
-            r"olor a gas|huele a gas|fuga de gas|incendio|fuego|humo|chispas|inundaci[oó]n|mon[oó]xido",
+            r"olor a (gas|humo|quemado)|huele a (gas|humo|quemado)|fuga de gas|\bincendio\b|\bfuego\b|\bhumo\b|"
+            r"\bchispas?\b|inundaci[oó]n|inundad[oa]|se est[aá] quemando|\bmon[oó]xido\b",
             re.IGNORECASE,
         ),
         "Message describes a possible acute hazard; emergency channels must be prioritized.",
@@ -100,8 +104,10 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "fair_housing_or_legal",
         "fair_housing_or_legal",
         re.compile(
-            r"discriminat|fair housing|lawyer|attorney|sue\b|lawsuit|evict|reasonable accommodation|"
-            r"disabilit|service animal|emotional support animal|\besa\b",
+            r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
+            r"accommodation|disabilit|wheelchair|grab bars?|accessib|service (animal|dog)|"
+            r"(emotional )?support (animal|dog|cat)|assistance animal|\besa\b|discapacidad|adaptaci[oó]n|"
+            r"discrimina",
             re.IGNORECASE,
         ),
         "Fair-housing, accommodation or legal topic needs authorized staff.",
@@ -132,7 +138,14 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
 ]
 
 
+def normalize_for_matching(text: str) -> str:
+    """NFKC-fold (fullwidth -> ASCII) and drop zero-width/format characters so patterns can't be dodged."""
+    folded = unicodedata.normalize("NFKC", text)
+    return "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
+
+
 def pre_model_gates(message: str) -> list[PolicySignal]:
+    message = normalize_for_matching(message)
     return [
         PolicySignal(code=code, category=cat, detail=detail)  # type: ignore[arg-type]
         for code, cat, pat, detail in _GATES
@@ -147,8 +160,9 @@ _APOS = "['\u2019]"  # straight or curly apostrophe
 _ACTION_CLAIMS = re.compile(
     rf"\bI(?:{_APOS}ve| have)? (?:just |already )?(?:notified|alerted|contacted|emailed|texted|called|messaged|"
     r"escalated|forwarded|submitted|created|opened|filed|scheduled|booked|dispatched|reserved|transferred|"
-    r"passed (?:this|it|your \w+) (?:along|on))\b|"
-    r"\b(?:work order|ticket|request|appointment|tour) (?:has been|is now|was) "
+    r"passed (?:this|it|your \w+) (?:along|on)|put in (?:a|your|the) \w+|"
+    r"sent (?:this|it|your \w+) (?:to|along))\b|"
+    r"\b(?:work order|ticket|request|appointment|tour)(?: (?:#|no\.? ?)?\w*\d\w*)? (?:has been|is now|was) "
     r"(?:created|submitted|opened|scheduled|booked|confirmed)\b|"
     r"\b(?:a technician|maintenance|someone|the team|staff) (?:is|has been|will be) (?:on (?:their|the) way|"
     r"dispatched)\b|"
@@ -173,7 +187,7 @@ _OFFER = re.compile(
     r"lower (your|the) rent|reduce (your|the) rent|guarantee[ds]?)\b",
     re.IGNORECASE,
 )
-_NEGATION = re.compile(r"(can'?t|cannot|can\u2019t|not|unable to|don'?t|no)\W+(?:\w+\W+){0,5}$", re.IGNORECASE)
+_NEGATION = re.compile(r"\b(can'?t|cannot|can\u2019t|not|unable to|don'?t|no)\W+(?:\w+\W+){0,5}$", re.IGNORECASE)
 _SECRET_LEAK = re.compile(r"api[ _-]?key|system prompt|\bsk-[A-Za-z0-9]|safe_context|my instructions",
                           re.IGNORECASE)
 _EMERGENCY_GUIDANCE = re.compile(r"911|emergency", re.IGNORECASE)

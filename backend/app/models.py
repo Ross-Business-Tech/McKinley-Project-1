@@ -62,7 +62,7 @@ class ContextPreviewRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     message: str = Field(min_length=1, max_length=4000)
     persona_id: str | None = Field(default=None, max_length=40)
     mode: Mode

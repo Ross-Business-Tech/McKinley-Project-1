@@ -1,5 +1,6 @@
 """SQLite store for demo session turns and eval outcomes (local, gitignored)."""
 
+import hashlib
 import json
 import sqlite3
 import threading
@@ -107,7 +108,9 @@ class Store:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT * FROM gate_decisions ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-        return [{"id": r["id"], "session_id": r["session_id"], "mode": r["mode"], "persona_id": r["persona_id"],
+        # Session ids are bearer-like (they key chat history), so only a short one-way hash is exposed.
+        return [{"id": r["id"], "session": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
+                 "mode": r["mode"], "persona_id": r["persona_id"],
                  "created_at": r["created_at"], **json.loads(r["data"])} for r in rows]
 
     # ---- evals ----

@@ -6,6 +6,7 @@ unrecognised shape raises GateUnavailable (-> rules fallback). Never exercised a
 no key was available. Uses plain httpx; the `typesafe-sdk` package is deliberately not a dependency.
 """
 
+import math
 import time
 from typing import Any
 
@@ -38,9 +39,12 @@ def _answer(answers: dict[str, Any], key: str) -> tuple[Any, float | None]:
     if isinstance(a, dict):
         value = next((a[k] for k in ("answer", "label", "value", "choice") if k in a), None)
         conf = a.get("confidence", a.get("probability"))
-        if value is None and "probability" in a:  # noul: probability of "yes"
-            value = float(a["probability"]) >= 0.5
-        return value, float(conf) if isinstance(conf, (int, float)) else None
+        prob = a.get("probability")
+        if value is None and isinstance(prob, (int, float)):  # noul: probability of "yes"
+            value = float(prob) >= 0.5
+        if isinstance(conf, (int, float)) and math.isfinite(conf):
+            return value, max(0.0, min(1.0, float(conf)))
+        return value, None
     raise GateUnavailable("JEV_UNEXPECTED_RESPONSE", f"Unrecognised answer shape for '{key}'")
 
 

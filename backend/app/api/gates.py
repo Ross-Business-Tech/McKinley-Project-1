@@ -38,7 +38,10 @@ def scenarios() -> list[dict]:
 @router.post("/evaluate")
 def evaluate(req: GateEvalRequest, state: AppState = Depends(get_state)) -> dict:
     """Routing-only comparison. 'llm' costs one model call per scenario; default is rules only (free)."""
-    return evaluate_gates(state.deps, list(dict.fromkeys(req.providers)))
+    providers = list(dict.fromkeys(req.providers))
+    if not state.deps.settings.gate_override_enabled:
+        providers = ["rules"]
+    return evaluate_gates(state.deps, providers)
 
 
 @router.get("/log")

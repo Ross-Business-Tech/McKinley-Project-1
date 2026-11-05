@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     # Rules always run as the safety floor; external gates fall back to rules on any failure.
     decision_gate_provider: Literal["rules", "llm", "jev"] = "rules"
     decision_gate_llm_target: str | None = None  # provider:model; defaults to the chat default target
+    # Allow the browser to pick a gate per turn / run LLM gate comparisons. Local demo convenience; set False on
+    # any shared deployment (each llm/jev call costs money and sends the message to that provider).
+    gate_override_enabled: bool = True
     decision_gate_timeout_seconds: float = Field(default=8, gt=0, le=60)
     typesafe_api_key: SecretStr | None = None
     typesafe_base_url: str = "https://api.typesafe.ai"

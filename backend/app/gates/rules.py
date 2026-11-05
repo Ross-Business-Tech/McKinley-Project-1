@@ -5,7 +5,7 @@ import re
 from app.context import MAINTENANCE_TOPICS, detect_topics
 from app.gates.base import ALWAYS_HUMAN_FLAGS, LOW_CONFIDENCE_THRESHOLD, GateContext
 from app.models import GateDecision, Intent, Urgency
-from app.safety import looks_like_injection, pre_model_gates
+from app.safety import looks_like_injection, normalize_for_matching, pre_model_gates
 
 _LEASING = re.compile(
     r"\btour\b|\bapply\b|application|availab|floor ?plans?|\b\d\s?-?\s?(bed|br|bedroom)s?\b|\bbeds?\b|bedroom|"
@@ -75,6 +75,7 @@ def _intent(message: str, ctx: GateContext, topics: list[str]) -> tuple[Intent, 
 
 
 def classify_rules(message: str, ctx: GateContext) -> GateDecision:
+    message = normalize_for_matching(message)
     topics = ctx.topics or detect_topics(message)
     signals = pre_model_gates(message)
     flags = [s.code for s in signals]

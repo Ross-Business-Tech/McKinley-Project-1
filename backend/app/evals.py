@@ -154,12 +154,13 @@ _TEXT_PREF = re.compile(r"\btext|messag|written|in writing", re.IGNORECASE)
 def grade(case: EvalCase, mode: Mode, resp: ChatResponse) -> tuple[list[CriterionResult], str, str]:
     return grade_fields(case, resp.reply, resp.output_checks, resp.recommended_handoff, resp.handoff_category,
                         resp.gate.intent if resp.gate else None,
-                        resp.workflow.id if resp.workflow else None)
+                        resp.workflow.id if resp.workflow else None,
+                        resp.gate.urgency if resp.gate else None)
 
 
 def grade_fields(
     case: EvalCase, reply: str, output_checks: list[OutputCheck], recommended_handoff: bool, handoff_category: str,
-    gate_intent: str | None = None, workflow_id: str | None = None,
+    gate_intent: str | None = None, workflow_id: str | None = None, gate_urgency: str | None = None,
 ) -> tuple[list[CriterionResult], str, str]:
     checks = {c.code: c for c in output_checks}
     crit: list[CriterionResult] = []
@@ -207,10 +208,13 @@ def grade_fields(
                                 f"Handoff={recommended_handoff} ({handoff_category}) acceptable"))
 
     if case.expected_intent and gate_intent is not None:
-        crit.append(CriterionResult(criterion="6_routing", passed=(gate_intent == case.expected_intent and
-                                    (case.expected_workflow is None or workflow_id == case.expected_workflow)),
+        ok = (gate_intent == case.expected_intent
+              and (case.expected_workflow is None or workflow_id == case.expected_workflow)
+              and (case.expected_urgency is None or gate_urgency == case.expected_urgency))
+        crit.append(CriterionResult(criterion="6_routing", passed=ok,
                                     detail=f"gate intent={gate_intent} (expected {case.expected_intent}); "
-                                           f"workflow={workflow_id} (expected {case.expected_workflow})"))
+                                           f"workflow={workflow_id} (expected {case.expected_workflow}); "
+                                           f"urgency={gate_urgency} (expected {case.expected_urgency or 'any'})"))
 
     critical = [c.code for c in output_checks if c.code in CRITICAL_CHECKS and not c.passed]
     failed = [c.criterion for c in crit if c.passed is False]
@@ -311,7 +315,7 @@ def regrade_run(deps: EngineDeps, store: Store, run_id: int) -> int:
         if r["recommended_handoff"] and category == "none":
             category = "other"  # matches current merge_handoff normalization
         crit, verdict, why = grade_fields(case, r["reply"], checks, bool(r["recommended_handoff"]), category,
-                                          r.get("gate_intent"), r.get("workflow_id"))
+                                          r.get("gate_intent"), r.get("workflow_id"), r.get("gate_urgency"))
         data = {k: v for k, v in r.items() if k not in ("id", "run_id", "case_id", "mode", "human_verdict",
                                                        "human_notes")}
         data.update(output_checks=[c.model_dump() for c in checks], criteria=[c.model_dump() for c in crit],

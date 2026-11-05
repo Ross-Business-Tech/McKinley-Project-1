@@ -56,3 +56,6 @@ backend/data/*.csv
 out/
 next-env.d.ts
 *.tsbuildinfo
+
+# CodeGraph local index (developer tool; never commit)
+.codegraph/
