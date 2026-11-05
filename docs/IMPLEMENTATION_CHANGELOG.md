@@ -16,8 +16,35 @@ Status legend used throughout: **WORKING** · **MOCKED** · **EXPERIMENTAL** · 
 - **Diagram validation:** every Mermaid block (including `ARCHITECTURE.md`) parses with `mermaid@11.4.1`. The parser was installed in a scratch directory, not as a project dependency. A deliberately broken diagram fails the same check, which shows the check catches errors.
 - **Diagrams updated:** all four (new).
 
-## Phase 4: frontend diagnostics, three modes, static demo
-_See the entry added at the end of the sprint below._
+## Phase 4: frontend diagnostics, three modes, static demo (commit `c497429`)
+- **What:** frontend/UX work by a subagent working only under `frontend/src`.
+  - Mode toggles A/B/C, defaulting to A and C so each send costs fewer model calls.
+  - A per-turn gate selector that shows each gate's availability as reported by the server.
+  - Scenarios grouped into "Core five" and "Extended".
+  - The emergency safety notice appears above the reply.
+  - A handoff card reading "Recommended — not sent", with the delivery note.
+  - A collapsed "Why this answer" diagnostics panel: gate, overrides, flags, workflow, triage/lead/renewal, context provenance, 10-step trace, model and checks.
+  - A Decision-gates comparison in the Evaluation tab.
+  - Static demo mode, driven by `frontend/public/demo/snapshot.json`.
+- **Why:** executives need to see *why* the assistant answered as it did without cluttering the customer reply. The hosted site is static and cannot reach a backend.
+- **Real vs simulated:**
+  - MOCK badges appear on every mock response.
+  - A "mock" gate source is labelled as a stand-in.
+  - "No work order created (no integration)" is shown on maintenance answers.
+  - The demo banner says no live AI is running.
+- **Tests run:**
+  - `npm run lint`: 0 errors.
+  - `npm run typecheck`: 0 errors.
+  - `npm test`: **22 passed**.
+  - `npm run build`: OK.
+  - `npm run smoke` was **SKIPPED**: Playwright is not installed on this machine.
+  - As a substitute, headless Chrome (puppeteer-core, run from a scratch directory) checked 390 px and 1366 px:
+    - Demo mode (no backend): the emergency scenario shows the safety notice and the "not sent" handoff, with no horizontal scroll and no page errors.
+    - Live mode against the backend with the mock provider: free-text R008 "leaking again, fourth time" → management handoff, repeat issue.
+- **Not done:**
+  - No here.now preview was published, because the owner asked to keep everything local.
+  - The `/api/gates/log` client call exists but is not shown in the UI.
+- **Diagrams:** `architecture.md` and `sequence.md` already include the static demo path.
 
 ## Phase 5b: QA hardening (commit `20f602b`)
 - **What:** fixes for the 11 findings from an independent QA/security review (a subagent with read-only access).
