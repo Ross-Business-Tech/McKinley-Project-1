@@ -16,7 +16,9 @@ class OllamaProvider:
         self._client = client
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
-                 cfg: GenerationConfig) -> LLMResult:
+                 cfg: GenerationConfig, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply") -> LLMResult:
+        schema = schema or OUTPUT_SCHEMA
         options: dict[str, Any] = {"num_predict": cfg.max_tokens}
         if cfg.temperature is not None:
             options["temperature"] = cfg.temperature
@@ -24,7 +26,7 @@ class OllamaProvider:
             "model": target.model,
             "messages": [{"role": "system", "content": system}, *messages],
             "stream": False,
-            "format": OUTPUT_SCHEMA,  # Ollama structured outputs
+            "format": schema,  # Ollama structured outputs
             "options": options,
         }
         try:
@@ -53,4 +55,5 @@ class OllamaProvider:
             latency_ms=latency_ms,
             parse_mode=mode,
             estimated_cost_usd=0.0,
+            extra={"content": content},
         )

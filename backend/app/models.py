@@ -5,7 +5,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Mode = Literal["baseline", "aware"]
+# baseline = generic prompt, no McKinley layers; prompt_only = McKinley prompt + gate/workflow, NO resident
+# context fields; aware = McKinley prompt + gate/workflow + authorized minimized resident context.
+Mode = Literal["baseline", "prompt_only", "aware"]
 Audience = Literal["prospect", "resident", "unknown"]
 PersonaKind = Literal["prospect", "resident", "unmatched_resident"]
 Verdict = Literal["GOOD", "BAD"]
@@ -66,6 +68,88 @@ class ChatRequest(BaseModel):
     mode: Mode
     session_id: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     target: str | None = Field(default=None, max_length=120, description="provider:model from /api/models")
+    gate_provider: Literal["rules", "llm", "jev"] | None = Field(
+        default=None, description="Override DECISION_GATE_PROVIDER for this turn (demo/experiments)")
+
+
+# ---- decision gate / workflow / handoff (pipeline v2) ----------------------------------
+
+Intent = Literal["leasing", "maintenance", "renewal", "general"]
+Urgency = Literal["low", "medium", "high", "emergency"]
+GateSource = Literal["rules", "jev", "llm", "mock"]
+WorkflowId = Literal["leasing", "resident_support", "maintenance", "renewal", "human_handoff", "general_inquiry"]
+HandoffTeam = Literal["emergency_maintenance", "maintenance", "leasing", "accounting", "management"]
+
+
+class GateDecision(BaseModel):
+    """Typed routing decision. `audience` is ALWAYS the trusted (application-established) audience."""
+
+    audience: Audience
+    intent: Intent
+    urgency: Urgency
+    requires_human: bool
+    handoff_reason: str | None = None
+    confidence: float = Field(ge=0, le=1)
+    confidence_calibrated: bool = False  # rules confidence is a heuristic, never a calibrated probability
+    risk_flags: list[str] = Field(default_factory=list)
+    decision_source: GateSource
+    requested_provider: str  # what DECISION_GATE_PROVIDER asked for
+    fallback_used: bool = False
+    fallback_reason: str | None = None
+    overrides: list[str] = Field(default_factory=list)  # deterministic safety-floor changes to the provider output
+    rationale: list[str] = Field(default_factory=list)
+    latency_ms: int = 0
+    gate_usage: "Usage | None" = None  # tokens/cost when an LLM gate made an extra call
+
+
+class WorkflowSelection(BaseModel):
+    id: WorkflowId
+    label: str
+    reason: str
+    instructions_version: str
+
+
+class MaintenanceTriage(BaseModel):
+    level: Literal["emergency", "repeat", "routine", "unclear"]
+    category: str
+    approved_troubleshooting: list[str]
+    entry_window_on_file: bool
+    work_order_created: Literal[False] = False  # no work-order integration exists
+
+
+class LeadProfile(BaseModel):
+    intent_level: Literal["high", "low", "unclear"]
+    signals: list[str]
+    known: dict[str, str]
+    missing: list[str]
+    next_question: str | None
+
+
+class RenewalAssessment(BaseModel):
+    concerns: list[str]
+    renewal_status_known: bool
+    open_commitments: int
+    tone: str
+
+
+class HandoffRecommendation(BaseModel):
+    status: Literal["recommended_not_sent"] = "recommended_not_sent"
+    completed: Literal[False] = False
+    team: HandoffTeam
+    priority: Literal["urgent", "high", "normal"]
+    category: HandoffCategory
+    reasons: list[str]
+    summary: str  # built deterministically from minimal context; never from model free text
+    included_fields: list[str]
+    contact_guidance: str | None
+    delivery_note: str
+
+
+class PipelineStep(BaseModel):
+    step: str
+    status: Literal["ok", "skipped", "warn", "fallback"]
+    detail: str
+    ms: int = 0
 
 
 class Usage(BaseModel):
@@ -90,6 +174,7 @@ class OutputCheck(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    safety_notice: str | None = None  # deterministic notice shown above the reply (e.g. emergencies)
     mode: Mode
     audience: Audience
     recommended_handoff: bool
@@ -112,6 +197,13 @@ class ChatResponse(BaseModel):
     stop_reason: str | None
     session_id: str
     created_at: datetime
+    gate: GateDecision | None = None  # None in baseline (generic) mode
+    workflow: WorkflowSelection | None = None
+    maintenance: MaintenanceTriage | None = None
+    lead: LeadProfile | None = None
+    renewal: RenewalAssessment | None = None
+    handoff: HandoffRecommendation | None = None
+    pipeline: list[PipelineStep] = Field(default_factory=list)
 
 
 class ErrorBody(BaseModel):
@@ -154,6 +246,10 @@ class EvalCase(BaseModel):
     expected_audience: Audience
     expect_handoff: bool | None  # None = either acceptable
     reference_note: str
+    suite: Literal["core", "extended"] = "core"
+    expected_intent: Intent | None = None
+    expected_workflow: WorkflowId | None = None
+    expected_urgency: Urgency | None = None
 
 
 class CriterionResult(BaseModel):
@@ -173,6 +269,10 @@ class EvalResult(BaseModel):
     error_message: str | None = None
     reply: str | None = None
     audience: str | None = None
+    gate_intent: str | None = None
+    gate_urgency: str | None = None
+    gate_source: str | None = None
+    workflow_id: str | None = None
     recommended_handoff: bool | None = None
     handoff_category: str | None = None
     handoff_reason: str | None = None
@@ -197,7 +297,7 @@ class EvalResult(BaseModel):
 class EvalRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     case_ids: list[str] | None = None
-    modes: list[Mode] = Field(default_factory=lambda: ["baseline", "aware"])
+    modes: list[Mode] = Field(default_factory=lambda: ["baseline", "prompt_only", "aware"])
     # provider:model keys; the default target is used when omitted
     targets: list[str] | None = Field(default=None, max_length=6)
 
@@ -244,3 +344,6 @@ class EvalSummary(BaseModel):
     total: int
     by_target_mode: dict[str, TargetModeSummary]
     failure_categories: dict[str, int]
+
+
+GateDecision.model_rebuild()

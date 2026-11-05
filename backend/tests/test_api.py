@@ -55,9 +55,9 @@ def test_chat_validation_and_errors(client):
 
 def test_eval_run_review_summary(client, settings):
     cases = client.get("/api/evals/cases").json()
-    assert len(cases) == 5
+    assert len([c for c in cases if c["suite"] == "core"]) == 5  # original five preserved
     run = client.post("/api/evals/run", json={"targets": ["mock:mock-deterministic-v1"]}).json()
-    assert len(run["results"]) == 10
+    assert len(run["results"]) == 15  # 5 core cases x {baseline, prompt_only, aware}
     r0 = run["results"][0]
     assert r0["is_mock"] and r0["provisional_verdict"] in ("GOOD", "BAD") and r0["criteria"]
     patched = client.patch(f"/api/evals/results/{r0['id']}", json={"human_verdict": "BAD", "human_notes": "n"})
@@ -66,7 +66,7 @@ def test_eval_run_review_summary(client, settings):
     group = s["by_target_mode"][f"mock:mock-deterministic-v1|{r0['mode']}"]
     assert group["human_reviewed"] == 1 and group["is_mock"] == 1
     exported = json.loads(settings.eval_results_path.read_text())
-    assert exported["run_id"] == run["run_id"] and len(exported["results"]) == 10
+    assert exported["run_id"] == run["run_id"] and len(exported["results"]) == 15
     assert client.get("/api/evals/runs").json()[0]["targets"] == ["mock:mock-deterministic-v1"]
 
 

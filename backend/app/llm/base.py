@@ -99,7 +99,11 @@ class LLMProvider(Protocol):
     name: str
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
-                 cfg: GenerationConfig) -> LLMResult: ...
+                 cfg: GenerationConfig, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply") -> LLMResult:
+        """`schema` overrides OUTPUT_SCHEMA for auxiliary tasks (e.g. the decision gate). The raw model text is
+        always returned in `LLMResult.extra["content"]` so callers with a custom schema can parse it themselves."""
+        ...
 
 
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)

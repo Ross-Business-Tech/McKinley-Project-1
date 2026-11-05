@@ -18,7 +18,9 @@ class OpenRouterProvider:
         self._client = client
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
-                 cfg: GenerationConfig) -> LLMResult:
+                 cfg: GenerationConfig, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply") -> LLMResult:
+        schema = schema or OUTPUT_SCHEMA
         if not self._api_key:
             raise LLMError("NEEDS_API_KEY", "OPENROUTER_API_KEY is not configured on the backend. Add it to "
                            "backend/.env (free key at openrouter.ai) or set LLM_PROVIDER=mock.", http_status=503)
@@ -28,7 +30,7 @@ class OpenRouterProvider:
             "max_tokens": cfg.max_tokens,
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {"name": "mckinley_reply", "strict": True, "schema": OUTPUT_SCHEMA},
+                "json_schema": {"name": schema_name, "strict": True, "schema": schema},
             },
             # Exactly one model: no `models` fallback list and no auto-router, so evaluations never switch models.
         }
@@ -65,4 +67,5 @@ class OpenRouterProvider:
             latency_ms=latency_ms,
             parse_mode=mode,
             estimated_cost_usd=usage.get("cost") if isinstance(usage.get("cost"), (int, float)) else None,
+            extra={"content": content},
         )

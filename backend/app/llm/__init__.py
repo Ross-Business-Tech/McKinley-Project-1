@@ -1,6 +1,7 @@
 """Provider registry and gateway. Add a provider by implementing `LLMProvider` and registering it here."""
 
 from collections.abc import Callable
+from typing import Any
 
 from app.config import Settings
 from app.llm.base import (
@@ -117,11 +118,15 @@ class LLMGateway:
         return self._providers[name]
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target | None = None,
-                 strict_model: bool = True) -> LLMResult:
+                 strict_model: bool = True, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply", cfg: GenerationConfig | None = None) -> LLMResult:
         target = target or self.default_target
-        result = self._provider(target.provider).complete(
-            system, messages, target, self.generation_config(target)
-        )
+        cfg = cfg or self.generation_config(target)
+        provider = self._provider(target.provider)
+        if schema is None:
+            result = provider.complete(system, messages, target, cfg)
+        else:
+            result = provider.complete(system, messages, target, cfg, schema=schema, schema_name=schema_name)
         if strict_model and not same_model(result.model, target.model):
             raise LLMError(
                 "MODEL_SWITCHED",

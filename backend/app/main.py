@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, evals
+from app.api import chat, evals, gates
 from app.chat_engine import prompt_for
 from app.config import get_settings
 from app.models import HealthResponse, ModelTarget
@@ -13,7 +13,7 @@ from app.state import AppState, get_state
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="McKinley AI Prototype API", version="0.2.0",
+app = FastAPI(title="McKinley AI Prototype API", version="0.3.0",
               description="Synthetic-data prototype. No live Yardi, Databricks, messaging or work-order writes.")
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 app.include_router(chat.router)
 app.include_router(evals.router)
+app.include_router(gates.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

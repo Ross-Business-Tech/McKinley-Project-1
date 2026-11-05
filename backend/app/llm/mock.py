@@ -5,7 +5,9 @@ labels it MOCK; mock results must never be reported as model quality evidence.
 """
 
 import hashlib
+import json
 import re
+from typing import Any
 
 from app.llm.base import GenerationConfig, LLMResult, ModelOutput, Target
 
@@ -26,8 +28,11 @@ class MockProvider:
     name = "mock"
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
-                 cfg: GenerationConfig) -> LLMResult:
+                 cfg: GenerationConfig, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply") -> LLMResult:
         turn = _last_user(messages)
+        if schema_name == "mckinley_gate":
+            return self._gate(turn, target)
         msg_match = re.search(r"<customer_message>\s*(.*?)\s*</customer_message>", turn, re.DOTALL)
         msg = (msg_match.group(1) if msg_match else turn).lower()
         audience = _ctx_value(turn, "audience") or (
@@ -76,4 +81,23 @@ class MockProvider:
             parse_mode="json",
             is_mock=True,
             estimated_cost_usd=0.0,
+        )
+
+    def _gate(self, turn: str, target: Target) -> LLMResult:
+        """Naive keyword gate so the LLM-gate plumbing can be tested offline. Deliberately weaker than rules."""
+        msg = turn.lower()
+        intent = ("maintenance" if re.search(r"leak|drip|ac\b|broken|repair|heat|gas|flood", msg) else
+                  "renewal" if "renew" in msg else
+                  "leasing" if re.search(r"tour|bed|floor plan|cheapest|apartment", msg) else "general")
+        if "simulate gate failure" in msg:
+            content = "not json"
+        else:
+            content = json.dumps({"intent": intent, "urgency": "low", "requires_human": False,
+                                  "handoff_reason": "", "confidence": 0.7 if intent != "general" else 0.3,
+                                  "risk_flags": []})
+        return LLMResult(
+            output=ModelOutput(reply=content), provider=self.name, requested_model=target.model,
+            model=target.model, stop_reason="mock", input_tokens=len(turn.split()), output_tokens=20,
+            latency_ms=3, parse_mode="text_fallback", is_mock=True, estimated_cost_usd=0.0,
+            extra={"content": content},
         )

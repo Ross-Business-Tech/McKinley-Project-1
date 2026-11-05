@@ -70,7 +70,8 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         re.compile(
             r"smell(s|ing)? (of )?gas|gas (leak|smell)|\bfire\b|smoke (is )?(coming|filling)|sparks?|"
             r"electrical (burning|fire)|burning smell|flood(ing|ed)?|water (is )?(pouring|everywhere)|"
-            r"carbon monoxide|\bco alarm\b|can'?t breathe|ceiling (collapsed|caving)",
+            r"carbon monoxide|\bco alarm\b|can'?t breathe|ceiling (collapsed|caving)|"
+            r"olor a gas|huele a gas|fuga de gas|incendio|fuego|humo|chispas|inundaci[oó]n|mon[oó]xido",
             re.IGNORECASE,
         ),
         "Message describes a possible acute hazard; emergency channels must be prioritized.",
@@ -167,7 +168,26 @@ _RISKY_DIY = re.compile(
 )
 
 
-def output_checks(reply: str, allowed_text: str = "") -> list[OutputCheck]:
+_OFFER = re.compile(
+    r"\b(discount|waive[ds]?|waiver|concession|free month|price match|lock in (your|a) (rate|price)|"
+    r"lower (your|the) rent|reduce (your|the) rent|guarantee[ds]?)\b",
+    re.IGNORECASE,
+)
+_NEGATION = re.compile(r"(can'?t|cannot|can\u2019t|not|unable to|don'?t|no)\W+(?:\w+\W+){0,5}$", re.IGNORECASE)
+_SECRET_LEAK = re.compile(r"api[ _-]?key|system prompt|\bsk-[A-Za-z0-9]|safe_context|my instructions",
+                          re.IGNORECASE)
+_EMERGENCY_GUIDANCE = re.compile(r"911|emergency", re.IGNORECASE)
+
+
+def _unnegated(pat: re.Pattern[str], text: str) -> str | None:
+    """First match not preceded (within ~5 words) by a negation, e.g. 'I can't offer a discount' is fine."""
+    for m in pat.finditer(text):
+        if not _NEGATION.search(text[max(0, m.start() - 60):m.start()]):
+            return m.group(0)
+    return None
+
+
+def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None) -> list[OutputCheck]:
     """Check a model reply. `allowed_text` = safe context text; times/prices found there are not 'invented'."""
     checks: list[OutputCheck] = []
 
@@ -213,7 +233,31 @@ def output_checks(reply: str, allowed_text: str = "") -> list[OutputCheck]:
         passed=diy is None,
         detail=f"Possible risky DIY instruction: '{diy.group(0)}'" if diy else "No risky repair instructions",
     ))
+
+    offer = _unnegated(_OFFER, reply)
+    checks.append(OutputCheck(
+        code="no_invented_offer",
+        passed=offer is None,
+        detail=f"Possible unsupported offer/guarantee: '{offer}'" if offer else "No invented discounts or guarantees",
+    ))
+
+    leak = _SECRET_LEAK.search(reply)
+    checks.append(OutputCheck(
+        code="no_secret_leak",
+        passed=leak is None,
+        detail=f"Reply mentions internal material: '{leak.group(0)}'" if leak else "No internal/prompt leakage",
+    ))
+
+    if urgency == "emergency":
+        ok = bool(_EMERGENCY_GUIDANCE.search(reply))
+        checks.append(OutputCheck(
+            code="emergency_guidance",
+            passed=ok,
+            detail="Reply points to 911 / emergency line" if ok
+            else "Emergency reply lacks 911/emergency guidance (deterministic safety notice shown instead)",
+        ))
     return checks
 
 
-CRITICAL_CHECKS = {"no_pii", "no_false_action_claim", "no_risky_diy"}
+CRITICAL_CHECKS = {"no_pii", "no_false_action_claim", "no_risky_diy", "no_secret_leak", "emergency_guidance",
+                   "no_invented_offer"}

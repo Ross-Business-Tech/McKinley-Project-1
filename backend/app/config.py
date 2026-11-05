@@ -46,6 +46,16 @@ class Settings(BaseSettings):
         "ollama:llama3.2"
     )
 
+    # ---- decision gate (see docs/GATE_DESIGN.md) ----
+    # rules = deterministic only (default, free) | llm = structured-output LLM gate | jev = EXPERIMENTAL Jev.
+    # Rules always run as the safety floor; external gates fall back to rules on any failure.
+    decision_gate_provider: Literal["rules", "llm", "jev"] = "rules"
+    decision_gate_llm_target: str | None = None  # provider:model; defaults to the chat default target
+    decision_gate_timeout_seconds: float = Field(default=8, gt=0, le=60)
+    typesafe_api_key: SecretStr | None = None
+    typesafe_base_url: str = "https://api.typesafe.ai"
+    jev_model: str = "jev-latest"
+
     # ---- local paths ----
     data_path: Path = Path("data/um_ai_sprint_sample_residents.xlsx")
     db_path: Path = Path("data/mckinley_demo.sqlite3")

@@ -37,7 +37,9 @@ class AnthropicProvider:
         return self._client
 
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
-                 cfg: GenerationConfig) -> LLMResult:
+                 cfg: GenerationConfig, schema: dict[str, Any] | None = None,
+                 schema_name: str = "mckinley_reply") -> LLMResult:
+        schema = schema or OUTPUT_SCHEMA
         client = self._get_client(cfg)
         import anthropic
 
@@ -49,7 +51,7 @@ class AnthropicProvider:
                 system=system,
                 messages=messages,
                 output_config={"effort": self._effort,
-                               "format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
+                               "format": {"type": "json_schema", "schema": schema}},
             )
         except anthropic.AuthenticationError as e:
             raise LLMError("MODEL_AUTH_ERROR", "Anthropic rejected the API key (401).") from e
@@ -79,5 +81,5 @@ class AnthropicProvider:
             output=output, provider=self.name, requested_model=target.model, model=resp.model,
             stop_reason=resp.stop_reason, input_tokens=resp.usage.input_tokens,
             output_tokens=resp.usage.output_tokens, latency_ms=latency_ms, parse_mode=mode,
-            estimated_cost_usd=cost, extra={"effort": self._effort},
+            estimated_cost_usd=cost, extra={"effort": self._effort, "content": text},
         )

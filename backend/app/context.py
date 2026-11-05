@@ -177,13 +177,16 @@ def load_workbook(path: Path) -> Workbook:
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
     "hvac": ["ac", "a/c", "air condition", "cooling", "cool", "heat", "heater", "hvac", "thermostat",
-             "furnace", "compressor", "air handler"],
+             "furnace", "compressor", "air handler",
+             # Spanish (minimal; R012 prefers Spanish). Other languages: see docs/GATE_DESIGN.md limitations.
+             "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
-                 "shower", "tub", "water"],
+                 "shower", "tub", "water", "fuga", "gotea", "grifo", "llave", "fregadero", "inodoro", "tubería"],
     "appliance": ["dishwasher", "fridge", "refrigerator", "oven", "stove", "washer", "dryer", "microwave",
-                  "disposal"],
+                  "disposal", "horno", "estufa", "lavadora", "secadora", "refrigerador", "lavaplatos"],
     "pest": ["roach", "bug", "pest", "mice", "mouse", "ants", "rodent"],
-    "renewal": ["renew", "renewal", "lease", "offer", "move out", "move-out", "notice"],
+    "renewal": ["renew", "renewal", "lease", "offer", "move out", "move-out", "notice", "renovar", "renovación",
+                "renovacion", "contrato"],
     "billing": ["rent", "balance", "payment", "pay", "bill", "charge", "fee", "late"],
     "package": ["package", "delivery", "delivered", "mail"],
     "noise": ["noise", "neighbor", "loud", "upstairs"],
@@ -204,7 +207,8 @@ def detect_topics(text: str) -> list[str]:
             if re.search(rf"(?<![a-z]){re.escape(w)}(?![a-z])", t):
                 topics.append(topic)
                 break
-    generic_maint = re.search(r"broken|repair|fix|maintenance|work order|not working|stopped", t)
+    generic_maint = re.search(r"broken|repair|fix|maintenance|work order|not working|stopped|no funciona|"
+                              r"roto|reparar|mantenimiento|no calienta", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics

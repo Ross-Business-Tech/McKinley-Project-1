@@ -18,6 +18,16 @@ CREATE TABLE IF NOT EXISTS chat_turns (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_turns_session ON chat_turns(session_id, mode, persona_id, id);
+-- Gate decisions: safe routing metadata only (no message text, no context values).
+CREATE TABLE IF NOT EXISTS gate_decisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_gate_session ON gate_decisions(session_id, mode, persona_id, id);
 CREATE TABLE IF NOT EXISTS eval_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TEXT NOT NULL,
@@ -76,6 +86,29 @@ class Store:
                 [(session_id, mode, persona_id, "user", user, ts),
                  (session_id, mode, persona_id, "assistant", assistant, ts)],
             )
+
+    # ---- gate decision log ----
+    def log_gate(self, session_id: str, mode: str, persona_id: str, data: dict[str, Any]) -> None:
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO gate_decisions(session_id, mode, persona_id, created_at, data) VALUES (?,?,?,?,?)",
+                (session_id, mode, persona_id, now_iso(), json.dumps(data)),
+            )
+
+    def last_gate(self, session_id: str, mode: str, persona_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT data FROM gate_decisions WHERE session_id=? AND mode=? AND persona_id=? "
+                "ORDER BY id DESC LIMIT 1", (session_id, mode, persona_id),
+            ).fetchone()
+        return json.loads(row["data"]) if row else None
+
+    def gate_log(self, limit: int = 50) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM gate_decisions ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [{"id": r["id"], "session_id": r["session_id"], "mode": r["mode"], "persona_id": r["persona_id"],
+                 "created_at": r["created_at"], **json.loads(r["data"])} for r in rows]
 
     # ---- evals ----
     def create_run(self, targets: list[str], aware_v: str, baseline_v: str, temperature: float | None) -> int:
