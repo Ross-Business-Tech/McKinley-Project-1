@@ -1,6 +1,13 @@
 import type {
   ApiErrorBody,
+  ChatRequest,
   ChatResponse,
+  DemoSnapshot,
+  GateConfig,
+  GateEvalResponse,
+  GateLogEntry,
+  GateProvider,
+  GateScenario,
   EvalCase,
   EvalResult,
   EvalRunResponse,
@@ -66,11 +73,10 @@ export const api = {
   personas: () => request<Persona[]>("/api/personas"),
   contextPreview: (persona_id: string | null, message: string) =>
     request<SafeContext>("/api/context/preview", { method: "POST", body: JSON.stringify({ persona_id, message }) }),
-  chat: (body: { message: string; persona_id: string | null; mode: Mode; session_id: string; target: string }) =>
-    request<ChatResponse>("/api/chat", { method: "POST", body: JSON.stringify(body) }),
+  chat: (body: ChatRequest) => request<ChatResponse>("/api/chat", { method: "POST", body: JSON.stringify(body) }),
   evalCases: () => request<EvalCase[]>("/api/evals/cases"),
-  runEvals: (targets: string[], case_ids?: string[]) =>
-    request<EvalRunResponse>("/api/evals/run", { method: "POST", body: JSON.stringify({ targets, case_ids }) }),
+  runEvals: (targets: string[], case_ids?: string[], modes?: Mode[]) =>
+    request<EvalRunResponse>("/api/evals/run", { method: "POST", body: JSON.stringify({ targets, case_ids, modes }) }),
   evalResults: (run_id?: number) => request<EvalRunResponse>(`/api/evals/results${run_id ? `?run_id=${run_id}` : ""}`),
   evalSummary: (run_id?: number) => request<EvalSummary>(`/api/evals/summary${run_id ? `?run_id=${run_id}` : ""}`),
   review: (id: number, human_verdict: Verdict | null, human_notes: string | null) =>
@@ -78,4 +84,28 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ human_verdict, human_notes }),
     }),
+  gatesConfig: () => request<GateConfig>("/api/gates/config"),
+  gateScenarios: () => request<GateScenario[]>("/api/gates/scenarios"),
+  /** Routing-only comparison. "llm" makes one model call per scenario. */
+  evaluateGates: (providers: GateProvider[]) =>
+    request<GateEvalResponse>("/api/gates/evaluate", { method: "POST", body: JSON.stringify({ providers }) }),
+  gateLog: (limit = 50) => request<GateLogEntry[]>(`/api/gates/log?limit=${limit}`),
 };
+
+/** Root-relative static snapshot served with the site (used when the backend is unreachable). */
+export const SNAPSHOT_PATH = "/demo/snapshot.json";
+
+export async function loadDemoSnapshot(): Promise<DemoSnapshot> {
+  let res: Response;
+  try {
+    res = await fetch(SNAPSHOT_PATH, { headers: { Accept: "application/json" } });
+  } catch {
+    throw new ApiError("SNAPSHOT_UNAVAILABLE", "The static demo snapshot could not be loaded.");
+  }
+  if (!res.ok) throw new ApiError("SNAPSHOT_UNAVAILABLE", `The static demo snapshot could not be loaded (${res.status}).`);
+  const data = (await res.json()) as DemoSnapshot;
+  if (data?.kind !== "static_demo_snapshot" || !data.responses || !Array.isArray(data.cases)) {
+    throw new ApiError("SNAPSHOT_INVALID", "The static demo snapshot is not in the expected format.");
+  }
+  return data;
+}

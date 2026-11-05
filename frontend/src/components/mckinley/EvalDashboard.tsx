@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
-import { effectiveVerdict, formatCost, formatLatency, formatTokens } from "@/lib/format";
-import type { EvalCase, EvalResult, EvalSummary, ModelTarget, Verdict } from "@/lib/types";
+import { ALL_MODES, MODE_META, effectiveVerdict, formatCost, formatLatency, formatTokens } from "@/lib/format";
+import type { DemoSnapshot, EvalCase, EvalResult, EvalSummary, GateConfig, Mode, ModelTarget, Verdict } from "@/lib/types";
+
+import { GateEvalPanel } from "./GateEvalPanel";
 
 export function VerdictBadge({ r }: { r: EvalResult }) {
   const { verdict, source } = effectiveVerdict(r);
@@ -56,7 +58,13 @@ function ResultCell({ r, onReviewed }: { r: EvalResult | undefined; onReviewed: 
         {r.is_mock && <Badge variant="outline">MOCK</Badge>}
         {r.recommended_handoff && <Badge variant="outline">handoff: {r.handoff_category}</Badge>}
       </div>
-      <p className="whitespace-pre-wrap leading-relaxed">{r.reply}</p>
+      {(r.gate_intent || r.workflow_id) && (
+        <p className="text-xs text-muted-foreground">
+          Gate: {r.gate_intent ?? "—"} / {r.gate_urgency ?? "—"}
+          {r.gate_source && ` (${r.gate_source === "mock" ? "mock stand-in" : r.gate_source})`} · Workflow: {r.workflow_id ?? "—"}
+        </p>
+      )}
+      <p className="whitespace-pre-wrap break-words leading-relaxed">{r.reply}</p>
       <ul className="space-y-0.5 text-xs">
         {r.criteria.map((c) => (
           <li key={c.criterion} className={c.passed === false ? "text-destructive" : "text-muted-foreground"}>
@@ -64,7 +72,7 @@ function ResultCell({ r, onReviewed }: { r: EvalResult | undefined; onReviewed: 
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">
+      <p className="break-words text-xs text-muted-foreground">
         {r.model} · {formatLatency(r.latency_ms)} · {formatTokens(r.input_tokens, r.output_tokens)} ·{" "}
         {formatCost(r.estimated_cost_usd)} · parse {r.parse_mode}
       </p>
@@ -94,7 +102,44 @@ function ResultCell({ r, onReviewed }: { r: EvalResult | undefined; onReviewed: 
   );
 }
 
-export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; cases: EvalCase[] }) {
+export function EvalDashboard({
+  targets,
+  cases,
+  gateConfig = null,
+  demo = null,
+}: {
+  targets: ModelTarget[];
+  cases: EvalCase[];
+  gateConfig?: GateConfig | null;
+  demo?: DemoSnapshot | null;
+}) {
+  if (demo) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Five-case evaluation</CardTitle>
+            <CardDescription>
+              Running and reviewing evaluations needs the live backend, which this static demo does not have. The
+              decision-gate comparison below was pre-computed.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <GateEvalPanel cases={cases} gateConfig={null} snapshot={demo.gate_eval} />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <FiveCaseEval targets={targets} cases={cases} />
+      <GateEvalPanel cases={cases} gateConfig={gateConfig} />
+    </div>
+  );
+}
+
+function FiveCaseEval({ targets, cases: allCases }: { targets: ModelTarget[]; cases: EvalCase[] }) {
+  const cases = useMemo(() => allCases.filter((c) => (c.suite ?? "core") === "core"), [allCases]);
+  const [modes, setModes] = useState<Mode[]>(ALL_MODES);
   const [selected, setSelected] = useState<string[]>(() => {
     const d = targets.find((t) => t.is_default);
     return d ? [d.key] : [];
@@ -128,7 +173,7 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
     setRunning(true);
     setError(null);
     try {
-      const r = await api.runEvals(selected);
+      const r = await api.runEvals(selected, cases.map((c) => c.id), ALL_MODES.filter((m) => modes.includes(m)));
       setResults(r.results);
       setRunId(r.run_id);
       await refreshSummary(r.run_id);
@@ -150,6 +195,7 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
   );
   const find = (caseId: string, target: string, mode: string) =>
     results.find((r) => r.case_id === caseId && `${r.provider}:${r.requested_model}` === target && r.mode === mode);
+  const resultModes = ALL_MODES.filter((m) => results.some((r) => r.mode === m));
   const anyMock = selected.some((k) => targets.find((t) => t.key === k)?.is_mock);
 
   return (
@@ -158,7 +204,7 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
         <CardHeader>
           <CardTitle>Run five-case evaluation</CardTitle>
           <CardDescription>
-            Each selected target runs all five cases in baseline and McKinley-aware modes with identical settings.
+            Each selected target runs the five core cases in every selected mode with identical settings.
             Every result is pinned to its target; models are never substituted. Automated verdicts are provisional
             — mark Good/Bad as the reviewer.
           </CardDescription>
@@ -184,14 +230,31 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
               ))}
             </div>
           </fieldset>
+          <fieldset>
+            <legend className="mb-1 text-sm font-medium">Modes</legend>
+            <div className="grid gap-1 sm:grid-cols-3">
+              {ALL_MODES.map((m) => (
+                <label key={m} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={modes.includes(m)}
+                    disabled={modes.length === 1 && modes.includes(m)}
+                    onChange={(e) => setModes((prev) => (e.target.checked ? [...prev, m] : prev.filter((x) => x !== m)))}
+                  />
+                  {MODE_META[m].letter} · {MODE_META[m].title}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           {anyMock && (
             <p className="text-xs text-amber-700 dark:text-amber-300">
               Mock results are deterministic templates for testing the harness, not evidence of model quality.
             </p>
           )}
-          <div className="flex items-center gap-2">
-            <Button onClick={() => void run()} disabled={running || selected.length === 0}>
-              {running ? "Running… (free models can take a few minutes)" : `Run ${selected.length * 10} evaluations`}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button className="h-auto min-h-8 whitespace-normal" onClick={() => void run()} disabled={running || selected.length === 0}>
+              {running ? "Running… (free models can take a few minutes)" : `Run ${selected.length * cases.length * modes.length} evaluations`}
             </Button>
             {runId && <span className="text-xs text-muted-foreground">Showing run #{runId}</span>}
           </div>
@@ -205,7 +268,7 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
             <CardTitle>Score summary — run #{summary.run_id}</CardTitle>
             <CardDescription>Human verdicts override provisional verdicts. Five synthetic cases are a functional demo, not statistical evidence.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="min-w-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -228,7 +291,7 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
                     <TableCell className="max-w-56 break-all">
                       {g.target} {g.is_mock ? <Badge variant="outline">MOCK</Badge> : null}
                     </TableCell>
-                    <TableCell>{g.mode}</TableCell>
+                    <TableCell>{MODE_META[g.mode as Mode]?.title ?? g.mode}</TableCell>
                     <TableCell>{g.good}/{g.runs}</TableCell>
                     <TableCell>{g.bad}</TableCell>
                     <TableCell>{g.errors}</TableCell>
@@ -268,11 +331,11 @@ export function EvalDashboard({ targets, cases }: { targets: ModelTarget[]; case
               {runTargets.map((t) => (
                 <section key={t} aria-label={`${t} results`}>
                   <h4 className="mb-2 break-all text-sm font-semibold">{t}</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {(["baseline", "aware"] as const).map((m) => (
-                      <div key={m} className="rounded-md border p-3">
+                  <div className={`grid gap-4 md:grid-cols-2 ${resultModes.length > 2 ? "xl:grid-cols-3" : ""}`}>
+                    {resultModes.map((m) => (
+                      <div key={m} className="min-w-0 rounded-md border p-3">
                         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {m === "baseline" ? "Generic baseline" : "McKinley-aware"}
+                          {MODE_META[m].letter} · {MODE_META[m].title}
                         </p>
                         <ResultCell key={find(c.id, t, m)?.id ?? "none"} r={find(c.id, t, m)}
                           onReviewed={onReviewed} />

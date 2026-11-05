@@ -4,18 +4,29 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SafeContext } from "@/lib/types";
 
-export function ContextPreview({ ctx, loading, error }: { ctx: SafeContext | null; loading: boolean; error: string | null }) {
+export function ContextPreview({
+  ctx,
+  loading,
+  error,
+  emptyHint,
+}: {
+  ctx: SafeContext | null;
+  loading: boolean;
+  error: string | null;
+  emptyHint?: string;
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Context preview</CardTitle>
         <CardDescription>
-          Exactly what McKinley-aware mode sends to the model. Baseline mode receives none of this.
+          Exactly what mode C (McKinley + resident context) sends to the model. Modes A and B receive none of these
+          fields.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm" aria-live="polite" aria-busy={loading}>
         {error && <p role="alert" className="text-destructive">{error}</p>}
-        {!ctx && !error && <p className="text-muted-foreground">{loading ? "Loading…" : "Select a persona."}</p>}
+        {!ctx && !error && <p className="text-muted-foreground">{loading ? "Loading…" : (emptyHint ?? "Select a persona.")}</p>}
         {ctx && (
           <>
             <div className="flex flex-wrap gap-2">
@@ -30,7 +41,7 @@ export function ContextPreview({ ctx, loading, error }: { ctx: SafeContext | nul
             {ctx.fields.length > 0 ? (
               <dl className="space-y-1">
                 {ctx.fields.map((f, i) => (
-                  <div key={`${f.name}-${i}`} className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-2">
+                  <div key={`${f.name}-${i}`} className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-2 break-words">
                     <dt className="font-medium">{f.name}</dt>
                     <dd>
                       {f.value}

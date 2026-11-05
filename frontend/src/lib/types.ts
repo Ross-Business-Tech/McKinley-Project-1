@@ -1,6 +1,8 @@
 // Mirrors backend Pydantic contracts in backend/app/models.py.
 
-export type Mode = "baseline" | "aware";
+// baseline = generic prompt; prompt_only = McKinley prompt + gate/workflow, no resident context;
+// aware = McKinley prompt + gate/workflow + authorized minimized resident context.
+export type Mode = "baseline" | "prompt_only" | "aware";
 export type Audience = "prospect" | "resident" | "unknown";
 export type Verdict = "GOOD" | "BAD";
 
@@ -48,8 +50,89 @@ export interface Usage {
   estimated_cost_usd: number | null;
 }
 
+// ---- decision gate / workflow / handoff (pipeline v2) ----
+
+export type Intent = "leasing" | "maintenance" | "renewal" | "general";
+export type Urgency = "low" | "medium" | "high" | "emergency";
+export type GateSource = "rules" | "jev" | "llm" | "mock";
+export type GateProvider = "rules" | "llm" | "jev";
+export type WorkflowId = "leasing" | "resident_support" | "maintenance" | "renewal" | "human_handoff" | "general_inquiry";
+export type HandoffTeam = "emergency_maintenance" | "maintenance" | "leasing" | "accounting" | "management";
+export type Suite = "core" | "extended";
+
+export interface GateDecision {
+  /** Always the trusted (application-established) audience. */
+  audience: Audience;
+  intent: Intent;
+  urgency: Urgency;
+  requires_human: boolean;
+  handoff_reason: string | null;
+  confidence: number;
+  confidence_calibrated: boolean;
+  risk_flags: string[];
+  decision_source: GateSource;
+  requested_provider: string;
+  fallback_used: boolean;
+  fallback_reason: string | null;
+  overrides: string[];
+  rationale: string[];
+  latency_ms: number;
+  gate_usage: Usage | null;
+}
+
+export interface WorkflowSelection {
+  id: WorkflowId;
+  label: string;
+  reason: string;
+  instructions_version: string;
+}
+
+export interface MaintenanceTriage {
+  level: "emergency" | "repeat" | "routine" | "unclear";
+  category: string;
+  approved_troubleshooting: string[];
+  entry_window_on_file: boolean;
+  work_order_created: false;
+}
+
+export interface LeadProfile {
+  intent_level: "high" | "low" | "unclear";
+  signals: string[];
+  known: Record<string, string>;
+  missing: string[];
+  next_question: string | null;
+}
+
+export interface RenewalAssessment {
+  concerns: string[];
+  renewal_status_known: boolean;
+  open_commitments: number;
+  tone: string;
+}
+
+export interface HandoffRecommendation {
+  status: "recommended_not_sent";
+  completed: false;
+  team: HandoffTeam;
+  priority: "urgent" | "high" | "normal";
+  category: string;
+  reasons: string[];
+  summary: string;
+  included_fields: string[];
+  contact_guidance: string | null;
+  delivery_note: string;
+}
+
+export interface PipelineStep {
+  step: string;
+  status: "ok" | "skipped" | "warn" | "fallback";
+  detail: string;
+  ms: number;
+}
+
 export interface ChatResponse {
   reply: string;
+  safety_notice: string | null;
   mode: Mode;
   audience: Audience;
   recommended_handoff: boolean;
@@ -72,6 +155,22 @@ export interface ChatResponse {
   stop_reason: string | null;
   session_id: string;
   created_at: string;
+  gate: GateDecision | null; // null in baseline (generic) mode
+  workflow: WorkflowSelection | null;
+  maintenance: MaintenanceTriage | null;
+  lead: LeadProfile | null;
+  renewal: RenewalAssessment | null;
+  handoff: HandoffRecommendation | null;
+  pipeline: PipelineStep[];
+}
+
+export interface ChatRequest {
+  message: string;
+  persona_id: string | null;
+  mode: Mode;
+  session_id: string;
+  target: string;
+  gate_provider?: GateProvider;
 }
 
 export interface ModelTarget {
@@ -105,6 +204,10 @@ export interface EvalCase {
   expected_audience: Audience;
   expect_handoff: boolean | null;
   reference_note: string;
+  suite: Suite;
+  expected_intent: Intent | null;
+  expected_workflow: WorkflowId | null;
+  expected_urgency: Urgency | null;
 }
 
 export interface CriterionResult {
@@ -124,6 +227,10 @@ export interface EvalResult {
   error_message: string | null;
   reply: string | null;
   audience: string | null;
+  gate_intent: string | null;
+  gate_urgency: string | null;
+  gate_source: string | null;
+  workflow_id: string | null;
   recommended_handoff: boolean | null;
   handoff_category: string | null;
   handoff_reason: string | null;
@@ -178,4 +285,92 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   retryable: boolean;
+}
+
+// ---- /api/gates ----
+
+export interface GateConfig {
+  configured_provider: string;
+  availability: Record<string, string>;
+  low_confidence_threshold: number;
+}
+
+export interface GateScenario {
+  id: string;
+  title: string;
+  suite: Suite;
+  persona_id: string;
+  message: string;
+  expected_intent: Intent | null;
+  expected_workflow: WorkflowId | null;
+  expected_urgency: Urgency | null;
+  expect_handoff: boolean | null;
+}
+
+export interface GateEvalRow {
+  scenario: string;
+  provider: string;
+  decision_source: string;
+  fallback_used: boolean;
+  fallback_reason: string | null;
+  intent: string;
+  intent_ok: boolean;
+  workflow: string;
+  workflow_ok: boolean;
+  urgency: string;
+  urgency_ok: boolean | null;
+  requires_human: boolean;
+  handoff_ok: boolean | null;
+  critical_miss: boolean;
+  confidence: number;
+  risk_flags: string[];
+  overrides: string[];
+  latency_ms: number;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  estimated_cost_usd: number | null;
+}
+
+export interface GateEvalProviderSummary {
+  scenarios: number;
+  intent_correct: string;
+  workflow_correct: string;
+  urgency_correct: string;
+  handoff_correct: string;
+  critical_misses: number;
+  fallbacks: number;
+  sources: string[];
+  avg_latency_ms: number | null;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface GateEvalResponse {
+  note: string;
+  availability?: Record<string, string>;
+  summary: Record<string, GateEvalProviderSummary>;
+  rows: GateEvalRow[];
+}
+
+/** Routing metadata only (never message text): gate_decisions row + the stored decision JSON. */
+export type GateLogEntry = {
+  id: number;
+  session_id: string | null;
+  mode: Mode;
+  persona_id: string | null;
+  created_at: string;
+} & Partial<GateDecision> & Record<string, unknown>;
+
+// ---- static demo snapshot (frontend/public/demo/snapshot.json, built by backend/app/export_demo.py) ----
+
+export interface DemoSnapshot {
+  kind: "static_demo_snapshot";
+  generated_at: string;
+  notice: string;
+  workbook_loaded: boolean;
+  personas: Persona[];
+  cases: EvalCase[];
+  responses: Record<string, Partial<Record<Mode, ChatResponse>>>;
+  contexts: Record<string, SafeContext>;
+  gate_eval: Pick<GateEvalResponse, "note" | "summary" | "rows">;
 }

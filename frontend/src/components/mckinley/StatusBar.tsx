@@ -12,6 +12,21 @@ export function DemoBanner() {
   );
 }
 
+/** Persistent banner shown when the site runs from the pre-computed static snapshot. */
+export function StaticDemoBanner({ notice, generatedAt }: { notice: string; generatedAt?: string }) {
+  return (
+    <div role="status" className="rounded-md border-2 border-sky-400 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100">
+      <p className="font-semibold">
+        Static demo — responses were pre-computed with the MOCK provider and rules gate; no live AI is running.
+      </p>
+      <p className="mt-1 text-xs">
+        {notice}
+        {generatedAt && <> Snapshot generated {generatedAt.slice(0, 10)}.</>}
+      </p>
+    </div>
+  );
+}
+
 export function StatusBar({ health, error }: { health: Health | null; error: string | null }) {
   if (error) {
     return (
