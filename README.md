@@ -95,6 +95,19 @@ The frontend has only `NEXT_PUBLIC_API_BASE_URL` (`frontend/.env.example`). Neve
 
 Without a key, the API returns a clear `NEEDS_API_KEY` error. It never falls back to fake responses or to another model.
 
+## Decision gates and workflows (pipeline v2)
+
+Every McKinley-mode turn runs a typed **decision gate** (audience, intent, urgency, whether a human is needed, risk flags). The gate's result picks a **workflow**: leasing, resident support, maintenance, renewal, human handoff or general inquiry. The backend then builds a structured **handoff recommendation**, which is never sent anywhere.
+
+- **Gate provider:** set `DECISION_GATE_PROVIDER` to `rules` (the default), `llm` or `jev` (experimental). The rules gate always runs as a safety floor that no model can lower.
+- **Compare gates:** `uv run python -m app.run_gate_evals --providers rules,llm,jev`.
+- **Three comparison modes:**
+  - A: generic baseline;
+  - B: McKinley prompt only (`prompt_only`);
+  - C: McKinley prompt plus resident context (`aware`).
+- **Static demo:** the hosted here.now site can't reach the backend, so it shows pre-computed **MOCK** responses from `frontend/public/demo/snapshot.json`. Regenerate the file with `cd backend && uv run python -m app.export_demo` after any backend change.
+- **More detail:** [docs/GATE_DESIGN.md](docs/GATE_DESIGN.md), [docs/WORKFLOW_REVIEW.md](docs/WORKFLOW_REVIEW.md), [docs/DECISIONS.md](docs/DECISIONS.md), [docs/IMPLEMENTATION_CHANGELOG.md](docs/IMPLEMENTATION_CHANGELOG.md) and the diagrams in [docs/diagrams/](docs/diagrams/).
+
 ## Five evaluation scenarios
 
 Defined in [`evals/five_cases.md`](evals/five_cases.md): (1) high-intent prospect, two-bed tour; (2) price shopper, Florida one-bed; (3) repeated AC problem, R001; (4) faucet drip, no matching record; (5) renewal and contact preference, R003.
@@ -160,7 +173,7 @@ npm run build                                                               # (r
 The staff pipeline (`.github/workflows/herenow.yml`) runs `npm ci && npm run build` at the root and publishes `dist/`.
 
 - **What gets built:** the root `build` script makes a **static export** of the Next.js frontend (`frontend/scripts/export-static.mjs`). The dev site and previews therefore show the UI.
-- **What isn't hosted:** here.now can't run the Python backend. A hosted page shows a "cannot reach the backend" state unless it's pointed at a running backend, e.g. a teammate's local backend with the page's origin added to `CORS_ORIGINS`.
+- **What isn't hosted:** here.now can't run the Python backend. When the hosted page can't reach a backend, it switches to a clearly labelled **static demo**: pre-computed MOCK responses for the 14 scenarios, with free-text chat disabled. To get live answers, point the page at a running backend, for example a teammate's local one with the page's origin added to `CORS_ORIGINS`.
 - **Smoke test:** run `npm run smoke` after `npm run build` (it needs Playwright).
 
 Branch rules from `CLAUDE.md` / `START-HERE.md` still apply: open pull requests into `development` and never push to `main`.
@@ -178,6 +191,7 @@ Branch rules from `CLAUDE.md` / `START-HERE.md` still apply: open pull requests 
 - **Eval size:** five synthetic cases with one sample each. That demonstrates the system working; it isn't statistical evidence, and runs at temperature 0.2 can differ.
 - **Grading:** the automated tone and personalization checks are keyword heuristics. A human needs to review them.
 - **Models tested:** only one model has produced real outputs so far. `google/gemma-4-31b-it:free` returned upstream 429s; `dots-studio/dots-3-note-preview:free` passed a probe but hasn't been fully evaluated.
-- **Untested live:** Spanish-language, emergency, prompt-injection and "connect me to a person" cases are covered by offline tests only.
+- **Untested live:** Spanish-language, emergency, prompt-injection and "connect me to a person" cases are covered by offline tests only. The nine extended scenarios and the LLM/Jev gates have not been run against a live model, because no key was configured during development.
+- **Gate coverage:** the rules gate matches keywords in English and basic Spanish. It misses paraphrases and other languages (see GATE_DESIGN.md).
 - **No integrations:** there is no live Yardi or Databricks connection, no work orders, no messaging and no real staff handoff. Handoffs are recommendations shown in the UI.
 - **Hosting:** the backend is local-only, and the here.now build is UI-only (see above).

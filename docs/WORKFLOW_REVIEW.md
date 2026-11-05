@@ -96,7 +96,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Defer until integrations exist**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **NOT IMPLEMENTED.** Deferred: no telephony in the prototype. The web chat follows the same pipeline a voice channel would reuse.
 
 ---
 
@@ -123,7 +123,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Defer until integrations exist**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **NOT IMPLEMENTED** (channel). The same gate handles each message. Request splitting is not implemented: a message with two needs is routed on the more safety-critical one (maintenance > renewal > leasing, `app/gates/rules.py:_intent`).
 
 ---
 
@@ -150,7 +150,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Simplify before implementing**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **WORKING (simplified).** The demo persona is the trusted app context: `audience` and `identity_verified` come from it, never from the message or model (`app/chat_engine.py` step 2, `app/gates/policy.py`). A claimed resident with no record is treated as unverified and gets no account context. Account-specific wording ("my balance", "my work order") raises `unverified_private_request` and routes to the human handoff workflow. Vendors are NOT IMPLEMENTED.
 
 ---
 
@@ -177,7 +177,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Simplify before implementing**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **WORKING (simplified)** as the `leasing` workflow. There is no knowledge base (D-07) or live pricing (D-08), so the assistant never quotes prices or availability, and the `no_invented_price` check enforces that. Fair-housing and accommodation topics route to staff and are never declined (`fair_housing_or_legal` flag → `human_handoff`).
 
 ---
 
@@ -204,7 +204,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Simplify before implementing**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **WORKING (simplified)** as lead scoring inside `leasing`: high, low or unclear intent; known and missing fields; one next question (`app/workflows.py:lead_profile`). A high-intent lead produces a leasing handoff *recommendation*. No slots, calendar, booking or reminders: **NOT IMPLEMENTED** by design.
 
 ---
 
@@ -236,7 +236,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Implement now**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **WORKING.** `maintenance` workflow with emergency, repeat, routine or unclear triage and an approved troubleshooting allowlist (`APPROVED_TROUBLESHOOTING`, a draft that needs McKinley sign-off). Emergency detection runs for every audience. Repeat cases get no troubleshooting. Collecting photos, entry permission and availability is NOT IMPLEMENTED.
 
 ---
 
@@ -263,7 +263,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Defer until integrations exist**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **NOT IMPLEMENTED.** No work-order system exists. `MaintenanceTriage.work_order_created` is typed as always `False`, and the `no_false_action_claim` output check flags any claim that one was created.
 
 ---
 
@@ -290,7 +290,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Defer until integrations exist**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **PARTIAL (read-only, synthetic).** Topic-matched history from the synthetic workbook is summarized into SAFE_CONTEXT and drives the `repeat_issue` and `open_commitment` flags. No live status lookup or notifications: **NOT IMPLEMENTED**.
 
 ---
 
@@ -323,7 +323,7 @@ These are issues that cut across several modules. They matter more than any sing
 
 **Classification:** **Implement now**
 
-**Implementation status:** TBD (tech lead fills in)
+**Implementation status (2026-11-05, branch `feat/agentic-workflow-gates`):** **WORKING (recommendation only).** `app/handoff.py` builds a structured `HandoffRecommendation`: team (emergency maintenance, maintenance, leasing, accounting or management), priority, category, reasons, a deterministic minimal summary, included field names, contact guidance and an explicit "not sent" delivery note. "AI unsure twice" is implemented as two consecutive low-confidence gate decisions in a session (`repeated_low_confidence`). Warm transfer, on-call paging and the staff queue are **NOT IMPLEMENTED**.
 
 ---
 

@@ -1,5 +1,7 @@
 # MVP Architecture
 
+> **Updated 2026-11-05 (pipeline v2).** The chat path now runs a 10-step pipeline with a typed decision gate, workflow selection and structured handoff recommendations. Current, code-verified diagrams: [architecture](diagrams/architecture.md) · [conversation flow](diagrams/conversation-flow.md) · [sequence](diagrams/sequence.md) · [data flow](diagrams/data-flow.md). Design notes: [GATE_DESIGN.md](GATE_DESIGN.md), [DECISIONS.md](DECISIONS.md), [WORKFLOW_REVIEW.md](WORKFLOW_REVIEW.md). The overview diagram below is the original v1 summary.
+
 ```mermaid
 flowchart TD
   U[Demo User] --> FE[Next.js / React / TS]
@@ -50,6 +52,8 @@ backend/
 - `GET /api/personas`: safe synthetic persona IDs/labels only.
 - `POST /api/context/preview` `{persona_id, message}`: exactly the SAFE_CONTEXT aware mode would send.
 - `POST /api/chat` `{message, persona_id?, mode: "baseline"|"aware", session_id?, target?}` returns `{reply, audience, recommended_handoff, handoff_reason, handoff_category, handoff_is_recommendation_only, model_handoff, policy_signals, output_checks, source_context_fields, provider, requested_model, model, is_mock, parse_mode, temperature, prompt_version, usage, latency_ms, ...}`. Errors come back as `{error: {code, message, retryable}}` with codes such as `NEEDS_API_KEY`, `MODEL_RATE_LIMITED`, `MODEL_TIMEOUT`, `MODEL_NOT_FOUND`, `MODEL_SWITCHED`, `UNKNOWN_TARGET`.
+- `GET /api/gates/config` (configured gate + availability), `GET /api/gates/scenarios`, `POST /api/gates/evaluate` `{providers: ["rules"|"llm"|"jev"]}` (routing-only comparison), `GET /api/gates/log` (routing metadata, hashed session, no message text).
+- `POST /api/chat` also accepts `mode: "prompt_only"` and `gate_provider`, and returns `safety_notice`, `gate`, `workflow`, `maintenance`, `lead`, `renewal`, `handoff`, `pipeline`.
 - `GET /api/evals/cases`, `POST /api/evals/run` `{targets?, case_ids?, modes?}` (sequential), `GET /api/evals/results?run_id`, `PATCH /api/evals/results/{id}` `{human_verdict, human_notes}`, `GET /api/evals/summary?run_id`, `GET /api/evals/runs`.
 
 ## LLM provider abstraction

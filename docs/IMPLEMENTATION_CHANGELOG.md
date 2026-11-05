@@ -1,0 +1,80 @@
+# Implementation changelog
+
+Newest first. Branch: `feat/agentic-workflow-gates`, based on `c9c77c1` (the previous AI prototype), which sits one commit ahead of `origin/development`. All commits are **local only**: nothing has been pushed (per the owner's instruction).
+
+Status legend used throughout: **WORKING** · **MOCKED** · **EXPERIMENTAL** · **NOT IMPLEMENTED**
+
+---
+
+## Phase 6: documentation, diagrams, final review
+- **What:** added
+  - `IMPLEMENTATION_BASELINE.md`, `GATE_DESIGN.md`, `DECISIONS.md` (7 ADRs) and `CODEGRAPH.md`;
+  - four Mermaid diagrams in `docs/diagrams/`;
+  - a v2 pointer in `ARCHITECTURE.md`, plus README sections and limitations;
+  - gate settings in `backend/.env.example`.
+- **Why:** the owner should be able to understand the system from the docs alone.
+- **Diagram validation:** every Mermaid block (including `ARCHITECTURE.md`) parses with `mermaid@11.4.1`. The parser was installed in a scratch directory, not as a project dependency. A deliberately broken diagram fails the same check, which shows the check catches errors.
+- **Diagrams updated:** all four (new).
+
+## Phase 4: frontend diagnostics, three modes, static demo
+_See the entry added at the end of the sprint below._
+
+## Phase 5b: QA hardening (commit `20f602b`)
+- **What:** fixes for the 11 findings from an independent QA/security review (a subagent with read-only access).
+  - **Critical:** common emergency phrasings were missed ("it smells like gas", "I smell smoke", alarms going off, Spanish flooding/burning). Now detected for every audience.
+  - **High:** "issue" matched the lawsuit pattern (`sue\b`), so any sink "issue" was routed to management as a legal case. Accommodation requests that avoided the keywords were missed. Malformed LLM/Jev output could cause an HTTP 500 instead of a fallback.
+  - **Medium/Low:**
+    - a NaN confidence was read as 1.0;
+    - the gate log exposed raw session ids, which key chat history;
+    - fullwidth and zero-width characters could slip past the patterns;
+    - false alarms ("sparkling", "humorous", "flood zone");
+    - missed action-claim phrasings;
+    - offer negation matched "no" inside "piano";
+    - urgency was not graded;
+    - nothing could stop browser-chosen paid gates;
+    - whitespace-only messages were accepted.
+- **Modules:** `safety.py`, `gates/{rules,service,llm_gate,jev_gate}.py`, `chat_engine.py`, `db.py`, `models.py`, `config.py`, `api/gates.py`, `evals.py`.
+- **User-visible:** more emergencies get the safety notice. Ordinary "issue" messages stay in the maintenance flow. Accommodation requests go to staff.
+- **Tests:** 24 new regression tests built from the reviewer's exact inputs. **123 passed**, and ruff is clean.
+- **New risk:** broader accommodation and "accessible" matching will send some harmless accessibility questions to staff (an intentional bias toward caution).
+- **Diagrams:** conversation-flow and data-flow already described the intended behaviour; no change needed.
+
+## Phase 5: evaluation (in commits `cee4f9a` and `20f602b`)
+- **What:**
+  - 9 extended eval cases (emergency, repeat leak with owed follow-up, unverified identity, sensitive data, low confidence, explicit human request, injection in retrieved history, renewal affordability, Spanish resident). **The original five are unchanged.**
+  - Modes A, B and C in the harness (default runs = 5 core × 3 modes).
+  - A new `6_routing` criterion.
+  - A gate comparison harness: `app/gate_evals.py`, `run_gate_evals` CLI, `/api/gates/evaluate`.
+- **Results (automated, not human-reviewed):**
+  - **Rules gate:** 14/14 intent, 14/14 workflow, 4/4 urgency, 10/10 handoff, 0 critical misses. This is a regression baseline only: the labels were written alongside the rules.
+  - **Mock "LLM" gate:** 12/14 intent. The safety floor kept urgency and handoff at 100%.
+  - **Real OpenRouter and Jev:** **not run**, because no keys were configured. All calls fell back to rules, and each fallback was recorded.
+- **Live response-quality comparison of A/B/C:** **NOT RUN.** `backend/.env` is absent, so no model could be called. Mock output was not substituted as evidence.
+
+## Phase 2–3: orchestration pipeline, decision gate, workflows (commit `cee4f9a`)
+- **What:**
+  - `app/gates/`: the rules, structured-LLM and experimental Jev gates; a safety floor; and a service with fallback.
+  - `app/workflows.py`: workflow selection, maintenance triage with an approved troubleshooting allowlist, lead intent scoring, and renewal assessment.
+  - `app/handoff.py`: a structured recommendation (team, priority, minimal summary, contact guidance) that is never sent.
+  - `chat_engine.run_turn` rewritten as a traced 10-step pipeline, with the new `prompt_only` mode.
+  - Providers accept an optional JSON schema.
+  - New output checks: invented offers, prompt/secret leakage, emergency guidance.
+  - A deterministic emergency safety notice.
+  - Low-confidence-twice escalation.
+  - An unverified-identity private-request flag.
+  - Minimal Spanish vocabulary.
+  - An injection-test fixture persona.
+  - A gate decision log (no message text).
+  - `/api/gates/*` endpoints.
+  - A static demo exporter.
+  - `docs/WORKFLOW_REVIEW.md`, a review of the team's 9 reference workflow modules by a workflow-analyst subagent.
+- **Why:** the five business workflows needed explicit routing, a deterministic safety floor and a structured handoff. Per ADR-003, all of this uses ordinary Python with one response LLM call per turn.
+- **Design finding during testing:** "Can someone explain my choices?" (case 5) triggered the human-request pattern and would have hijacked the renewal workflow. Explicit demands for a person are now handled separately from soft requests.
+- **Tests:** 46 → 99 passing (now 123).
+- **Risks:** rules are keyword based (they miss paraphrases and other languages). The Jev response parsing is unverified against the live API.
+
+## Phase 0–1: inspection, branch, review (no code change)
+- Confirmed the repo (`Ross-Business-Tech/McKinley-Project-1`) and fetched `origin/development` and `origin/main`. `origin/development` = `fb710d7`, the parent of the existing AI commit `c9c77c1`.
+- Created `feat/agentic-workflow-gates` from `c9c77c1`. This keeps the previous feature branch's work and still sits on the latest development.
+- Left uncommitted local tooling untouched: `.claude/settings.json` (Ross IT-managed), `.claude/CLAUDE.md`, `.mcp.json`, `AGENTS.md`, `GEMINI.md`, `.codex/`, `.cursor/`, `.gemini/` and `.codegraph/`.
+- Opened the reference artifact; it was accessible, and its content is reviewed in WORKFLOW_REVIEW.md. Researched Jev feasibility (a key is required; see GATE_DESIGN.md).
