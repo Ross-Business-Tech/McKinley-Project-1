@@ -265,3 +265,156 @@ def test_languages_and_sms_opt_in(client):  # C P1-10, B-14
     assert "911" in r["reply"] and r["action"]["kind"] == "staff_handoff"
     r = chat(client, "START", persona="R003", session="smsin", channel="sms")
     assert "subscribed" in r["reply"]
+
+
+# ---------------- round 2 (docs/UX_REVIEW.md §4) ----------------
+
+ROUND2_EMERGENCIES = [
+    "wires hangin out the wall n its smokin a lil", "my stove burner wont turn off and theres a weird rotten egg smell",
+    "gaz kokusu var mutfakta", "i dont wanna be here anymore honestly",
+    "my neighbor is screaming and i hear him hitting her", "my kid swallowed some cleaning stuff",
+    "im stuck in the elevator", "the ceiling in the bathroom is sagging and cracking, water dripping",
+    "smoke detector chirping and I feel dizzy",
+]
+ROUND2_BENIGN = ["Is smoking allowed?", "Do you have a no-smoking policy?", "Is there a knife block in the kitchen?",
+                 "my kid had a stroke of luck", "I'm burning to know the pet policy",
+                 "my oven is burning food unevenly",
+                 "Is the parking lot well lit at night? I don't feel safe walking"]
+
+
+@pytest.mark.parametrize("msg", ROUND2_EMERGENCIES)
+def test_round2_hazards(msg):  # C round 2 P0
+    assert emergency_kind(msg), msg
+
+
+@pytest.mark.parametrize("msg", ROUND2_BENIGN)
+def test_round2_policy_and_figurative_are_not_emergencies(msg):  # F N5
+    assert emergency_kind(msg) is None, msg
+
+
+@pytest.mark.parametrize("msg", ["Can I go ahead and paint my walls?", "send it to the plumber not the office",
+                                 "please send me the pet policy"])
+def test_send_words_inside_questions_never_submit(client, msg):  # F N1
+    sid = f"sw-{abs(hash(msg))}"
+    ready_card(client, sid)
+    assert chat(client, msg, session=sid)["records_created"] == []
+
+
+def test_entry_answer_is_not_a_decline(client):  # F N2
+    chat(client, "My kitchen faucet drips", session="ent")
+    r = chat(client, "No need to call me first, you can enter", session="ent")
+    assert r["action"] and r["action"]["stage"] == "ready"
+
+
+@pytest.mark.parametrize("msg", ["I need to cancel that request", "cancel it, my neighbor fixed it", "never mind"])
+def test_cancel_after_send_any_wording(client, msg):  # B N1, F N3
+    sid = f"cas-{abs(hash(msg))}"
+    ready_card(client, sid)
+    wo = confirm(client, "maintenance_request", session=sid)["record"]["id"]
+    r = chat(client, msg, session=sid)
+    assert r["action"]["kind"] == "staff_handoff" and wo in r["reply"], msg
+
+
+def test_email_redaction_spares_words_and_is_fast():  # F N4
+    import time
+    for s in ["I'm at work. Co-workers say hi", "Leak at home. Info please", "unit 204 1500 sq ft"]:
+        assert redact(s) == s, s
+    start = time.perf_counter()
+    redact("a.b" * 1300 + "<x" * 50)
+    assert time.perf_counter() - start < 0.05
+
+
+def test_every_backend_template_passes_output_checks():  # F N8
+    from app.emergency import NOTICE, QUEUE_NOTE
+    from app.templates import CONFIRM, T
+
+    texts = [v for d in T.values() for v in d.values()] + [v for d in CONFIRM.values() for v in d.values()]
+    texts += [n + QUEUE_NOTE[lang] for d in NOTICE.values() for lang, n in d.items()]
+    for text in texts:
+        failed = [c.code for c in output_checks(text.format(id="DEMO-WO-1001", ref="DEMO-WO-1001", topics="x",
+                                                            contact="", title="note", pref="", area="X"),
+                                                urgency="emergency" if "911" in text else None) if not c.passed]
+        assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
+
+
+def test_off_topic_question_is_not_added_to_the_repair(client):  # F N7
+    ready_card(client, "ot")
+    r = chat(client, "what's the pet policy?", session="ot")
+    draft = get_state().store.get_draft("ot", "R001")
+    assert "pet policy" not in draft["fields"]["issue"]["value"] and "pet policy" in r["reply"]
+
+
+def test_spanish_draft_stays_spanish(client):  # F N9
+    chat(client, "Mi cocina gotea, necesito ayuda", session="es2")
+    chat(client, "pueden entrar si no estoy", session="es2")
+    r = chat(client, "sí", session="es2")
+    assert r["records_created"] and "guardada" in r["reply"]
+
+
+def test_concurrent_emergencies_write_one_note(client):  # F N8
+    results = []
+
+    def go():
+        results.append(chat(client, "I smell gas", session="erace"))
+    threads = [threading.Thread(target=go) for _ in range(6)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert len({r["action"]["record"]["id"] for r in results}) == 1
+
+
+@pytest.mark.parametrize("msg", ["what about utilities, are they included? and is there a fee to apply",
+                                 "need something soon, not sure where", "I'm pregnant and will have a baby in March",
+                                 "I only speak a little English, can I get help in Spanish?"])
+def test_area_never_filled_with_non_places(client, msg):  # D NEW-1
+    sid = f"np-{abs(hash(msg))}"
+    chat(client, "Request a tour", persona="", session=sid)
+    r = chat(client, msg, persona="", session=sid)
+    area = next((f["value"] for f in (r["action"] or {}).get("fields", []) if f["key"] == "area"), None)
+    assert area is None, (msg, area)
+
+
+def test_fair_housing_round2(client):  # D NEW-2, NEW-3
+    r = chat(client, "My son has autism and sometimes is loud. Will neighbors complain? can we get a unit on the end?",
+             persona="P-BROWSE-FL", session="aut")
+    assert r["handoff"]["category"] == "fair_housing_or_legal" and "frustrating" not in r["reply"]
+    r = chat(client, "I'm pregnant and will have a baby in March, will that be a problem for a 1 bed?",
+             persona="P-BROWSE-FL", session="preg")
+    assert "welcome" in r["reply"] and r["action"] is None
+    r = chat(client, "do you have lots of Section 8 people?", persona="P-BROWSE-FL", session="s8")
+    assert "accepts housing vouchers" in r["reply"]
+
+
+def test_booked_question_after_sending(client):  # D NEW-5
+    chat(client, "Could I tour a 2 bed in Ypsilanti on Saturday morning?", persona="", session="bks")
+    tour = confirm(client, "tour_request", persona="", session="bks")["record"]["id"]
+    r = chat(client, "So I'm booked Thursday at 4pm right?", persona="", session="bks")
+    assert tour in r["reply"] and "nothing is booked" in r["reply"] and r["action"] is None
+
+
+def test_price_questions_do_not_become_tours(client):  # B N2
+    r = chat(client, "What is the rent for a 2 bedroom in Ann Arbor?", persona="P-RELOCATE-AA", session="pr")
+    assert r["action"] is None and "can't see live prices" in r["reply"]
+    r = chat(client, "Can you give me a discount if I sign today?", persona="P-RELOCATE-AA", session="pr")
+    assert not (r["action"] and any(f["value"] == "Today" for f in r["action"]["fields"]))
+
+
+def test_promises_and_credits_are_never_repair_text(client):  # C N2
+    ready_card(client, "prom")
+    r = chat(client, "i want a rent credit for this, put that on the request", session="prom")
+    vals = {f["key"]: f["value"] for f in r["action"]["fields"]}
+    assert "credit" not in vals["issue"].lower() and "credit" in vals["requests"].lower()
+    assert "can't promise" in r["reply"]
+
+
+def test_more_repairs_and_resident_topics(client):  # B-5, C N4, B N3
+    for msg in ["the bedroom window is cracked", "there are roaches in my kitchen", "the hallway light flickers",
+                "I am locked out of my apartment", "my toliet is clogd and overflowng"]:
+        r = chat(client, msg, session=f"rp-{abs(hash(msg))}")
+        assert r["workflow"]["id"] == "maintenance", msg
+    r = chat(client, "no heat and it is 10 degrees outside", session="nh")
+    assert not any(f["key"] == "location" and f["source"] == "you_said" for f in r["action"]["fields"])
+    assert chat(client, "the guy upstairs plays music til 3am every night", session="nz")["action"]["kind"] == \
+        "staff_handoff"
+    assert chat(client, "whats my balance", session="bal")["handoff"]["team"] == "accounting"

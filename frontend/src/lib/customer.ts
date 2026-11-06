@@ -145,6 +145,11 @@ export const UI = {
     send: "Send message",
     conversation: "Conversation",
     suggestions: "Suggested replies",
+    unreachable: "I can't reach the assistant right now, so your message wasn't sent.",
+    serverError: "Something went wrong on our side, so your message wasn't handled.",
+    tryAgain: "Please try again. In an emergency, call 911.",
+    notSaved: "That didn't save, so nothing was sent. Please try again, or contact the office directly.",
+    declinedMsg: "Okay, I haven't sent anything. Is there something else I can help with?",
   },
   es: {
     stage: { collecting: "Borrador: faltan algunos datos", ready: "Revise y envíe", submitted: "Enviada", blocked: "No disponible aquí" },
@@ -175,6 +180,11 @@ export const UI = {
     send: "Enviar mensaje",
     conversation: "Conversación",
     suggestions: "Respuestas sugeridas",
+    unreachable: "No puedo comunicarme con el asistente ahora, así que su mensaje no se envió.",
+    serverError: "Algo salió mal de nuestro lado, así que su mensaje no se procesó.",
+    tryAgain: "Inténtelo de nuevo. En una emergencia, llame al 911.",
+    notSaved: "No se guardó, así que no se envió nada. Inténtelo de nuevo o comuníquese con la oficina.",
+    declinedMsg: "De acuerdo, no envié nada. ¿Le ayudo con algo más?",
   },
 } as const;
 

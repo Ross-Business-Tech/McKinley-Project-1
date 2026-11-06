@@ -35,7 +35,17 @@
         "match their",
         "cheaper than",
         "ballpark",
-        "afford"
+        "afford",
+        "realistic",
+        "budget",
+        "discount",
+        "specials",
+        "month lease",
+        "lease term",
+        "the rent",
+        "rent for",
+        "rents",
+        "rent on"
       ],
       "status": "live_data_unavailable",
       "source": "D-08 (Yardi live pricing) is not connected",
@@ -197,6 +207,18 @@
       ],
       "status": "pending_approval",
       "source": "D-07 / I-14 not supplied",
+      "handoff": true
+    },
+    {
+      "id": "waitlist",
+      "label": "waitlists",
+      "keywords": [
+        "waitlist",
+        "wait list",
+        "waiting list"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 / D-08 not supplied",
       "handoff": true
     }
   ]

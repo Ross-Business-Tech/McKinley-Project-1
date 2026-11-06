@@ -21,9 +21,10 @@ from app.context import Resident, Workbook
 from app.db import Store
 from app.handoff import build_handoff
 from app.intake import (
+    asks_for_promise,
+    asks_for_spanish,
     bare_area_answer,
     describes_issue,
-    extract_area,
     extract_area_correction,
     extract_beds,
     extract_clock_preference,
@@ -31,7 +32,9 @@ from app.intake import (
     extract_entry,
     extract_location,
     extract_move_in,
+    extract_pets,
     extract_time_of_day,
+    frustration_only,
     infer_location,
     is_affirmative,
     is_bare_no,
@@ -41,6 +44,8 @@ from app.intake import (
     is_change_request,
     is_decline,
     is_eviction_worry,
+    is_issue_description,
+    is_noise_complaint,
     is_phone_question,
     is_sms_opt_out,
     is_staff_request,
@@ -51,6 +56,7 @@ from app.intake import (
     match_faq,
     non_latin_script,
     says_resident,
+    steering_kind,
     strip_correction_lead,
     strip_greeting,
 )
@@ -95,6 +101,8 @@ LABEL: dict[str, dict[Lang, str]] = {
     "time": {"en": "Time of day", "es": "Hora del día"},
     "beds": {"en": "Beds", "es": "Recámaras"},
     "move_in": {"en": "Move-in", "es": "Mudanza"},
+    "pets": {"en": "Pets", "es": "Mascotas"},
+    "requests": {"en": "Also asked for (office decides)", "es": "También pidió (decide la oficina)"},
     "topic": {"en": "About", "es": "Tema"},
     "message": {"en": "What you said", "es": "Lo que dijo"},
     "who": {"en": "Account", "es": "Cuenta"},
@@ -258,16 +266,12 @@ def _record(store: Store, kind: ActionKind, session_id: str, persona_id: str | N
     return PrototypeRecord.model_validate(raw)
 
 
-def _write(store: Store | None, kind: ActionKind, session_id: str, persona_id: str | None, draft: dict[str, Any],
-           lang: Lang) -> PrototypeRecord | None:
-    """Write a confirmed draft. Returns None (and logs the error type only) when the write fails."""
-    if store is None:
-        return None
+def _record_data(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> dict[str, Any]:
     fields = [f.model_dump() for f in _draft_fields(draft, lang)]
     if kind == "maintenance_request":
         status, label = "submitted_for_review", "Submitted, waiting for staff review"
-        issue = draft["fields"].get("issue", {}).get("value", "Repair request")
-        title = (issue[:57] + "…") if len(issue) > 58 else issue
+        issue = draft["fields"].get("issue", {}).get("value", "Repair request").split(" Also: ")[0]
+        title = issue if len(issue) <= 58 else issue[:58].rsplit(" ", 1)[0] + "…"
     elif kind == "tour_request":
         status, label = "requested", "Requested; leasing team to confirm a time"
         title = f"Tour of {draft['fields'].get('area', {}).get('value', 'a community')}"
@@ -276,9 +280,17 @@ def _write(store: Store | None, kind: ActionKind, session_id: str, persona_id: s
         status = "urgent_queued" if urgent else "queued"
         label = "Urgent; in the office queue" if urgent else "In the office queue"
         title = draft.get("topic", "Note for the office")
-    data = {"status": status, "status_label": label, "title": title, "summary": draft.get("summary", title),
+    return {"status": status, "status_label": label, "title": title, "summary": draft.get("summary", title),
             "fields": fields, "team": draft.get("team"), "priority": draft.get("priority"),
             "category": draft.get("category"), "repeat": draft.get("repeat", False), "hazard": draft.get("hazard")}
+
+
+def _write(store: Store | None, kind: ActionKind, session_id: str, persona_id: str | None, draft: dict[str, Any],
+           lang: Lang) -> PrototypeRecord | None:
+    """Write a confirmed draft. Returns None (and logs the error type only) when the write fails."""
+    if store is None:
+        return None
+    data = _record_data(kind, draft, lang)
     try:
         return _record(store, kind, session_id, persona_id, data)
     except Exception as e:  # never claim success for a failed write
@@ -298,8 +310,9 @@ def _handoff_draft(gate: GateDecision, handoff: HandoffRecommendation | None, ct
     snippet = redact(msg)
     _set(draft, "message", (snippet[:157] + "…") if len(snippet) > 160 else snippet, "you_said")
     _set(draft, "who", _who(ctx), "on_file" if _verified(ctx) else "assistant")
-    if earlier and earlier.get("kind") == "maintenance_request":
-        bits = [v["value"] for k, v in earlier.get("fields", {}).items() if k in ("issue", "location")]
+    if earlier and earlier.get("kind") in ("maintenance_request", "tour_request"):
+        bits = [v["value"] for k, v in earlier.get("fields", {}).items()
+                if k in ("issue", "location", "area", "days", "time", "beds")]
         _set(draft, "earlier", " · ".join(bits) or None, "you_said")
     contact = _ctx_value(ctx, "preferred_contact_channel")
     note = _ctx_value(ctx, "staff_noted_contact_preference")
@@ -352,8 +365,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     from app.emergency import notice as emergency_notice
     from app.templates import NO_CONTACT_SUFFIX  # noqa: F401  (used by confirm)
 
+    persona_id = persona_id or None  # "" from the API means not signed in
     pkey = persona_id or "none"
     draft = store.get_draft(session_id, pkey) if store else None
+    if draft and draft.get("lang") == "es":
+        lang = "es"  # a conversation that started in Spanish stays in Spanish ("sí" alone isn't detectable)
     flags = set(gate.risk_flags)
     verified = _verified(ctx)
     is_resident = ctx.audience == "resident"
@@ -371,8 +387,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     def done(plan: TurnPlan) -> TurnPlan:
         plan.functions = list(dict.fromkeys(fns + plan.functions))
         # A card the person didn't engage with this turn becomes "stale": a later bare "yes" re-shows it first.
-        if store and draft and not touched["draft"] and store.get_draft(session_id, pkey):
-            store.save_draft(session_id, pkey, draft["kind"], {**draft, "stale": True})
+        if store and draft and not touched["draft"]:
+            store.mark_stale(session_id, pkey, draft["kind"], {**draft, "stale": True})
         return plan
 
     def handoff_plan(template_key: str, reason: str, wid: WorkflowId = "human_handoff", *,
@@ -409,14 +425,22 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         hd["priority"], hd["hazard"] = "urgent", kind
         same = [r for r in mine if r.get("status") == "urgent_queued" and r.get("hazard") == kind]
         records: list[PrototypeRecord] = []
-        rec = PrototypeRecord.model_validate(same[0]) if same else _write(store, "staff_handoff", session_id,
-                                                                          persona_id, hd, lang)
-        if rec and not same:
+        existed = bool(same)
+        rec: PrototypeRecord | None = PrototypeRecord.model_validate(same[0]) if same else None
+        if not same and store:
+            try:
+                raw = store.add_record_once(PREFIX["staff_handoff"], "staff_handoff", session_id, persona_id,
+                                            _record_data("staff_handoff", hd, lang), once_key=kind)
+                existed = bool(raw.pop("_existing", False))
+                rec = PrototypeRecord.model_validate(raw)
+            except Exception as e:  # never claim a note that wasn't saved
+                log.warning("urgent note write failed: %s", type(e).__name__)
+        if rec and not existed:
             records = [rec]
         if store:
             store.clear_draft(session_id, pkey)
         touched["draft"] = True
-        text = emergency_notice(kind, lang) if kind != "other" else t("emergency", lang).split(" I've added")[0]
+        text = emergency_notice(kind, lang) if kind != "other" else t("emergency", lang).split(" An urgent note")[0]
         action = None
         if rec:
             text += QUEUE_NOTE[lang]
@@ -466,7 +490,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 effective = "Yes, you can enter"
             elif is_bare_no(msg):
                 effective = "Contact me first"
-    elif is_decline(msg) or is_affirmative(msg) and not mine:
+    elif (is_decline(msg) or is_affirmative(msg)) and not mine:
         return done(TurnPlan(template=t("nothing_pending", lang), functions=[], skip_model=True,
                              consumed_by_draft=True, chips=CHIPS["resident_next" if is_resident else "prospect_next"]
                              [lang], workflow=_sel("general_inquiry", "Nothing pending to confirm or cancel.")))
@@ -490,13 +514,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                  (is_decline(msg) and not draft) or
                  (re.search(r"\b(change|move|switch|reschedule)\b", msg, re.I) and any(
                      r["kind"] == "tour_request" for r in mine) and not draft)):
-        ref_rec = next((r for r in mine if re.search(r["id"], msg, re.I)), None) or next(
+        typed = re.search(r"\bDEMO-(?:WO|TOUR|TASK)-\d+\b", msg, re.I)
+        ref_rec = next((r for r in mine if typed and r["id"].lower() == typed.group(0).lower()), None) or next(
             (r for r in mine if r["kind"] != "staff_handoff"), mine[0])
-        ref = f"{WHAT[ref_rec['kind']][lang]} {ref_rec['id']}"
+        unknown = bool(typed) and typed.group(0).upper() != ref_rec["id"]
+        ref = typed.group(0).upper() if unknown and typed else f"{WHAT[ref_rec['kind']][lang]} {ref_rec['id']}"
         verb = "cancel" if re.search(r"cancel|never ?mind|don'?t need|anular|cancelar", msg, re.I) else "change"
         return handoff_plan("maint_change", f"{verb.capitalize()} request for {ref_rec['id']} (I-24 rules not "
                             "approved, staff handle it).", topic=f"{verb.capitalize()} {ref_rec['id']}",
-                            team="leasing" if ref_rec["kind"] == "tour_request" else None, ref=ref)
+                            team="leasing" if ref_rec["kind"] == "tour_request" else None, ref=ref,
+                            extra=t("unknown_ref", lang, ref=ref) if unknown else "")
 
     # 6. Deterministic routing that must reach staff.
     recognized = bool(is_status_request(msg) or is_tour_request(msg) or match_faq(msg) or is_staff_request(msg)
@@ -504,9 +531,15 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if is_vendor_contact(msg) and not verified:
         return handoff_plan("vendor", "Vendor contact (D-06): no resident or access data; route to management.",
                             category="other", team="management", topic="Vendor contact")
+    if asks_for_spanish(msg):
+        return done(TurnPlan(template=t("spanish_switch", "es"), functions=[], skip_model=True, consumed_by_draft=True,
+                             chips=CHIPS["resident_next" if is_resident else "prospect_next"]["es"],
+                             workflow=_sel("general_inquiry", "Person asked for Spanish.")))
     if is_steering_question(msg):
-        return handoff_plan("steering", "Fair Housing steering question (I-13 draft neutral redirect).", wid="faq",
-                            category="fair_housing_or_legal", team="management", card=False)
+        faq_extra = " " + _faq_text([tp for tp in match_faq(msg) if tp.status == "approved"], lang)
+        return handoff_plan(steering_kind(msg), "Fair Housing steering question (I-13 draft neutral redirect).",
+                            wid="faq", category="fair_housing_or_legal", team="management", card=False,
+                            extra=faq_extra.rstrip())
     if "sensitive_data_request" in flags:
         return handoff_plan("sensitive", "Sensitive identifiers in chat: redacted; office handles payments.")
     if "fair_housing_or_legal" in flags and not is_eviction_worry(msg):
@@ -514,6 +547,17 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                             topic="Accommodation or legal question")
     if is_status_request(msg) and is_resident and not verified:
         return handoff_plan("status_unverified", "Status lookup needs a verified resident (I-10/I-11 draft).")
+    if is_resident and verified and is_noise_complaint(msg) and not draft:
+        return handoff_plan("noise", "Noise complaint between neighbors: community team.", topic="Noise complaint",
+                            team="management")
+    if is_resident and verified and re.search(r"\bbalance\b|what do i owe|cu[aá]nto debo", msg, re.I):
+        return handoff_plan("balance", "Balance or payment question: accounting.", topic="Balance or payment question",
+                            team="accounting")
+    if asks_for_promise(msg) and not (draft and draft["kind"] == "maintenance_request"):
+        return handoff_plan("no_promise_note", "Request for a promise, date or credit: staff decide.",
+                            topic="Credit, date or other commitment requested",
+                            team="accounting" if re.search(r"credit|refund|reimburs|compensat|money", msg, re.I)
+                            else None)
     if is_phone_question(msg):
         return done(TurnPlan(template=t("phone_number", lang), functions=["F9"], skip_model=True,
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
@@ -553,8 +597,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     in_maint_draft = bool(draft and draft["kind"] == "maintenance_request")
     scan = _NEG_SEGMENT.sub(" ", effective)  # "bathroom, not kitchen" -> bathroom
     location, entry = extract_location(scan), extract_entry(effective)
-    answers_draft = in_maint_draft and (location or entry or gate.intent in ("general", "maintenance")
-                                        or len(effective.split()) >= 3)
+    question_only = msg.strip().endswith("?") and not is_issue_description(msg) and not location and not entry
+    off_topic = bool(match_faq(msg) or is_tour_request(msg) or question_only)
+    answers_draft = in_maint_draft and not off_topic and (location or entry or gate.intent in ("general", "maintenance")
+                                                          or len(effective.split()) >= 3)
     if workflow.id == "maintenance" or gate.intent == "maintenance" and is_resident or answers_draft:
         if not is_resident:
             return done(TurnPlan(template=t("maint_guest", lang), functions=["F6"], chips=CHIPS["who"][lang],
@@ -567,11 +613,24 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         clean = strip_greeting(redact(effective))
         if looks_like_injection(clean):
             clean = "[flagged: message contained instructions; shown as text] " + clean
+        promise = in_maint_draft and asks_for_promise(msg)
+        venting = in_maint_draft and frustration_only(msg)
         issue = d["fields"].get("issue", {}).get("value")
-        if not issue and (describes_issue(effective) and not (_slot_only(effective) and in_maint_draft)):
+        if promise:  # never written into the repair text; shown separately for the office to decide
+            prev = d["fields"].get("requests", {}).get("value")
+            _set(d, "requests", ((prev + "; ") if prev else "") + clean[:120], "you_said")
+        elif venting:
+            pass
+        elif not issue and describes_issue(effective) and (not (_slot_only(effective) and in_maint_draft)
+                                                           or is_issue_description(effective)):
             _set(d, "issue", clean[:200], "you_said")
-        elif issue and in_maint_draft and not _slot_only(effective) and clean.lower() not in issue.lower():
-            _set(d, "issue", (issue + " Also: " + clean)[:400], "you_said")  # new details are kept, not dropped
+        elif issue and in_maint_draft and not _slot_only(effective) and is_issue_description(effective) \
+                and clean.lower() not in issue.lower():
+            _set(d, "issue", (issue + " Also: " + clean)[:400], "you_said")  # new repair details are kept
+        old_loc = d["fields"].get("location", {}).get("value")
+        if location and old_loc and old_loc != _tr(location, lang) and d["fields"].get("issue"):
+            iv = d["fields"]["issue"]["value"]
+            d["fields"]["issue"]["value"] = re.sub(re.escape(old_loc), _tr(location, lang) or old_loc, iv, flags=re.I)
         _set(d, "location", _tr(location, lang), "you_said")
         if not d["fields"].get("location") and (guess := infer_location(effective)):
             _set(d, "location", _tr(guess, lang), "assistant")
@@ -611,13 +670,19 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 missing[0]]
             chips = {"location": CHIPS["locations"][lang], "entry": CHIPS["entry"][lang]}.get(missing[0], [])
         template = t(key, lang)
+        if promise:
+            template = t("no_promise", lang) + (" " + template if missing else "")
+        elif venting:
+            template = t("listening", lang) + (" " + template if missing else "")
         if repeat and missing and not d.get("repeat_acknowledged"):
             template = t("maint_repeat_ack", lang) + " " + template
             d["repeat_acknowledged"] = d["frustration_acknowledged"] = True  # one apology, not two
         elif frustrated and not d.get("frustration_acknowledged"):
             template = t("frustrated_repair", lang) + " " + template
             d["frustration_acknowledged"] = True
-        if first_turn and triage and triage.approved_troubleshooting and not repeat and triage.level == "routine":
+        hazard_words = re.search(r"smell|gas|smok|burn|spark|odor|olor|humo", msg, re.I)
+        if first_turn and triage and triage.approved_troubleshooting and not repeat and triage.level == "routine" \
+                and not hazard_words:
             tip = " ".join(triage.approved_troubleshooting)
             template += (" Meanwhile, a few safe checks: " if lang == "en" else " Mientras tanto: ") + tip
         save("maintenance_request", d)
@@ -645,13 +710,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              action=_proposed("tour_request", draft, lang) if in_tour_draft and draft else None,
                              workflow=_sel("tour_request", "Booking or exact-time question: not a booking.")))
     clock = extract_clock_preference(effective)
-    tour_slots = {"area": extract_area_correction(effective) or extract_area(effective),
+    tour_slots = {"area": extract_area_correction(effective),
                   "days": extract_days(effective),
                   "time": f"{clock[0]} ({clock[1]})" if clock else extract_time_of_day(effective),
                   "beds": extract_beds(effective), "move_in": extract_move_in(effective)}
     if in_tour_draft and draft and not tour_slots["area"] and _missing("tour_request", draft)[:1] == ["area"]:
         tour_slots["area"] = bare_area_answer(effective)
-    leasing_hint = not is_resident and (workflow.id in ("leasing", "general_inquiry") and any(
+    price_q = any(tp.status != "approved" for tp in match_faq(msg))
+    if price_q:
+        tour_slots["days"] = None  # "sign today" is not a tour day
+    leasing_hint = not is_resident and not price_q and (workflow.id in ("leasing", "general_inquiry") and any(
         tour_slots[k] for k in ("area", "beds", "move_in", "days")) and gate.intent == "leasing" or
         (gate.audience == "unknown" and tour_slots["move_in"]))
     keeps_tour_card = in_tour_draft and (any(tour_slots.values()) or len(effective.strip()) <= 40) and not \
@@ -669,6 +737,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             _set(d, "move_in", mi, "on_file")
         old_area = d["fields"].get("area", {}).get("value")
         changed = [k for k, v in tour_slots.items() if _set(d, k, v, "you_said")]
+        if pets := extract_pets(effective):
+            _set(d, "pets", pets, "you_said")
         d.update(team="leasing", priority="normal", category="leasing_follow_up",
                  summary=f"Tour request from {_who(ctx).lower()}.")
         save("tour_request", d)

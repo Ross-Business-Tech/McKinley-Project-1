@@ -51,7 +51,7 @@ def _team(d: GateDecision, wf: WorkflowSelection) -> HandoffTeam:
         return "leasing"
     if "financial_or_lease" in flags:
         return "accounting"
-    return "leasing" if d.audience == "prospect" else "management"
+    return "leasing" if d.audience in ("prospect", "unknown") else "management"
 
 
 def build_handoff(

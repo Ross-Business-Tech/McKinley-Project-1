@@ -10,13 +10,12 @@ from app.models import OutputCheck, PolicySignal
 
 # ---- redaction ---------------------------------------------------------------
 
-_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+\s?(?:@|\(at\)|\[at\]| at )\s?[A-Za-z0-9-]+(?:\s?(?:\.|\(dot\)|\[dot\]| dot )"
-                    r"\s?[A-Za-z0-9-]+)*\s?(?:\.|\(dot\)|\[dot\]| dot )\s?(?:com|net|org|edu|gov|io|co|us|info)\b",
-                    re.IGNORECASE)
+_EMAIL = re.compile(r"(?<![\w.%+-])[A-Za-z0-9._%+-]{1,64}(?:@|\s?\(at\)\s?|\s?\[at\]\s?)[A-Za-z0-9-]{1,63}"
+                    r"(?:(?:\.|\s?\(dot\)\s?|\s?\[dot\]\s?)[A-Za-z0-9-]{1,63}){1,4}(?![\w-])", re.IGNORECASE)
 _SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b|(?:ssn|social security|social|seguro social)\D{0,15}"
                   r"\d{3}[ -]?\d{2}[ -]?\d{4}\b", re.IGNORECASE)
 _CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
-_PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-]?)\d{3}[ .-]?\d{4}\b|\b\d{3}[ .-]\d{4}\b")
+_PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-]?)\d{3}[ .-]?\d{4}\b|\b\d{3}[.-]\d{4}\b")
 _DOB = re.compile(
     r"\b(?:dob|date of birth|born(?: on)?|birthday|nac[ií]\w*)\b[:\s]*\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}", re.IGNORECASE
 )
@@ -111,7 +110,9 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "fair_housing_or_legal",
         re.compile(
             r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
-            r"accommodation|disabilit|wheelchair|grab bars?|accessib|service (animal|dog)|"
+            r"retaliat|"
+            r"accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|autis\w*|adhd|"
+            r"special needs|medical condition|mobility|blind|deaf|hearing impair|"
             r"(emotional )?support (animal|dog|cat)|assistance animal|\besa\b|discapacidad|adaptaci[oó]n|"
             r"discrimina",
             re.IGNORECASE,
@@ -123,7 +124,9 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "financial_or_lease",
         re.compile(
             r"payment plan|can'?t (afford|pay)|late fee|dispute|refund|security deposit|break (my|the) lease|"
-            r"renewal (offer|price|cost|rate)|rent increase|worried about the cost|kick (me|us) out|"
+            r"renewal (offer|price|cost|rate)|rent increase|rent (go|going|went) up|worried about the cost|kick (me|"
+            r"us) out|"
+            r"rent credit|\bcredit\b|compensat|reimburs|\bbalance\b|what do i owe|cu[aá]nto debo|"
             r"no (puedo|me alcanza)\W+(?:\w+\W+){0,3}(pagar|la renta)|sube la renta|aumento de (la )?renta|"
             r"plan de pago|desalojo|me van a (echar|sacar)",
             re.IGNORECASE,
@@ -240,11 +243,11 @@ def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None
         detail=f"Found non-McKinley term: '{term.group(0)}'" if term else "Uses beds / floor plans vocabulary",
     ))
 
-    claim = _ACTION_CLAIMS.search(reply)
+    claim_text = _unnegated(_ACTION_CLAIMS, reply)  # "No one has been dispatched" is honest, not a claim
     checks.append(OutputCheck(
         code="no_false_action_claim",
-        passed=claim is None,
-        detail=f"Possible claimed action: '{claim.group(0)}'" if claim else "No claimed side-effect actions",
+        passed=claim_text is None,
+        detail=f"Possible claimed action: '{claim_text}'" if claim_text else "No claimed side-effect actions",
     ))
 
     invented_prices = [p for p in _PRICE.findall(reply) if p not in allowed_text]

@@ -143,8 +143,10 @@ function FieldList({ fields, t }: { fields: ProposedAction["fields"]; t: UIStrin
       {fields.map((f) => (
         // Phone: label + source on the first row, value below. Desktop: three columns. The dt is the label only.
         <div key={f.key} className="grid grid-cols-[1fr_auto] gap-x-3 py-2 sm:grid-cols-[9.5rem_1fr_auto] sm:items-baseline">
-          <dt className="text-sm text-mk-muted">{f.label}</dt>
-          <dd className="col-span-2 row-start-2 text-base break-words sm:col-span-1 sm:row-start-1">{sentenceCase(f.value ?? "")}</dd>
+          <dt className="col-start-1 row-start-1 text-sm text-mk-muted">{f.label}</dt>
+          <dd className="col-span-2 col-start-1 row-start-2 text-base break-words sm:col-span-1 sm:col-start-2 sm:row-start-1">
+            {sentenceCase(f.value ?? "")}
+          </dd>
           <dd className="col-start-2 row-start-1 text-right text-xs text-mk-muted sm:col-start-3">
             {t.source[f.source as keyof UIStrings["source"]] ?? f.source}
           </dd>

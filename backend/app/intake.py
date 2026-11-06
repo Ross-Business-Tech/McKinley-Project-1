@@ -26,12 +26,15 @@ def detect_language(message: str, preferred: str | None = None) -> str:
     """'es' when the message reads as Spanish (>=2 marker words) or the record prefers Spanish and the
     message is not clearly English. Anything else is 'en'. Other languages fall back to 'en' + staff offer."""
     hits = len(_ES_WORDS.findall(message))
-    if hits >= 2 or re.search(r"[¿¡ñ]", message):
+    if hits >= 2 or re.search(r"[¿¡ñ]", message) or re.search(r"\b(in|en) (spanish|espa[nñ]ol)\b|hablo espa", message,
+                                                              re.I):
         return "es"
     if preferred and preferred.lower().startswith("span") and hits >= 1:
         return "es"
     if preferred and preferred.lower().startswith("span") and not re.search(
-            r"\b(the|is|my|and|please|what|when|can)\b", message, re.IGNORECASE):
+            r"\b(the|is|my|and|please|what|when|can|not|no|it|in|i|a|an|to|of|on|with|this|that|me|you|keeps?|"
+            r"working|broken|hello|hi|thanks|hot|water|heat|door|detector|smoke|ac|leak\w*|again|need|help|yes|ok)\b",
+            message, re.IGNORECASE):
         return "es"
     return "en"
 
@@ -104,7 +107,11 @@ _STEERING = re.compile(
     r"(white|black|hispanic|latino|asian|christian|muslim|jewish) (neighborhood|area|building|community|people)|"
     r"(safe|good|nice|bad|dangerous|sketchy) (area|neighborhood|part of town|place) (for|to)|is (it|the area|the "
     r"neighborhood|that area) (safe|dangerous|sketchy|good)|\bcrime\b|adults? only|no kids|kid[- ]free|"
-    r"seniors? only|55\s?\+|over 55|without (kids|children|families)",
+    r"seniors? only|55\s?\+|over 55|without (kids|children|families)|"
+    r"(pregnant|having a baby|have a baby|expecting|kids?|children|family|families)\W+(?:\w+\W+){0,8}(problem|"
+    r"allowed|okay|ok|issue|welcome|matter)|(we'?re|we are|i'?m|i am) (muslim|christian|jewish|hindu|catholic|sikh|"
+    r"buddhist|black|hispanic|latino|asian|gay|lesbian|trans\w*|immigrants?)|welcoming to (us|muslims|christians|"
+    r"jews|families|immigrants)|section 8 (people|tenants)",
     re.IGNORECASE)
 
 
@@ -113,13 +120,18 @@ def is_steering_question(message: str) -> bool:
 
 
 _AFFIRM_WORD = (r"(yes|yep|yeah|yup|sure|ok(ay)?|correct|right|that'?s (right|correct|it)|looks (good|right|"
-                r"fine)|all good|perfect|send( it)?( now)?|submit( it)?|go ahead|confirm(ed)?|please do|do it|"
+                r"fine)|all good|perfect|send( it| all( of it)?| everything| it all| them| the (note|request))?( now)?|"
+                r"submit( it)?|go ahead( and send( it)?)?|confirm(ed)?|please do|do it|"
                 r"s[ií]|claro|correcto|env[ií]alo|de acuerdo|est[aá] bien|vale)")
 _AFFIRM = re.compile(rf"^\s*{_AFFIRM_WORD}(\W+{_AFFIRM_WORD})*(\W+(please|thanks|thank you|por favor|gracias))?"
                      r"[\s.!,]*$", re.IGNORECASE)
-_SEND_COMMAND = re.compile(r"\b(send|submit) (it|that|this|the (note|request|tour request|repair request))\b|"
-                           r"\bgo ahead( and send)?\b|\bplease send\b|\benv[ií]e?(lo|la)\b", re.IGNORECASE)
-_NON_CONSENT = re.compile(r"\b(but|wait|don'?t|do not|not yet|hold on|change|wrong|instead|actually|later|never ?mind|"
+# Explicit send phrases, anchored to the whole message ('Can I go ahead and paint my walls?' is not consent).
+_SEND_COMMAND = re.compile(r"^\W*(please |ok(ay)?,? |yes,? |fine\.? )?(send|submit) (it|that|this|all( of it)?|"
+                           r"everything|"
+                           r"it all|them|the (note|request|tour request|repair request))( now)?( please)?\W*"
+                           r"(and [^?]{0,40})?$|^\W*env[ií]e?(lo|la)\W*$", re.IGNORECASE)
+_NON_CONSENT = re.compile(r"\?|\bto the\b|\b(not|but|wait|don'?t|do not|not yet|hold on|change|wrong|instead|actually|"
+                          r"later|never ?mind|"
                           r"cancel|no\b|pero|todav[ií]a|espera|cambi)", re.IGNORECASE)
 
 
@@ -129,6 +141,7 @@ def is_affirmative(message: str) -> bool:
     m = message.strip()
     if len(m) > 80 or _NON_CONSENT.search(m):
         return False
+    m = re.sub(r"^\W*fine\W+", "", m, flags=re.I)
     if re.fullmatch(r"\s*(ok(ay)?|thanks|thank you|gracias)[\s.!,]*(thanks|thank you|gracias)?[\s.!,]*", m, re.I) \
             and re.search(r"thank|gracias", m, re.I):
         return False
@@ -152,8 +165,9 @@ _CORRECTION_LEAD = re.compile(r"^\s*(no+|nope|wait|oops|sorry|actually|correctio
 
 
 def is_decline(message: str) -> bool:
-    """Cancel the open card. 'no wait, it's the bathroom' is a correction, not a decline."""
-    if not _CANCEL.search(message):
+    """Cancel the open card. 'no wait, it's the bathroom' is a correction; 'no need to call first, you can enter' is
+    an answer."""
+    if not _CANCEL.search(message) or extract_entry(message) or extract_location(message):
         return False
     rest = _CANCEL.sub("", message)
     rest = re.sub(r"\b(please|thanks|it|that|the request|my neighbor fixed[\w\s']*|i fixed[\w\s']*|"
@@ -173,6 +187,8 @@ _STAFF = re.compile(
     r"^\W*(agent|representative|rep|operator|human|a human|person|real person|manager|supervisor)\W*(please|now|pls)?"
     r"\W*$|\b(get|give) me (a |an |the )?(human|person|manager|agent|representative)\b|(want|need) (a |an |to talk to "
     r"a |to speak to a )?(human|real person|manager|supervisor)\b|someone (can|could) (just )?(talk|call|explain)|"
+    r"can (someone|somebody|you) (just )?(text|call|email|contact) me|can (someone|somebody) (just )?(talk|speak|call|"
+    r"explain|help)|\bescalate\b|"
     r"hablar con (la oficina|arrendamiento|alguien|una persona|un humano|un agente|el gerente|un representante)|"
     r"quiero (una persona|un humano|un agente)|enviar (una )?nota a la oficina|"
     r"nói chuyện với (nhân viên|người)|gặp (nhân viên|quản lý)", re.IGNORECASE)
@@ -210,7 +226,8 @@ _LOCATIONS = [
     ("Laundry area", r"laundry|washer|dryer|lavadora|secadora"),
     ("Balcony or patio", r"balcony|patio|balc[oó]n"),
     ("Whole apartment", r"whole (apartment|unit|place)|everywhere|all rooms|entire (apartment|unit)|todo el"),
-    ("Outside or common area", r"hallway|parking lot|stair|common area|outside|pasillo|estacionamiento"),
+    ("Front door", r"front door|entry door|entrance door|puerta principal"),
+    ("Outside or common area", r"hallway|parking lot|stairwell|common area|pasillo|estacionamiento"),
 ]
 
 
@@ -237,7 +254,8 @@ def infer_location(message: str) -> str | None:
     return None
 
 
-_ENTRY_YES = re.compile(r"(yes|ok|okay|fine|sure)[, ]*(you |they |maintenance |the tech\w* )?(can|may) (come in|"
+_ENTRY_YES = re.compile(r"\b(yes|ok|okay|sure|si|sí)\b\W+(?:\w+\W+){0,2}(enter|come in|go in)\b|"
+                        r"(yes|ok|okay|fine|sure)[, ]*(you |they |maintenance |the tech\w* )?(can|may) (come in|"
                         r"enter|go in)|(can|may) (come in|enter)( anytime| any time| if i'?m not home)?|"
                         r"enter (without me|if i'?m not (home|there))|permission to enter|"
                         r"pueden entrar|puede entrar", re.IGNORECASE)
@@ -264,7 +282,8 @@ def extract_entry(message: str) -> str | None:
 
 
 _ISSUE_HINT = re.compile(
-    r"leak|drip|broken|not working|won'?t|doesn'?t|stopped|clog|no (heat|hot water|water|power|ac|a/c)|noise|"
+    r"crack|flicker|fell off|clog|overflow|toliet|lock|leak|drip|broken|not working|won'?t|doesn'?t|stopped|clog|no"
+    r" (heat|hot water|water|power|ac|a/c)|noise|"
     r"rattl|smell|mold|pest|roach|ant|mouse|mice|bug|crack|stuck|loose|running|cooling|heating|"
     r"no funciona|gotea|fuga|roto|no calienta|no enfr",
     re.IGNORECASE)
@@ -294,13 +313,14 @@ def describes_issue(message: str) -> bool:
 
 _DAYS = r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun"
 _DAY_PHRASE = re.compile(
-    rf"\b(this|next) (week|weekend|{_DAYS})\b|\b(tomorrow|today|this afternoon|tonight|weekend|weekdays?|"
+    rf"\b(this|next) (week|weekend|{_DAYS})\b|\b(tomorrow|today|this afternoon|tonight|weekends?|weekdays?|"
     rf"any ?day|anytime this week)\b|\b(?:on |this |next )?(?:{_DAYS})s?\b|\b(lunes|martes|mi[ée]rcoles|"
     rf"jueves|viernes|s[áa]bado|domingo|ma[ñn]ana)\b", re.IGNORECASE)
 _TIME_OF_DAY = re.compile(r"\b(morning|mornings|afternoon|afternoons|evening|evenings|after work|lunch ?time|"
                           r"before work|ma[ñn]ana|tarde|noche)\b", re.IGNORECASE)
-_BEDS = re.compile(r"\b(\d|one|two|three|four)\s?-?\s?(?:bed|br|bedroom)s?\b|\bstudio\b", re.IGNORECASE)
-_WORDNUM = {"one": "1", "two": "2", "three": "3", "four": "4"}
+_BEDS = re.compile(r"\b(\d|one|two|three|four|dos|tres|una?)\s?-?\s?(?:bed|br|bedroom|rec[aá]mara|habitaci[oó]n|"
+                   r"habitaciones|cuarto|dormitorio)s?\b|\bstudio\b", re.IGNORECASE)
+_WORDNUM = {"one": "1", "two": "2", "three": "3", "four": "4", "un": "1", "una": "1", "dos": "2", "tres": "3"}
 _AREA = re.compile(r"\b(?:in|near|around|at) ((?:[A-Z][a-z]+)(?: [A-Z][a-z]+){0,2})")
 _NOT_AREA = {"The", "My", "A", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
              "January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
@@ -376,7 +396,9 @@ def match_faq(message: str) -> list[KBTopic]:
 
 # ---- added after the independent review (see docs/UX_REVIEW.md) ---------------------------------------
 
-_BOOKING_Q = re.compile(r"\b(am i|are we|is it|is that) (booked|confirmed|scheduled|set)|\bconfirm (the |that |my )?"
+_BOOKING_Q = re.compile(r"\b(am i|are we|is it|is that) (booked|confirmed|scheduled|set)|\b(i'?m|we'?re|i am|we are) "
+                        r"(booked|confirmed|scheduled|all set)|(what|which) time (do|should|can) (i|we) (show up|come|"
+                        r"arrive|be there)|\bshow up\b|\bconfirm (the |that |my )?"
                         r"(time|slot|appointment|\d)|\bbook (me|it|a time)|\bis (\w+ ){0,3}(open|available)\b|"
                         r"\b(what|which) time (is|was) (my|the) tour|reserv(e|ation)|est[aá] confirmad", re.I)
 
@@ -385,7 +407,9 @@ def is_booking_question(message: str) -> bool:
     return bool(_BOOKING_Q.search(message))
 
 
-_PHONE_Q = re.compile(r"phone number|number (for|of|to) the (office|leasing|maintenance)|office number|call the office|"
+_PHONE_Q = re.compile(r"phone number|emergency (maintenance )?(number|line|phone)|number (for|of|to) the (office|"
+                      r"leasing|"
+                      r"maintenance)|office number|call the office|"
                       r"what'?s the number|n[uú]mero (de|del) (tel[eé]fono|la oficina)", re.I)
 
 
@@ -446,29 +470,105 @@ _DAYWORDS = re.compile(r"\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?
                        r"weekend|weekday|today|tomorrow|week|month|bed|beds|studio|tour|visit", re.I)
 
 
+_NOT_PLACE = re.compile(
+    r"^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*$|^(spanish|english|espa[nñ]ol|ingl[eé]s|utilities|"
+    r"parking|pets?|fees?|rent|price|budget|section|voucher|church|school|work|town|downtown|person|someone|"
+    r"something|need|soon|maybe|weekend|weekdays?|morning|afternoon|evening|tour|visit|apartment|unit|place|"
+    r"home|house|lease|month|year|week|bed|beds|studio|monday|tuesday|wednesday|thursday|friday|saturday|"
+    r"sunday|today|tomorrow|tonight|i|the|a|my)$", re.I)
+
+
+def _place(name: str | None) -> str | None:
+    if not name:
+        return None
+    name = re.sub(r"\s+(i guess|i think|maybe|please|probably|instead|area)$", "", name.strip(), flags=re.I)
+    words = name.split()
+    if not words or len(words) > 3 or any(_NOT_PLACE.match(w) for w in words):
+        return None
+    return _US_STATES.get(name.lower(), " ".join(w[0].upper() + w[1:] for w in words))
+
+
 def extract_area_correction(message: str) -> str | None:
-    """'actually Orlando not Tampa', 'Orlando instead', 'make it Tampa', 'Orlando, FL', 'the Ann Arbor community'."""
-    pats = [r"(?:actually|instead|rather|make it|change (?:it )?to|switch (?:it )?to|how about|what about)\s+"
-            r"(?:the\s+)?"
-            r"([A-Za-z][a-z]+(?: [A-Za-z][a-z]+){0,2})",
-            r"([A-Za-z][a-z]+(?: [A-Za-z][a-z]+){0,2})\s*(?:,)?\s*(?:not|instead of|rather than)\s+[A-Za-z]",
-            r"\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}),\s*(?:FL|MI|OH|IN|GA|TX|Florida|Michigan)\b",
-            r"\bthe ([A-Z][a-z]+(?: [A-Z][a-z]+){0,2}) (?:community|property|apartments|location)\b",
-            r"\b(?:to|in|near|around|at) ([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})\b"]
+    """Capitalised place names only: 'actually Orlando not Tampa', 'Orlando instead', 'Orlando, FL', 'Ann Arbor, 2
+    bed', 'the Ann Arbor community', 'in Lansing', 'en Orlando'. Months, languages and common nouns never count."""
+    cap = r"([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})"
+    pats = [rf"(?i:actually|instead|rather|make it|change (?:it )?to|switch (?:it )?to|how about|what about)\s+"
+            rf"(?:the\s+)?{cap}\b",
+            rf"\b{cap}\s*,?\s*(?i:not|instead of|rather than)\s+[A-Za-z]",
+            rf"\b{cap},\s*(?:FL|MI|OH|IN|GA|TX|Florida|Michigan)\b",
+            rf"^\s*{cap}\s*,",
+            rf"\bthe {cap} (?i:community|property|apartments|location)\b",
+            rf"\b(?i:to|in|near|around|at|en|cerca de) {cap}\b",
+            rf"^\s*{cap}\s*[.!]?\s*$"]
     for p in pats:
         for m in re.finditer(p, message):
-            name = re.sub(r"\b(not|instead|please)\b.*$", "", m.group(1), flags=re.I).strip()
-            if name and not _DAYWORDS.search(name) and name.split()[0].lower() not in {"the", "a", "my", "i"}:
-                return name.title()
+            if place := _place(m.group(1)):
+                return place
     return None
 
 
 def bare_area_answer(message: str) -> str | None:
-    """A short answer to 'which city or community?'. Filler and affirmations never become a place name."""
+    """A short answer to 'which city or community?' ('tampa please', 'ann arbor'). Filler never becomes a place."""
     if is_affirmative(message) or is_bare_no(message) or _DAYWORDS.search(message) or re.search(r"\d", message):
         return None
-    words = _FILLER.sub(" ", message.strip().strip(".!?")).split()
-    if not words or len(words) > 4 or any(not re.fullmatch(r"[A-Za-zÀ-ÿ'.-]+", w) for w in words):
+    if re.search(r"\b(need|want|something|soon|not sure|idk|dunno|anywhere|somewhere|help|speak|looking|guess)\b",
+                 message, re.I):
         return None
-    name = " ".join(words)
-    return _US_STATES.get(name.lower(), name.title())
+    words = _FILLER.sub(" ", message.strip().strip(".!?")).split()
+    if not words or len(words) > 3 or any(not re.fullmatch(r"[A-Za-zÀ-ÿ'.-]+", w) for w in words):
+        return None
+    return _place(" ".join(words))
+
+
+def steering_kind(message: str) -> str:
+    """Which neutral reply fits: safety of an area, family status, or a general 'who lives there' question."""
+    if re.search(r"\b(safe|dangerous|sketchy|crime)\b", message, re.I):
+        return "steering_safety"
+    if re.search(r"pregnan|baby|expecting|kids?|children|famil", message, re.I) and not re.search(
+            r"fewe|most|many|lots|no kids|kid[- ]free|without", message, re.I):
+        return "steering_family"
+    return "steering"
+
+
+_SPANISH_HELP = re.compile(r"\b(in|en) (spanish|espa[nñ]ol)\b|hablo espa[nñ]ol|habla espa[nñ]ol|speak spanish", re.I)
+
+
+def asks_for_spanish(message: str) -> bool:
+    return bool(_SPANISH_HELP.search(message))
+
+
+_PROMISE = re.compile(r"\bpromise\b|guarantee|\bby (mon|tues|wednes|thurs|fri|satur|sun)day\b|in writing|\b(rent"
+                      r" )?credit\b|"
+                      r"compensat|reimburs|refund|money back|discount on (my )?rent|prom[eé]tame|garant", re.I)
+
+
+def asks_for_promise(message: str) -> bool:
+    """Demands for a date, a credit or a written commitment: the assistant can't decide these."""
+    return bool(_PROMISE.search(message))
+
+
+_NOISE = re.compile(r"\b(noise|noisy|loud|music|party|parties|barking|stomping)\b|upstairs (neighbor|guy)|ruido|"
+                    r"m[uú]sica alta", re.I)
+
+
+def is_noise_complaint(message: str) -> bool:
+    return bool(_NOISE.search(message))
+
+
+_PETS = re.compile(r"\b(i have|we have|with|plus|got) (a |an |one |two |three |\d )?(big |small |little )?(dogs?|cats?|"
+                   r"pets?|puppy|kitten)\b", re.I)
+
+
+def extract_pets(message: str) -> str | None:
+    m = _PETS.search(message)
+    return m.group(0)[0].upper() + m.group(0)[1:] if m else None
+
+
+def is_issue_description(message: str) -> bool:
+    return bool(_ISSUE_HINT.search(message))
+
+
+def frustration_only(message: str) -> bool:
+    """Venting with no new repair detail ('are you even listening', 'why do i have to keep telling you')."""
+    return bool(re.search(r"are you (even )?listening|keep telling|why do i (have|need) to|ugh+|seriously\??$|"
+                          r"hello\?+$|anyone there", message, re.I)) and not _ISSUE_HINT.search(message)

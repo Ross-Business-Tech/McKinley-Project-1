@@ -181,14 +181,11 @@ export function CustomerApp() {
       setTurns((t) => [...t, { message, response }]);
       announce(response);
     } catch (e) {
-      const why =
-        e instanceof ApiError && e.code === "BACKEND_UNREACHABLE"
-          ? "I can't reach the assistant right now, so your message wasn't sent."
-          : "Something went wrong on our side, so your message wasn't handled.";
-      const text = `${why} Please try again. In an emergency, call 911.`;
+      const why = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE" ? t.unreachable : t.serverError;
+      const text = `${why} ${t.tryAgain}`;
       setMessages((m) => [
         ...m.map((x) => (x.id === userId ? { ...x, failed: true } : x)),
-        { id: mid(), role: "assistant", text, error: { retry: message } },
+        { id: mid(), role: "assistant", text, lang, error: { retry: message } },
       ]);
       setAnnouncement(text);
     } finally {
@@ -210,7 +207,7 @@ export function CustomerApp() {
       if (!journey || nextStep?.kind !== "confirm" || nextStep.action_kind !== kind) return;
       const result = nextStep.result;
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
-      setAnnouncement(result.message);
+      setAnnouncement(""); // focus moves to the new message, which is read once
       setTurns((t) => [...t, { confirm: kind, result }]);
       setStep(step + 1);
       requestAnimationFrame(() => lastAssistantRef.current?.focus());
@@ -220,12 +217,12 @@ export function CustomerApp() {
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
-      setAnnouncement(result.message);
+      setAnnouncement("");
       setTurns((t) => [...t, { confirm: kind, result }]);
     } catch {
       setMessages((m) => [
         ...m,
-        { id: mid(), role: "assistant", text: "That didn't save, so nothing was sent. Please try again, or contact the office directly." },
+        { id: mid(), role: "assistant", text: t.notSaved, lang },
       ]);
     } finally {
       setBusy(false);
@@ -238,13 +235,9 @@ export function CustomerApp() {
     setBusy(true);
     try {
       const result = await api.cancelAction(sessionId, identity.id || null, kind);
-      const text = result.ok
-        ? lang === "es"
-          ? "De acuerdo, no envié nada. ¿Le ayudo con algo más?"
-          : "Okay, I haven't sent anything. Is there something else I can help with?"
-        : result.message;
+      const text = result.ok ? t.declinedMsg : result.message;
       setMessages((m) => [...m, { id: mid(), role: "assistant", text, lang, cleared: result.ok ? kind : undefined }]);
-      setAnnouncement(text);
+      setAnnouncement("");
     } catch {
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: "I couldn't update that just now. Nothing has been sent." }]);
     } finally {
@@ -328,7 +321,7 @@ export function CustomerApp() {
       )}
 
       <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-4 py-4 sm:px-0">
-        <h2 id={`${inputId}-conv`} className="sr-only">
+        <h2 id={`${inputId}-conv`} className="sr-only" lang={lang}>
           {t.conversation}
         </h2>
         <div className="space-y-4">
@@ -359,7 +352,7 @@ export function CustomerApp() {
           )}
         </div>
         {/* One short, polite announcement per reply (the visible transcript is not a live region). */}
-        <p className="sr-only" aria-live="polite">
+        <p className="sr-only" aria-live="polite" lang={lang}>
           {busy ? t.replying : announcement}
         </p>
       </section>
@@ -371,7 +364,7 @@ export function CustomerApp() {
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+              className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 py-1.5 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-1"
             >
               {chips.map((c) => (
                 <button
@@ -539,7 +532,7 @@ function Message({
 
   if (msg.error) {
     return (
-      <div ref={focusRef} tabIndex={-1} className="mk-focus max-w-[95%] rounded-lg border border-mk-attention/40 bg-mk-attention-soft p-4 outline-none" role="status">
+      <div ref={focusRef} tabIndex={-1} lang={msg.lang} className="mk-focus max-w-[95%] rounded-lg border border-mk-attention/40 bg-mk-attention-soft p-4 outline-none">
         <p className="flex items-start gap-2 text-mk-attention">
           <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
           <span className="text-base text-mk-ink">{msg.text}</span>
@@ -591,10 +584,10 @@ function Message({
             const owed = /owed/i.test(s.status);
             return (
               <li key={s.reference} className="px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold">{s.title}</p>
+                <div className="flex flex-col items-start gap-1">
+                  <p className="font-semibold">{s.title.split(" Also: ")[0]}</p>
                   <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium whitespace-nowrap",
-                    owed ? "bg-mk-attention-soft text-mk-attention" : "bg-mk-sent-soft text-mk-sent")}>
+                    owed ? "bg-mk-attention-soft text-mk-attention" : "bg-mk-brand-soft text-mk-brand")}>
                     {owed && <AlertTriangle aria-hidden className="size-3.5" />}
                     {owed ? t.followUpOwed : s.status.split(";")[0]}
                   </span>

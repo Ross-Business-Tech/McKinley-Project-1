@@ -89,6 +89,39 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Los cambios a solicitudes ya enviadas los hace un miembro del equipo. Preparé una nota para la oficina "
               "con {ref}. Envíela cuando quiera.",
     },
+    "no_promise": {
+        "en": "I can't promise a date, a credit or any outcome; a team member decides that. Your request is "
+              "in the details so the office sees it.",
+        "es": "No puedo prometer una fecha, un crédito ni un resultado; eso lo decide un miembro del equipo. Agregué"
+              " su "
+              "petición a los detalles para que la oficina la vea.",
+    },
+    "no_promise_note": {
+        "en": "I can't promise a credit, a date or any outcome; a team member decides that. I've prepared a note so "
+              "the office can review your request.",
+        "es": "No puedo prometer un crédito, una fecha ni un resultado; eso lo decide un miembro del equipo. Preparé "
+              "una nota para que la oficina revise su petición.",
+    },
+    "listening": {
+        "en": "I'm sorry, I hear you, and you shouldn't have to repeat yourself. I already have your details below.",
+        "es": "Lo siento, le escucho, y no debería tener que repetirlo. Ya tengo sus datos abajo.",
+    },
+    "noise": {
+        "en": "That sounds exhausting, I'm sorry. Noise between neighbors is handled by the community team, so I've "
+              "prepared a note for them. Send it when you're ready.",
+        "es": "Eso suena agotador, lo siento. El ruido entre vecinos lo atiende el equipo de la comunidad; preparé una "
+              "nota para ellos. Envíela cuando quiera.",
+    },
+    "balance": {
+        "en": "I can't see balances or payments here. The office can go over your account with you, so I've prepared "
+              "a note for them.",
+        "es": "Aquí no puedo ver saldos ni pagos. La oficina puede revisar su cuenta con usted; preparé una nota.",
+    },
+    "unknown_ref": {
+        "en": " I don't see {ref} among the requests in this conversation, so the note asks the office to check that "
+              "reference.",
+        "es": " No veo {ref} entre las solicitudes de esta conversación; la nota le pide a la oficina revisarla.",
+    },
     "nothing_pending": {
         "en": "There's nothing waiting to be sent right now. What would you like to do?",
         "es": "No hay nada pendiente de enviar. ¿Qué le gustaría hacer?",
@@ -117,8 +150,9 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Gracias por escribir. ¡Que esté bien!",
     },
     "phone_number": {
-        "en": "I don't have McKinley's office phone numbers in this prototype, so I can't give you one. Your "
-              "community's office or McKinley's website will have it. I can also send a note to the office.",
+        "en": "I don't have McKinley's office or emergency maintenance numbers in this prototype, so I can't give you "
+              "one. If anyone is in danger, call 911. Your community's office or McKinley's website will have the "
+              "numbers. I can also send a note to the office.",
         "es": "En este prototipo no tengo los teléfonos de las oficinas, así que no puedo darle uno. La oficina de su "
               "comunidad o el sitio web de McKinley lo tienen. También puedo enviar una nota a la oficina.",
     },
@@ -130,7 +164,7 @@ T: dict[str, dict[Lang, str]] = {
     },
     "eviction": {
         "en": "That sounds really stressful. I can't make decisions about your lease, and nothing you say here changes "
-              "your account. The office can explain where things stand, so I've added your question to the note.",
+              "your account. The office can explain where things stand, and your question is in the note.",
         "es": "Eso suena muy estresante. No puedo tomar decisiones sobre su contrato y nada de lo que diga aquí cambia "
               "su cuenta. La oficina puede explicarle su situación; agregué su pregunta a la nota.",
     },
@@ -151,8 +185,8 @@ T: dict[str, dict[Lang, str]] = {
     # ---- emergency (I-17/I-18 conservative placeholder) ----
     "emergency": {
         "en": "Your safety comes first. Leave the area now and call 911. If you smell gas, don't use switches or "
-              "flames and call from outside. Then call your community's emergency maintenance line. I've added an "
-              "urgent note to the staff queue, but this prototype can't page anyone, so please make those calls.",
+              "flames and call from outside. Then call your community's emergency maintenance line. An urgent "
+              "note is saved in the staff queue, but this prototype can't page anyone, so please make those calls.",
         "es": "Su seguridad es lo primero. Salga del área ahora y llame al 911. Si huele a gas, no use "
               "interruptores ni llamas y llame desde afuera. Después llame a la línea de emergencias de "
               "mantenimiento. Dejé una nota urgente para el personal, pero este prototipo no puede avisar a nadie, "
@@ -238,6 +272,22 @@ T: dict[str, dict[Lang, str]] = {
         "es": "No puedo describir ni comparar comunidades según quién vive en ellas. Todas están abiertas a "
               "todos. Con gusto le ayudo con lo que importa para su hogar: número de recámaras, presupuesto, "
               "ubicación o fecha de mudanza.",
+    },
+    "steering_family": {
+        "en": "Families, including families expecting a baby, are welcome at every McKinley community. The leasing "
+              "team can explain the occupancy guidelines for each floor plan.",
+        "es": "Las familias, incluidas las que esperan un bebé, son bienvenidas en todas las comunidades de McKinley. "
+              "El equipo de arrendamiento puede explicar las normas de ocupación de cada plano.",
+    },
+    "steering_safety": {
+        "en": "I can't describe how safe an area is. Your local police department's public crime map is a good "
+              "source, and you're welcome to tour the community and see it for yourself.",
+        "es": "No puedo describir qué tan segura es una zona. El mapa público de delitos de la policía local es una "
+              "buena fuente, y puede visitar la comunidad para verla usted mismo.",
+    },
+    "spanish_switch": {
+        "en": "Of course! I can continue in Spanish.",
+        "es": "¡Claro! Con gusto le ayudo en español. ¿Busca un hogar o ya vive en una comunidad de McKinley?",
     },
     "accommodation": {
         "en": "Thank you for telling me. Requests like this are handled by a trained team member, who can go "

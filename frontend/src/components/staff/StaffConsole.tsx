@@ -121,7 +121,7 @@ export function StaffConsole() {
         {state && (
           <Tabs defaultValue="inspector">
             {/* One scrolling row (never wraps onto the panel); selected tab = 2px underline; 3px focus ring. */}
-            <div className="-mx-4 overflow-x-auto border-b border-mk-line px-4 md:mx-0 md:px-0">
+            <div className="-mx-4 overflow-x-auto border-b border-mk-line px-4 py-1 md:mx-0 md:px-1">
               <TabsList variant="line" className="h-auto! w-max justify-start gap-0 p-0">
                 {[
                   ["inspector", "Conversation inspector"],

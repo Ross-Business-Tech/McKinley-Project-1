@@ -17,7 +17,9 @@ _RENEWAL = re.compile(r"renew|renewal|lease (end|term|offer|option)|extend my le
                       re.IGNORECASE)
 _HIGH_MAINT = re.compile(
     r"no (heat|hot water|water|power|electricity|a/?c|air)|locked out|toilet (overflow|won'?t stop)|"
-    r"(water|leak)\w* (from|through) (the )?ceiling|sewage|backing up|freezing|pipe burst|burst pipe",
+    r"(water|leak)\w* (from|through) (the )?ceiling|sewage|backing up|freezing|pipe burst|burst pipe|overflow\w*|"
+    r"locked out|lockout|(front |entry |apartment )?door\W+(?:\w+\W+){0,3}(lock|won'?t (lock|close))|"
+    r"lock\W+(?:\w+\W+){0,3}(broken|won'?t lock)|\d+ degrees|no tengo agua caliente",
     re.IGNORECASE,
 )
 _PRIVATE = re.compile(
@@ -30,7 +32,9 @@ _EXPLICIT_HUMAN = re.compile(
     r"representative)|\bhuman please\b|stop (the )?bot",
     re.IGNORECASE,
 )
-_FRUSTRATION = re.compile(r"really upset|frustrat|unacceptable|ridiculous|angry|fed up|furious|complain",
+_FRUSTRATION = re.compile(r"really upset|frustrat|unacceptable|ridiculous|angry|fed up|furious|complain|nobody came|"
+                          r"no one came|still waiting|been \d+ (days|weeks)|are you (even )?listening|keep telling|"
+                          r"why do i have to",
                           re.IGNORECASE)
 
 FLAG_REASONS = {

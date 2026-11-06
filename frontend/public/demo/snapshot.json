@@ -1,6 +1,6 @@
 {
  "kind": "static_demo_snapshot",
- "generated_at": "2026-11-06T09:23:39.456257+00:00",
+ "generated_at": "2026-11-06T09:33:49.233704+00:00",
  "notice": "Static demonstration: pre-computed with the deterministic MOCK provider (not a language model) and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
  "workbook_loaded": true,
  "personas": [
@@ -362,8 +362,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "d9589c16a86242a6bd1c7ee8b2edf437",
-    "created_at": "2026-11-06T09:23:39.342040Z",
+    "session_id": "c67a5d3114294281b5122427e0e5908d",
+    "created_at": "2026-11-06T09:33:49.110044Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -382,7 +382,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 2
      },
      {
       "step": "3_privacy",
@@ -519,8 +519,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "2ab888a5bd9b4f469c4d862e7a8e5c84",
-    "created_at": "2026-11-06T09:23:39.349069Z",
+    "session_id": "f63706758d2343ae9ae1eb867e4d5549",
+    "created_at": "2026-11-06T09:33:49.117329Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -781,8 +781,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "69553ffc9d0348eaa47a533bb628740b",
-    "created_at": "2026-11-06T09:23:39.350085Z",
+    "session_id": "580dcddd373b4b7ea35b5296ba6ea419",
+    "created_at": "2026-11-06T09:33:49.118703Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1045,8 +1045,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "e6dc06c69b3a4510b16e9174b3ff8210",
-    "created_at": "2026-11-06T09:23:39.350644Z",
+    "session_id": "27028e6ef26a45a2b865870b5bb93677",
+    "created_at": "2026-11-06T09:33:49.119292Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1128,7 +1128,7 @@
     "action_cleared": null
    },
    "prompt_only": {
-    "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Thanks, I've noted that. I can pass your details to the leasing team as a tour request. Which days work for you to visit?",
+    "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -1196,14 +1196,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+noctx",
     "usage": {
-     "input_tokens": 887,
-     "output_tokens": 50,
+     "input_tokens": 857,
+     "output_tokens": 33,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 19,
+    "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "e4e3fac740fb43f584e62c9bbf5d3ae2",
-    "created_at": "2026-11-06T09:23:39.351701Z",
+    "session_id": "cc687085411f4338aff8c6af09be8851",
+    "created_at": "2026-11-06T09:33:49.120447Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1225,9 +1225,9 @@
      "gate_usage": null
     },
     "workflow": {
-     "id": "tour_request",
-     "label": "Tour request (F5)",
-     "reason": "Tour request from a prospect or visitor.",
+     "id": "faq",
+     "label": "Property & leasing FAQ (F4)",
+     "reason": "Question matched the FAQ topic list (I-12 draft).",
      "instructions_version": "wf-v1"
     },
     "routed_workflow": {
@@ -1288,7 +1288,7 @@
      {
       "step": "6_workflow",
       "status": "ok",
-      "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5', 'F4'] | action=tour_request:collecting",
+      "detail": "faq: Question matched the FAQ topic list (I-12 draft). | functions=['F3', 'F4']",
       "ms": 0
      },
      {
@@ -1320,48 +1320,21 @@
     "language": "en",
     "functions": [
      "F3",
-     "F5",
      "F4"
     ],
     "reply_source": "model",
-    "action": {
-     "kind": "tour_request",
-     "stage": "collecting",
-     "title": "Tour request",
-     "fields": [
-      {
-       "key": "area",
-       "label": "Community or city",
-       "value": "Florida",
-       "source": "you_said"
-      },
-      {
-       "key": "beds",
-       "label": "Beds",
-       "value": "1 bed",
-       "source": "you_said"
-      }
-     ],
-     "missing": [
-      "Preferred days",
-      "Time of day"
-     ],
-     "confirm_label": null,
-     "note": "A request, not a booking: the leasing team picks the time.",
-     "record": null
-    },
+    "action": null,
     "records_created": [],
     "status_items": [],
     "suggested_replies": [
-     "This weekend",
-     "Weekdays",
-     "Next week"
+     "Request a tour",
+     "Talk to the leasing team"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null
    },
    "aware": {
-    "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Thanks, I've noted that. I can pass your details to the leasing team as a tour request. Which days work for you to visit?",
+    "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -1432,14 +1405,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 911,
-     "output_tokens": 50,
+     "input_tokens": 881,
+     "output_tokens": 33,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 17,
+    "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "2fd86e919ac54941b5ab879cb6b0ec91",
-    "created_at": "2026-11-06T09:23:39.352659Z",
+    "session_id": "7934ab2e993e4ffe87319ac5789b791a",
+    "created_at": "2026-11-06T09:33:49.121574Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1461,9 +1434,9 @@
      "gate_usage": null
     },
     "workflow": {
-     "id": "tour_request",
-     "label": "Tour request (F5)",
-     "reason": "Tour request from a prospect or visitor.",
+     "id": "faq",
+     "label": "Property & leasing FAQ (F4)",
+     "reason": "Question matched the FAQ topic list (I-12 draft).",
      "instructions_version": "wf-v1"
     },
     "routed_workflow": {
@@ -1524,7 +1497,7 @@
      {
       "step": "6_workflow",
       "status": "ok",
-      "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5', 'F4'] | action=tour_request:collecting",
+      "detail": "faq: Question matched the FAQ topic list (I-12 draft). | functions=['F3', 'F4']",
       "ms": 0
      },
      {
@@ -1556,42 +1529,15 @@
     "language": "en",
     "functions": [
      "F3",
-     "F5",
      "F4"
     ],
     "reply_source": "model",
-    "action": {
-     "kind": "tour_request",
-     "stage": "collecting",
-     "title": "Tour request",
-     "fields": [
-      {
-       "key": "area",
-       "label": "Community or city",
-       "value": "Florida",
-       "source": "you_said"
-      },
-      {
-       "key": "beds",
-       "label": "Beds",
-       "value": "1 bed",
-       "source": "you_said"
-      }
-     ],
-     "missing": [
-      "Preferred days",
-      "Time of day"
-     ],
-     "confirm_label": null,
-     "note": "A request, not a booking: the leasing team picks the time.",
-     "record": null
-    },
+    "action": null,
     "records_created": [],
     "status_items": [],
     "suggested_replies": [
-     "This weekend",
-     "Weekdays",
-     "Next week"
+     "Request a tour",
+     "Talk to the leasing team"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null
@@ -1679,8 +1625,8 @@
     },
     "latency_ms": 22,
     "stop_reason": "mock",
-    "session_id": "acb563fcf6064094a71cdf65a57b196d",
-    "created_at": "2026-11-06T09:23:39.353886Z",
+    "session_id": "d49a0f1d39b846e99aed12445522d49b",
+    "created_at": "2026-11-06T09:33:49.122900Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1842,8 +1788,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "b18e7bc941a94d5b8e33ea5e8a3fc417",
-    "created_at": "2026-11-06T09:23:39.355929Z",
+    "session_id": "d9cb2e1689ba4a4ab968996af90e04f7",
+    "created_at": "2026-11-06T09:33:49.125365Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -1942,7 +1888,7 @@
       "step": "6_workflow",
       "status": "ok",
       "detail": "maintenance: Maintenance intent. | functions=['F3', 'F6', 'F7', 'F9'] | action=maintenance_request:collecting",
-      "ms": 0
+      "ms": 1
      },
      {
       "step": "7_generate",
@@ -2126,8 +2072,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "df79d3e2bf224647b4ada67ffa922423",
-    "created_at": "2026-11-06T09:23:39.357434Z",
+    "session_id": "ab6af1151cef41a9a2aac46fdc8f7ac4",
+    "created_at": "2026-11-06T09:33:49.127133Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2403,8 +2349,8 @@
     },
     "latency_ms": 10,
     "stop_reason": "mock",
-    "session_id": "18358bc6c87c421193db58cd0c8e2533",
-    "created_at": "2026-11-06T09:23:39.358479Z",
+    "session_id": "6e63416e53444b25a4b729805815bb4c",
+    "created_at": "2026-11-06T09:33:49.128282Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -2560,8 +2506,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "66ea9731f52a4bac8a85c6112bdb58ae",
-    "created_at": "2026-11-06T09:23:39.359156Z",
+    "session_id": "c406d2e3d4b14d389e6823cebab53f71",
+    "created_at": "2026-11-06T09:33:49.129122Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2813,8 +2759,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "90b3053a960f433f8166976d9c0a3c5e",
-    "created_at": "2026-11-06T09:23:39.359821Z",
+    "session_id": "893a564cef9e4481aa258ab453ea81b0",
+    "created_at": "2026-11-06T09:33:49.129959Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -3073,8 +3019,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "0533edfd09be4c80ae9ba5aadb89e7b9",
-    "created_at": "2026-11-06T09:23:39.360933Z",
+    "session_id": "1d194b71b35047f9860dbec691d261a4",
+    "created_at": "2026-11-06T09:33:49.131201Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3241,8 +3187,8 @@
     },
     "latency_ms": 14,
     "stop_reason": "mock",
-    "session_id": "c51a6976963f4b248e9e980ddd5c3bac",
-    "created_at": "2026-11-06T09:23:39.362399Z",
+    "session_id": "ade522bc613b4179a65a2ea3ea50439d",
+    "created_at": "2026-11-06T09:33:49.132889Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3514,8 +3460,8 @@
     },
     "latency_ms": 5,
     "stop_reason": "mock",
-    "session_id": "55be94dfe02145408f09c67d68267530",
-    "created_at": "2026-11-06T09:23:39.364018Z",
+    "session_id": "8f3c7a8cd68942d6bb67746b230ccea8",
+    "created_at": "2026-11-06T09:33:49.134584Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3784,8 +3730,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "e9069494e33548c3b1b2360583b29418",
-    "created_at": "2026-11-06T09:23:39.365126Z",
+    "session_id": "94e53ef0e65a4b74a210d72c1a46a8af",
+    "created_at": "2026-11-06T09:33:49.135823Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3952,8 +3898,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "c0d62d95b50d4408b5ace7c0fc7b9931",
-    "created_at": "2026-11-06T09:23:39.365821Z",
+    "session_id": "b87fb3a2ff0c44aa8a285a755b0d0697",
+    "created_at": "2026-11-06T09:33:49.136637Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4181,8 +4127,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "4374c6a49fd04b1882768eed1628d8d3",
-    "created_at": "2026-11-06T09:23:39.366527Z",
+    "session_id": "d2b1501e7dc04971a7f7fdfbb0e2defc",
+    "created_at": "2026-11-06T09:33:49.137457Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4407,8 +4353,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "3553365142794d37b019459cf6ebb90b",
-    "created_at": "2026-11-06T09:23:39.367765Z",
+    "session_id": "1a21682df9354e4dba23dac8ad1ada5d",
+    "created_at": "2026-11-06T09:33:49.138813Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -4570,8 +4516,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "df4266582a31446086e4299f033e3c43",
-    "created_at": "2026-11-06T09:23:39.369091Z",
+    "session_id": "87390c1b849a48a88a2fc6139b1241de",
+    "created_at": "2026-11-06T09:33:49.140500Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4834,8 +4780,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "3c8cc3a544934dde8fb47b51d55c42ed",
-    "created_at": "2026-11-06T09:23:39.370550Z",
+    "session_id": "df833003434e4de2bcc431665f0774eb",
+    "created_at": "2026-11-06T09:33:49.142190Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5047,7 +4993,13 @@
     "handoff_category": "none",
     "handoff_is_recommendation_only": true,
     "model_handoff": false,
-    "policy_signals": [],
+    "policy_signals": [
+     {
+      "code": "financial_or_lease",
+      "category": "financial_or_lease",
+      "detail": "Financial or lease-term question cannot be decided by the assistant."
+     }
+    ],
     "output_checks": [
      {
       "code": "terminology",
@@ -5110,8 +5062,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "67fc8ce9dfaa4a0dab643226ec199b4e",
-    "created_at": "2026-11-06T09:23:39.371663Z",
+    "session_id": "acc4b137b51b40188b89de8369b42dbe",
+    "created_at": "2026-11-06T09:33:49.143390Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5200,11 +5152,17 @@
     "mode": "prompt_only",
     "audience": "resident",
     "recommended_handoff": true,
-    "handoff_reason": "Account-specific request but identity is not verified. | Model suggested: Backend gate requires staff",
+    "handoff_reason": "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified. | Model suggested: Backend gate requires staff",
     "handoff_category": "sensitive_data_request",
     "handoff_is_recommendation_only": true,
     "model_handoff": true,
-    "policy_signals": [],
+    "policy_signals": [
+     {
+      "code": "financial_or_lease",
+      "category": "financial_or_lease",
+      "detail": "Financial or lease-term question cannot be decided by the assistant."
+     }
+    ],
     "output_checks": [
      {
       "code": "terminology",
@@ -5267,17 +5225,18 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "06dd9f55e0f54682955ca7d4fd6bf421",
-    "created_at": "2026-11-06T09:23:39.372213Z",
+    "session_id": "1bfd56afafc94137b8a238c77c369afc",
+    "created_at": "2026-11-06T09:33:49.143991Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
      "urgency": "medium",
      "requires_human": true,
-     "handoff_reason": "Account-specific request but identity is not verified.",
+     "handoff_reason": "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified.",
      "confidence": 0.85,
      "confidence_calibrated": false,
      "risk_flags": [
+      "financial_or_lease",
       "unverified_private_request",
       "no_matched_record"
      ],
@@ -5287,6 +5246,7 @@
      "fallback_reason": null,
      "overrides": [],
      "rationale": [
+      "pattern:financial_or_lease",
       "account-specific wording without a verified record",
       "intent:maintenance via ['maintenance']"
      ],
@@ -5321,7 +5281,7 @@
      "priority": "normal",
      "category": "sensitive_data_request",
      "reasons": [
-      "Account-specific request but identity is not verified.",
+      "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified.",
       "Model suggested: Backend gate requires staff"
      ],
      "summary": "Resident · maintenance · urgency medium. Topics: billing, maintenance_general. Maintenance triage: unclear (other); no work order exists. Identity NOT verified: no account details were shared.",
@@ -5447,11 +5407,16 @@
     "mode": "aware",
     "audience": "resident",
     "recommended_handoff": true,
-    "handoff_reason": "Account-specific request but identity is not verified. | Model suggested: Backend gate requires staff",
+    "handoff_reason": "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified. | Model suggested: Backend gate requires staff",
     "handoff_category": "sensitive_data_request",
     "handoff_is_recommendation_only": true,
     "model_handoff": true,
     "policy_signals": [
+     {
+      "code": "financial_or_lease",
+      "category": "financial_or_lease",
+      "detail": "Financial or lease-term question cannot be decided by the assistant."
+     },
      {
       "code": "no_matched_record",
       "category": "other",
@@ -5520,17 +5485,18 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "1ac1e0d4c2034e52965608748c943474",
-    "created_at": "2026-11-06T09:23:39.372747Z",
+    "session_id": "423a4d53b7b3456385bfec007a3f64dd",
+    "created_at": "2026-11-06T09:33:49.144544Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
      "urgency": "medium",
      "requires_human": true,
-     "handoff_reason": "Account-specific request but identity is not verified.",
+     "handoff_reason": "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified.",
      "confidence": 0.85,
      "confidence_calibrated": false,
      "risk_flags": [
+      "financial_or_lease",
       "unverified_private_request",
       "no_matched_record"
      ],
@@ -5540,6 +5506,7 @@
      "fallback_reason": null,
      "overrides": [],
      "rationale": [
+      "pattern:financial_or_lease",
       "account-specific wording without a verified record",
       "intent:maintenance via ['maintenance']"
      ],
@@ -5574,7 +5541,7 @@
      "priority": "normal",
      "category": "sensitive_data_request",
      "reasons": [
-      "Account-specific request but identity is not verified.",
+      "Financial or lease-term decision cannot be made by the assistant. Account-specific request but identity is not verified.",
       "Model suggested: Backend gate requires staff"
      ],
      "summary": "Resident · maintenance · urgency medium. Topics: billing, maintenance_general. Maintenance triage: unclear (other); no work order exists. Identity NOT verified: no account details were shared.",
@@ -5775,8 +5742,8 @@
     },
     "latency_ms": 7,
     "stop_reason": "mock",
-    "session_id": "34d9925769024f4c934cb83625c5b168",
-    "created_at": "2026-11-06T09:23:39.373636Z",
+    "session_id": "c175cc15e3504c358bb460232963ca70",
+    "created_at": "2026-11-06T09:33:49.145499Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5938,8 +5905,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "62b964a36222477b9713afebfecf5c30",
-    "created_at": "2026-11-06T09:23:39.374717Z",
+    "session_id": "644446e24e6847bba435b09230ef1299",
+    "created_at": "2026-11-06T09:33:49.146672Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6186,8 +6153,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "2467c2e158e540aa9ac24000fde1a137",
-    "created_at": "2026-11-06T09:23:39.375801Z",
+    "session_id": "6c33d5e376c64a7b9c3b913a23615a9e",
+    "created_at": "2026-11-06T09:33:49.147868Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6436,8 +6403,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "753fe3bf016c4a02bd89e5e74e35673a",
-    "created_at": "2026-11-06T09:23:39.376612Z",
+    "session_id": "70f62da83f5848cca82c94f3ff9da93c",
+    "created_at": "2026-11-06T09:33:49.148749Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -6593,8 +6560,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "da8196da32f94314baea6da625b3cdd8",
-    "created_at": "2026-11-06T09:23:39.377301Z",
+    "session_id": "7fda4cbf308449dd94f271ff53dc733d",
+    "created_at": "2026-11-06T09:33:49.149823Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6786,8 +6753,8 @@
     },
     "latency_ms": 14,
     "stop_reason": "mock",
-    "session_id": "e6c0af247cd24575a96b81bd42417f8e",
-    "created_at": "2026-11-06T09:23:39.377975Z",
+    "session_id": "721da395d405443ea8dd0da036e65122",
+    "created_at": "2026-11-06T09:33:49.150696Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6987,8 +6954,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "cde3d4893349426a83e9b27b76a79905",
-    "created_at": "2026-11-06T09:23:39.378875Z",
+    "session_id": "9d473dd33daa4e1e9ffb92814b20a9ae",
+    "created_at": "2026-11-06T09:33:49.151617Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7150,8 +7117,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "f2f2047963ed4184a434b5db1ca0cf16",
-    "created_at": "2026-11-06T09:23:39.379969Z",
+    "session_id": "fc3b02f033594e34ad18dbc8d24f30e3",
+    "created_at": "2026-11-06T09:33:49.152767Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7409,8 +7376,8 @@
     },
     "latency_ms": 11,
     "stop_reason": "mock",
-    "session_id": "df6716b9d658412b8daec7c9cef42c78",
-    "created_at": "2026-11-06T09:23:39.381065Z",
+    "session_id": "023d8ebcc1da4469851134a22ef0e02d",
+    "created_at": "2026-11-06T09:33:49.153945Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7670,8 +7637,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "7cc2a59c14f04c1495514a69c19e486b",
-    "created_at": "2026-11-06T09:23:39.382157Z",
+    "session_id": "bea1611f7d3b448eb38d4c1492adb06d",
+    "created_at": "2026-11-06T09:33:49.155082Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7833,8 +7800,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "091059ca261d4ec48fc16f642a993a97",
-    "created_at": "2026-11-06T09:23:39.382868Z",
+    "session_id": "51c0db1547534cd1961b1f2b13ed40c8",
+    "created_at": "2026-11-06T09:33:49.155920Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8093,8 +8060,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "3294387572d84df3ad6c584ec52fca97",
-    "created_at": "2026-11-06T09:23:39.383698Z",
+    "session_id": "6503ba92f2674169a5ef618d7d18ff29",
+    "created_at": "2026-11-06T09:33:49.156864Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8368,8 +8335,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "d6ded929f20b462cae68f6c72546dd20",
-    "created_at": "2026-11-06T09:23:39.384953Z",
+    "session_id": "0bd9fbfec29a48a883614560ad35a65f",
+    "created_at": "2026-11-06T09:33:49.158225Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -8531,8 +8498,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "0d0118b0f0ba43edb09d94e0a382b19e",
-    "created_at": "2026-11-06T09:23:39.386394Z",
+    "session_id": "7d6f410605264467950d13c752b61df8",
+    "created_at": "2026-11-06T09:33:49.160024Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8793,8 +8760,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "716c85e635e24d51b5d1e89ae2cbda6d",
-    "created_at": "2026-11-06T09:23:39.387847Z",
+    "session_id": "ab49da8b985d4a2289afbd4825b2865e",
+    "created_at": "2026-11-06T09:33:49.161817Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -9053,8 +9020,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "60aaa6b894e2477283e2fa26b3aba62a",
-    "created_at": "2026-11-06T09:23:39.389283Z",
+    "session_id": "f004b19e725f4991b10fee03fdf408b7",
+    "created_at": "2026-11-06T09:33:49.163375Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -9210,8 +9177,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "a26e709615d54c17ba8ec661a196a8f8",
-    "created_at": "2026-11-06T09:23:39.390331Z",
+    "session_id": "d0835cb38df14bc085b9b186e1a837bc",
+    "created_at": "2026-11-06T09:33:49.164616Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9444,8 +9411,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "a76518b66af14abaa2feff919d19cf62",
-    "created_at": "2026-11-06T09:23:39.391399Z",
+    "session_id": "6f3d166e93f04cfc809201d6d6180074",
+    "created_at": "2026-11-06T09:33:49.165868Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -10623,7 +10590,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:23:39.404763Z",
+      "created_at": "2026-11-06T09:33:49.181439Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -10734,7 +10701,7 @@
         "step": "6_workflow",
         "status": "ok",
         "detail": "maintenance: Maintenance intent. | functions=['F3', 'F6', 'F7', 'F9'] | action=maintenance_request:collecting",
-        "ms": 0
+        "ms": 1
        },
        {
         "step": "7_generate",
@@ -10908,7 +10875,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:23:39.406524Z",
+      "created_at": "2026-11-06T09:33:49.183427Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11129,7 +11096,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R001",
         "session_hash": "f1b1a5ef54",
-        "created_at": "2026-11-06T09:23:39.407014Z",
+        "created_at": "2026-11-06T09:33:49.183952Z",
         "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11181,7 +11148,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R001",
        "session_hash": "f1b1a5ef54",
-       "created_at": "2026-11-06T09:23:39.407014Z",
+       "created_at": "2026-11-06T09:33:49.183952Z",
        "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11313,7 +11280,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:23:39.408619Z",
+      "created_at": "2026-11-06T09:33:49.185726Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11434,7 +11401,7 @@
        },
        {
         "reference": "DEMO-WO-1001",
-        "title": "My AC stopped cooling again. This has happened multiple t…",
+        "title": "My AC stopped cooling again. This has happened multiple…",
         "status": "Submitted, waiting for staff review",
         "opened": "2026-11-06",
         "source": "prototype_store",
@@ -11564,7 +11531,7 @@
       "latency_ms": 5,
       "stop_reason": "mock",
       "session_id": "demo-res-renewal",
-      "created_at": "2026-11-06T09:23:39.411012Z",
+      "created_at": "2026-11-06T09:33:49.188428Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -11797,7 +11764,7 @@
         "status_label": "In the office queue",
         "persona_id": "R003",
         "session_hash": "0a00e04e7c",
-        "created_at": "2026-11-06T09:23:39.411467Z",
+        "created_at": "2026-11-06T09:33:49.188934Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11837,7 +11804,7 @@
        "status_label": "In the office queue",
        "persona_id": "R003",
        "session_hash": "0a00e04e7c",
-       "created_at": "2026-11-06T09:23:39.411467Z",
+       "created_at": "2026-11-06T09:33:49.188934Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11982,7 +11949,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-res-human",
-      "created_at": "2026-11-06T09:23:39.413783Z",
+      "created_at": "2026-11-06T09:33:49.191450Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -12206,7 +12173,7 @@
         "status_label": "In the office queue",
         "persona_id": "R020",
         "session_hash": "f85c4a5434",
-        "created_at": "2026-11-06T09:23:39.414252Z",
+        "created_at": "2026-11-06T09:33:49.191904Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -12246,7 +12213,7 @@
        "status_label": "In the office queue",
        "persona_id": "R020",
        "session_hash": "f85c4a5434",
-       "created_at": "2026-11-06T09:23:39.414252Z",
+       "created_at": "2026-11-06T09:33:49.191904Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -12292,7 +12259,7 @@
      "kind": "chat",
      "message": "I smell gas in my kitchen and it's getting stronger. What do I do?",
      "response": {
-      "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line. I've added an urgent note to the staff queue, but this prototype can't page or call anyone, so please make that call yourself.",
+      "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line. An urgent note is saved in the staff queue, but this prototype can't page or call anyone, so please make that call yourself.",
       "safety_notice": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line.",
       "emergency_kind": "gas",
       "safety_heading": "If anyone is in danger, call 911 now",
@@ -12319,7 +12286,7 @@
        {
         "code": "no_false_action_claim",
         "passed": true,
-        "detail": "Completion backed by prototype record DEMO-TASK-1004"
+        "detail": "No claimed side-effect actions"
        },
        {
         "code": "no_invented_price",
@@ -12384,7 +12351,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-gas",
-      "created_at": "2026-11-06T09:23:39.416206Z",
+      "created_at": "2026-11-06T09:33:49.193963Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12559,7 +12526,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-06T09:23:39.415164Z",
+        "created_at": "2026-11-06T09:33:49.192855Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12600,7 +12567,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-06T09:23:39.415164Z",
+        "created_at": "2026-11-06T09:33:49.192855Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12737,7 +12704,7 @@
       "latency_ms": 23,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:23:39.417990Z",
+      "created_at": "2026-11-06T09:33:49.196036Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12979,7 +12946,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:23:39.419258Z",
+      "created_at": "2026-11-06T09:33:49.197447Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13219,7 +13186,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:23:39.420693Z",
+      "created_at": "2026-11-06T09:33:49.198882Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13428,7 +13395,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R003",
         "session_hash": "80198d5585",
-        "created_at": "2026-11-06T09:23:39.421440Z",
+        "created_at": "2026-11-06T09:33:49.199321Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -13474,7 +13441,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R003",
        "session_hash": "80198d5585",
-       "created_at": "2026-11-06T09:23:39.421440Z",
+       "created_at": "2026-11-06T09:33:49.199321Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -13612,7 +13579,7 @@
       "latency_ms": 14,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-06T09:23:39.423535Z",
+      "created_at": "2026-11-06T09:33:49.201576Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -13857,7 +13824,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-06T09:23:39.424988Z",
+      "created_at": "2026-11-06T09:33:49.203084Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -14066,7 +14033,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R012",
         "session_hash": "944a05361a",
-        "created_at": "2026-11-06T09:23:39.425426Z",
+        "created_at": "2026-11-06T09:33:49.203509Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -14112,7 +14079,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R012",
        "session_hash": "944a05361a",
-       "created_at": "2026-11-06T09:23:39.425426Z",
+       "created_at": "2026-11-06T09:33:49.203509Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -14258,7 +14225,7 @@
       "latency_ms": 5,
       "stop_reason": "mock",
       "session_id": "demo-res-status",
-      "created_at": "2026-11-06T09:23:39.427957Z",
+      "created_at": "2026-11-06T09:33:49.206213Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14496,7 +14463,7 @@
         "status_label": "In the office queue",
         "persona_id": "R008",
         "session_hash": "6f83aefd3b",
-        "created_at": "2026-11-06T09:23:39.428394Z",
+        "created_at": "2026-11-06T09:33:49.206593Z",
         "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
         "fields": [
          {
@@ -14536,7 +14503,7 @@
        "status_label": "In the office queue",
        "persona_id": "R008",
        "session_hash": "6f83aefd3b",
-       "created_at": "2026-11-06T09:23:39.428394Z",
+       "created_at": "2026-11-06T09:33:49.206593Z",
        "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
        "fields": [
         {
@@ -14663,7 +14630,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-unverified-status",
-      "created_at": "2026-11-06T09:23:39.430104Z",
+      "created_at": "2026-11-06T09:33:49.208159Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14926,7 +14893,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-06T09:23:39.431999Z",
+      "created_at": "2026-11-06T09:33:49.210272Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15197,7 +15164,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-06T09:23:39.433367Z",
+      "created_at": "2026-11-06T09:33:49.211825Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15415,7 +15382,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "a946b4af24",
-        "created_at": "2026-11-06T09:23:39.433737Z",
+        "created_at": "2026-11-06T09:33:49.212237Z",
         "summary": "Tour request from prospective resident (demo profile).",
         "fields": [
          {
@@ -15461,7 +15428,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "a946b4af24",
-       "created_at": "2026-11-06T09:23:39.433737Z",
+       "created_at": "2026-11-06T09:33:49.212237Z",
        "summary": "Tour request from prospective resident (demo profile).",
        "fields": [
         {
@@ -15513,7 +15480,7 @@
      "kind": "chat",
      "message": "What is the cheapest 1-bedroom apartment you have in Florida right now?",
      "response": {
-      "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Thanks, I've noted that. I can pass your details to the leasing team as a tour request. Which days work for you to visit?",
+      "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -15584,14 +15551,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 911,
-       "output_tokens": 50,
+       "input_tokens": 881,
+       "output_tokens": 33,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 17,
+      "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-06T09:23:39.435930Z",
+      "created_at": "2026-11-06T09:33:49.214151Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15613,9 +15580,9 @@
        "gate_usage": null
       },
       "workflow": {
-       "id": "tour_request",
-       "label": "Tour request (F5)",
-       "reason": "Tour request from a prospect or visitor.",
+       "id": "faq",
+       "label": "Property & leasing FAQ (F4)",
+       "reason": "Question matched the FAQ topic list (I-12 draft).",
        "instructions_version": "wf-v1"
       },
       "routed_workflow": {
@@ -15676,7 +15643,7 @@
        {
         "step": "6_workflow",
         "status": "ok",
-        "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5', 'F4'] | action=tour_request:collecting",
+        "detail": "faq: Question matched the FAQ topic list (I-12 draft). | functions=['F3', 'F4']",
         "ms": 0
        },
        {
@@ -15708,42 +15675,15 @@
       "language": "en",
       "functions": [
        "F3",
-       "F5",
        "F4"
       ],
       "reply_source": "model",
-      "action": {
-       "kind": "tour_request",
-       "stage": "collecting",
-       "title": "Tour request",
-       "fields": [
-        {
-         "key": "area",
-         "label": "Community or city",
-         "value": "Florida",
-         "source": "you_said"
-        },
-        {
-         "key": "beds",
-         "label": "Beds",
-         "value": "1 bed",
-         "source": "you_said"
-        }
-       ],
-       "missing": [
-        "Preferred days",
-        "Time of day"
-       ],
-       "confirm_label": null,
-       "note": "A request, not a booking: the leasing team picks the time.",
-       "record": null
-      },
+      "action": null,
       "records_created": [],
       "status_items": [],
       "suggested_replies": [
-       "This weekend",
-       "Weekdays",
-       "Next week"
+       "Request a tour",
+       "Talk to the leasing team"
       ],
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null
@@ -15753,7 +15693,7 @@
      "kind": "chat",
      "message": "Request a tour",
      "response": {
-      "reply": "Which days work for you to visit?",
+      "reply": "I'd be glad to set up a tour request for you. Which city or McKinley community would you like to see?",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -15824,14 +15764,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 857,
-       "output_tokens": 7,
+       "input_tokens": 871,
+       "output_tokens": 21,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 6,
+      "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-06T09:23:39.437267Z",
+      "created_at": "2026-11-06T09:33:49.215548Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15971,21 +15911,9 @@
        "kind": "tour_request",
        "stage": "collecting",
        "title": "Tour request",
-       "fields": [
-        {
-         "key": "area",
-         "label": "Community or city",
-         "value": "Florida",
-         "source": "you_said"
-        },
-        {
-         "key": "beds",
-         "label": "Beds",
-         "value": "1 bed",
-         "source": "you_said"
-        }
-       ],
+       "fields": [],
        "missing": [
+        "Community or city",
         "Preferred days",
         "Time of day"
        ],
@@ -15995,11 +15923,7 @@
       },
       "records_created": [],
       "status_items": [],
-      "suggested_replies": [
-       "This weekend",
-       "Weekdays",
-       "Next week"
-      ],
+      "suggested_replies": [],
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null
      }
@@ -16096,7 +16020,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-new-to-area",
-      "created_at": "2026-11-06T09:23:39.438952Z",
+      "created_at": "2026-11-06T09:33:49.217351Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16139,7 +16063,7 @@
       "handoff": {
        "status": "recommended_not_sent",
        "completed": false,
-       "team": "management",
+       "team": "leasing",
        "priority": "normal",
        "category": "policy_or_eligibility",
        "reasons": [
@@ -16203,7 +16127,7 @@
        {
         "step": "9_handoff",
         "status": "ok",
-        "detail": "recommended to management (normal); NOT sent",
+        "detail": "recommended to leasing (normal); NOT sent",
         "ms": 0
        },
        {
@@ -16317,7 +16241,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-pro-floor-plans",
-      "created_at": "2026-11-06T09:23:39.440468Z",
+      "created_at": "2026-11-06T09:33:49.218985Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -16531,7 +16455,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:23:39.441861Z",
+      "created_at": "2026-11-06T09:33:49.220522Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16746,7 +16670,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:23:39.443283Z",
+      "created_at": "2026-11-06T09:33:49.221813Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16970,7 +16894,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:23:39.444571Z",
+      "created_at": "2026-11-06T09:33:49.223139Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17199,7 +17123,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:23:39.445973Z",
+      "created_at": "2026-11-06T09:33:49.224478Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17395,7 +17319,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "a839f1a538",
-        "created_at": "2026-11-06T09:23:39.446355Z",
+        "created_at": "2026-11-06T09:33:49.224808Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -17435,7 +17359,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "a839f1a538",
-       "created_at": "2026-11-06T09:23:39.446355Z",
+       "created_at": "2026-11-06T09:33:49.224808Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -17561,7 +17485,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-steering",
-      "created_at": "2026-11-06T09:23:39.448076Z",
+      "created_at": "2026-11-06T09:33:49.226486Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -17795,7 +17719,7 @@
       "latency_ms": 8,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-06T09:23:39.449760Z",
+      "created_at": "2026-11-06T09:33:49.228142Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -18049,7 +17973,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-06T09:23:39.451334Z",
+      "created_at": "2026-11-06T09:33:49.229715Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -18245,7 +18169,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "5bcdd3814d",
-        "created_at": "2026-11-06T09:23:39.451687Z",
+        "created_at": "2026-11-06T09:33:49.230031Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -18285,7 +18209,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "5bcdd3814d",
-       "created_at": "2026-11-06T09:23:39.451687Z",
+       "created_at": "2026-11-06T09:33:49.230031Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -18417,7 +18341,7 @@
       "latency_ms": 10,
       "stop_reason": "mock",
       "session_id": "demo-pro-human",
-      "created_at": "2026-11-06T09:23:39.453573Z",
+      "created_at": "2026-11-06T09:33:49.231659Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -18622,7 +18546,7 @@
         "status_label": "In the office queue",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "29f16eb9c8",
-        "created_at": "2026-11-06T09:23:39.454008Z",
+        "created_at": "2026-11-06T09:33:49.231979Z",
         "summary": "Prospect · leasing · urgency medium.",
         "fields": [
          {
@@ -18656,7 +18580,7 @@
        "status_label": "In the office queue",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "29f16eb9c8",
-       "created_at": "2026-11-06T09:23:39.454008Z",
+       "created_at": "2026-11-06T09:33:49.231979Z",
        "summary": "Prospect · leasing · urgency medium.",
        "fields": [
         {
@@ -18771,7 +18695,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-vendor",
-      "created_at": "2026-11-06T09:23:39.456126Z",
+      "created_at": "2026-11-06T09:33:49.233612Z",
       "gate": {
        "audience": "unknown",
        "intent": "maintenance",
@@ -18976,7 +18900,7 @@
    "kind": "staff_handoff",
    "session_hash": "29f16eb9c8",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-06T09:23:39.454008+00:00"
+   "created_at": "2026-11-06T09:33:49.231979+00:00"
   },
   {
    "status": "requested",
@@ -19018,7 +18942,7 @@
    "kind": "tour_request",
    "session_hash": "5bcdd3814d",
    "persona_id": null,
-   "created_at": "2026-11-06T09:23:39.451687+00:00"
+   "created_at": "2026-11-06T09:33:49.230031+00:00"
   },
   {
    "status": "requested",
@@ -19060,7 +18984,7 @@
    "kind": "tour_request",
    "session_hash": "a839f1a538",
    "persona_id": null,
-   "created_at": "2026-11-06T09:23:39.446355+00:00"
+   "created_at": "2026-11-06T09:33:49.224808+00:00"
   },
   {
    "status": "requested",
@@ -19108,7 +19032,7 @@
    "kind": "tour_request",
    "session_hash": "a946b4af24",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-06T09:23:39.433737+00:00"
+   "created_at": "2026-11-06T09:33:49.212237+00:00"
   },
   {
    "status": "queued",
@@ -19150,7 +19074,7 @@
    "kind": "staff_handoff",
    "session_hash": "6f83aefd3b",
    "persona_id": "R008",
-   "created_at": "2026-11-06T09:23:39.428394+00:00"
+   "created_at": "2026-11-06T09:33:49.206593+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19198,7 +19122,7 @@
    "kind": "maintenance_request",
    "session_hash": "944a05361a",
    "persona_id": "R012",
-   "created_at": "2026-11-06T09:23:39.425426+00:00"
+   "created_at": "2026-11-06T09:33:49.203509+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19246,7 +19170,7 @@
    "kind": "maintenance_request",
    "session_hash": "80198d5585",
    "persona_id": "R003",
-   "created_at": "2026-11-06T09:23:39.421440+00:00"
+   "created_at": "2026-11-06T09:33:49.199321+00:00"
   },
   {
    "status": "urgent_queued",
@@ -19284,11 +19208,12 @@
    "category": "safety_emergency",
    "repeat": false,
    "hazard": "gas",
+   "once_key": "gas",
    "id": "DEMO-TASK-1004",
    "kind": "staff_handoff",
    "session_hash": "f61c3ca448",
    "persona_id": "R002",
-   "created_at": "2026-11-06T09:23:39.415164+00:00"
+   "created_at": "2026-11-06T09:33:49.192855+00:00"
   },
   {
    "status": "queued",
@@ -19330,7 +19255,7 @@
    "kind": "staff_handoff",
    "session_hash": "f85c4a5434",
    "persona_id": "R020",
-   "created_at": "2026-11-06T09:23:39.414252+00:00"
+   "created_at": "2026-11-06T09:33:49.191904+00:00"
   },
   {
    "status": "queued",
@@ -19372,12 +19297,12 @@
    "kind": "staff_handoff",
    "session_hash": "0a00e04e7c",
    "persona_id": "R003",
-   "created_at": "2026-11-06T09:23:39.411467+00:00"
+   "created_at": "2026-11-06T09:33:49.188934+00:00"
   },
   {
    "status": "submitted_for_review",
    "status_label": "Submitted, waiting for staff review",
-   "title": "My AC stopped cooling again. This has happened multiple t…",
+   "title": "My AC stopped cooling again. This has happened multiple…",
    "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
    "fields": [
     {
@@ -19426,7 +19351,7 @@
    "kind": "maintenance_request",
    "session_hash": "f1b1a5ef54",
    "persona_id": "R001",
-   "created_at": "2026-11-06T09:23:39.407014+00:00"
+   "created_at": "2026-11-06T09:33:49.183952+00:00"
   }
  ],
  "gate_eval": {
@@ -19855,6 +19780,7 @@
     "critical_miss": false,
     "confidence": 0.85,
     "risk_flags": [
+     "financial_or_lease",
      "unverified_private_request",
      "no_matched_record"
     ],
@@ -19881,6 +19807,7 @@
     "critical_miss": false,
     "confidence": 0.3,
     "risk_flags": [
+     "financial_or_lease",
      "unverified_private_request",
      "no_matched_record",
      "low_confidence"
@@ -19888,7 +19815,7 @@
     "overrides": [
      "urgency 'low' raised to rules floor 'medium'",
      "confidence 0.30 below 0.5: flagged",
-     "requires_human forced by deterministic flags ['unverified_private_request']"
+     "requires_human forced by deterministic flags ['financial_or_lease', 'unverified_private_request']"
     ],
     "latency_ms": 0,
     "input_tokens": 24,

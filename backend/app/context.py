@@ -181,10 +181,13 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
              # Spanish (minimal; R012 prefers Spanish). Other languages: see docs/GATE_DESIGN.md limitations.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
-                 "shower", "tub", "water", "fuga", "gotea", "grifo", "llave", "fregadero", "inodoro", "tubería"],
+                 "shower", "tub", "water", "toliet", "clogd", "overflow", "fuga", "gotea", "grifo", "llave",
+                 "fregadero",
+                 "inodoro", "tubería", "agua caliente"],
     "appliance": ["dishwasher", "fridge", "refrigerator", "oven", "stove", "washer", "dryer", "microwave",
                   "disposal", "horno", "estufa", "lavadora", "secadora", "refrigerador", "lavaplatos"],
-    "pest": ["roach", "bug", "pest", "mice", "mouse", "ants", "rodent"],
+    "pest": ["roach", "bug", "pest", "mice", "mouse", "ants", "rodent", "cucaracha", "hormiga", "ratón", "raton",
+             "ratones", "chinche", "plaga"],
     "renewal": ["renew", "renewal", "lease", "offer", "move out", "move-out", "notice", "renovar", "renovación",
                 "renovacion", "contrato"],
     "billing": ["rent", "balance", "payment", "pay", "bill", "charge", "fee", "late"],
@@ -204,13 +207,15 @@ def detect_topics(text: str) -> list[str]:
     topics = []
     for topic, words in TOPIC_KEYWORDS.items():
         for w in words:
-            if re.search(rf"(?<![a-z]){re.escape(w)}(?![a-z])", t):
+            if re.search(rf"(?<![a-z]){re.escape(w)}(?:e?s)?(?![a-z])", t):
                 topics.append(topic)
                 break
     generic_maint = re.search(r"broken|repair|fix|maintenance|work order|not working|stopped|no funciona|"
                               r"roto|reparar|mantenimiento|no calienta|chirp|beep|smoke detector|outlet|"
                               r"light (is out|won'?t)|lock (is|won'?t|sticks)|window (won'?t|is stuck)|ceiling|mold|"
-                              r"door (won'?t|is stuck|sticks)", t)
+                              r"door (won'?t|is stuck|sticks)|crack|flicker|locked out|lockout|fell off|came off|"
+                              r"window|light (bulb|fixture|switch)|lights? (is|are|keep)|\block\b|no heat|heater|"
+                              r"overflow|toliet|clogd|no tengo agua|no hay agua|se cay[oó]|no prende", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics

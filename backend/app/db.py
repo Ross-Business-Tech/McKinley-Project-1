@@ -156,6 +156,12 @@ class Store:
                 (session_id, persona_id, kind)).fetchone()
         return {"kind": row["kind"], **json.loads(row["data"])} if row else None
 
+    def mark_stale(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
+        """Update only; never re-inserts a draft that a concurrent confirm already took."""
+        with self._lock, self._conn:
+            self._conn.execute("UPDATE action_drafts SET data=? WHERE session_id=? AND persona_id=? AND kind=?",
+                               (json.dumps(data), session_id, persona_id, kind))
+
     def clear_draft(self, session_id: str, persona_id: str) -> None:
         with self._lock, self._conn:
             self._conn.execute("DELETE FROM action_drafts WHERE session_id=? AND persona_id=?",
@@ -175,6 +181,26 @@ class Store:
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
                 "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, session_hash, persona_id, created, json.dumps(data)))
         return {**data, "id": rid, "kind": kind, "session_hash": session_hash, "persona_id": persona_id,
+                "created_at": created}
+
+    def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
+                        data: dict[str, Any], once_key: str) -> dict[str, Any]:
+        """Insert unless a record with the same (session, persona, once_key) exists; check and insert under one lock."""
+        session_hash = hashlib.sha256(session_id.encode()).hexdigest()[:10]
+        with self._lock, self._conn:
+            for r in self._conn.execute("SELECT * FROM prototype_records WHERE session_hash=? AND kind=? AND "
+                                        "persona_id IS ?", (session_hash, kind, persona_id)).fetchall():
+                d = json.loads(r["data"])
+                if d.get("once_key") == once_key:
+                    return {**d, "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
+                            "persona_id": r["persona_id"], "created_at": r["created_at"], "_existing": True}
+            seq = self._conn.execute("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"] + 1
+            rid, created = f"{prefix}-{1000 + seq}", now_iso()
+            payload = {**data, "once_key": once_key}
+            self._conn.execute(
+                "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
+                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, session_hash, persona_id, created, json.dumps(payload)))
+        return {**payload, "id": rid, "kind": kind, "session_hash": session_hash, "persona_id": persona_id,
                 "created_at": created}
 
     def records(self, persona_id: str | None = None, kind: str | None = None,
