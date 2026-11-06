@@ -16,19 +16,33 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"kill(ing)? my ?self|suicid|end (my|it all|my own) ?(life)?\b|want to die|wanna die|don'?t want to (live|be "
         r"alive|be here anymore)|hurt(ing)? my ?self|no reason to live|matarme|quitarme la vida|suicidar|"
         r"quiero morir|tự tử|muốn chết|(don'?t|dont|do not) (want|wanna) (to )?(be here|exist|wake up|go on)|"
-        r"better off (dead|without me)|no quiero (vivir|estar aqu[ií])", re.I)),
+        r"better off (dead|without me)|ending (it all|my life|things)|end (it|things) all|want to (end it|disappear)|"
+        r"ganas de morir|"
+        r"no quiero (vivir|estar aqu[ií])", re.I)),
     ("poison", re.compile(
+        r"(drank|drunk|ate|eaten|got into)\W+(?:\w+\W+){0,6}(clean\w*|bleach|chemical\w*|pills?|medicine|"
+        r"poison|detergent|pods?|magnets?|batter(y|ies)|antifreeze)|se tom[oó]\W+(?:\w+\W+){0,3}(cloro|"
+        r"limpiador|pastillas)|swallow\w*\W+(?:\w+\W+){0,6}magnets?|"
         r"swallow\w*\W+(?:\w+\W+){0,6}(clean\w*|bleach|chemical\w*|pills?|medicine|poison|detergent|pod|battery|"
         r"batteries)|\bpoison(ed|ing)?\b|overdos|trag[oó]\W+(?:\w+\W+){0,4}(cloro|limpia\w*|pastillas|veneno)", re.I)),
     ("trapped", re.compile(
-        r"stuck in (the|an|my) (elevator|lift)|(elevator|lift)\W+(?:\w+\W+){0,4}stuck|trapped (in|inside|under)|"
+        r"stuck in (the|an|my) (elevator|lift)|(elevator|lift) stopped|(locked|stuck|trapped) in\W+(?:\w+\W+){0,4}"
+        r"(can'?t|cannot) get out|can'?t get out of (the|my) (elevator|lift|room|bathroom)|(elevator|"
+        r"lift)\W+(?:\w+\W+){0,4}stuck|trapped (in|inside|under)|"
         r"atrapad[oa] en el (elevador|ascensor)", re.I)),
     ("structural", re.compile(
+        r"(railing|handrail|balcony)\W+(?:\w+\W+){0,4}(loose|broke|broken|gave way|came off|came loose|wobbl\w*)|"
+        r"almost fell (off|out|over|from)|"
         rf"\b(ceiling|roof|floor|wall|balcony|stairs?|deck)\W+{_W}(collaps\w*|fell (in|down)|falling (in|down)|sag\w*|"
         r"cav(ed|ing) in|caving)|collapsed (ceiling|roof|balcony)|techo se (cay[oó]|derrumb)", re.I)),
     ("medical", re.compile(
+        r"(fell|fallen|has fallen)\W+(?:\w+\W+){0,4}(can'?t|cannot|unable to) (get up|move)|hit (his|her|my|their)"
+        r" head|"
+        r"allergic reaction|anaphyla|epi-?pen|(face|lips?|tongue|throat)\W+(?:\w+\W+){0,2}(swell\w*|closing)|"
+        r"stung\W+(?:\w+\W+){0,8}(allergic|swell\w*)|se cay[oó] y no (se )?puede (levantar|mover)|"
         r"chest pains?|heart attack|(not|isn'?t|stopped|can'?t|cannot) breath(e|ing)|unconscious|unresponsive|"
-        r"passed out|\bcollapsed\b|overdos|seizure|\b(having|had) a stroke\b(?! of)|bleeding (a lot|badly|heavily|"
+        r"passed out|\bcollapsed\b|overdos|seizure|\bstroke\b(?! of (luck|genius))|face (is )?droop\w*|slurr\w*|"
+        r"can'?t feel (her|his|my|their) (arm|leg|face)|bleeding (a lot|badly|heavily|"
         r"won'?t stop)|choking|"
         r"dolor (en el|de) pecho|no respira|inconsciente|se desmay|đau ngực|không thở", re.I)),
     ("personal_safety", re.compile(
@@ -36,23 +50,28 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"someone (is )?(in|inside) my (apartment|unit|home|place)|threat(en|ening)|stalk(ing|er)|"
         r"domestic (violence|abuse)|abus(e|ing|ive) (me|partner)|(hit|hitting|beat|beating|hurt|hurting) "
         r"(me|her|him|them|someone|a child|the kids?)\b|(screaming|yelling)\W+(?:\w+\W+){0,8}(hit|hurt|help)|"
-        r"(don'?t|do not|no longer) feel safe\b(?! (walking|at night))|\b(has|with|pulled) a (gun|knife)|"
+        r"(don'?t|do not|no longer) feel safe\b|\bgun(s|shots?|fire)?\b|shots? fired|\bknife\b|"
+        r"(kill|hurt) me\b|following me|stranger (is )?in (my|the) (apartment|unit|home)|"
+        r"won'?t leave\W+(?:\w+\W+){0,4}scared|i'?m scared|"
         r"\bweapon|attack(ed|ing)? me|"
         r"me (amenaza|golpea|quiere hacer daño)|entraron a (mi|robar)|no me siento segur", re.I)),
     ("gas", re.compile(
         rf"(smel+\w*|odou?r|olor|huel\w*|stink\w*|reek\w*|whiff|leak\w*|hiss\w*|mùi|rò rỉ)\W+{_W}"
         r"(ga+s+|propane|natural gas|gasolina)\b|"
         rf"\b(ga+s+|propane)\b\W+{_W}(smel+\w*|leak\w*|odou?r|hiss\w*|stink\w*)|fuga de gas|olor a gas|huele a gas|"
-        r"khí ga|mùi ga|غاز|煤气|燃气|瓦斯|rotten egg|\bgaz\b|gaz kokusu|odeur de gaz|zapach gazu", re.I)),
+        r"pilot light\W+(?:\w+\W+){0,4}smel\w*|smel\w*\W+(?:\w+\W+){0,6}pilot light|huevo podrido|khí ga|mùi ga|غاز|"
+        r"煤气|燃气|瓦斯|rotten"
+        r" egg|\bgaz\b|gaz kokusu|odeur de gaz|zapach gazu", re.I)),
     ("co", re.compile(
-        r"carbon monoxide|mon[oó]xido|\bco\b ?(alarm|detector|monitor)|(alarm|detector) (for|de) (co|mon[oó]xido)",
+        r"carbon mon\w*|mon[oó]xid\w*|monixide|\bco (thing|sensor)|\bco\b ?(alarm|detector|monitor)|(alarm|detector)"
+        r" (for|de) (co|mon[oó]xido)",
         re.I)),
     ("fire_smoke", re.compile(
         r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b))|\bflames?\b|"
         r"on fire|\bburning\b(?! question)|burnt? (smell|plastic|rubber)|smells? (like |of )?(burn|smoke)|"
         r"\bsmok(e|ing|y|in'?)\b(?! ?(detector|alarm)\b(?!.{0,30}(going off|sounding|won'?t stop|keeps going)))|"
         r"(smoke|fire) (alarm|detector)s? (is |are )?(going off|sounding|won'?t stop|keeps going)|"
-        r"\bhumo\b|\bfuego\b|incendio|quemando|cháy|khói|حريق|دخان|着火|火灾|冒烟", re.I)),
+        r"\bhumo\b|\bfuego\b|incendio|quemando|quemado|cháy|khói|حريق|دخان|着火|火灾|冒烟", re.I)),
     ("electrical", re.compile(
         r"\bspark(s|ed|in'?)?\b|\bsparking\b|chispa|(exposed|bare|loose|hanging|hangin'?) wires?|"
         r"wires?\W+(?:\w+\W+){0,3}(hanging|hangin'?|exposed|sticking out|coming out)|"
@@ -73,7 +92,7 @@ _SPACED = re.compile(r"\b[A-Za-z]([ .*_\-])(?:[A-Za-z]\1){1,}[A-Za-z]\b")  # one
 _POLICY_OR_FIGURATIVE = re.compile(
     r"smoking (allowed|policy|permitted|area|section)|(no|non)[- ]?smoking|smoke[- ]free|allow smoking|can i smoke|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
-    r"dinner)|feel safe (walking|at night|in the parking)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)",
+    r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot",
     re.I)
 _BENIGN_CHIRP = re.compile(r"(smoke|co) (alarm|detector).{0,40}(chirp|beep)\w*.{0,40}batter|batter\w*.{0,40}"
                            r"(smoke|co) (alarm|detector)", re.I)
@@ -94,6 +113,10 @@ def emergency_kind(message: str) -> str | None:
         return "co"  # alarm + symptoms = treat as carbon monoxide
     if _POLICY_OR_FIGURATIVE.search(text):
         text = _POLICY_OR_FIGURATIVE.sub(" ", text)
+    # "Is the parking lot well lit? I don't feel safe walking" asks about lighting; it is not a threat in progress.
+    threat = re.search(r"following|stranger|\bex\b|someone|scared|threat|gun|knife|hit|hurt|kill|break", text, re.I)
+    if not threat and "?" in text and re.search(r"feel safe (walking|at night|in the parking)", text, re.I):
+        text = re.sub(r"feel safe", " ", text, flags=re.I)
     if _BENIGN_CHIRP.search(text) and not re.search(r"smoke (is|coming)|fire|flame|head|dizz|nause", text, re.I):
         return None
     for kind, pat in KINDS:

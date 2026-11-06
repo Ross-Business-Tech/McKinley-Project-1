@@ -3,7 +3,7 @@
  "provisional": true,
  "target": "mock:mock-deterministic-v1",
  "is_mock": true,
- "generated_at": "2026-11-06T09:33:49Z",
+ "generated_at": "2026-11-06T09:38:24Z",
  "note": "PROVISIONAL automated grading. With the MOCK target this measures the backend pipeline (routing, actions, safety net), not language-model quality. Empathy/tone needs human review.",
  "summary": {
   "baseline": {

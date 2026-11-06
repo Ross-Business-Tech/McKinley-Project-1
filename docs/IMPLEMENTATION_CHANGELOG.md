@@ -1,10 +1,26 @@
 # Implementation changelog
 
-Newest first. Branch: `feat/agentic-workflow-gates`, based on `c9c77c1` (the previous AI prototype), which sits one commit ahead of `origin/development`. All commits are **local only**: nothing has been pushed (per the owner's instruction).
+Newest first. Current branch: `feat/workflow-customer-experience`, branched from `feat/agentic-workflow-gates` (which already contains `origin/development`).
 
-Status legend used throughout: **WORKING** · **MOCKED** · **EXPERIMENTAL** · **NOT IMPLEMENTED**
+Status legend used throughout: **WORKING** · **SIMULATED** (prototype store) · **MOCKED** · **EXPERIMENTAL** · **NOT IMPLEMENTED**
 
 ---
+
+## Phase 7: workflow-driven customer experience (branch `feat/workflow-customer-experience`)
+
+| Commit | What changed |
+| --- | --- |
+| `c4dd68e` | Backend action planner mapping every turn to F1–F9. Confirm-before-save prototype records (DEMO-WO/TOUR/TASK), F4 knowledge base with approved-only answers, SMS/email channel rules, Spanish draft templates, validation enforcement, model-timeout fallback. |
+| `e818361` | Customer view `/` (read-back cards, AI disclosure, emergency alert, status list, error and preview states) and staff and demo console `/staff/` (turn inspector, saved requests, F1–F9 coverage, A/B/C comparison, evaluations). 17 recorded journeys for the static preview. |
+| `782383d` | Round-1 review fixes: emergency classifier (`app/emergency.py`), honest consent and corrections, atomic confirm, redaction, UI state system, tap-to-call, EN/ES strings, accessibility. Traceability matrix, five diagrams, journey evaluation. |
+| `907331b` | Round-2 review fixes and regressions: more hazards and fewer false alarms, anchored consent, merged notes, Fair Housing family/religion/disability wording, label-first card grid, unclipped focus rings. |
+| (final commit) | Round-3 review fixes: restored crisis patterns (guns, stalking, stroke signs, poisoning, entrapment), second rooms no longer overwrite the first, bare "no" after sending is a goodbye; docs. |
+
+- **Tests:** backend 123 → **296** (pytest), frontend 22 → **27** (vitest). Lint and typecheck clean; `npm run smoke` passes on `/` and `/staff/` at desktop and phone sizes; axe 0 violations in 10 journey states.
+- **Independent review:** six session-scoped reviewer subagents (UI, UX, resident simulator, prospect simulator, accessibility, backend safety) over three rounds. See `UX_REVIEW.md`, `USABILITY_TEST_RESULTS.md` and `ACCESSIBILITY_REVIEW.md`.
+- **Diagrams:** all five rewritten to match the code (`system-architecture`, `customer-workflows`, `sequence`, `handoff-decision-tree`, `data-access`); 7 Mermaid blocks parse with `mermaid@11.4.1` (scratch install), and a broken control fails.
+- **Evaluation:** the five core cases are preserved (routing now graded on `routed_workflow`). New `app/journey_evals.py`: 17 multi-turn journeys × A/B/C, **PROVISIONAL, mock model**. Results are in `evals/journey_results.md`.
+- **Not done:** live-model runs (cost), real authentication, notifications, telephony; see the remaining tasks in `UX_REVIEW.md`.
 
 ## Phase 6: documentation, diagrams, final review
 - **What:** added

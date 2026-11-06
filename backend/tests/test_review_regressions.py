@@ -418,3 +418,68 @@ def test_more_repairs_and_resident_topics(client):  # B-5, C N4, B N3
     assert chat(client, "the guy upstairs plays music til 3am every night", session="nz")["action"]["kind"] == \
         "staff_handoff"
     assert chat(client, "whats my balance", session="bal")["handoff"]["team"] == "accounting"
+
+
+# ---------------- round 3 ----------------
+
+@pytest.mark.parametrize("msg", ["my grandma fell and she cant get up", "im thinking about ending it all",
+                                 "the carbon monixide thing is going off",
+                                 "bees nest inside the wall, my son is allergic and got stung, his face is swelling",
+                                 "balcony railing came loose, my toddler almost fell",
+                                 "water heater is leaking and the pilot light thing smells funny"])
+def test_round3_hazards(msg):  # C round 3 P0
+    assert emergency_kind(msg), msg
+    assert emergency_kind("water heater is leaking and the pilot light thing smells funny") == "gas"
+
+
+def test_repair_with_credit_request_stays_with_maintenance(client):  # C round 3 P1
+    ready_card(client, "cred")
+    chat(client, "i want a rent credit for this, put that on the request", session="cred")
+    rec = confirm(client, "maintenance_request", session="cred")["record"]
+    assert rec["team"] == "maintenance"
+
+
+def test_unsent_notes_are_merged_and_listed(client):  # C round 3 N1
+    chat(client, "the guy upstairs plays music til 3am every night", session="mg")
+    r = chat(client, "whats my balance", session="mg")
+    msg = next(f["value"] for f in r["action"]["fields"] if f["key"] == "message")
+    assert "music" in msg and "balance" in msg
+    chat(client, "yes send all of it", session="mg")
+    st = chat(client, "whats the status on everything", session="mg")
+    assert any(i["reference"].startswith("DEMO-TASK") for i in st["status_items"])
+
+
+
+R3_CRISES = ["My neighbor is waving a gun", "someone is pointing a gun at my door",
+             "I don't feel safe walking to my car, someone is following me",
+             "I don't feel safe at night because my ex keeps showing up",
+             "my dad's face is drooping, I think it's a stroke", "I heard gunshots", "shots fired outside",
+             "he said he's going to kill me", "there's a stranger in my apartment",
+             "my ex is outside and won't leave, I'm scared", "my mom can't feel her arm and is slurring",
+             "my toddler drank bleach", "kid ate a detergent pod", "child swallowed a magnet",
+             "elevator stopped between floors and I can't get out", "I want to end it", "I want to disappear",
+             "tengo ganas de morir", "mi hijo se tomó cloro", "olor a huevo podrido", "huele a quemado"]
+
+
+@pytest.mark.parametrize("msg", R3_CRISES)
+def test_round3_restored_and_new_crises(msg):  # F round 3 R1
+    assert emergency_kind(msg), msg
+
+
+@pytest.mark.parametrize("msg", ROUND2_BENIGN + ["I'm smoking hot after the gym lol"])
+def test_round3_benign_still_benign(msg):
+    assert emergency_kind(msg) is None, msg
+
+
+def test_second_room_does_not_rewrite_the_first(client):  # F round 3 R2
+    ready_card(client, "rm2")
+    r = chat(client, "also the bathroom faucet drips, can you add that?", session="rm2")
+    issue = next(f["value"] for f in r["action"]["fields"] if f["key"] == "issue")
+    assert "kitchen" in issue.lower() and "bathroom" in issue.lower()
+
+
+def test_bare_no_after_sending_is_a_goodbye(client):  # F round 3 R3
+    ready_card(client, "bn")
+    confirm(client, "maintenance_request", session="bn")
+    r = chat(client, "no", session="bn")
+    assert r["action"] is None and r["records_created"] == []

@@ -240,11 +240,13 @@ def status_items(store: Store | None, resident: Resident | None, persona_id: str
     Only reference, short subject, status and opened date. Entry windows and notes are never included."""
     items: list[StatusItem] = []
     if store:
-        for r in store.records(persona_id=persona_id, kind="maintenance_request", limit=10):
+        for r in store.records(persona_id=persona_id, limit=20):
+            if r["kind"] == "tour_request":
+                continue
             items.append(StatusItem(reference=r["id"], title=r.get("title", "Repair request"),
                                     status=r.get("status_label", "Submitted"), opened=r["created_at"][:10],
                                     source="prototype_store",
-                                    note="Submitted through this assistant (prototype)."))
+                                    note="Sent through this assistant (prototype)."))
     if resident:
         for i in resident.interactions:
             if i.category != "maintenance" or i.status == "closed":
@@ -314,6 +316,14 @@ def _handoff_draft(gate: GateDecision, handoff: HandoffRecommendation | None, ct
         bits = [v["value"] for k, v in earlier.get("fields", {}).items()
                 if k in ("issue", "location", "area", "days", "time", "beds")]
         _set(draft, "earlier", " · ".join(bits) or None, "you_said")
+    if earlier and earlier.get("kind") == "staff_handoff":  # an unsent note is merged, never silently dropped
+        ef = earlier.get("fields", {})
+        if (old_msg := ef.get("message", {}).get("value")) and old_msg != draft["fields"]["message"]["value"]:
+            _set(draft, "message", f"{old_msg} | {draft['fields']['message']['value']}"[:480], "you_said")
+        if (old_topic := earlier.get("topic")) and old_topic != topic:
+            draft["topic"] = f"{old_topic}; {topic}"
+            _set(draft, "topic", f"{draft['topic']}, for the {TEAM_LABEL.get(team, team).lower()} team", "assistant")
+        draft["priority"] = _max_priority(earlier.get("priority"), draft["priority"])
     contact = _ctx_value(ctx, "preferred_contact_channel")
     note = _ctx_value(ctx, "staff_noted_contact_preference")
     pref = "; ".join(x for x in (_prefers(contact, lang), note) if x)
@@ -510,6 +520,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              workflow=_sel("general_inquiry", "Greeting or thanks.")))
 
     # 5. Something already sent in this conversation: change or cancel goes to staff with the reference.
+    bare_no = is_bare_no(msg) or bool(re.fullmatch(r"\s*(no|nope|nah)[\s,.!]*(that'?s (all|it)|thanks?)?[\s.!]*",
+                                                    msg, re.I))
+    if mine and bare_no and not draft:
+        return done(TurnPlan(template=t("small_bye", lang), functions=[], skip_model=True, consumed_by_draft=True,
+                             workflow=_sel("general_inquiry", "Nothing else needed.")))
     if mine and (is_cancel_submitted(msg) or is_change_request(msg) or
                  (is_decline(msg) and not draft) or
                  (re.search(r"\b(change|move|switch|reschedule)\b", msg, re.I) and any(
@@ -521,7 +536,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         ref = typed.group(0).upper() if unknown and typed else f"{WHAT[ref_rec['kind']][lang]} {ref_rec['id']}"
         verb = "cancel" if re.search(r"cancel|never ?mind|don'?t need|anular|cancelar", msg, re.I) else "change"
         return handoff_plan("maint_change", f"{verb.capitalize()} request for {ref_rec['id']} (I-24 rules not "
-                            "approved, staff handle it).", topic=f"{verb.capitalize()} {ref_rec['id']}",
+                            "approved, staff handle it).",
+                            topic=f"{verb.capitalize()} "
+                                  f"{typed.group(0).upper() if unknown and typed else ref_rec['id']}",
                             team="leasing" if ref_rec["kind"] == "tour_request" else None, ref=ref,
                             extra=t("unknown_ref", lang, ref=ref) if unknown else "")
 
@@ -597,7 +614,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     in_maint_draft = bool(draft and draft["kind"] == "maintenance_request")
     scan = _NEG_SEGMENT.sub(" ", effective)  # "bathroom, not kitchen" -> bathroom
     location, entry = extract_location(scan), extract_entry(effective)
-    question_only = msg.strip().endswith("?") and not is_issue_description(msg) and not location and not entry
+    adds_detail = bool(re.search(r"\b(also note|add (that|this)|note that|mention that|tell them)\b", msg, re.I))
+    question_only = msg.strip().endswith("?") and not is_issue_description(msg) and not location and not entry \
+        and not adds_detail
     off_topic = bool(match_faq(msg) or is_tour_request(msg) or question_only)
     answers_draft = in_maint_draft and not off_topic and (location or entry or gate.intent in ("general", "maintenance")
                                                           or len(effective.split()) >= 3)
@@ -624,13 +643,18 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         elif not issue and describes_issue(effective) and (not (_slot_only(effective) and in_maint_draft)
                                                            or is_issue_description(effective)):
             _set(d, "issue", clean[:200], "you_said")
-        elif issue and in_maint_draft and not _slot_only(effective) and is_issue_description(effective) \
+        elif issue and in_maint_draft and not _slot_only(effective) and (is_issue_description(effective)
+                                                                         or adds_detail) \
                 and clean.lower() not in issue.lower():
             _set(d, "issue", (issue + " Also: " + clean)[:400], "you_said")  # new repair details are kept
         old_loc = d["fields"].get("location", {}).get("value")
+        correction = effective != msg or bool(_NEG_SEGMENT.search(msg)) or bool(re.search(r"\binstead\b", msg, re.I))
+        if location and old_loc and old_loc != _tr(location, lang) and not correction:
+            location = None  # a second room goes into the issue text ("Also: ..."), never replaces the first
         if location and old_loc and old_loc != _tr(location, lang) and d["fields"].get("issue"):
             iv = d["fields"]["issue"]["value"]
-            d["fields"]["issue"]["value"] = re.sub(re.escape(old_loc), _tr(location, lang) or old_loc, iv, flags=re.I)
+            d["fields"]["issue"]["value"] = re.sub(rf"\b{re.escape(old_loc)}\b", _tr(location, lang) or old_loc, iv,
+                                                   flags=re.I)
         _set(d, "location", _tr(location, lang), "you_said")
         if not d["fields"].get("location") and (guess := infer_location(effective)):
             _set(d, "location", _tr(guess, lang), "assistant")
@@ -650,7 +674,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         priority = _max_priority(d.get("priority"), handoff.priority if handoff else None)
         if repeat or frustrated or urgent_wording:
             priority = _max_priority(priority, "high")
-        team = d.get("team") if d.get("team") == "management" else (handoff.team if handoff else "maintenance")
+        team = "management" if d.get("team") == "management" or (handoff and handoff.team == "management"
+                                                                  and repeat) else "maintenance"
         if repeat and frustrated:
             team = "management"
         d.update(repeat=repeat, frustrated=frustrated, team=team, priority=priority,
