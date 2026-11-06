@@ -151,10 +151,15 @@ _HISTORY_REF = re.compile(r"again|before|previous|prior|earlier|history|this sum
 _TEXT_PREF = re.compile(r"\btext|messag|written|in writing", re.IGNORECASE)
 
 
+def routed_id(resp: ChatResponse) -> str | None:
+    wf = resp.routed_workflow or resp.workflow
+    return wf.id if wf else None
+
+
 def grade(case: EvalCase, mode: Mode, resp: ChatResponse) -> tuple[list[CriterionResult], str, str]:
     return grade_fields(case, resp.reply, resp.output_checks, resp.recommended_handoff, resp.handoff_category,
                         resp.gate.intent if resp.gate else None,
-                        resp.workflow.id if resp.workflow else None,
+                        routed_id(resp),
                         resp.gate.urgency if resp.gate else None)
 
 
@@ -265,7 +270,7 @@ def run_evals(
                         gate_intent=resp.gate.intent if resp.gate else None,
                         gate_urgency=resp.gate.urgency if resp.gate else None,
                         gate_source=resp.gate.decision_source if resp.gate else None,
-                        workflow_id=resp.workflow.id if resp.workflow else None,
+                        workflow_id=routed_id(resp),
                         safety_notice=resp.safety_notice,
                         recommended_handoff=resp.recommended_handoff, handoff_category=resp.handoff_category,
                         handoff_reason=resp.handoff_reason, model=resp.model, is_mock=resp.is_mock,

@@ -45,6 +45,7 @@ FLAG_REASONS = {
     "context_open_commitment": "Record shows an open item where follow-up is owed.",
     "repeat_with_history": "Message describes a recurring problem and history confirms it.",
     "repeated_low_confidence": "Assistant could not classify the request twice in a row.",
+    "complaint_or_frustration": "Person sounds upset or is complaining (global handoff trigger).",
 }
 
 

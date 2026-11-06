@@ -29,6 +29,6 @@ def chat(req: ChatRequest, state: AppState = Depends(get_state)):
         target = resolve_target(state.deps, req.target)
         # Interactive chat: a provider-reported model mismatch is surfaced as an error, never hidden.
         return run_turn(state.deps, req.message, req.mode, req.persona_id, req.session_id, target=target,
-                        gate_provider=req.gate_provider)
+                        gate_provider=req.gate_provider, channel=req.channel, fallback_on_model_error=True)
     except LLMError as e:
         return llm_error_response(e)

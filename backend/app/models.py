@@ -11,6 +11,10 @@ Mode = Literal["baseline", "prompt_only", "aware"]
 Audience = Literal["prospect", "resident", "unknown"]
 PersonaKind = Literal["prospect", "resident", "unmatched_resident"]
 Verdict = Literal["GOOD", "BAD"]
+# Inbound channel. Phone/voice (F1) has no telephony integration and is not accepted.
+Channel = Literal["web_chat", "sms", "email"]
+# The nine function modules of "McKinley AI Agent Flow.md" (docs/WORKFLOW_TRACEABILITY.md).
+FunctionId = Literal["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
 
 HandoffCategory = Literal[
     "none",
@@ -70,6 +74,7 @@ class ChatRequest(BaseModel):
     target: str | None = Field(default=None, max_length=120, description="provider:model from /api/models")
     gate_provider: Literal["rules", "llm", "jev"] | None = Field(
         default=None, description="Override DECISION_GATE_PROVIDER for this turn (demo/experiments)")
+    channel: Channel = "web_chat"
 
 
 # ---- decision gate / workflow / handoff (pipeline v2) ----------------------------------
@@ -77,7 +82,8 @@ class ChatRequest(BaseModel):
 Intent = Literal["leasing", "maintenance", "renewal", "general"]
 Urgency = Literal["low", "medium", "high", "emergency"]
 GateSource = Literal["rules", "jev", "llm", "mock"]
-WorkflowId = Literal["leasing", "resident_support", "maintenance", "renewal", "human_handoff", "general_inquiry"]
+WorkflowId = Literal["leasing", "tour_request", "faq", "resident_support", "maintenance", "status_lookup", "renewal",
+                     "human_handoff", "general_inquiry", "sms_opt_out"]
 HandoffTeam = Literal["emergency_maintenance", "maintenance", "leasing", "accounting", "management"]
 
 
@@ -172,6 +178,77 @@ class OutputCheck(BaseModel):
     detail: str
 
 
+# ---- customer actions (prototype system of record; see app/actions.py) --------------------------------
+
+ActionKind = Literal["maintenance_request", "tour_request", "staff_handoff"]
+# collecting = still asking questions; ready = read-back shown, waiting for the person to confirm;
+# submitted = a prototype record was actually written; blocked = not allowed for this identity.
+ActionStage = Literal["collecting", "ready", "submitted", "blocked"]
+
+
+class ActionField(BaseModel):
+    key: str
+    label: str
+    value: str | None
+    source: Literal["you_said", "on_file", "assistant", "missing"]
+
+
+class ProposedAction(BaseModel):
+    """What the person can do next. Never claims completion unless `stage == 'submitted'` and `record` is set."""
+
+    kind: ActionKind
+    stage: ActionStage
+    title: str
+    fields: list[ActionField] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    confirm_label: str | None = None
+    note: str  # plain-language statement of what will (or did) happen, including that this is a prototype
+    record: "PrototypeRecord | None" = None
+
+
+class PrototypeRecord(BaseModel):
+    """A row in the clearly-labelled prototype store. Not Yardi, not a real queue; nobody is notified."""
+
+    id: str  # DEMO-WO-1001 / DEMO-TOUR-1001 / DEMO-TASK-1001
+    kind: ActionKind
+    status: Literal["submitted_for_review", "requested", "queued", "urgent_queued"]
+    status_label: str
+    persona_id: str | None
+    session_hash: str
+    created_at: datetime
+    summary: str
+    fields: list[ActionField] = Field(default_factory=list)
+    team: str | None = None
+    priority: str | None = None
+    system: Literal["prototype"] = "prototype"
+
+
+class StatusItem(BaseModel):
+    """One item of a verified resident's request history (F8). No entry windows, no staff notes."""
+
+    reference: str
+    title: str
+    status: str
+    opened: str | None
+    source: Literal["prototype_store", "resident_history"]
+    note: str | None = None
+
+
+class ActionConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    session_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    persona_id: str | None = Field(default=None, max_length=40)
+    kind: ActionKind
+
+
+class ActionResult(BaseModel):
+    ok: bool
+    message: str
+    action: ProposedAction | None = None
+    record: PrototypeRecord | None = None
+    error_code: str | None = None
+
+
 class ChatResponse(BaseModel):
     reply: str
     safety_notice: str | None = None  # deterministic notice shown above the reply (e.g. emergencies)
@@ -198,12 +275,23 @@ class ChatResponse(BaseModel):
     session_id: str
     created_at: datetime
     gate: GateDecision | None = None  # None in baseline (generic) mode
-    workflow: WorkflowSelection | None = None
+    workflow: WorkflowSelection | None = None  # the active flow (may refine the routed one, e.g. leasing -> tour)
+    routed_workflow: WorkflowSelection | None = None  # what the decision gate selected; evals grade this
     maintenance: MaintenanceTriage | None = None
     lead: LeadProfile | None = None
     renewal: RenewalAssessment | None = None
     handoff: HandoffRecommendation | None = None
     pipeline: list[PipelineStep] = Field(default_factory=list)
+    # ---- customer experience layer (pipeline v3) ----
+    channel: Channel = "web_chat"
+    language: Literal["en", "es"] = "en"
+    functions: list[FunctionId] = Field(default_factory=list)
+    reply_source: Literal["model", "template", "template_after_validation", "template_after_model_error"] = "model"
+    action: ProposedAction | None = None
+    records_created: list[PrototypeRecord] = Field(default_factory=list)
+    status_items: list[StatusItem] = Field(default_factory=list)
+    suggested_replies: list[str] = Field(default_factory=list)
+    identity_note: str | None = None  # plain-language identity status for the customer UI
 
 
 class ErrorBody(BaseModel):
@@ -347,3 +435,4 @@ class EvalSummary(BaseModel):
 
 
 GateDecision.model_rebuild()
+ProposedAction.model_rebuild()

@@ -14,6 +14,8 @@ ALWAYS_HUMAN_FLAGS = {
     "emergency_hazard", "human_requested", "sensitive_data_request", "fair_housing_or_legal",
     "financial_or_lease", "voucher_eligibility", "unverified_private_request", "context_repeat_issue",
     "context_open_commitment", "repeat_with_history", "repeated_low_confidence",
+    # "Complaint or upset caller" is a global handoff trigger in McKinley AI Agent Flow.md (I-25 draft).
+    "complaint_or_frustration",
 }
 # Flags an external gate may *add* (it can never remove any flag).
 EXTERNAL_FLAG_VOCAB = [

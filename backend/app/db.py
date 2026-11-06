@@ -29,6 +29,27 @@ CREATE TABLE IF NOT EXISTS gate_decisions (
   data TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_gate_session ON gate_decisions(session_id, mode, persona_id, id);
+-- In-progress customer action drafts (one per session + persona). Values are redacted message slots only.
+CREATE TABLE IF NOT EXISTS action_drafts (
+  session_id TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  data TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (session_id, persona_id)
+);
+-- PROTOTYPE system of record (stands in for Yardi work orders / CRM tour requests / staff queue). Nobody is
+-- notified and nothing leaves this database.
+CREATE TABLE IF NOT EXISTS prototype_records (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL,
+  session_hash TEXT NOT NULL,
+  persona_id TEXT,
+  created_at TEXT NOT NULL,
+  data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_records_persona ON prototype_records(persona_id, kind, seq);
 CREATE TABLE IF NOT EXISTS eval_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TEXT NOT NULL,
@@ -112,6 +133,60 @@ class Store:
         return [{"id": r["id"], "session": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
                  "mode": r["mode"], "persona_id": r["persona_id"],
                  "created_at": r["created_at"], **json.loads(r["data"])} for r in rows]
+
+    # ---- customer action drafts ----
+    def get_draft(self, session_id: str, persona_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute("SELECT kind, data FROM action_drafts WHERE session_id=? AND persona_id=?",
+                                     (session_id, persona_id)).fetchone()
+        return {"kind": row["kind"], **json.loads(row["data"])} if row else None
+
+    def save_draft(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO action_drafts(session_id, persona_id, kind, data, updated_at) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(session_id, persona_id) DO UPDATE SET kind=excluded.kind, data=excluded.data, "
+                "updated_at=excluded.updated_at", (session_id, persona_id, kind, json.dumps(data), now_iso()))
+
+    def clear_draft(self, session_id: str, persona_id: str) -> None:
+        with self._lock, self._conn:
+            self._conn.execute("DELETE FROM action_drafts WHERE session_id=? AND persona_id=?",
+                               (session_id, persona_id))
+
+    # ---- prototype records ----
+    def add_record(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
+                   data: dict[str, Any]) -> dict[str, Any]:
+        """Write a prototype record and return it with its generated id. Raises on any DB error."""
+        session_hash = hashlib.sha256(session_id.encode()).hexdigest()[:10]
+        created = now_iso()
+        with self._lock, self._conn:
+            seq = (self._conn.execute("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"]
+                   + 1)
+            rid = f"{prefix}-{1000 + seq}"
+            self._conn.execute(
+                "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
+                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, session_hash, persona_id, created, json.dumps(data)))
+        return {**data, "id": rid, "kind": kind, "session_hash": session_hash, "persona_id": persona_id,
+                "created_at": created}
+
+    def records(self, persona_id: str | None = None, kind: str | None = None,
+                session_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        sql, args = "SELECT * FROM prototype_records WHERE 1=1", []
+        if persona_id is not None:
+            sql += " AND persona_id=?"
+            args.append(persona_id)
+        if kind is not None:
+            sql += " AND kind=?"
+            args.append(kind)
+        if session_id is not None:
+            sql += " AND session_hash=?"
+            args.append(hashlib.sha256(session_id.encode()).hexdigest()[:10])
+        sql += " ORDER BY seq DESC LIMIT ?"
+        args.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, args).fetchall()
+        return [{**json.loads(r["data"]), "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
+                 "persona_id": r["persona_id"], "created_at": r["created_at"]} for r in rows]
 
     # ---- evals ----
     def create_run(self, targets: list[str], aware_v: str, baseline_v: str, temperature: float | None) -> int:

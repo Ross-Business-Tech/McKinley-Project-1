@@ -25,6 +25,10 @@ LABELS: dict[WorkflowId, str] = {
     "renewal": "Renewal / retention",
     "human_handoff": "Human handoff",
     "general_inquiry": "General inquiry",
+    "tour_request": "Tour request (F5)",
+    "faq": "Property & leasing FAQ (F4)",
+    "status_lookup": "Request status lookup (F8)",
+    "sms_opt_out": "SMS opt-out (F2)",
 }
 
 # Flags that send the whole conversation to the handoff workflow (the assistant explains, staff decide).
@@ -63,6 +67,19 @@ INSTRUCTIONS: dict[WorkflowId, str] = {
         "scheduled, or a ticket was created. Never request or repeat sensitive identifiers. If identity is not "
         "verified, do not discuss account-specific details."
     ),
+    "tour_request": (
+        "Tour request workflow. Collect only what the backend draft asks for. A tour REQUEST goes to the leasing "
+        "team, who pick the time; it is never a booking. Never offer clock times or say a time is available."
+    ),
+    "faq": (
+        "FAQ workflow. Answer ONLY with the approved facts in the backend draft. If it says details are not "
+        "approved or not available, say so plainly and offer the leasing team. Never guess."
+    ),
+    "status_lookup": (
+        "Status lookup workflow. The interface lists the items; summarize at most briefly. Never estimate when a "
+        "repair will happen."
+    ),
+    "sms_opt_out": "SMS opt-out. Confirm the opt-out only.",
     "general_inquiry": (
         "General inquiry workflow. The request is unclear or the person is unidentified. Give a safe, general "
         "answer or ask ONE short clarifying question (e.g. whether they live in a McKinley community or are "

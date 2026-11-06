@@ -312,7 +312,7 @@ def test_extended_cases_route_correctly_on_real_workbook(tmp_path):
             continue
         r = run_turn(st.deps, c.message, "aware", c.persona_id or None, None, use_history=False)
         assert r.gate and r.gate.intent == c.expected_intent, c.id
-        assert r.workflow and r.workflow.id == c.expected_workflow, c.id
+        assert r.routed_workflow and r.routed_workflow.id == c.expected_workflow, c.id
         if c.expected_urgency:
             assert r.gate.urgency == c.expected_urgency, c.id
         if c.expect_handoff is not None:

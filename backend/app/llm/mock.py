@@ -41,8 +41,14 @@ class MockProvider:
         )
         has_history = "repeat_issue_flag:" in turn
         handoff, category, reason = False, "none", ""
+        draft = re.search(r"<backend_draft_reply>(.*?)</backend_draft_reply>", system, re.DOTALL)
 
-        if re.search(r"gas|fire|flood|sparks|smoke", msg):
+        if draft:  # pipeline v3: echo the backend's deterministic draft (the mock is not a language model)
+            reply = draft.group(1).strip()
+            handoff = "human_handoff_required=yes" in system
+            category = "other" if handoff else "none"
+            reason = "Backend gate requires staff" if handoff else ""
+        elif re.search(r"gas|fire|flood|sparks|smoke", msg):
             reply = ("Your safety comes first. Please move to a safe place and call 911 or your community's "
                      "emergency maintenance line now. I can't dispatch anyone from this demo.")
             handoff, category, reason = True, "safety_emergency", "Possible hazard reported"
