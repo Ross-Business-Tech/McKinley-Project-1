@@ -89,6 +89,7 @@ def list_personas(wb: Workbook | None) -> list[Persona]:
                 label=f"{rid} · {first} (synthetic resident)",
                 kind="resident",
                 description=f"Synthetic workbook resident at {res.get('community') or 'unknown community'}.",
+                language="es" if res.get("preferred_language").lower().startswith("span") else "en",
             ))
     return out
 

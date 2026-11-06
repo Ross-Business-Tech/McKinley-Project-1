@@ -1,6 +1,6 @@
 # MVP Architecture
 
-> **Updated 2026-11-05 (pipeline v2).** The chat path now runs a 10-step pipeline with a typed decision gate, workflow selection and structured handoff recommendations. Current, code-verified diagrams: [architecture](diagrams/architecture.md) · [conversation flow](diagrams/conversation-flow.md) · [sequence](diagrams/sequence.md) · [data flow](diagrams/data-flow.md). Design notes: [GATE_DESIGN.md](GATE_DESIGN.md), [DECISIONS.md](DECISIONS.md), [WORKFLOW_REVIEW.md](WORKFLOW_REVIEW.md). The overview diagram below is the original v1 summary.
+> **Updated 2026-11-05 (pipeline v2).** The chat path now runs a 10-step pipeline with a typed decision gate, workflow selection and structured handoff recommendations. Current, code-verified diagrams: [architecture](diagrams/system-architecture.md) · [conversation flow](diagrams/customer-workflows.md) · [sequence](diagrams/sequence.md) · [data flow](diagrams/data-access.md). Design notes: [GATE_DESIGN.md](GATE_DESIGN.md), [DECISIONS.md](DECISIONS.md), [WORKFLOW_REVIEW.md](WORKFLOW_REVIEW.md). The overview diagram below is the original v1 summary.
 
 ```mermaid
 flowchart TD

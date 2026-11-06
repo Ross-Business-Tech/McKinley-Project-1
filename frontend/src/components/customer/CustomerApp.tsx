@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowUp, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowUp, Info, MessageSquareText, Phone, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -8,9 +8,11 @@ import { ApiError, api, loadDemoSnapshot } from "@/lib/api";
 import {
   GUEST,
   type Identity,
+  type Lang,
   type StoredTurn,
+  UI,
+  type UIStrings,
   greeting,
-  identityStatus,
   journeyPersonaIds,
   saveConversation,
   starters,
@@ -20,7 +22,7 @@ import { newSessionId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ActionKind, ActionResult, ChatResponse, Journey } from "@/lib/types";
 
-import { ActionCard } from "./ActionCard";
+import { ActionCard, type CardState } from "./ActionCard";
 
 type Boot =
   | { mode: "loading" }
@@ -32,10 +34,12 @@ interface Msg {
   id: string;
   role: "assistant" | "user";
   text: string;
-  lang?: "en" | "es";
+  lang?: Lang;
   response?: ChatResponse;
   result?: ActionResult;
   error?: { retry: string };
+  failed?: boolean; // user message that never reached the assistant
+  cleared?: string; // assistant message confirming a card of this kind was not sent
 }
 
 let counter = 0;
@@ -72,17 +76,20 @@ export function CustomerApp() {
   const [busy, setBusy] = useState(false);
   const [journey, setJourney] = useState<Journey | null>(null);
   const [step, setStep] = useState(0);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState("");
   const lastAssistantRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputId = useId();
   const statusId = useId();
+  const bannerId = useId();
+  const whoHintId = useId();
 
   useEffect(() => {
     let cancelled = false;
     boot().then((b) => {
       if (cancelled) return;
       setState(b);
-      setMessages([{ id: mid(), role: "assistant", text: greeting(GUEST) }]); // first greeting, AI disclosure (I-01 draft)
+      setMessages([{ id: mid(), role: "assistant", text: greeting(GUEST), lang: "en" }]); // AI disclosure (I-01 draft)
     });
     return () => {
       cancelled = true;
@@ -92,15 +99,17 @@ export function CustomerApp() {
   const reset = useCallback((next: Identity) => {
     setIdentity(next);
     setSessionId(newSessionId());
-    setMessages([{ id: mid(), role: "assistant", text: greeting(next) }]);
+    setMessages([{ id: mid(), role: "assistant", text: greeting(next), lang: next.lang }]);
     setTurns([]);
     setJourney(null);
     setStep(0);
     setDraft("");
   }, []);
 
+  // Keep the newest message (and its buttons) fully above the sticky composer: scroll the page to its end.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    const el = document.scrollingElement ?? document.documentElement;
+    requestAnimationFrame(() => el.scrollTo?.({ top: el.scrollHeight }));
   }, [messages, busy]);
 
   useEffect(() => {
@@ -109,12 +118,9 @@ export function CustomerApp() {
 
   const preview = state.mode === "preview" ? state : null;
   const lastResponse = [...messages].reverse().find((m) => m.response)?.response;
-  const actionIndex = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].response?.action || messages[i].result?.action) return i;
-    }
-    return -1;
-  }, [messages]);
+  const lang: Lang = lastResponse?.language ?? identity.lang;
+  const t = UI[lang];
+  const cardStates = useMemo(() => cardStatesFor(messages), [messages]);
 
   // ---- suggestions -------------------------------------------------------------------------------------------
   const nextStep = journey ? journey.steps[step] : undefined;
@@ -152,34 +158,50 @@ export function CustomerApp() {
       if (s?.kind !== "chat" || s.message !== message) return;
       setMessages((m) => [
         ...m,
-        { id: mid(), role: "user", text: message },
+        { id: mid(), role: "user", text: message, lang: s.response.language },
         { id: mid(), role: "assistant", text: s.response.reply, lang: s.response.language, response: s.response },
       ]);
       setTurns((t) => [...t, { message, response: s.response }]);
+      announce(s.response);
       setStep(i + 1);
       setDraft("");
+      requestAnimationFrame(() => lastAssistantRef.current?.focus()); // the tapped chip is gone; land on the reply
       return;
     }
     setDraft("");
-    setMessages((m) => [...m.filter((x) => !x.error), { id: mid(), role: "user", text: message }]);
+    const userId = mid();
+    setMessages((m) => [...m.filter((x) => !x.error), { id: userId, role: "user", text: message, lang }]);
     setBusy(true);
     try {
       const response = await api.chat({ message, persona_id: identity.id || null, mode: "aware", session_id: sessionId });
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: response.reply, lang: response.language, response }]);
+      setMessages((m) => [
+        ...m.map((x) => (x.id === userId ? { ...x, lang: response.language ?? x.lang } : x)),
+        { id: mid(), role: "assistant", text: response.reply, lang: response.language, response },
+      ]);
       setTurns((t) => [...t, { message, response }]);
+      announce(response);
     } catch (e) {
       const why =
         e instanceof ApiError && e.code === "BACKEND_UNREACHABLE"
           ? "I can't reach the assistant right now, so your message wasn't sent."
           : "Something went wrong on our side, so your message wasn't handled.";
+      const text = `${why} Please try again. In an emergency, call 911.`;
       setMessages((m) => [
-        ...m,
-        { id: mid(), role: "assistant", text: `${why} Please try again. In an emergency, call 911.`, error: { retry: message } },
+        ...m.map((x) => (x.id === userId ? { ...x, failed: true } : x)),
+        { id: mid(), role: "assistant", text, error: { retry: message } },
       ]);
+      setAnnouncement(text);
     } finally {
       setBusy(false);
-      requestAnimationFrame(() => lastAssistantRef.current?.focus());
+      requestAnimationFrame(() => inputRef.current?.focus()); // keep typing where you were (keyboard stays open)
     }
+  }
+
+  function announce(r: ChatResponse) {
+    if (r.safety_notice) return setAnnouncement(""); // the role=alert block announces itself, once
+    const a = r.action;
+    const card = a ? ` ${a.title}: ${a.stage === "submitted" ? (a.record?.status_label ?? "") : UI[r.language ?? "en"].stage[a.stage]}.` : "";
+    setAnnouncement(`${UI[r.language ?? "en"].assistantSaid} ${r.reply}${card}`);
   }
 
   async function confirmAction(kind: ActionKind) {
@@ -187,7 +209,8 @@ export function CustomerApp() {
     if (preview) {
       if (!journey || nextStep?.kind !== "confirm" || nextStep.action_kind !== kind) return;
       const result = nextStep.result;
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result }]);
+      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
+      setAnnouncement(result.message);
       setTurns((t) => [...t, { confirm: kind, result }]);
       setStep(step + 1);
       requestAnimationFrame(() => lastAssistantRef.current?.focus());
@@ -196,7 +219,8 @@ export function CustomerApp() {
     setBusy(true);
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result }]);
+      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
+      setAnnouncement(result.message);
       setTurns((t) => [...t, { confirm: kind, result }]);
     } catch {
       setMessages((m) => [
@@ -214,11 +238,18 @@ export function CustomerApp() {
     setBusy(true);
     try {
       const result = await api.cancelAction(sessionId, identity.id || null, kind);
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.ok ? "Okay, I haven't sent anything. Is there something else I can help with?" : result.message }]);
+      const text = result.ok
+        ? lang === "es"
+          ? "De acuerdo, no envié nada. ¿Le ayudo con algo más?"
+          : "Okay, I haven't sent anything. Is there something else I can help with?"
+        : result.message;
+      setMessages((m) => [...m, { id: mid(), role: "assistant", text, lang, cleared: result.ok ? kind : undefined }]);
+      setAnnouncement(text);
     } catch {
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: "I couldn't update that just now. Nothing has been sent." }]);
     } finally {
       setBusy(false);
+      requestAnimationFrame(() => lastAssistantRef.current?.focus()); // the button that had focus is gone
     }
   }
 
@@ -263,6 +294,7 @@ export function CustomerApp() {
           <select
             id={`${inputId}-who`}
             value={identity.id}
+            aria-describedby={whoHintId}
             onChange={(e) => reset(state.identities.find((i) => i.id === e.target.value) ?? GUEST)}
             className="mk-focus h-11 w-full min-w-0 rounded-md border border-mk-line-strong bg-mk-surface px-3 text-base sm:w-72"
           >
@@ -279,53 +311,75 @@ export function CustomerApp() {
               ) : null;
             })}
           </select>
+          <span id={whoHintId} className="sr-only">
+            Changing this starts a new conversation.
+          </span>
         </div>
       }
     >
       {preview && (
-        <p className="mx-4 mt-3 max-w-2xl rounded-md bg-mk-sent-soft px-4 py-2.5 text-sm text-mk-sent sm:mx-auto sm:w-full">
-          Preview link: this page replays real conversations recorded from the prototype, with made-up data and no live AI.
-          Typing is turned off here. Tap a suggestion to continue.
+        <p id={bannerId} className="mx-4 mt-3 flex max-w-2xl gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-2.5 text-sm text-mk-muted sm:mx-auto sm:w-full">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Preview link: this page replays real conversations recorded from the prototype, with made-up data and no live AI.
+            Typing is turned off here. Tap a suggestion to continue.
+          </span>
         </p>
       )}
-      {identity.kind !== "guest" && (
-        <p className="mx-auto mt-3 w-full max-w-2xl px-4 text-sm text-mk-muted sm:px-0">{identityStatus(identity)}</p>
-      )}
 
-      <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation" className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-4 py-4 sm:px-0">
-        {messages.map((m, i) => (
-          <Message
-            key={m.id}
-            msg={m}
-            focusRef={m === lastAssistant ? lastAssistantRef : undefined}
-            interactive={i === actionIndex}
-            busy={busy}
-            preview={!!preview}
-            nextConfirmKind={nextStep?.kind === "confirm" ? nextStep.action_kind : null}
-            onConfirm={confirmAction}
-            onCancel={cancelAction}
-            onRetry={send}
-          />
-        ))}
-        {busy && (
-          <p role="status" className="text-mk-muted">
-            The assistant is replying…
-          </p>
-        )}
-        <div ref={endRef} />
-      </div>
+      <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-4 py-4 sm:px-0">
+        <h2 id={`${inputId}-conv`} className="sr-only">
+          {t.conversation}
+        </h2>
+        <div className="space-y-4">
+          {messages.map((m, i) => (
+            <Message
+              key={m.id}
+              msg={m}
+              t={UI[m.lang ?? lang]}
+              focusRef={m === lastAssistant ? lastAssistantRef : undefined}
+              cardState={cardStates[i] ?? "current"}
+              busy={busy}
+              preview={!!preview}
+              nextConfirmKind={nextStep?.kind === "confirm" ? nextStep.action_kind : null}
+              onConfirm={confirmAction}
+              onCancel={cancelAction}
+              onRetry={send}
+            />
+          ))}
+          {busy && (
+            <p className="text-mk-muted" aria-hidden>
+              <span className="inline-flex gap-1 align-middle">
+                <span className="size-1.5 animate-pulse rounded-full bg-mk-muted" />
+                <span className="size-1.5 animate-pulse rounded-full bg-mk-muted [animation-delay:150ms]" />
+                <span className="size-1.5 animate-pulse rounded-full bg-mk-muted [animation-delay:300ms]" />
+              </span>{" "}
+              {t.replying}
+            </p>
+          )}
+        </div>
+        {/* One short, polite announcement per reply (the visible transcript is not a live region). */}
+        <p className="sr-only" aria-live="polite">
+          {busy ? t.replying : announcement}
+        </p>
+      </section>
 
       <div className="sticky bottom-0 border-t border-mk-line bg-mk-paper/95 backdrop-blur supports-[backdrop-filter]:bg-mk-paper/85">
         <div className="mx-auto w-full max-w-2xl px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-0">
           {chips.length > 0 && (
-            <div role="group" aria-label="Suggested replies" className="-mx-1 mb-3 flex flex-wrap gap-2 px-1">
+            <div
+              role="group"
+              aria-label={t.suggestions}
+              lang={lang}
+              className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            >
               {chips.map((c) => (
                 <button
                   key={c.label}
                   type="button"
                   disabled={busy}
                   onClick={() => send(c.send)}
-                  className="mk-focus min-h-11 max-w-full rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base text-mk-brand hover:bg-mk-brand-soft disabled:opacity-60"
+                  className="mk-focus min-h-11 shrink-0 rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base whitespace-nowrap text-mk-brand hover:bg-mk-brand-soft disabled:opacity-60 sm:shrink sm:whitespace-normal"
                 >
                   {c.label}
                 </button>
@@ -349,14 +403,16 @@ export function CustomerApp() {
             className="flex items-end gap-2"
           >
             <label htmlFor={inputId} className="sr-only">
-              Message the assistant
+              {t.message}
             </label>
             <textarea
               id={inputId}
+              ref={inputRef}
               rows={1}
               value={draft}
               disabled={!!preview}
-              aria-describedby={statusId}
+              lang={lang}
+              aria-describedby={preview ? `${bannerId} ${statusId}` : statusId}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -364,29 +420,57 @@ export function CustomerApp() {
                   void send(draft);
                 }
               }}
-              placeholder={preview ? "Typing is off in this preview" : "Type your message"}
+              placeholder={preview ? t.previewPlaceholder : t.placeholder}
               maxLength={4000}
               className="mk-focus max-h-40 min-h-11 flex-1 resize-none rounded-md border border-mk-line-strong bg-mk-surface px-3 py-2.5 text-base placeholder:text-mk-muted disabled:bg-mk-draft-soft"
             />
             <button
               type="submit"
               disabled={!!preview || busy || !draft.trim()}
-              className="mk-focus inline-flex size-11 shrink-0 items-center justify-center rounded-md bg-mk-brand text-white hover:bg-mk-brand-hover disabled:opacity-50"
+              className="mk-focus inline-flex size-11 shrink-0 items-center justify-center rounded-md bg-mk-brand text-white hover:bg-mk-brand-hover disabled:bg-mk-line-strong disabled:text-mk-surface"
             >
               <ArrowUp aria-hidden className="size-5" />
-              <span className="sr-only">Send message</span>
+              <span className="sr-only">{t.send}</span>
             </button>
           </form>
-          <p id={statusId} className="mt-2 text-sm text-mk-muted">
-            Prototype with made-up data. In an emergency, call 911.{" "}
+          <p id={statusId} className="mt-2 text-sm text-mk-muted" lang={lang}>
+            {t.footer}{" "}
             <Link href="/staff" prefetch={false} className="mk-focus underline underline-offset-2">
-              Staff and demo console
+              {t.staffLink}
             </Link>
           </p>
         </div>
       </div>
     </Frame>
   );
+}
+
+/** Final visual state of each card in the transcript: only the newest open card is active. */
+function cardStatesFor(messages: Msg[]): CardState[] {
+  const out: CardState[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const a = messages[i].result?.action ?? messages[i].response?.action;
+    if (!a) continue;
+    if (a.stage === "submitted") {
+      out[i] = "current";
+      continue;
+    }
+    let state: CardState = "current";
+    for (let j = i + 1; j < messages.length; j++) {
+      const later = messages[j];
+      if (later.cleared === a.kind || later.response?.action_cleared === a.kind) {
+        state = "declined";
+        break;
+      }
+      const la = later.result?.action ?? later.response?.action;
+      if (la) {
+        state = "superseded";
+        break;
+      }
+    }
+    out[i] = state;
+  }
+  return out;
 }
 
 function Frame({ children, identityControl }: { children: React.ReactNode; identityControl?: React.ReactNode }) {
@@ -406,10 +490,13 @@ function Frame({ children, identityControl }: { children: React.ReactNode; ident
   );
 }
 
+const CALL_KINDS_WITHOUT_MAINTENANCE = new Set(["self_harm", "medical", "personal_safety"]);
+
 function Message({
   msg,
+  t,
   focusRef,
-  interactive,
+  cardState,
   busy,
   preview,
   nextConfirmKind,
@@ -418,8 +505,9 @@ function Message({
   onRetry,
 }: {
   msg: Msg;
+  t: UIStrings;
   focusRef?: React.Ref<HTMLDivElement>;
-  interactive: boolean;
+  cardState: CardState;
   busy: boolean;
   preview: boolean;
   nextConfirmKind: ActionKind | null;
@@ -429,70 +517,105 @@ function Message({
 }) {
   if (msg.role === "user") {
     return (
-      <div className="flex justify-end">
-        <p className="max-w-[85%] rounded-lg rounded-br-sm bg-mk-brand-soft px-4 py-2.5 break-words whitespace-pre-wrap">
-          <span className="sr-only">You said: </span>
+      <div className="flex flex-col items-end" lang={msg.lang}>
+        <p className={cn("max-w-[85%] rounded-lg rounded-br-sm px-4 py-2.5 break-words whitespace-pre-wrap",
+          msg.failed ? "border border-dashed border-mk-attention bg-mk-surface" : "bg-mk-brand-soft")}>
+          <span className="sr-only">{t.youSaid} </span>
           {msg.text}
         </p>
+        {msg.failed && (
+          <p className="mt-1 inline-flex items-center gap-1 text-sm text-mk-attention">
+            <AlertTriangle aria-hidden className="size-4" /> {t.failed}
+          </p>
+        )}
       </div>
     );
   }
   const r = msg.response;
   const action = msg.result?.action ?? r?.action ?? null;
   const emergency = !!r?.safety_notice;
-  // When the reply itself already gives the 911 guidance, show it once, inside the alert.
-  const templateCoversNotice = emergency && /\b911\b/.test(msg.text);
-  const confirmReason =
-    preview && action?.stage === "ready" && nextConfirmKind !== action.kind
-      ? "In this preview you can only continue the recorded conversation."
-      : null;
+  const kind = r?.emergency_kind ?? null;
+  const templateCoversNotice = emergency && /\b(911|988)\b/.test(msg.text);
 
-  return (
-    <div ref={focusRef} tabIndex={-1} lang={msg.lang} className="mk-focus max-w-[95%] rounded-md outline-none">
-      <span className="sr-only">Assistant said: </span>
-      {emergency && (
-        <div role="alert" className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4 text-mk-danger">
-          <p className="flex items-center gap-2 text-lg font-bold">
-            <AlertTriangle aria-hidden className="size-5 shrink-0" />
-            {msg.lang === "es" ? "Si hay peligro, llame al 911 ahora" : "If anyone is in danger, call 911 now"}
-          </p>
-          <p className="mt-1 text-base text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
-        </div>
-      )}
-      {!templateCoversNotice && (
-        <p className={cn("text-base leading-relaxed break-words whitespace-pre-wrap", msg.error && "text-mk-ink")}>{msg.text}</p>
-      )}
-      {msg.error && (
+  if (msg.error) {
+    return (
+      <div ref={focusRef} tabIndex={-1} className="mk-focus max-w-[95%] rounded-lg border border-mk-attention/40 bg-mk-attention-soft p-4 outline-none" role="status">
+        <p className="flex items-start gap-2 text-mk-attention">
+          <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
+          <span className="text-base text-mk-ink">{msg.text}</span>
+        </p>
         <button
           type="button"
           onClick={() => onRetry(msg.error!.retry)}
-          className="mk-focus mt-2 inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-line-strong bg-mk-surface px-4"
+          className="mk-focus mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-line-strong bg-mk-surface px-4"
         >
-          <RotateCcw aria-hidden className="size-4" /> Send again
+          <RotateCcw aria-hidden className="size-4" /> {t.sendAgain}
         </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={focusRef} tabIndex={-1} lang={msg.lang} className="mk-focus max-w-[95%] rounded-md outline-none">
+      <span className="sr-only">{t.assistantSaid} </span>
+      {emergency && (
+        <div role="alert" className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
+          <p className="flex items-start gap-2 text-lg leading-snug font-bold text-mk-danger">
+            <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
+            <span>{r?.safety_heading ?? t.call911}</span>
+          </p>
+          <p className="mt-2 text-base text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            {kind === "self_harm" ? (
+              <>
+                <a href="tel:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
+                  <Phone aria-hidden className="size-5" /> {t.call988}
+                </a>
+                <a href="sms:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-mk-danger bg-mk-surface px-5 text-lg font-bold text-mk-danger">
+                  <MessageSquareText aria-hidden className="size-5" /> {t.text988}
+                </a>
+              </>
+            ) : (
+              <a href="tel:911" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
+                <Phone aria-hidden className="size-5" /> {t.call911}
+              </a>
+            )}
+          </div>
+          {kind && !CALL_KINDS_WITHOUT_MAINTENANCE.has(kind) && <p className="mt-2 text-sm text-mk-muted">{t.noEmergencyLine}</p>}
+        </div>
       )}
+      {!templateCoversNotice && <p className="text-base leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>}
       {r?.status_items && r.status_items.length > 0 && (
-        <ul aria-label="Your open requests" className="mt-3 divide-y divide-mk-line rounded-lg border border-mk-line bg-mk-surface">
-          {r.status_items.map((s) => (
-            <li key={s.reference} className="px-4 py-3">
-              <p className="font-semibold">{s.title}</p>
-              <p className="text-base">{s.status}</p>
-              <p className="text-sm text-mk-muted">
-                Reference {s.reference}
-                {s.opened ? `, opened ${formatDate(s.opened)}` : ""}
-                {s.source === "prototype_store" ? ". Sent through this assistant (prototype)" : ""}
-              </p>
-            </li>
-          ))}
+        <ul aria-label={t.openRequests} className="mt-3 divide-y divide-mk-line rounded-lg border border-mk-line bg-mk-surface">
+          {r.status_items.map((s) => {
+            const owed = /owed/i.test(s.status);
+            return (
+              <li key={s.reference} className="px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">{s.title}</p>
+                  <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium whitespace-nowrap",
+                    owed ? "bg-mk-attention-soft text-mk-attention" : "bg-mk-sent-soft text-mk-sent")}>
+                    {owed && <AlertTriangle aria-hidden className="size-3.5" />}
+                    {owed ? t.followUpOwed : s.status.split(";")[0]}
+                  </span>
+                </div>
+                <p className="text-sm text-mk-muted">
+                  {t.reference} <span className="tabular-nums">{s.reference}</span>
+                  {s.opened ? `, opened ${formatDate(s.opened)}` : ""}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
       {action && (
         <ActionCard
           action={action}
-          interactive={interactive}
+          state={cardState}
+          t={t}
           busy={busy}
+          confirmAvailable={!preview || nextConfirmKind === action.kind}
           cancelAvailable={!preview}
-          confirmDisabledReason={confirmReason}
           onConfirm={() => onConfirm(action.kind)}
           onCancel={() => onCancel(action.kind)}
         />

@@ -29,7 +29,13 @@
         "cost per month",
         "monthly rent",
         "specials",
-        "deals"
+        "deals",
+        "beat",
+        "price match",
+        "match their",
+        "cheaper than",
+        "ballpark",
+        "afford"
       ],
       "status": "live_data_unavailable",
       "source": "D-08 (Yardi live pricing) is not connected",
@@ -177,6 +183,20 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "fees",
+      "label": "fees and deposits",
+      "keywords": [
+        "application fee",
+        "admin fee",
+        "fees",
+        "move-in cost",
+        "move in cost"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 / I-14 not supplied",
       "handoff": true
     }
   ]

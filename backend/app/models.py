@@ -39,6 +39,7 @@ class Persona(BaseModel):
     kind: PersonaKind
     description: str
     synthetic: bool = True
+    language: Literal["en", "es"] = "en"  # preferred language on file (greeting language)
 
 
 class ContextField(BaseModel):
@@ -252,6 +253,8 @@ class ActionResult(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     safety_notice: str | None = None  # deterministic notice shown above the reply (e.g. emergencies)
+    emergency_kind: str | None = None  # gas | co | fire_smoke | electrical | flood | structural | ...
+    safety_heading: str | None = None
     mode: Mode
     audience: Audience
     recommended_handoff: bool
@@ -292,6 +295,7 @@ class ChatResponse(BaseModel):
     status_items: list[StatusItem] = Field(default_factory=list)
     suggested_replies: list[str] = Field(default_factory=list)
     identity_note: str | None = None  # plain-language identity status for the customer UI
+    action_cleared: ActionKind | None = None  # the open card of this kind was cancelled this turn (UI: "Not sent")
 
 
 class ErrorBody(BaseModel):

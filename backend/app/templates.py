@@ -11,8 +11,8 @@ from typing import Literal
 Lang = Literal["en", "es"]
 
 PROTOTYPE_NOTE = {
-    "en": "Prototype: saved in the McKinley demo system only. No one is notified and nothing goes to Yardi.",
-    "es": "Prototipo: se guarda solo en el sistema de demostración. No se notifica a nadie ni se envía a Yardi.",
+    "en": "Prototype: saved in a demo system only. No one is notified.",
+    "es": "Prototipo: se guarda solo en un sistema de demostración. No se avisa a nadie.",
 }
 
 T: dict[str, dict[Lang, str]] = {
@@ -84,10 +84,69 @@ T: dict[str, dict[Lang, str]] = {
               "McKinley, inicie sesión y tomaré los detalles. Si hay peligro, llame al 911 ahora.",
     },
     "maint_change": {
-        "en": "Changes or cancellations to an existing request are handled by a team member, because the rules "
-              "for each request stage haven't been set for the assistant. I've prepared a note for the office.",
-        "es": "Los cambios o cancelaciones de una solicitud los hace un miembro del equipo. Preparé una nota para "
-              "la oficina.",
+        "en": "A team member makes changes to requests that are already sent. I've prepared a note for the office "
+              "that includes {ref}. Send it when you're ready.",
+        "es": "Los cambios a solicitudes ya enviadas los hace un miembro del equipo. Preparé una nota para la oficina "
+              "con {ref}. Envíela cuando quiera.",
+    },
+    "nothing_pending": {
+        "en": "There's nothing waiting to be sent right now. What would you like to do?",
+        "es": "No hay nada pendiente de enviar. ¿Qué le gustaría hacer?",
+    },
+    "reshow": {
+        "en": "Before I send anything: here's the {title} you started earlier. Does it still look right?",
+        "es": "Antes de enviar nada: aquí está la {title} que empezó antes. ¿Sigue siendo correcta?",
+    },
+    "emergency_follow": {
+        "en": "Your urgent note {ref} is saved, but this assistant hasn't sent anyone. If you haven't yet, call your "
+              "community's emergency maintenance line. If anyone feels unwell or is in danger, call 911.",
+        "es": "Su nota urgente {ref} está guardada, pero este asistente no ha enviado a nadie. Si aún no lo hizo, "
+              "llame a la línea de emergencias de mantenimiento. Si alguien se siente mal o corre peligro, "
+              "llame al 911.",
+    },
+    "small_thanks": {
+        "en": "You're welcome. Is there anything else I can help with?",
+        "es": "Con gusto. ¿Le ayudo con algo más?",
+    },
+    "small_hi": {
+        "en": "Hi! What can I help you with today?",
+        "es": "¡Hola! ¿En qué le puedo ayudar hoy?",
+    },
+    "small_bye": {
+        "en": "Thanks for reaching out. Take care!",
+        "es": "Gracias por escribir. ¡Que esté bien!",
+    },
+    "phone_number": {
+        "en": "I don't have McKinley's office phone numbers in this prototype, so I can't give you one. Your "
+              "community's office or McKinley's website will have it. I can also send a note to the office.",
+        "es": "En este prototipo no tengo los teléfonos de las oficinas, así que no puedo darle uno. La oficina de su "
+              "comunidad o el sitio web de McKinley lo tienen. También puedo enviar una nota a la oficina.",
+    },
+    "booking_q": {
+        "en": "I can't book or confirm a specific time. {pref}The leasing team picks the time and confirms it with you"
+              ", so nothing is booked yet.{ref}",
+        "es": "No puedo reservar ni confirmar una hora. {pref}El equipo de arrendamiento elige la hora y se la "
+              "confirma, así que todavía no hay nada reservado.{ref}",
+    },
+    "eviction": {
+        "en": "That sounds really stressful. I can't make decisions about your lease, and nothing you say here changes "
+              "your account. The office can explain where things stand, so I've added your question to the note.",
+        "es": "Eso suena muy estresante. No puedo tomar decisiones sobre su contrato y nada de lo que diga aquí cambia "
+              "su cuenta. La oficina puede explicarle su situación; agregué su pregunta a la nota.",
+    },
+    "sms_opt_in": {
+        "en": "You're subscribed to McKinley assistant texts again. Reply STOP to opt out. (Prototype: no texts are "
+              "actually sent.)",
+        "es": "Volvió a suscribirse a los mensajes del asistente de McKinley. Responda STOP para cancelar. "
+              "(Prototipo: no se envían mensajes reales.)",
+    },
+    "tour_area_updated": {
+        "en": "Updated to {area}. Check it over before you send it.",
+        "es": "Actualizado a {area}. Revísela antes de enviarla.",
+    },
+    "leasing_capture": {
+        "en": "Thanks, I've noted that. I can pass your details to the leasing team as a tour request.",
+        "es": "Gracias, lo anoté. Puedo pasar sus datos al equipo de arrendamiento como solicitud de visita.",
     },
     # ---- emergency (I-17/I-18 conservative placeholder) ----
     "emergency": {
@@ -107,8 +166,8 @@ T: dict[str, dict[Lang, str]] = {
               "reportarlo.",
     },
     "status_some": {
-        "en": "Here's what's open on your record. I don't have repair times yet, because McKinley hasn't set target "
-              "times for the assistant to share. If something has waited too long, I can send a note to the office.",
+        "en": "Here's what's open on your record. I can't give repair times here. If something has waited too long, "
+              "I can send a note to the office.",
         "es": "Esto es lo que está abierto en su historial. Todavía no tengo horarios de reparación para "
               "compartir. Si algo lleva demasiado tiempo, puedo enviar una nota a la oficina.",
     },
@@ -215,14 +274,21 @@ T: dict[str, dict[Lang, str]] = {
     },
     "frustrated": {
         "en": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. A team member should "
-              "look at it. I've written a note with the details so you won't have to start over.",
-        "es": "Lo siento, es frustrante y no debería tener que insistir. Un miembro del equipo debe revisarlo. "
-              "Escribí una nota con los detalles para que no tenga que empezar de nuevo.",
+              "look at it, so I've drafted a note with the details below. Send it and you won't have to start over.",
+        "es": "Lo siento, es frustrante y no debería tener que insistir. Un miembro del equipo debe revisarlo, así que "
+              "preparé abajo una nota con los detalles. Envíela y no tendrá que empezar de nuevo.",
+    },
+    "frustrated_repair": {
+        "en": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. When you send this request "
+              "it will be marked high priority for a manager to review.",
+        "es": "Lo siento, es frustrante y no debería tener que insistir. Cuando envíe esta solicitud quedará marcada "
+              "como prioridad alta para que la revise un gerente.",
     },
     "other_language": {
-        "en": "I can reply in English or Spanish. For other languages, a team member can help. I've prepared a "
-              "note for the office.",
-        "es": "Puedo responder en inglés o español. Para otros idiomas, un miembro del equipo puede ayudarle.",
+        "en": "If this is an emergency, call 911. Si es una emergencia, llame al 911. I can reply in English or "
+              "Spanish. For other languages, a team member can help, and I've prepared a note for the office.",
+        "es": "Si es una emergencia, llame al 911. Puedo responder en inglés o español. Para otros idiomas, un "
+              "miembro del equipo puede ayudarle.",
     },
     # ---- F2 SMS (I-06 draft; compliance must approve) ----
     "sms_opt_out": {
@@ -247,21 +313,26 @@ T: dict[str, dict[Lang, str]] = {
 # I-16 drafts). They state the real outcome and never promise timing.
 CONFIRM: dict[str, dict[Lang, str]] = {
     "maintenance_request": {
-        "en": "Request {id} is submitted for staff review. A team member reviews it before scheduling, and you "
+        "en": "Request {id} is saved for staff review. A team member reviews it before anything is scheduled. You "
               "can ask me for its status anytime.",
-        "es": "La solicitud {id} se envió para revisión del personal. Un miembro del equipo la revisa antes de "
-              "programarla; puede preguntarme por su estado cuando quiera.",
+        "es": "La solicitud {id} quedó guardada para revisión del personal. Un miembro del equipo la revisa antes de "
+              "programar algo. Puede preguntarme por su estado cuando quiera.",
     },
     "tour_request": {
-        "en": "Tour request {id} is sent to the leasing team. It isn't a confirmed booking: the team picks a time "
-              "from your preferences and confirms it with you.",
-        "es": "La solicitud de visita {id} se envió al equipo de arrendamiento. Todavía no es una cita confirmada: "
-              "el equipo elige una hora según sus preferencias y se la confirma.",
+        "en": "Tour request {id} is saved for the leasing team. It isn't a booking yet: the team picks a time from "
+              "your preferences.",
+        "es": "La solicitud de visita {id} quedó guardada para el equipo de arrendamiento. Todavía no es una cita: el "
+              "equipo elige una hora según sus preferencias.",
     },
     "staff_handoff": {
-        "en": "Your note {id} is in the office queue with the details, so you won't have to repeat yourself.",
-        "es": "Su nota {id} está en la cola de la oficina con los detalles, para que no tenga que repetirlos.",
+        "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself.",
+        "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos.",
     },
+}
+
+NO_CONTACT_SUFFIX: dict[Lang, str] = {
+    "en": " This prototype doesn't collect a way to reach you, so please also contact the office directly.",
+    "es": " Este prototipo no recoge sus datos de contacto, así que por favor comuníquese también con la oficina.",
 }
 
 CONFIRM_LABEL: dict[str, dict[Lang, str]] = {

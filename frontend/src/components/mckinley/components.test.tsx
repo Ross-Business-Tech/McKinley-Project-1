@@ -242,9 +242,8 @@ describe("Staff console static demo fallback", () => {
     const user = userEvent.setup();
     render(<StaffConsole />);
 
-    await waitFor(() => expect(screen.getByText(/Static demo — responses were pre-computed/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Recorded demo: no backend runs behind this link/)).toBeInTheDocument());
     await user.click(screen.getByRole("tab", { name: "Model comparison" }));
-    expect(screen.getByText(/Static demonstration: pre-computed/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Message/)).toBeDisabled();
     expect(screen.getByText(/needs the live backend/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Compare responses" })).not.toBeInTheDocument();
@@ -275,6 +274,6 @@ describe("Staff console static demo fallback", () => {
     }));
     render(<StaffConsole />);
     await waitFor(() => expect(screen.getByText(/Backend unavailable: Cannot reach the backend/)).toBeInTheDocument());
-    expect(screen.queryByText(/Static demo — responses/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recorded demo/)).not.toBeInTheDocument();
   });
 });

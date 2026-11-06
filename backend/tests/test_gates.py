@@ -25,6 +25,7 @@ UNKNOWN = GateContext(audience="unknown", identity_verified=False, record_found=
 
 
 def gate_settings(**kw) -> Settings:
+    kw.setdefault("gate_override_enabled", True)
     return Settings(_env_file=None, llm_provider="mock", llm_model="mock-deterministic-v1", **kw)
 
 

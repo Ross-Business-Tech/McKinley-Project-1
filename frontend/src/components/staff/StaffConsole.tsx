@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -7,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatWorkbench } from "@/components/mckinley/ChatWorkbench";
 import { EvalDashboard } from "@/components/mckinley/EvalDashboard";
 import { Diagnostics } from "@/components/mckinley/ResponseDetails";
-import { StaticDemoBanner } from "@/components/mckinley/StatusBar";
 import { ApiError, api, loadDemoSnapshot } from "@/lib/api";
 import { COVERAGE, type CoverageStatus } from "@/lib/coverage";
 import { type StoredTurn, loadConversation } from "@/lib/customer";
@@ -42,14 +42,32 @@ export type StateTone = "normal" | "pending" | "completed" | "unavailable" | "es
 const TONE_CLASS: Record<StateTone, string> = {
   normal: "border-mk-line bg-mk-surface text-mk-ink",
   pending: "border-mk-line-strong bg-mk-draft-soft text-mk-draft",
-  completed: "border-mk-sent/40 bg-mk-sent-soft text-mk-sent",
+  completed: "border-mk-brand/40 bg-mk-brand-soft text-mk-brand",
   unavailable: "border-dashed border-mk-line-strong bg-mk-surface text-mk-muted",
   escalation: "border-mk-attention/40 bg-mk-attention-soft text-mk-attention",
   emergency: "border-mk-danger bg-mk-danger-soft text-mk-danger",
 };
 
 export function StateTag({ tone, children }: { tone: StateTone; children: React.ReactNode }) {
-  return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-sm font-medium", TONE_CLASS[tone])}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-sm font-medium whitespace-nowrap", TONE_CLASS[tone])}>{children}</span>;
+}
+
+const TEAM: Record<string, string> = {
+  emergency_maintenance: "Emergency maintenance",
+  maintenance: "Maintenance",
+  leasing: "Leasing",
+  accounting: "Accounting",
+  management: "Property management",
+};
+
+function teamLabel(t: string): string {
+  return TEAM[t] ?? t.replaceAll("_", " ");
+}
+
+function groupCounts(names: string[]): [string, number][] {
+  const m = new Map<string, number>();
+  for (const n of names) m.set(n, (m.get(n) ?? 0) + 1);
+  return [...m.entries()];
 }
 
 const COVERAGE_TONE: Record<CoverageStatus, { tone: StateTone; text: string }> = {
@@ -83,28 +101,45 @@ export function StaffConsole() {
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-4 py-4 md:px-6">
-        <p className="text-mk-muted">
-          What the assistant decided behind each reply, what it saved, and what is still simulated. Made-up data only.
-          {state && !state.live && " The backend isn't running for this link, so everything here was recorded from it in advance."}
-        </p>
+        <p className="text-mk-muted">What the assistant decided behind each reply, what it saved, and what is still simulated. Made-up data only.</p>
         {error && (
           <p role="alert" className="rounded-md border border-mk-danger bg-mk-danger-soft p-3 text-mk-danger">
             Backend unavailable: {error}
           </p>
         )}
         {state && !state.live && state.snapshot && (
-          <StaticDemoBanner notice={state.snapshot.notice} generatedAt={state.snapshot.generated_at} />
+          <p role="note" className="flex gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
+            <Info aria-hidden className="mt-1 size-4 shrink-0" />
+            <span>
+              Recorded demo: no backend runs behind this link. Everything here was recorded on{" "}
+              {state.snapshot.generated_at.slice(0, 10)} with a mock model (fixed templates, not an AI) and the rules
+              decision gate. Handoffs and saved requests stay in the prototype.
+            </span>
+          </p>
         )}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
           <Tabs defaultValue="inspector">
-            <TabsList className="flex h-auto flex-wrap">
-              <TabsTrigger value="inspector">Conversation inspector</TabsTrigger>
-              <TabsTrigger value="records">Saved requests</TabsTrigger>
-              <TabsTrigger value="coverage">Workflow coverage</TabsTrigger>
-              <TabsTrigger value="compare">Model comparison</TabsTrigger>
-              <TabsTrigger value="evals">Evaluation</TabsTrigger>
-            </TabsList>
+            {/* One scrolling row (never wraps onto the panel); selected tab = 2px underline; 3px focus ring. */}
+            <div className="-mx-4 overflow-x-auto border-b border-mk-line px-4 md:mx-0 md:px-0">
+              <TabsList variant="line" className="h-auto! w-max justify-start gap-0 p-0">
+                {[
+                  ["inspector", "Conversation inspector"],
+                  ["records", "Saved requests"],
+                  ["coverage", "Workflow coverage"],
+                  ["compare", "Model comparison"],
+                  ["evals", "Evaluation"],
+                ].map(([v, label]) => (
+                  <TabsTrigger
+                    key={v}
+                    value={v}
+                    className="mk-focus min-h-11 flex-none px-3 text-base text-mk-muted after:bg-mk-brand focus-visible:border-transparent focus-visible:ring-0 data-active:font-semibold data-active:text-mk-ink"
+                  >
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
             <TabsContent value="inspector">
               <Inspector snapshot={state.snapshot} />
             </TabsContent>
@@ -176,12 +211,12 @@ function Inspector({ snapshot }: { snapshot: DemoSnapshot | null }) {
       )}
       <ol className="space-y-4">
         {turns.map((t, i) => (
-          <li key={i} className="rounded-lg border border-mk-line bg-mk-surface p-4">
+          <li key={i} className="rounded-lg border border-mk-line bg-mk-surface p-4" aria-label={`Step ${i + 1}`}>
             {"message" in t ? (
               <TurnView n={i + 1} message={t.message} r={t.response} />
             ) : (
               <div>
-                <p className="text-sm text-mk-muted">Step {i + 1}: person pressed the confirm button</p>
+                <h3 className="text-sm font-semibold text-mk-muted">Step {i + 1}: person pressed the send button</h3>
                 <p className="mt-1">{t.result.message}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {t.result.record ? (
@@ -223,15 +258,15 @@ export function TurnView({ n, message, r }: { n: number; message: string; r: Cha
       : "pending";
 
   return (
-    <article aria-label={`Step ${n}`}>
-      <p className="text-sm text-mk-muted">Step {n}: the person wrote</p>
+    <article aria-labelledby={`step-${n}-h`}>
+      <h3 id={`step-${n}-h`} className="text-sm font-semibold text-mk-muted">Step {n}: the person wrote</h3>
       <p className="font-medium">&ldquo;{message}&rdquo;</p>
       <p className="mt-2 text-sm text-mk-muted">Assistant replied</p>
       <p lang={r.language}>{r.reply}</p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {emergency && <StateTag tone="emergency">Emergency: safety first</StateTag>}
-        {r.recommended_handoff ? <StateTag tone="escalation">Person should help: {r.handoff?.team ?? r.handoff_category}</StateTag> : <StateTag tone="normal">Assistant can handle</StateTag>}
+        {r.recommended_handoff ? <StateTag tone="escalation">Person should help: {teamLabel(r.handoff?.team ?? r.handoff_category)}</StateTag> : <StateTag tone="normal">Assistant can handle</StateTag>}
         {r.action && (
           <StateTag tone={actionTone}>
             {r.action.title}: {r.action.stage === "submitted" ? `saved ${r.action.record?.id}` : r.action.stage}
@@ -285,8 +320,11 @@ export function TurnView({ n, message, r }: { n: number; message: string; r: Cha
         <Fact label="Account facts used (names only)">
           {r.source_context_fields.length ? (
             <ul className="text-sm">
-              {r.source_context_fields.map((f) => (
-                <li key={f}>{f.split(" ← ")[0]}</li>
+              {groupCounts(r.source_context_fields.map((f) => f.split(" ← ")[0])).map(([name, n]) => (
+                <li key={name}>
+                  {name.replaceAll("_", " ")}
+                  {n > 1 ? ` (${n})` : ""}
+                </li>
               ))}
             </ul>
           ) : (
@@ -296,7 +334,7 @@ export function TurnView({ n, message, r }: { n: number; message: string; r: Cha
         <Fact label="Handoff">
           {r.handoff ? (
             <>
-              {r.handoff.team}, {r.handoff.priority} priority
+              {teamLabel(r.handoff.team)}, {r.handoff.priority} priority
               <span className="block text-sm text-mk-muted">{r.handoff.delivery_note}</span>
             </>
           ) : (
@@ -352,8 +390,9 @@ function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | n
       {rows === null && !err && <p role="status">Loading…</p>}
       {rows && rows.length === 0 && <p className="rounded-md border border-dashed border-mk-line-strong p-4 text-mk-muted">No requests saved yet.</p>}
       {rows && rows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-mk-line bg-mk-surface">
-          <table className="w-full min-w-[44rem] text-left">
+        <div tabIndex={0} role="region" aria-label="Saved requests table (scrolls sideways on small screens)"
+          className="mk-focus overflow-x-auto rounded-lg border border-mk-line bg-mk-surface">
+          <table className="w-full min-w-[48rem] text-left">
             <caption className="sr-only">Prototype records, newest first</caption>
             <thead className="border-b border-mk-line text-sm text-mk-muted">
               <tr>
@@ -373,7 +412,7 @@ function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | n
                   <td className="px-3 py-2">
                     <StateTag tone={r.status === "urgent_queued" ? "emergency" : r.kind === "staff_handoff" ? "escalation" : "completed"}>{r.status_label}</StateTag>
                   </td>
-                  <td className="px-3 py-2">{r.team ?? ""}{r.priority ? `, ${r.priority}` : ""}</td>
+                  <td className="px-3 py-2">{r.team ? teamLabel(r.team) : ""}{r.priority ? `, ${r.priority}` : ""}</td>
                   <td className="px-3 py-2">{r.persona_id || "Not signed in"}</td>
                   <td className="px-3 py-2 text-sm">{r.summary}</td>
                 </tr>

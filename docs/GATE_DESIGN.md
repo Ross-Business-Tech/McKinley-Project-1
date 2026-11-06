@@ -2,7 +2,7 @@
 
 Status: rules gate **WORKING** (default). LLM gate **WORKING** through the provider abstraction, but exercised only with the mock provider in this repo, because no OpenRouter key was configured during development. Jev gate **EXPERIMENTAL**: the adapter is built from public docs and tested only against mocked HTTP.
 
-Code: `backend/app/gates/` · tests: `backend/tests/test_gates.py` · diagrams: [conversation-flow](diagrams/conversation-flow.md), [sequence](diagrams/sequence.md)
+Code: `backend/app/gates/` · tests: `backend/tests/test_gates.py` · diagrams: [conversation-flow](diagrams/customer-workflows.md), [sequence](diagrams/sequence.md)
 
 ## Interface
 

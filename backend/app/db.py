@@ -148,6 +148,14 @@ class Store:
                 "ON CONFLICT(session_id, persona_id) DO UPDATE SET kind=excluded.kind, data=excluded.data, "
                 "updated_at=excluded.updated_at", (session_id, persona_id, kind, json.dumps(data), now_iso()))
 
+    def take_draft(self, session_id: str, persona_id: str, kind: str) -> dict[str, Any] | None:
+        """Atomically remove and return the draft, so concurrent confirms can write at most one record."""
+        with self._lock, self._conn:
+            row = self._conn.execute(
+                "DELETE FROM action_drafts WHERE session_id=? AND persona_id=? AND kind=? RETURNING kind, data",
+                (session_id, persona_id, kind)).fetchone()
+        return {"kind": row["kind"], **json.loads(row["data"])} if row else None
+
     def clear_draft(self, session_id: str, persona_id: str) -> None:
         with self._lock, self._conn:
             self._conn.execute("DELETE FROM action_drafts WHERE session_id=? AND persona_id=?",

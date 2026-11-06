@@ -18,6 +18,9 @@ from app.actions import TurnPlan, identity_note, plan_turn, resident_for
 from app.config import Settings
 from app.context import Workbook
 from app.db import Store
+from app.emergency import emergency_kind
+from app.emergency import heading as emergency_heading
+from app.emergency import notice as emergency_notice
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
 from app.intake import detect_language
@@ -54,7 +57,9 @@ from app.workflows import (
     workflow_prompt_section,
 )
 
-_TAG = re.compile(r"</?\s*(safe_context|customer_message|system|facts)\s*>", re.IGNORECASE)
+# Any tag-like markup is removed from user text, so it can never imitate a backend delimiter (<safe_context>,
+# <customer_message>, <backend_draft_reply>, ...). Ordinary "<3" or "a < b" are not tags and survive.
+_TAG = re.compile(r"</?\s*[A-Za-z_][\w:-]*(?:\s[^<>]*)?/?\s*>")
 
 
 @dataclass
@@ -295,12 +300,16 @@ def run_turn(
                 "text_fallback": "Model ignored JSON contract; raw text used, no model handoff signal"}
         [result.parse_mode],
     ))
-    if plan and plan.records:  # a completion claim is true when this turn actually wrote a prototype record
+    if plan and plan.records and reply_source != "model":  # backend template describing a record it really wrote
         ids = ", ".join(r.id for r in plan.records)
         checks = [c.model_copy(update={"passed": True, "detail": f"Completion backed by prototype record {ids}"})
                   if c.code == "no_false_action_claim" and not c.passed else c for c in checks]
     reply = redact(raw_reply)
-    safety_notice = EMERGENCY_NOTICE if gate and gate.urgency == "emergency" else None
+    ekind = emergency_kind(msg) if gate and gate.urgency == "emergency" else None
+    if gate and gate.urgency == "emergency":
+        safety_notice = emergency_notice(ekind, lang) if ekind else EMERGENCY_NOTICE
+    else:
+        safety_notice = None
     failed = [c.code for c in checks if not c.passed]
     unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
@@ -316,8 +325,9 @@ def run_turn(
     handoff = None
     if gate and workflow:
         handoff = build_handoff(gate, workflow, ctx, out.recommended_handoff, out.handoff_reason, triage, lead)
-        if handoff is None and plan and plan.handoff:
-            handoff = plan.handoff
+        if plan and plan.handoff:  # the planner's routing (team, category) is what the customer's note shows
+            handoff = plan.handoff.model_copy(update={"reasons": list(dict.fromkeys(
+                [*plan.handoff.reasons, *(handoff.reasons if handoff else [])]))})
         staff_recs = [r for r in (plan.records if plan else []) if r.kind == "staff_handoff"]
         if handoff and staff_recs:
             handoff = handoff.model_copy(update={"delivery_note": (
@@ -356,6 +366,8 @@ def run_turn(
     return ChatResponse(
         reply=reply,
         safety_notice=safety_notice,
+        emergency_kind=ekind,
+        safety_heading=emergency_heading(ekind, lang) if safety_notice else None,
         mode=mode,
         audience=audience,  # type: ignore[arg-type]
         recommended_handoff=recommended,
@@ -398,4 +410,6 @@ def run_turn(
         status_items=plan.status_items if plan else [],
         suggested_replies=plan.chips if plan else [],
         identity_note=identity_note(full_ctx),
+        action_cleared=next((f.split(":", 1)[1] for f in (plan.extra_flags if plan else [])  # type: ignore[misc]
+                             if f.startswith("declined:")), None),
     )

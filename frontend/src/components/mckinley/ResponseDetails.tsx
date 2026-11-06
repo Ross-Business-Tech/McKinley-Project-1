@@ -55,7 +55,7 @@ export function HandoffCard({ h, noWorkOrder }: { h: HandoffRecommendation; noWo
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-1">
-      <h5 className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</h5>
+      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
       {children}
     </section>
   );

@@ -7,6 +7,7 @@ export type Audience = "prospect" | "resident" | "unknown";
 export type Verdict = "GOOD" | "BAD";
 
 export interface Persona {
+  language?: "en" | "es";
   id: string;
   label: string;
   kind: "prospect" | "resident" | "unmatched_resident";
@@ -183,6 +184,9 @@ export interface ChatResponse {
   status_items?: StatusItem[];
   suggested_replies?: string[];
   identity_note?: string | null;
+  action_cleared?: ActionKind | null;
+  emergency_kind?: string | null;
+  safety_heading?: string | null;
 }
 
 export type Channel = "web_chat" | "sms" | "email";

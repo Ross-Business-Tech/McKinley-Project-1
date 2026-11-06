@@ -10,20 +10,38 @@ from app.models import OutputCheck, PolicySignal
 
 # ---- redaction ---------------------------------------------------------------
 
-_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+\s?(?:@|\(at\)|\[at\]| at )\s?[A-Za-z0-9-]+(?:\s?(?:\.|\(dot\)|\[dot\]| dot )"
+                    r"\s?[A-Za-z0-9-]+)*\s?(?:\.|\(dot\)|\[dot\]| dot )\s?(?:com|net|org|edu|gov|io|co|us|info)\b",
+                    re.IGNORECASE)
+_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b|(?:ssn|social security|social|seguro social)\D{0,15}"
+                  r"\d{3}[ -]?\d{2}[ -]?\d{4}\b", re.IGNORECASE)
 _CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
-_PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-])?\b\d{3}[ .-]\d{4}\b")
+_PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-]?)\d{3}[ .-]?\d{4}\b|\b\d{3}[ .-]\d{4}\b")
 _DOB = re.compile(
-    r"\b(?:dob|date of birth|born on)\b[:\s]*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}", re.IGNORECASE
+    r"\b(?:dob|date of birth|born(?: on)?|birthday|nac[ií]\w*)\b[:\s]*\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}", re.IGNORECASE
 )
+
+
+def _luhn(digits: str) -> bool:
+    total, alt = 0, False
+    for ch in reversed(digits):
+        d = int(ch)
+        if alt:
+            d = d * 2 - 9 if d > 4 else d * 2
+        total, alt = total + d, not alt
+    return total % 10 == 0
+
+
+def _card_sub(m: re.Match[str]) -> str:
+    digits = re.sub(r"\D", "", m.group(0))
+    return "[card number redacted]" if 13 <= len(digits) <= 19 and _luhn(digits) else m.group(0)
 
 
 def redact(text: str) -> str:
     """Mask contact details and sensitive identifiers. Order matters: SSN/card before phone."""
     text = _EMAIL.sub("[email redacted]", text)
     text = _SSN.sub("[SSN redacted]", text)
-    text = _CARD.sub("[card number redacted]", text)
+    text = _CARD.sub(_card_sub, text)
     text = _DOB.sub("[DOB redacted]", text)
     text = _PHONE.sub("[phone redacted]", text)
     return text
@@ -31,9 +49,11 @@ def redact(text: str) -> str:
 
 def contains_pii(text: str) -> list[str]:
     found = []
-    for name, pat in (("email", _EMAIL), ("ssn", _SSN), ("card", _CARD), ("phone", _PHONE), ("dob", _DOB)):
+    for name, pat in (("email", _EMAIL), ("ssn", _SSN), ("phone", _PHONE), ("dob", _DOB)):
         if pat.search(text):
             found.append(name)
+    if any(_card_sub(m) != m.group(0) for m in _CARD.finditer(text)):
+        found.insert(2, "card")
     return found
 
 
@@ -66,26 +86,12 @@ def sanitize_field(text: str, max_len: int = 120) -> str | None:
 
 _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
     (
-        "emergency_hazard",
-        "safety_emergency",
-        re.compile(
-            r"smell(s|ing)? (like |of )?(gas|smoke|burning)|gas (leak|smell)|\bfire\b|"
-            r"smoke (is )?(coming|filling|pouring)|(smoke|fire|co) (alarm|detector) (is )?(going off|sounding|"
-            r"won'?t stop)|\bsparks?\b|\bsparking\b|electrical (burning|fire)|burning smell|"
-            r"\bflood(ing|ed)?\b(?! (zone|insurance|plain))|water (is )?(pouring|everywhere)|"
-            r"carbon monoxide|\bco alarm\b|can'?t breathe|ceiling (collapsed|caving)|"
-            r"olor a (gas|humo|quemado)|huele a (gas|humo|quemado)|fuga de gas|\bincendio\b|\bfuego\b|\bhumo\b|"
-            r"\bchispas?\b|inundaci[oó]n|inundad[oa]|se est[aá] quemando|\bmon[oó]xido\b",
-            re.IGNORECASE,
-        ),
-        "Message describes a possible acute hazard; emergency channels must be prioritized.",
-    ),
-    (
         "human_requested",
         "human_requested",
         re.compile(
             r"(talk|speak|connect)( me)? (to|with) (a |an |the )?(person|human|real person|someone|manager|"
-            r"agent|staff|representative)|\b(human|real person) please\b|can someone (call|explain|help)",
+            r"agent|staff|representative)|\b(human|real person) please\b|can someone (call|explain|help)|"
+            r"hablar con (una persona|alguien|un humano|el gerente|un agente)|nói chuyện với",
             re.IGNORECASE,
         ),
         "Resident or prospect asked for a person.",
@@ -117,7 +123,9 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "financial_or_lease",
         re.compile(
             r"payment plan|can'?t (afford|pay)|late fee|dispute|refund|security deposit|break (my|the) lease|"
-            r"renewal (offer|price|cost|rate)|rent increase|worried about the cost",
+            r"renewal (offer|price|cost|rate)|rent increase|worried about the cost|kick (me|us) out|"
+            r"no (puedo|me alcanza)\W+(?:\w+\W+){0,3}(pagar|la renta)|sube la renta|aumento de (la )?renta|"
+            r"plan de pago|desalojo|me van a (echar|sacar)",
             re.IGNORECASE,
         ),
         "Financial or lease-term question cannot be decided by the assistant.",
@@ -145,8 +153,13 @@ def normalize_for_matching(text: str) -> str:
 
 
 def pre_model_gates(message: str) -> list[PolicySignal]:
+    from app.emergency import LABEL, emergency_kind
+
     message = normalize_for_matching(message)
-    return [
+    kind = emergency_kind(message)
+    emergency = [PolicySignal(code="emergency_hazard", category="safety_emergency",
+                              detail=f"{LABEL[kind]}: emergency channels must be prioritized.")] if kind else []
+    return emergency + [
         PolicySignal(code=code, category=cat, detail=detail)  # type: ignore[arg-type]
         for code, cat, pat, detail in _GATES
         if pat.search(message)
@@ -169,11 +182,25 @@ _ACTION_CLAIMS = re.compile(
     rf"\bI(?:{_APOS}ll| will) (?:go ahead and |now )?(?:call|text|email|notify|schedule|book|escalate|connect|"
     r"pass|forward|submit|send|arrange|contact|reach out|file|create|open|set up|put in|let (?:the|our) \w+ know)\b|"
     rf"\b(?:we|they|the team|someone|staff){_APOS}?(?:ll| will) (?:reach out|contact you|call you|text you|"
-    r"email you|follow up with you|be in touch|get back to you|send you)\b",
+    r"email you|follow up with you|be in touch|get back to you|send you)\b|"
+    r"\b(?:a |the |our )?(?:tech(?:nician)?|plumber|electrician|maintenance|someone|somebody|help|staff|"
+    r"the (?:on-call|team|office|manager)|on-call \w+)(?: is| are|'s)? (?:coming|on (?:the|their|its) way|"
+    r"heading (?:over|your way)|be there|come by|stop by|dispatched)\b|"
+    r"\bwill (?:come|be there|be by|stop by|arrive|call you|text you|reach out)\b|"
+    r"\b(?:has|have) been (?:notified|alerted|informed|assigned|scheduled|booked|confirmed|dispatched|told)\b|"
+    r"\b(?:is|was|are|were) (?:confirmed|scheduled|booked|assigned) (?:for|to|on)\b|"
+    rf"\bI(?:{_APOS}ve| have)? (?:let|told|informed|logged|added|reached out to|looped in)\b|"
+    rf"\bwe(?:{_APOS}ve| have) (?:booked|scheduled|confirmed|notified|sent|logged)\b|"
+    r"\b(?:all |it'?s |that'?s )?taken care of\b|\bassigned to\b|\bwithin \d+ (?:minutes|hours|days|business days)\b|"
+    r"\bconfirmad[oa]\b|\bprogramad[oa]\b|\benvi[eé] (?:su|la|el)\b|\ben camino\b|\ble (?:llamaremos|"
+    r"escribiremos)\b|\bhemos (?:programado|enviado|confirmado|agendado)\b|\bagendad[oa]\b",
     re.IGNORECASE,
 )
-_PRICE = re.compile(r"\$\s?\d[\d,]*(?:\.\d{2})?")
-_CLOCK_TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:a\.?m\.?|p\.?m\.?)\b", re.IGNORECASE)
+
+_PRICE = re.compile(r"\$\s?\d[\d,]*(?:\.\d{2})?|\b\d[\d,]*(?:\.\d{2})? ?(?:dollars|usd|d[oó]lares)\b|"
+                    r"\b\d{1,2} ?% ?off\b", re.IGNORECASE)
+_CLOCK_TIME = re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:a\.?m|p\.?m)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\bnoon\b|"
+                         r"\bmidnight\b", re.IGNORECASE)
 _RISKY_DIY = re.compile(
     r"disassembl|take apart|remove the (cartridge|valve|panel|cover)|unscrew the|replace the (washer|cartridge)|"
     r"shut off the (gas|breaker)|open the (electrical|breaker) panel|recharge (the )?refrigerant|"
@@ -183,7 +210,8 @@ _RISKY_DIY = re.compile(
 
 
 _OFFER = re.compile(
-    r"\b(discount|waive[ds]?|waiver|concession|free month|price match|lock in (your|a) (rate|price)|"
+    r"\b(discount|waive[ds]?|waiver|concession|free month|month(s)? (is |are )?free|price match|promo\w*|"
+    r"lock in (your|a) (rate|price)|"
     r"lower (your|the) rent|reduce (your|the) rent|guarantee[ds]?)\b",
     re.IGNORECASE,
 )
