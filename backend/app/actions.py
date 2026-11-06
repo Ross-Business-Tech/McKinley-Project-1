@@ -283,7 +283,7 @@ def _handoff_draft(gate: GateDecision, handoff: HandoffRecommendation | None, ct
     draft: dict[str, Any] = {"fields": {}, "team": team, "priority": handoff.priority if handoff else "normal",
                              "category": category, "topic": topic,
                              "summary": handoff.summary if handoff else f"{gate.audience} · {gate.intent}"}
-    _set(draft, "topic", f"{topic} → {TEAM_LABEL.get(team, team)}", "assistant")
+    _set(draft, "topic", f"{topic}, for the {TEAM_LABEL.get(team, team).lower()} team", "assistant")
     snippet = redact(msg)
     _set(draft, "message", (snippet[:157] + "…") if len(snippet) > 160 else snippet, "you_said")
     _set(draft, "who", _who(ctx), "on_file" if _verified(ctx) else "assistant")
@@ -421,7 +421,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             if store:
                 store.save_draft(session_id, pkey, "staff_handoff", {**hd, "lang": lang})
             plan.action, plan.force_handoff, plan.handoff = _proposed("staff_handoff", hd, lang), True, handoff
-            plan.template = t("frustrated", lang) + " " + plan.template
+            plan.template = t("frustrated", lang) + " " + t("status_some_short" if items else "status_none", lang)
+            plan.chips = []
             plan.functions.append("F9")
         return done(plan)
 
@@ -498,7 +499,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     in_tour_draft = bool(draft and draft["kind"] == "tour_request")
     tour_slots = {"area": extract_area(msg), "days": extract_days(msg), "time": extract_time_of_day(msg),
                   "beds": extract_beds(msg)}
-    if not is_resident and (is_tour_request(msg) or (in_tour_draft and any(tour_slots.values()))):
+    answers_area = bool(in_tour_draft and draft and _missing("tour_request", draft)[:1] == ["area"]
+                        and len(msg.strip()) <= 40 and not is_staff_request(msg))
+    if not is_resident and (is_tour_request(msg) or (in_tour_draft and (any(tour_slots.values()) or answers_area))):
         d = draft if in_tour_draft else {"fields": {}}
         assert d is not None
         was_ready = in_tour_draft and not _missing("tour_request", d)
@@ -506,6 +509,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             _set(d, "area", area, "on_file")
         if not d["fields"].get("beds") and (beds := _ctx_value(ctx, "desired_floor_plan")):
             _set(d, "beds", beds.replace("two-bed", "2 beds"), "on_file")
+        if (in_tour_draft and _missing("tour_request", d)[:1] == ["area"] and not any(tour_slots.values())
+                and 1 < len(msg.strip()) <= 40 and not is_tour_request(msg)):
+            tour_slots["area"] = msg.strip().strip(".!?").title()  # bare answer to "which city or community?"
         changed = [k for k, v in tour_slots.items() if _set(d, k, v, "you_said")]
         d.update(team="leasing", priority="normal", category="leasing_follow_up",
                  summary=f"Tour request from {_who(ctx).lower()}.")
@@ -519,6 +525,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             key, chips = ("tour_updated" if was_ready and changed else "tour_ready"), []
         faq = match_faq(msg)
         prefix = _faq_text(faq, lang) + " " if faq else ""
+        if not in_tour_draft and key in ("tour_ask_days", "tour_ask_time"):
+            prefix += t("tour_start", lang) + " "
         return done(TurnPlan(template=prefix + t(key, lang), functions=["F5"] + (["F4"] if faq else []),
                              action=_proposed("tour_request", d, lang), chips=chips,
                              consumed_by_draft=in_tour_draft and not is_tour_request(msg),
@@ -609,7 +617,7 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
     store.clear_draft(session_id, pkey)
     action = _proposed(kind, draft, lang).model_copy(update={
         "stage": "submitted", "record": rec, "confirm_label": None, "missing": [],
-        "note": rec.status_label + ". " + PROTOTYPE_NOTE[lang]})
+        "note": PROTOTYPE_NOTE[lang]})
     return ActionResult(ok=True, message=CONFIRM[kind][lang].format(id=rec.id), action=action, record=rec)
 
 

@@ -1,4 +1,6 @@
 import type {
+  ActionKind,
+  ActionResult,
   ApiErrorBody,
   ChatRequest,
   ChatResponse,
@@ -16,6 +18,7 @@ import type {
   Mode,
   ModelTarget,
   Persona,
+  PrototypeRecord,
   SafeContext,
   Verdict,
 } from "./types";
@@ -90,6 +93,12 @@ export const api = {
   evaluateGates: (providers: GateProvider[]) =>
     request<GateEvalResponse>("/api/gates/evaluate", { method: "POST", body: JSON.stringify({ providers }) }),
   gateLog: (limit = 50) => request<GateLogEntry[]>(`/api/gates/log?limit=${limit}`),
+  /** The body names the session and kind only; the backend saves its own server-side draft. */
+  confirmAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
+    request<ActionResult>("/api/actions/confirm", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
+  cancelAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
+    request<ActionResult>("/api/actions/cancel", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
+  prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`),
 };
 
 /** Root-relative static snapshot served with the site (used when the backend is unreachable). */

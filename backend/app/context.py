@@ -208,7 +208,9 @@ def detect_topics(text: str) -> list[str]:
                 topics.append(topic)
                 break
     generic_maint = re.search(r"broken|repair|fix|maintenance|work order|not working|stopped|no funciona|"
-                              r"roto|reparar|mantenimiento|no calienta", t)
+                              r"roto|reparar|mantenimiento|no calienta|chirp|beep|smoke detector|outlet|"
+                              r"light (is out|won'?t)|lock (is|won'?t|sticks)|window (won'?t|is stuck)|ceiling|mold|"
+                              r"door (won'?t|is stuck|sticks)", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics
@@ -313,6 +315,8 @@ def build_resident_context(res: Resident, message: str, persona_id: str) -> Safe
             f"Interactions[{i.interaction_id}]")
     if msg_topics:
         maint_related = [i for i in relevant if i.category == "maintenance"]
+        if msg_topics <= {"maintenance_general"}:  # generic wording: "related" needs a shared word
+            maint_related = [i for i in maint_related if _shares_word(message, i.subject)]
         open_followups = [i for i in relevant if i.follow_up_needed and i.status == "open"]
         add("related_history_count", str(len(relevant)) if relevant else "0",
             "Interactions (topic-matched count)")
@@ -337,6 +341,17 @@ def build_resident_context(res: Resident, message: str, persona_id: str) -> Safe
             "Interactions are a sample of history and may be incomplete.",
         ],
     )
+
+
+_STOP = {"again", "still", "there", "about", "with", "from", "this", "that", "have", "keeps", "not", "working",
+         "broken", "repair", "please", "after", "before", "when", "will"}
+
+
+def _shares_word(a: str, b: str) -> bool:
+    """Crude relatedness for generic maintenance wording: a shared content word (5-char prefix)."""
+    def words(x: str) -> set[str]:
+        return {w[:5] for w in re.findall(r"[a-záéíóúñ]{4,}", x.lower()) if w not in _STOP}
+    return bool(words(a) & words(b))
 
 
 def render_context_block(ctx: SafeContext) -> str:

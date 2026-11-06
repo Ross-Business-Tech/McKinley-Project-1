@@ -56,7 +56,17 @@ export type Intent = "leasing" | "maintenance" | "renewal" | "general";
 export type Urgency = "low" | "medium" | "high" | "emergency";
 export type GateSource = "rules" | "jev" | "llm" | "mock";
 export type GateProvider = "rules" | "llm" | "jev";
-export type WorkflowId = "leasing" | "resident_support" | "maintenance" | "renewal" | "human_handoff" | "general_inquiry";
+export type WorkflowId =
+  | "leasing"
+  | "tour_request"
+  | "faq"
+  | "resident_support"
+  | "maintenance"
+  | "status_lookup"
+  | "renewal"
+  | "human_handoff"
+  | "general_inquiry"
+  | "sms_opt_out";
 export type HandoffTeam = "emergency_maintenance" | "maintenance" | "leasing" | "accounting" | "management";
 export type Suite = "core" | "extended";
 
@@ -162,6 +172,84 @@ export interface ChatResponse {
   renewal: RenewalAssessment | null;
   handoff: HandoffRecommendation | null;
   pipeline: PipelineStep[];
+  // ---- customer experience layer (pipeline v3); optional so older snapshots still load ----
+  routed_workflow?: WorkflowSelection | null;
+  channel?: Channel;
+  language?: "en" | "es";
+  functions?: FunctionId[];
+  reply_source?: ReplySource;
+  action?: ProposedAction | null;
+  records_created?: PrototypeRecord[];
+  status_items?: StatusItem[];
+  suggested_replies?: string[];
+  identity_note?: string | null;
+}
+
+export type Channel = "web_chat" | "sms" | "email";
+export type FunctionId = "F1" | "F2" | "F3" | "F4" | "F5" | "F6" | "F7" | "F8" | "F9";
+export type ReplySource = "model" | "template" | "template_after_validation" | "template_after_model_error";
+export type ActionKind = "maintenance_request" | "tour_request" | "staff_handoff";
+export type ActionStage = "collecting" | "ready" | "submitted" | "blocked";
+
+export interface ActionField {
+  key: string;
+  label: string;
+  value: string | null;
+  source: "you_said" | "on_file" | "assistant" | "missing";
+}
+
+export interface PrototypeRecord {
+  id: string;
+  kind: ActionKind;
+  status: "submitted_for_review" | "requested" | "queued" | "urgent_queued";
+  status_label: string;
+  persona_id: string | null;
+  session_hash: string;
+  created_at: string;
+  summary: string;
+  fields: ActionField[];
+  team: string | null;
+  priority: string | null;
+  system: "prototype";
+}
+
+export interface ProposedAction {
+  kind: ActionKind;
+  stage: ActionStage;
+  title: string;
+  fields: ActionField[];
+  missing: string[];
+  confirm_label: string | null;
+  note: string;
+  record: PrototypeRecord | null;
+}
+
+export interface StatusItem {
+  reference: string;
+  title: string;
+  status: string;
+  opened: string | null;
+  source: "prototype_store" | "resident_history";
+  note: string | null;
+}
+
+export interface ActionResult {
+  ok: boolean;
+  message: string;
+  action: ProposedAction | null;
+  record: PrototypeRecord | null;
+  error_code: string | null;
+}
+
+export type JourneyStep =
+  | { kind: "chat"; message: string; response: ChatResponse }
+  | { kind: "confirm"; action_kind: ActionKind; result: ActionResult };
+
+export interface Journey {
+  id: string;
+  persona_id: string;
+  title: string;
+  steps: JourneyStep[];
 }
 
 export interface ChatRequest {
@@ -169,8 +257,9 @@ export interface ChatRequest {
   persona_id: string | null;
   mode: Mode;
   session_id: string;
-  target: string;
+  target?: string;
   gate_provider?: GateProvider;
+  channel?: Channel;
 }
 
 export interface ModelTarget {
@@ -373,4 +462,6 @@ export interface DemoSnapshot {
   responses: Record<string, Partial<Record<Mode, ChatResponse>>>;
   contexts: Record<string, SafeContext>;
   gate_eval: Pick<GateEvalResponse, "note" | "summary" | "rows">;
+  journeys?: Journey[];
+  prototype_records?: PrototypeRecord[];
 }

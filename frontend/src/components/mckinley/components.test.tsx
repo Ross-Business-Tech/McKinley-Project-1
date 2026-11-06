@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatResponse, DemoSnapshot, EvalCase, GateConfig, Mode, ModelTarget, Persona } from "@/lib/types";
 
-import { AppShell } from "./AppShell";
+import { StaffConsole } from "@/components/staff/StaffConsole";
 import { ChatWorkbench } from "./ChatWorkbench";
 import { Diagnostics, HandoffCard, HandoffPanel, ResponseView } from "./ResponseDetails";
 
@@ -232,7 +232,7 @@ const snapshot: DemoSnapshot = {
   },
 };
 
-describe("AppShell static demo fallback", () => {
+describe("Staff console static demo fallback", () => {
   it("loads the snapshot when the backend is unreachable", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url === "/demo/snapshot.json") return new Response(JSON.stringify(snapshot));
@@ -240,9 +240,10 @@ describe("AppShell static demo fallback", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<AppShell />);
+    render(<StaffConsole />);
 
     await waitFor(() => expect(screen.getByText(/Static demo — responses were pre-computed/)).toBeInTheDocument());
+    await user.click(screen.getByRole("tab", { name: "Model comparison" }));
     expect(screen.getByText(/Static demonstration: pre-computed/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Message/)).toBeDisabled();
     expect(screen.getByText(/needs the live backend/)).toBeInTheDocument();
@@ -272,7 +273,7 @@ describe("AppShell static demo fallback", () => {
       if (url === "/demo/snapshot.json") return new Response("not found", { status: 404 });
       throw new TypeError("fetch failed");
     }));
-    render(<AppShell />);
+    render(<StaffConsole />);
     await waitFor(() => expect(screen.getByText(/Backend unavailable: Cannot reach the backend/)).toBeInTheDocument());
     expect(screen.queryByText(/Static demo — responses/)).not.toBeInTheDocument();
   });

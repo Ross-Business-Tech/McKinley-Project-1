@@ -7,7 +7,8 @@ const staticExport = process.env.NEXT_STATIC_EXPORT === "1";
 const nextConfig: NextConfig = {
   // Partial prerendering is not supported by static export, so it is enabled only for the server build.
   ...(staticExport
-    ? { output: "export" as const, images: { unoptimized: true } }
+    ? // trailingSlash: /staff is exported as staff/index.html, which every static host (and SPA mode) serves.
+      { output: "export" as const, images: { unoptimized: true }, trailingSlash: true }
     : { cacheComponents: true, partialPrefetching: true }),
   turbopack: {
     rules: {

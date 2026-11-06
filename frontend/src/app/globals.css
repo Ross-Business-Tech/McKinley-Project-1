@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -127,4 +127,41 @@
   html {
     @apply font-sans;
   }
+}
+/* ---- McKinley customer + staff tokens (see docs/UX_REVIEW.md, "Design system") ----
+   Every status colour is paired with text and an icon; none carries meaning alone.
+   Contrast (WCAG 2.2 AA) was checked for each text/background pair listed in docs/ACCESSIBILITY_REVIEW.md. */
+@theme {
+  --color-mk-ink: #14231c;        /* body text: 15.2:1 on paper */
+  --color-mk-muted: #4b5d54;      /* secondary text: 6.5:1 on paper, 7.0:1 on white */
+  --color-mk-paper: #f6f7f5;      /* page */
+  --color-mk-surface: #ffffff;    /* messages, cards */
+  --color-mk-line: #d9e1dc;       /* dividers (non-text) */
+  --color-mk-line-strong: #7c8d84; /* input borders: 3.4:1 on white (non-text contrast) */
+  --color-mk-brand: #1d5c45;      /* evergreen: primary action, 7.9:1 with white */
+  --color-mk-brand-hover: #164a37;
+  --color-mk-brand-soft: #e6f0eb; /* user bubbles, selected */
+  --color-mk-sent: #1d4f91;       /* "sent / saved" status text: 7.2:1 on its tint */
+  --color-mk-sent-soft: #eaf1fb;
+  --color-mk-attention: #7a4206;  /* "a person should help" text: 7.3:1 on its tint */
+  --color-mk-attention-soft: #fff3e0;
+  --color-mk-danger: #a3241c;     /* emergency text: 6.5:1 on its tint, 7.4:1 under white */
+  --color-mk-danger-soft: #fdeceb;
+  --color-mk-draft: #4b5d54;
+  --color-mk-draft-soft: #eef1ef;
+  --color-mk-focus: #1d4f91;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.mk-focus:focus-visible {
+  outline: 3px solid var(--color-mk-focus);
+  outline-offset: 2px;
 }

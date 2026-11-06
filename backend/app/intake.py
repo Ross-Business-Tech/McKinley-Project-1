@@ -137,7 +137,8 @@ def says_resident(message: str) -> bool:
     return bool(_SAYS_RESIDENT.search(message))
 
 
-_TOUR = re.compile(r"\btours?\b|\bvisit\b|see (it|the (place|apartment|unit|community))|come (by|see)|"
+_TOUR = re.compile(r"\btours?\b|\bvisit\b|see (it|one|a place|an apartment|the "
+                   r"(place|apartment|unit|community))|come (by|see)|"
                    r"\bshow me\b|walk ?through|visitar|recorrido", re.IGNORECASE)
 
 
@@ -216,8 +217,15 @@ def strip_greeting(message: str) -> str:
     return (out[:1].upper() + out[1:]) if out else message
 
 
+_GENERIC_REPORT = re.compile(r"^\s*(i (want|need|would like) to |can i |help me )?(report|submit|make|file|start)"
+                             r"( a| an| my)? (new )?(repair|maintenance)( request| issue)?[.!?]?\s*$|"
+                             r"^\s*(i need )?(a )?(repair|maintenance)[.!?]?\s*$|^\s*reportar una reparaci[oó]n\s*$",
+                             re.IGNORECASE)
+
+
 def describes_issue(message: str) -> bool:
-    return bool(_ISSUE_HINT.search(message))
+    """True unless the message is only a generic 'report a repair' request."""
+    return not _GENERIC_REPORT.match(message)
 
 
 # ---- tour slots (I-15 DRAFT: McKinley leasing has not supplied required tour questions) -------------------

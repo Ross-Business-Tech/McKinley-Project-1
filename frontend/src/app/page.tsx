@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/mckinley/AppShell";
+import { CustomerApp } from "@/components/customer/CustomerApp";
 
 export default function Home() {
-  return <AppShell />;
+  return <CustomerApp />;
 }

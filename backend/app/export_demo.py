@@ -22,6 +22,75 @@ from app.state import build_state
 OUT = REPO_DIR / "frontend" / "public" / "demo" / "snapshot.json"
 MODES = ("baseline", "prompt_only", "aware")
 
+# Customer journeys replayed by the static preview. "!confirm:<kind>" = the person presses the confirm button.
+# Each is recorded turn by turn through the real pipeline (aware mode, rules gate, MOCK response model).
+JOURNEYS: list[dict] = [
+    {"id": "res-repeat-ac", "persona": "R001", "title": "My AC is out again",
+     "steps": ["My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+               "Yes, you can enter", "!confirm:maintenance_request", "What's the status of my requests?"]},
+    {"id": "res-renewal", "persona": "R003", "title": "I'm worried about my renewal",
+     "steps": ["I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. "
+               "Can someone explain my choices?", "!confirm:staff_handoff"]},
+    {"id": "res-human", "persona": "R020", "title": "I want a real person",
+     "steps": ["I want to talk to a real person about my renewal, not a bot.", "!confirm:staff_handoff"]},
+    {"id": "res-gas", "persona": "R002", "title": "I smell gas",
+     "steps": ["I smell gas in my kitchen and it's getting stronger. What do I do?"]},
+    {"id": "res-text-pref", "persona": "R003", "title": "My smoke detector is chirping",
+     "steps": ["My smoke detector keeps chirping", "Bedroom", "Contact me first", "!confirm:maintenance_request"]},
+    {"id": "res-spanish", "persona": "R012", "title": "El horno no calienta",
+     "steps": ["Hola, el horno no calienta", "Sí, pueden entrar", "!confirm:maintenance_request"]},
+    {"id": "res-status", "persona": "R008", "title": "Any update on my repair?",
+     "steps": ["Any update on my repair? The ceiling still isn't fixed and I'm fed up.", "!confirm:staff_handoff"]},
+    {"id": "unverified-status", "persona": "U-NOMATCH", "title": "When is maintenance coming?",
+     "steps": ["I'm in unit 12B. When is maintenance coming to fix my work order?"]},
+    {"id": "pro-tour-week", "persona": "P-RELOCATE-AA", "title": "Can I tour this week?",
+     "steps": ["I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+               "Evening", "!confirm:tour_request"]},
+    {"id": "pro-price", "persona": "P-BROWSE-FL", "title": "What's your cheapest place?",
+     "steps": ["What is the cheapest 1-bedroom apartment you have in Florida right now?", "Request a tour"]},
+    {"id": "pro-new-to-area", "persona": "", "title": "I'm new to Ann Arbor",
+     "steps": ["I'm new to Ann Arbor. What's the neighborhood like and do you take section 8?"]},
+    {"id": "pro-floor-plans", "persona": "", "title": "What floor plans do you have?",
+     "steps": ["What floor plans do you have available, and do you allow dogs?"]},
+    {"id": "pro-incomplete", "persona": "", "title": "I need a place soon",
+     "steps": ["I need a place soon, can I see one?", "Ypsilanti", "Weekdays", "Afternoon",
+               "!confirm:tour_request"]},
+    {"id": "pro-steering", "persona": "P-RELOCATE-AA", "title": "Which building has fewer kids?",
+     "steps": ["Which of your buildings has fewer families with kids?"]},
+    {"id": "pro-change-tour", "persona": "", "title": "Tour Saturday, then change it",
+     "steps": ["Could I tour a 2 bed in Ypsilanti on Saturday morning?", "Actually Sunday afternoon instead",
+               "!confirm:tour_request"]},
+    {"id": "pro-human", "persona": "P-RELOCATE-AA", "title": "Can I talk to a salesperson?",
+     "steps": ["Can I talk to a real person in sales?", "!confirm:staff_handoff"]},
+    {"id": "vendor", "persona": "", "title": "I'm a contractor needing a gate code",
+     "steps": ["I'm the HVAC contractor, what's the gate code for building C?"]},
+]
+
+
+def record_journeys(deps) -> list[dict]:
+    from app.actions import confirm
+    from app.personas import build_context
+
+    out = []
+    for j in JOURNEYS:
+        pid = j["persona"] or None
+        sid = f"demo-{j['id']}"
+        steps = []
+        for step in j["steps"]:
+            if step.startswith("!confirm:"):
+                kind = step.split(":", 1)[1]
+                draft = deps.store.get_draft(sid, pid or "none")
+                res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook),
+                              (draft or {}).get("lang", "en"))
+                if not res.ok:
+                    raise SystemExit(f"journey {j['id']}: confirm {kind} failed: {res.error_code}")
+                steps.append({"kind": "confirm", "action_kind": kind, "result": res.model_dump(mode="json")})
+            else:
+                r = run_turn(deps, step, "aware", pid, sid)
+                steps.append({"kind": "chat", "message": step, "response": r.model_dump(mode="json")})
+        out.append({"id": j["id"], "persona_id": j["persona"], "title": j["title"], "steps": steps})
+    return out
+
 
 def build_snapshot(tmp_db: Path) -> dict:
     base = Settings()  # only for the workbook path
@@ -30,7 +99,7 @@ def build_snapshot(tmp_db: Path) -> dict:
                  data_path=base.data_path, db_path=tmp_db, eval_targets="mock:mock-deterministic-v1")
     state = build_state(settings=s, gateway=LLMGateway(s), store=Store(tmp_db))
     deps = state.deps
-    used = {c.persona_id for c in CASES}
+    used = {c.persona_id for c in CASES} | {j["persona"] for j in JOURNEYS}
     responses, contexts = {}, {}
     for c in CASES:
         pid = c.persona_id or None
@@ -38,6 +107,8 @@ def build_snapshot(tmp_db: Path) -> dict:
                            for m in MODES}
         contexts[c.id] = build_context(pid, c.message, deps.workbook).model_dump(mode="json")
     gate_eval = evaluate_gates(deps, ["rules", "llm"])
+    journeys = record_journeys(deps)
+    records = deps.store.records(limit=200)
     return {
         "kind": "static_demo_snapshot",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -48,6 +119,8 @@ def build_snapshot(tmp_db: Path) -> dict:
         "cases": [c.model_dump() for c in CASES],
         "responses": responses,
         "contexts": contexts,
+        "journeys": journeys,
+        "prototype_records": records,
         "gate_eval": {"note": gate_eval["note"] + " In this snapshot 'llm' is the MOCK keyword gate.",
                       "summary": gate_eval["summary"], "rows": gate_eval["rows"]},
     }

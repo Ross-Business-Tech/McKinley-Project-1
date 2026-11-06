@@ -112,6 +112,10 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Esto es lo que está abierto en su historial. Todavía no tengo horarios de reparación para "
               "compartir. Si algo lleva demasiado tiempo, puedo enviar una nota a la oficina.",
     },
+    "status_some_short": {
+        "en": "Here's what's open on your record. I don't have repair times to share yet.",
+        "es": "Esto es lo que está abierto en su historial. Todavía no tengo horarios de reparación.",
+    },
     "status_unverified": {
         "en": "I can't share request or account details until you're signed in to your resident account. "
               "The office can look it up after confirming who you are. I've prepared a note for them.",
@@ -123,13 +127,17 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I'd be glad to set up a tour request. Which city or McKinley community would you like to see?",
         "es": "Con gusto preparo una solicitud de visita. ¿Qué ciudad o comunidad de McKinley quiere ver?",
     },
+    "tour_start": {
+        "en": "I'd be glad to set up a tour request for you.",
+        "es": "Con gusto preparo una solicitud de visita.",
+    },
     "tour_ask_days": {
-        "en": "Great. Which days work for you to visit?",
-        "es": "Perfecto. ¿Qué días le funcionan para la visita?",
+        "en": "Which days work for you to visit?",
+        "es": "¿Qué días le funcionan para la visita?",
     },
     "tour_ask_time": {
-        "en": "And what time of day is easiest: morning, afternoon or evening?",
-        "es": "¿Y qué hora del día le conviene más: mañana, tarde o noche?",
+        "en": "What time of day is easiest: morning, afternoon or evening?",
+        "es": "¿Qué hora del día le conviene más: mañana, tarde o noche?",
     },
     "tour_ready": {
         "en": "Here's your tour request. The leasing team picks the exact time, so this isn't a booking yet. "
