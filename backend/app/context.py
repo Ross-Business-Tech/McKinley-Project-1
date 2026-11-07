@@ -189,6 +189,7 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
     "pest": ["roach", "bug", "pest", "mice", "mouse", "ants", "rodent", "cucaracha", "hormiga", "ratón", "raton",
              "ratones", "chinche", "plaga"],
     "renewal": ["renew", "renewal", "lease", "offer", "move out", "move-out", "notice", "renovar", "renovación",
+                "month to month", "month-to-month", "lease term", "lease length", "break my lease", "break the lease",
                 "renovacion", "contrato"],
     "billing": ["rent", "balance", "payment", "pay", "bill", "charge", "fee", "late"],
     "package": ["package", "delivery", "delivered", "mail"],
@@ -215,7 +216,13 @@ def detect_topics(text: str) -> list[str]:
                               r"light (is out|won'?t)|lock (is|won'?t|sticks)|window (won'?t|is stuck)|ceiling|mold|"
                               r"door (won'?t|is stuck|sticks)|crack|flicker|locked out|lockout|fell off|came off|"
                               r"window|light (bulb|fixture|switch)|lights? (is|are|keep)|\block\b|no heat|heater|"
-                              r"overflow|toliet|clogd|no tengo agua|no hay agua|se cay[oó]|no prende", t)
+                              r"overflow|toliet|clogd|no tengo agua|no hay agua|se cay[oó]|no prende|"
+                              r"off (the |its )?track|rattl|exhaust fan|\bfan\b|blinds?|closet door|cabinet|drawer|"
+                              r"hinge|screen|tile|carpet|grinding|squeak|knock\w* (in|inside|behind) the wall|"
+                              r"noise in the wall|won'?t (turn on|close|open|lock|flush|drain|start|latch)|"
+                              r"doesn'?t (work|close|open|lock|flush|drain|turn on)|not (draining|flushing|closing)|"
+                              r"not working|isn'?t working|stopped working|garbage disposal|ice maker|"
+                              r"freezer|gotera|se descompuso", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics

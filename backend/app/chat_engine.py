@@ -250,7 +250,9 @@ def run_turn(
         plan = plan_turn(msg=msg, gate=gate, workflow=workflow, ctx=ctx, triage=triage,
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
                          resident=resident_for(persona_id, deps.workbook) if verified else None,
-                         channel=channel, lang=lang)  # type: ignore[arg-type]
+                         channel=channel, lang=lang,  # type: ignore[arg-type]
+                         recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
+                                 if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:
             gate = gate.model_copy(update={
                 "risk_flags": [f for f in gate.risk_flags if f not in ("low_confidence", "repeated_low_confidence")],

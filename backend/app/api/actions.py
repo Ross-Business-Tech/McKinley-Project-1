@@ -27,8 +27,10 @@ def cancel_action(req: ActionConfirmRequest, state: AppState = Depends(get_state
     draft = state.store.get_draft(req.session_id, req.persona_id or "none")
     if not draft or draft.get("kind") != req.kind:
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION", message="There's nothing waiting to be sent.")
-    state.store.clear_draft(req.session_id, req.persona_id or "none")
-    return ActionResult(ok=True, message="Okay, I haven't sent anything.")
+    # kept, marked declined, so "send it after all" in the chat can bring it back once
+    state.store.save_draft(req.session_id, req.persona_id or "none", draft["kind"], {**draft, "declined": True})
+    return ActionResult(ok=True, message="Okay, I haven't sent it. If you change your mind, say \"send it after "
+                                         "all\".")
 
 
 @router.get("/prototype/records", response_model=list[PrototypeRecord], dependencies=[Depends(require_staff)])

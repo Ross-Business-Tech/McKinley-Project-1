@@ -26,8 +26,8 @@ _SLOT_OF_LABEL = [
     ("entry", re.compile(r"entry|enter|entrar|acceso", re.I)),
     ("location", re.compile(r"where|location|room|ubicaci|lugar", re.I)),
     ("area", re.compile(r"community|city|area|comunidad|ciudad", re.I)),
-    ("days", re.compile(r"\bday|d[ií]a", re.I)),
     ("time", re.compile(r"time|hora", re.I)),
+    ("days", re.compile(r"\bday|d[ií]a", re.I)),
 ]
 
 

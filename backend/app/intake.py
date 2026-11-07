@@ -19,7 +19,9 @@ KB_PATH = Path(__file__).resolve().parent / "content" / "knowledge_base.json"
 _ES_WORDS = re.compile(
     r"\b(hola|gracias|por favor|necesito|tengo|mi|mis|está|esta|no funciona|ayuda|cocina|baño|bano|puerta|"
     r"agua|luz|renta|contrato|cuándo|cuando|quiero|hablar|persona|apartamento|horno|fuga|gotea|olor|"
-    r"mantenimiento|solicitud|estado|sí|usted|español|espanol)\b", re.IGNORECASE)
+    r"mantenimiento|solicitud|estado|sí|usted|español|espanol|el|la|los|las|refrigerador|enfría|enfria|"
+    r"funciona|lavaplatos|ba[ñn]era|ducha|calefacci[oó]n|aire|luz|puede|pueden|entrar|hay|muy|también)\b",
+    re.IGNORECASE)
 
 
 def detect_language(message: str, preferred: str | None = None) -> str:
@@ -32,7 +34,7 @@ def detect_language(message: str, preferred: str | None = None) -> str:
     if preferred and preferred.lower().startswith("span") and hits >= 1:
         return "es"
     if preferred and preferred.lower().startswith("span") and not re.search(
-            r"\b(the|is|my|and|please|what|when|can|not|no|it|in|i|a|an|to|of|on|with|this|that|me|you|keeps?|"
+            r"\b(the|is|my|and|please|what|when|can|not|it|in|i|an|to|of|on|with|this|that|me|you|keeps?|"
             r"working|broken|hello|hi|thanks|hot|water|heat|door|detector|smoke|ac|leak\w*|again|need|help|yes|ok)\b",
             message, re.IGNORECASE):
         return "es"
@@ -67,7 +69,11 @@ _STATUS = re.compile(
     r"they|a tech\w*|the tech\w*|somebody) (coming|come|going to come|gonna come|be here|fix)|"
     r"(is|are) (a tech\w*|someone|anyone|maintenance|they) (coming|on (the|their) way)|has anyone (looked|been)|"
     r"did (that|it|my request) go (thru|through)|what'?s (going on|happening) with (my|the)|nobody (came|showed)|"
-    r"estado de mi|mi solicitud|cu[aá]ndo (vienen|viene|van a venir)|alguien viene",
+    r"estado de mi|mi solicitud|cu[aá]ndo (vienen|viene|van a venir)|alguien viene|"
+    r"^\W*(any )?(updates?|status|news)\W*\??\W*$|what (open )?(repairs?|requests?|work orders?) (do i have|are open)|"
+    r"(any )?update on (my|the) (\w+ )?(thing|request|repair|issue)|"
+    r"did (u|you) (save|get|send|submit) (that|it|my)|did (that|it) (save|get saved|send)|"
+    r"did (my|the) [\w ]{0,20}(thing|request|repair|ticket|order|note) (even )?(go|get) (thru|through|sent|saved)",
     re.IGNORECASE)
 
 
@@ -149,15 +155,18 @@ def is_affirmative(message: str) -> bool:
 
 
 def is_bare_yes(message: str) -> bool:
-    return bool(re.fullmatch(r"\s*(yes|yep|yeah|ok(ay)?|sure|s[ií]|claro)[\s.!,]*(please|por favor)?[\s.!,]*",
-                             message, re.I))
+    return bool(re.fullmatch(r"\s*(um+|uh+|hmm+|well)?[\s,.]*(i guess|i think( so)?|probably)?[\s,.]*(yes|yep|yeah|"
+                             r"ok(ay)?|sure|s[ií]|claro|fine|i guess so|i think so)[\s.!,?]*(i guess|i think)?[\s.!,?]*"
+                             r"(please|por favor)?[\s.!,?]*", message, re.I))
 
 
 def is_bare_no(message: str) -> bool:
     return bool(re.fullmatch(r"\s*(no|nope|no thanks|no gracias)[\s.!,]*", message, re.I))
 
 
-_CANCEL = re.compile(r"\b(never ?mind|nevermind|forget (it|about it)|cancel (it|that|this)|don'?t send( it)?|"
+_CANCEL = re.compile(r"\b(never ?mind|nevermind|nvm|forget (it|about it|the (tour|request|note))|"
+                     r"cancel (it|that|this)|don'?t send( it)?|not (right )?now|not yet|"
+                     r"(don'?t|do not) want (a|the|to) (tour|visit|book|send)\w*|no (tour|visit)s? (now|yet|for now)|"
                      r"no need|not anymore|olv[ií]delo|no lo env[ií]e|cancel[ae]lo)\b|^\s*(cancel|stop|no)[\s.!]*$",
                      re.IGNORECASE)
 _CORRECTION_LEAD = re.compile(r"^\s*(no+|nope|wait|oops|sorry|actually|correction|no wait|no,? actually)\b[\s,.!-]*",
@@ -189,6 +198,13 @@ _STAFF = re.compile(
     r"a |to speak to a )?(human|real person|manager|supervisor)\b|someone (can|could) (just )?(talk|call|explain)|"
     r"can (someone|somebody|you) (just )?(text|call|email|contact) me|can (someone|somebody) (just )?(talk|speak|call|"
     r"explain|help)|\bescalate\b|"
+    r"(get|find|bring) me (the |a |my |your )?(property |community |building |site |general )?manager|"
+    r"(talk|speak|chat) (to|with) (the |a |my |your )?(property|community|building|site|general) manager|"
+    r"(speak|talk) (to|with) whoever(?:'s| is)? in charge|(flag|send|pass|escalate) (it|this|that) (to|for) (the )?"
+    r"(property )?manager|(want|need) (a |to talk to a |to speak to a )?(salesperson|sales person|sales rep|"
+    r"leasing agent)|^\W*(sales(person)?|leasing agent|leasing)\W*(please|now|pls)?\W*$|"
+    r"who (do|should|can) i (talk|speak) to|who do i (call|contact|ask)|"
+    r"(want|make sure|need) (the |my )?(property )?manager (to )?(know|see|hear)|(tell|let) the (property )?manager|"
     r"hablar con (la oficina|arrendamiento|alguien|una persona|un humano|un agente|el gerente|un representante)|"
     r"quiero (una persona|un humano|un agente)|enviar (una )?nota a la oficina|"
     r"nói chuyện với (nhân viên|người)|gặp (nhân viên|quản lý)", re.IGNORECASE)
@@ -213,6 +229,12 @@ _TOUR = re.compile(r"\btours?\b|\bvisit\b|see (it|one|a place|an apartment|a uni
 
 
 def is_tour_request(message: str) -> bool:
+    if wants_to_rent(message):
+        return True
+    return _is_tour_request(message)
+
+
+def _is_tour_request(message: str) -> bool:
     return bool(_TOUR.search(message))
 
 
@@ -284,7 +306,8 @@ def extract_entry(message: str) -> str | None:
 _ISSUE_HINT = re.compile(
     r"crack|flicker|fell off|clog|overflow|toliet|lock|leak|drip|broken|not working|won'?t|doesn'?t|stopped|clog|no"
     r" (heat|hot water|water|power|ac|a/c)|noise|"
-    r"rattl|smell|mold|pest|roach|ant|mouse|mice|bug|crack|stuck|loose|running|cooling|heating|"
+    r"rattl|smell|mold|pest|roach|ant|mouse|mice|bug|crack|stuck|loose|running|cooling|heating|knock|bang|grind|"
+    r"squeak|buzz|humm|clank|"
     r"no funciona|gotea|fuga|roto|no calienta|no enfr",
     re.IGNORECASE)
 
@@ -327,8 +350,11 @@ _NOT_AREA = {"The", "My", "A", "Monday", "Tuesday", "Wednesday", "Thursday", "Fr
              "November", "December", "I"}
 
 
+_ES_MORNING = re.compile(r"\b(por|en|de) la ma[ñn]ana\b", re.I)
+
+
 def extract_days(message: str) -> str | None:
-    found = [m.group(0).strip() for m in _DAY_PHRASE.finditer(message)]
+    found = [m.group(0).strip() for m in _DAY_PHRASE.finditer(_ES_MORNING.sub(" ", message))]
     if not found:
         return None
     seen = list(dict.fromkeys(f[0].upper() + f[1:] for f in found))
@@ -440,7 +466,18 @@ def extract_clock_preference(message: str) -> tuple[str, str] | None:
     """('Afternoon', 'around 4 PM') from '4pm'. A preference only; never offered back as a booked slot."""
     m = _CLOCK.search(message)
     if not m:
-        return None
+        b = re.search(r"\b(?:around|at|about|by|after|before)\s(\d{1,2})(?::(\d{2}))?\b(?!\s?(?:%|\$|bed|br|days?|"
+                      r"weeks?|"
+                      r"months?|years?|people|units?|inch))|\b(\d{1,2})\s?ish\b", message, re.I)
+        if not b:
+            return None
+        hour = int(b.group(1) or b.group(3))
+        if not 1 <= hour <= 12:
+            return None
+        ampm = "am" if 8 <= hour <= 11 else "pm"
+        h24 = hour % 12 + (12 if ampm == "pm" else 0)
+        part = "Morning" if h24 < 12 else "Afternoon" if h24 < 17 else "Evening"
+        return part, f"around {hour}{':' + b.group(2) if b.group(2) else ''} {ampm.upper()}"
     if m.group(4):
         return "Midday", "around noon"
     hour, minute, ampm = int(m.group(1)), m.group(2) or "00", m.group(3).lower().replace(".", "")
@@ -456,9 +493,25 @@ _MOVE_IN = re.compile(r"\b(asap|as soon as possible|right away|soon|within (a|\d
                       r"(in|for|starting) (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\b", re.I)
 
 
+_MONTH_DAY = re.compile(r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|"
+                        r"th)?\b|"
+                        r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", re.I)
+_MOVE_CONTEXT = re.compile(r"\bmov(e|ing)\b|move-?in|lease start|start(ing)? (the|my) lease|mudar|mudanza|"
+                           r"\b(make|change) (it|that)\b|\bactually\b|\binstead\b", re.I)
+
+
 def extract_move_in(message: str) -> str | None:
-    m = _MOVE_IN.search(message)
-    return m.group(0)[0].upper() + m.group(0)[1:] if m else None
+    """Move-in timing. The LAST date in the message wins ('March 1, no wait, May 1' -> 'May 1'). Week-only phrases
+    ('this week') count only when the person talks about moving, so a tour day isn't saved as a move-in date."""
+    found = [m for m in _MONTH_DAY.finditer(message)]
+    move = bool(_MOVE_CONTEXT.search(message))
+    if not found:
+        found = [m for m in _MOVE_IN.finditer(message)
+                 if move or not re.match(r"(this|next) (week|month)|in (\d+|two|three|a few) weeks?", m.group(0), re.I)]
+    if not found:
+        return None
+    v = found[-1].group(0)
+    return v[0].upper() + v[1:]
 
 
 _US_STATES = {"michigan": "Michigan", "florida": "Florida", "ohio": "Ohio", "indiana": "Indiana", "georgia": "Georgia",
@@ -475,7 +528,7 @@ _NOT_PLACE = re.compile(
     r"parking|pets?|fees?|rent|price|budget|section|voucher|church|school|work|town|downtown|person|someone|"
     r"something|need|soon|maybe|weekend|weekdays?|morning|afternoon|evening|tour|visit|apartment|unit|place|"
     r"home|house|lease|month|year|week|bed|beds|studio|monday|tuesday|wednesday|thursday|friday|saturday|"
-    r"sunday|today|tomorrow|tonight|i|the|a|my)$", re.I)
+    r"sunday|today|tomorrow|tonight|i|the|a|my|hola|hello|hi|hey|gracias|thanks|buenas|buenos|ok|okay|yes|no)$", re.I)
 
 
 def _place(name: str | None) -> str | None:
@@ -486,6 +539,18 @@ def _place(name: str | None) -> str | None:
     if not words or len(words) > 3 or any(_NOT_PLACE.match(w) for w in words):
         return None
     return _US_STATES.get(name.lower(), " ".join(w[0].upper() + w[1:] for w in words))
+
+
+# Demo communities in the synthetic workbook (D-01). Recognised anywhere in a message, any capitalisation.
+_COMMUNITIES = [("Heron Lake Apartments", r"heron ?lake"), ("Birchwood Commons", r"birch ?wood"),
+                ("Sandpiper Pointe", r"sand ?piper"), ("Fernhill Apartments", r"fern ?hill")]
+
+
+def community_in(message: str) -> str | None:
+    for name, pat in _COMMUNITIES:
+        if re.search(rf"\b{pat}\b", message, re.I):
+            return name
+    return None
 
 
 def extract_area_correction(message: str) -> str | None:
@@ -551,7 +616,20 @@ _NOISE = re.compile(r"\b(noise|noisy|loud|music|party|parties|barking|stomping)\
                     r"m[uú]sica alta", re.I)
 
 
+_NEIGHBOR = re.compile(r"neighbou?r|upstairs|downstairs|next door|music|party|parties|bark|dog|stomp|\btv\b|"
+                       r"yell|scream|people|vecino|m[uú]sica", re.I)
+_BUILDING_NOISE = re.compile(r"\b(fan|ac|a/c|air ?condition\w*|heater|furnace|fridge|refrigerator|dishwasher|disposal|"
+                             r"pipes?|wall|ceiling|vent|duct|toilet|water heater|washer|dryer|motor|rattl\w*|grind\w*|"
+                             r"knock\w*|hum+ing|buzz\w*|squeal\w*|squeak\w*|clank\w*|bang\w* (?:in|from) the|"
+                             r"compressor|thermostat|smoke detector|alarm)\b", re.I)
+
+
 def is_noise_complaint(message: str) -> bool:
+    """Noise between neighbours. Fan, AC, pipe or wall noise is a repair (maintenance), unless a neighbour is named."""
+    if not _NOISE.search(message) and not re.search(r"\bknock\w*\b", message, re.I):
+        return False
+    if _BUILDING_NOISE.search(message) and not _NEIGHBOR.search(message):
+        return False
     return bool(_NOISE.search(message))
 
 
@@ -572,3 +650,170 @@ def frustration_only(message: str) -> bool:
     """Venting with no new repair detail ('are you even listening', 'why do i have to keep telling you')."""
     return bool(re.search(r"are you (even )?listening|keep telling|why do i (have|need) to|ugh+|seriously\??$|"
                           r"hello\?+$|anyone there", message, re.I)) and not _ISSUE_HINT.search(message)
+
+
+# ---- sprint 2: corrections, preferences, follow-ups, policy questions, unsafe do-it-yourself ----------------
+
+_ISSUE_SWAP = re.compile(
+    r"(?:^|\b)(?:it'?s|its|it is|that'?s) not (?:the |my |a )?(?P<old>[\w /-]{2,30}?)[,.;!-]+\s*(?:it'?s|its|it is|"
+    r"it'?s actually|the problem is)?\s*(?:the |my |a )?(?P<new>[^.?!]{3,})|"
+    r"^\W*(?:wait|no|actually|sorry|oops)\W+(?:it'?s|its|it is)? ?not (?:the |my )?(?P<old2>[\w /-]{2,30}?)\W+"
+    r"(?:it'?s |its |it is )?(?:the |my )?(?P<new2>[^.?!]{3,})", re.I)
+
+
+def extract_issue_swap(message: str) -> str | None:
+    """'wait, it's not the AC, it's the bathroom fan' -> 'bathroom fan' (replaces the issue, never appends)."""
+    m = _ISSUE_SWAP.search(message)
+    if not m:
+        return None
+    new = (m.group("new") or m.group("new2") or "").strip(" ,.;")
+    old = (m.group("old") or m.group("old2") or "").strip()
+    rooms = r"(kitchen|bath ?room|bedroom|living room|hallway|hall|closet|laundry|garage|balcony|dining room)"
+    if re.fullmatch(rooms, old, re.I) or re.fullmatch(rooms, new, re.I):
+        return None  # "not the kitchen, it's the bedroom ceiling" is a location correction
+    if not new or re.fullmatch(r"(kitchen|bathroom|bedroom|living room|hallway)", new, re.I):
+        return None  # a room swap is a location correction
+    return new[0].upper() + new[1:]
+
+
+_LOC_CHANGE = re.compile(r"\bchange (?:the )?(?:location|room|place|where it is|spot) to (?:the |my"
+                         r" )?(?P<loc>[^.?!,]{3,40})|"
+                         r"\b(?:it'?s|its|it is) (?:actually )?in (?:the |my )(?P<loc2>[^.?!,]{3,30})", re.I)
+
+
+def extract_location_change(message: str) -> str | None:
+    m = _LOC_CHANGE.search(message)
+    if not m:
+        return None
+    loc = (m.group("loc") or m.group("loc2") or "").strip()
+    return loc[0].upper() + loc[1:] if loc else None
+
+
+_CONTACT_PREF = re.compile(
+    r"\b(?:only|just) (?:text|call|email)(?:ing)? me\b[^.?!]{0,30}|\btext(?:s)? only\b[^.?!]{0,30}|"
+    r"\b(?:pls |please )?(?:stop|don'?t|dont|do not|no) call(?:ing|s)? me\b[^.?!]{0,30}|"
+    r"\bchange my (?:contact|phone|preference)\w*[^.?!]{0,30}|\b(?:text|email|call) me instead\b[^.?!]{0,20}|"
+    r"\bno calls? (?:before|after) \d{1,2}[^.?!]{0,10}|\bonly (?:after|before) \d{1,2} ?(?:am|pm)?\b|"
+    r"\bsolo (?:mensajes?|textos?)\b[^.?!]{0,30}|\bno me llamen\b[^.?!]{0,30}", re.I)
+
+
+def extract_contact_pref(message: str) -> str | None:
+    """A contact preference the person states ('only text me after 6pm'). Recorded as 'you said', never applied to
+    the account here (no integration)."""
+    m = _CONTACT_PREF.search(message)
+    if not m:
+        return None
+    v = m.group(0).strip(" ,.;")
+    return v[0].upper() + v[1:]
+
+
+_AFTER_SEND_Q = re.compile(
+    r"\bwhen (?:will|are|is|do|does) (?:they|someone|somebody|anyone|the (?:office|team|tech|leasing team)|a tech|"
+    r"maintenance|leasing)\b[^.?!]{0,30}(?:call|text|email|come|contact|get back|reach|fix|be here|respond)|"
+    r"\bdid (?:someone|anyone|anybody|they|the office|the team|the manager|leasing|maintenance) (?:get|see|receive|"
+    r"read|"
+    r"confirm|look at)|\b(?:is|so) (?:a tech|someone|somebody|maintenance|the tech) (?:coming|on the way)|"
+    r"\bso (?:tomorrow|today|tonight|this)(?: morning| afternoon| evening| week)?(?: then| right)?\W*$|"
+    r"\bso (?:a tech|someone|the manager|they) (?:is|are|will|knows?)|\bdoes the manager know|"
+    r"\bis it (?:fixed|done|scheduled|booked|confirmed) (?:now|yet)?|\bdid (?:someone|anyone) confirm my tour|"
+    r"\b(?:tell me|i need to know) when\b|\bwhat happens next\b|\bwhat'?s next\b|\bnow what\b", re.I)
+
+
+def is_after_send_question(message: str) -> bool:
+    """A question about what happens to something already sent ('when will they call me?', 'so a tech is coming?')."""
+    return bool(_AFTER_SEND_Q.search(message))
+
+
+_POLICY_TOPICS = [
+    ("guests", r"\bguests?\b|visitors?|overnight|stay with me"),
+    ("packages", r"\bpackages?\b|deliver(y|ies)|parcel|amazon|mail ?room"),
+    ("trash and recycling", r"\btrash\b|garbage (pick ?up|day|room|chute)|recycl\w*|dumpster|bulk (item|pickup)"),
+    ("quiet hours", r"quiet hours|noise (rule|policy|hours)"),
+    ("parking", r"\bpark(ing)?\b|garage spot|guest spot|tow\w*"),
+    ("pets", r"\bpets?\b|\bdogs?\b|\bcats?\b|pet (fee|rent|deposit)"),
+    ("amenities", r"\bpool\b|\bgym\b|fitness|clubhouse|amenit\w*"),
+    ("smoking", r"\bsmok(e|ing)\b|\bvap(e|ing)\b"),
+    ("grills", r"\bgrills?\b|\bbbq\b|barbecue"),
+    ("subletting", r"sublet|sub-?lease|airbnb|roommate (add|change)|add (a )?roommate"),
+    ("rent payment", r"rent (is )?due|pay (my )?rent|late fee|payment portal|when is rent"),
+    ("lease terms", r"month[- ]to[- ]month|lease (term|length|options)|shorter lease|break (my|the) lease"),
+    ("deposits and fees", r"\bdeposit\b|application fee|admin fee|\bfees?\b"),
+    ("move-in specials", r"specials?|concessions?|months? free|promo\w*|discount"),
+]
+_QUESTIONISH = re.compile(r"\?|^\W*(what|when|where|how|can|is|are|do|does|may|any|whats|wheres|hows)\b|"
+                          r"\b(policy|policies|rules?|allowed|allow)\b", re.I)
+
+
+def policy_topic(message: str) -> str | None:
+    """The community-policy topic of a question, if any ('where do packages go' -> 'packages')."""
+    if not _QUESTIONISH.search(message.strip()) and len(message.split()) > 3:
+        return None
+    for name, pat in _POLICY_TOPICS:
+        if re.search(pat, message, re.I):
+            return name
+    return None
+
+
+_PRICE_CLAIM = re.compile(
+    r"(website|site|ad|listing|zillow|apartments\.com|your (page|flyer)|online|you (guys )?(said|advertise|listed|"
+    r"posted))\W+(?:\w+\W+){0,8}(\$\s?\d|\d+ (weeks?|months?) free|special|discount)|"
+    r"(lock|hold|honou?r|guarantee) (in )?(that|the|this|a|my)? ?(price|rate|special|\$\s?\d+)|"
+    r"(\$\s?\d[\d,]*|\d+ (weeks?|months?) free)[^.?!]{0,40}\b(right|correct|yes)\s*\?", re.I)
+
+
+def states_price_claim(message: str) -> bool:
+    """The person asserts a price/special or asks to lock one in (the assistant must not agree or confirm)."""
+    return bool(_PRICE_CLAIM.search(message))
+
+
+_UNSAFE_DIY = [
+    ("breaker", r"\b(tape|tie|zip ?tie|hold|wedge|jam)\b[^.?!]{0,25}\bbreaker|\bbreaker\b[^.?!]{0,40}\b(tape|tie|"
+                r"stays? on|keep it on|hold it)"),
+    ("disposal", r"\b(hand|fingers?|reach|arm)\b[^.?!]{0,20}\b(in|into|down)\b[^.?!]{0,15}\b(disposal|garbage "
+                 r"disposal)|\b(disposal)\b[^.?!]{0,40}\b(stick|put|reach) (my )?(hand|fingers?)"),
+    ("wiring", r"which wires? (go|goes)|swap\w* (the |an |my )?(outlet|switch|light fixture)|rewir\w*|"
+               r"(replace|fix|change) (the |an |my )?(outlet|switch|wiring|breaker|panel) (myself|my ?self)|"
+               r"(open|take apart) (the )?(electrical )?panel"),
+    ("space_heater", r"space heater[^.?!]{0,50}\b(bath\w*|shower|tub)|\b(bath\w*|shower|tub)\b[^.?!]{0,50}"
+                     r"space heater"),
+    ("detector_battery", r"\b(take|pull|remove|rip|disconnect|unplug)\b[^.?!]{0,20}\b(the )?(batter\w*|detector|"
+                         r"alarm)\b[^.?!]{0,40}\b(smoke|co|carbon)|(smoke|co|carbon monoxide) (detector|alarm)"
+                         r"[^.?!]{0,80}\b(take|pull|remove|rip|disconnect|unplug)\b[^.?!]{0,15}\b(batter\w*|it "
+                         r"(out|off|down))"),
+    ("gas_diy", r"(relight|light|fix|tighten) (the )?(pilot|gas (line|valve|leak|pipe))[^.?!]{0,20}(myself|my ?self)?|"
+                r"fix (the )?gas"),
+]
+
+
+def unsafe_diy_kind(message: str) -> str | None:
+    """A do-it-yourself step that could hurt someone (taping a breaker, hand in the disposal, rewiring...)."""
+    for kind, pat in _UNSAFE_DIY:
+        if re.search(pat, message, re.I):
+            return kind
+    return None
+
+
+_TOUR_INTENT = re.compile(r"\b(want|wanna|would like|like) (to )?see (the |an? |your )?(apartments?|place|units?|"
+                          r"homes?)|\bi want see\b|\blook(?:ing)? for (an? |some )?(apartment|place|unit|home|\d"
+                          r" ?(bed|br|"
+                          r"room))\w*|\b(apartment|place) for rent\b|\brent (an? )?(apartment|place)\b|"
+                          r"\b(need|want) (an? )?(apartment|place to live|\d ?(bed|br)\w*)|\bdo you (guys )?have (any"
+                          r" )?(places|"
+                          r"apartments|units|communities|properties|anything) (in|near|around)\b|"
+                          r"\bbusco (un |una )?(apartamento|departamento|lugar|casa)|\bquiero (ver|rentar) (un |una"
+                          r" )?(apartamento|departamento|casa)",
+                          re.I)
+
+
+def wants_to_rent(message: str) -> bool:
+    return bool(_TOUR_INTENT.search(message))
+
+
+_APPLIANCE = re.compile(r"\b(dishwasher|fridge|refrigerator|freezer|oven|stove|range|microwave|washer|dryer|"
+                        r"disposal|garbage disposal|ice maker|water heater|furnace|ac|a/c|heater|thermostat|fan|"
+                        r"toilet|sink|faucet|tap|shower|tub|outlet|light|blinds|closet door|door|window|lock)\b", re.I)
+
+
+def appliance_in(message: str) -> str | None:
+    m = _APPLIANCE.search(message)
+    return m.group(0) if m else None

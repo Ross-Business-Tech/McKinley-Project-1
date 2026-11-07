@@ -116,7 +116,7 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
             r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
             r"retaliat|"
             r"accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|autis\w*|adhd|"
-            r"special needs|medical condition|mobility|blind|deaf|hearing impair|"
+            r"special needs|medical condition|mobility|blind(?!s)|deaf|hearing impair|"
             r"(emotional )?support (animal|dog|cat)|assistance animal|\besa\b|discapacidad|adaptaci[oó]n|"
             r"discrimina",
             re.IGNORECASE,

@@ -38,6 +38,11 @@ T: dict[str, dict[Lang, str]] = {
               "Preparé una nota para la oficina abajo; envíela cuando quiera.",
     },
     # ---- F6 maintenance intake (I-19 draft) ----
+    "maint_ask_what": {
+        "en": "Sorry it's not working. What is it that isn't working? For example, the dishwasher or the bathroom "
+              "light.",
+        "es": "Lamento que no funcione. ¿Qué es lo que no funciona? Por ejemplo, el lavaplatos o la luz del baño.",
+    },
     "maint_ask_issue": {
         "en": "I can help you report that. What's going on? A short description is fine, like \"bathroom sink "
               "is leaking.\"",
@@ -354,9 +359,99 @@ T: dict[str, dict[Lang, str]] = {
               "renovación o comunicarle con la oficina. ¿Qué le gustaría hacer?",
     },
     "declined": {
-        "en": "Okay, I haven't sent anything. Is there something else I can help with?",
-        "es": "De acuerdo, no envié nada. ¿Le ayudo con algo más?",
+        "en": "Okay, I haven't sent it. If you change your mind, say \"send it after all\". Anything else?",
+        "es": "De acuerdo, no lo envié. Si cambia de opinión, diga \"envíelo\". ¿Algo más?",
     },
+    # ---- sprint 2 (TEAM DRAFTS) ----
+    "distress_ack": {
+        "en": "That sounds like a lot to carry right now. There's no rush here. If you'd like help with anything at "
+              "home, just tell me what's going on.",
+        "es": "Parece que está cargando con mucho ahora. Aquí no hay prisa. Si quiere ayuda con algo de su casa, "
+              "cuénteme qué pasa.",
+    },
+    "restored": {
+        "en": "Here it is again, unchanged. Send it when it looks right.",
+        "es": "Aquí está otra vez, sin cambios. Envíela cuando esté bien.",
+    },
+    "unclear_offer": {
+        "en": "Sorry, I didn't follow that. Could you say it another way? Or I can pass what you've written to the "
+              "office.",
+        "es": "Disculpe, no le entendí. ¿Lo puede decir de otra forma? O puedo pasar lo que escribió a la oficina.",
+    },
+    "note_exists": {
+        "en": "Your note {ref} is already saved for the office with what you told me. In this prototype nobody is "
+              "notified, so please also contact the office if it's urgent. Want to send another note?",
+        "es": "Su nota {ref} ya está guardada para la oficina con lo que me dijo. En este prototipo no se avisa a "
+              "nadie; si es urgente, comuníquese también con la oficina. ¿Quiere enviar otra nota?",
+    },
+    "after_send": {
+        "en": "{what} {ref} is saved for {team} to review. In this prototype nobody is notified and no time is set, "
+              "so no one will call or come because of this chat yet. If it's urgent, please contact the office.",
+        "es": "{what} {ref} está guardada para que {team} la revise. En este prototipo no se avisa a nadie ni se fija "
+              "una hora, así que nadie llamará ni vendrá todavía por este chat. Si es urgente, llame a la oficina.",
+    },
+    "issue_updated": {
+        "en": "No problem, I've changed the problem to \"{issue}\".",
+        "es": "Listo, cambié el problema a \"{issue}\".",
+    },
+    "location_updated": {
+        "en": "Updated: the location is now {loc}.",
+        "es": "Actualizado: el lugar ahora es {loc}.",
+    },
+    "contact_noted": {
+        "en": "This request now includes \"{pref}\" for the team. I can't change your account's contact settings "
+              "from here; the office can.",
+        "es": "Agregué \"{pref}\" a esta solicitud para el equipo. No puedo cambiar sus preferencias de contacto "
+              "desde aquí; la oficina sí puede.",
+    },
+    "contact_note_offer": {
+        "en": "I can't change your contact settings from here, but I can send \"{pref}\" to the office. The note is "
+              "below.",
+        "es": "No puedo cambiar sus preferencias de contacto desde aquí, pero puedo enviar \"{pref}\" a la "
+              "oficina. La nota está abajo.",
+    },
+    "policy_unknown": {
+        "en": "I don't have approved details about {topic} yet, so I won't guess. The office can answer that, and I "
+              "can send them your question.",
+        "es": "Todavía no tengo información aprobada sobre {topic}, así que no voy a adivinar. La oficina puede "
+              "responder y puedo enviarles su pregunta.",
+    },
+    "price_claim": {
+        "en": "I can't confirm prices or specials, or hold a rate, from here. The leasing team confirms current "
+              "pricing and any special. I can include what you saw so they can check it.",
+        "es": "No puedo confirmar precios ni ofertas especiales, ni reservar una tarifa desde aquí. El equipo de "
+              "arrendamiento confirma los precios y ofertas vigentes. Puedo incluir lo que vio para que lo revisen.",
+    },
+    "repeat_heard": {
+        "en": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again.",
+        "es": "Eso no está bien después de tantas visitas, y no le voy a pedir que lo revise otra vez.",
+    },
+}
+
+# Unsafe do-it-yourself steps: what to say instead (TEAM DRAFTS; McKinley maintenance must approve).
+DIY_ADVICE: dict[str, dict[Lang, str]] = {
+    "breaker": {"en": "Please don't tape or hold a breaker on. A breaker that keeps tripping is protecting the "
+                      "wiring; leave it off and let maintenance check it.",
+                "es": "Por favor no fije ni sostenga un breaker encendido. Si se baja seguido, está protegiendo el "
+                      "cableado; déjelo apagado y que mantenimiento lo revise."},
+    "disposal": {"en": "Please never put your hand in the disposal, even when it's off. Leave it for maintenance.",
+                 "es": "Por favor nunca meta la mano en el triturador, aunque esté apagado. Déjelo a mantenimiento."},
+    "wiring": {"en": "Please don't open or rewire outlets, switches or the panel yourself. Maintenance needs to do "
+                     "electrical work.",
+               "es": "Por favor no abra ni cambie enchufes, interruptores o el panel usted mismo. El trabajo eléctrico "
+                     "lo hace mantenimiento."},
+    "space_heater": {"en": "Please don't use a space heater in the bathroom or near water. If the bathroom is too "
+                           "cold, that's a heating repair.",
+                     "es": "Por favor no use un calentador portátil en el baño ni cerca del agua. Si el baño está muy "
+                           "frío, es una reparación de calefacción."},
+    "detector_battery": {"en": "Please keep the battery in your smoke or CO detector. If it goes off while you cook, "
+                               "open a window or use the fan, and maintenance can check or move it.",
+                         "es": "Por favor no le quite la batería al detector de humo o CO. Si suena al cocinar, abra "
+                               "una ventana o use el extractor, y mantenimiento puede revisarlo o moverlo."},
+    "gas_diy": {"en": "Please don't work on gas lines, valves or pilot lights yourself. If you smell gas, leave and "
+                      "call 911.",
+                "es": "Por favor no manipule líneas, válvulas ni pilotos de gas. Si huele a gas, salga y llame al "
+                      "911."},
 }
 
 # Confirmation messages returned by the action endpoint after a prototype record was actually written (I-22,
@@ -402,6 +497,11 @@ CHIPS: dict[str, dict[Lang, list[str]]] = {
     "tour_time": {"en": ["Morning", "Afternoon", "Evening"], "es": ["Mañana", "Tarde", "Noche"]},
     "prospect_next": {"en": ["Request a tour", "Talk to the leasing team"],
                       "es": ["Solicitar una visita", "Hablar con arrendamiento"]},
+    "after_decline": {"en": ["Send it after all", "Report a repair", "Talk to the office"],
+                      "es": ["Envíelo", "Reportar una reparación", "Hablar con la oficina"]},
+    "unclear": {"en": ["Send a note to the office", "Report a repair", "Check my requests"],
+                "es": ["Enviar nota a la oficina", "Reportar una reparación", "Ver mis solicitudes"]},
+    "ask_office": {"en": ["Ask the office"], "es": ["Preguntar a la oficina"]},
     "resident_next": {"en": ["Report a repair", "Check my requests", "Talk to the office"],
                       "es": ["Reportar una reparación", "Ver mis solicitudes", "Hablar con la oficina"]},
 }

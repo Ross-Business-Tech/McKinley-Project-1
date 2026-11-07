@@ -160,11 +160,14 @@ class Store:
                  "created_at": r["created_at"], **json.loads(r["data"])} for r in rows]
 
     # ---- customer action drafts ----
-    def get_draft(self, session_id: str, persona_id: str) -> dict[str, Any] | None:
+    def get_draft(self, session_id: str, persona_id: str, include_declined: bool = False) -> dict[str, Any] | None:
+        """The open draft. A declined draft (kept only so "send it after all" can restore it) is hidden unless
+        include_declined: it can't be confirmed, cancelled or shown."""
         with self._lock:
             row = self._conn.execute("SELECT kind, data FROM action_drafts WHERE session_id=? AND persona_id=?",
                                      (session_id, persona_id)).fetchone()
-        return {"kind": row["kind"], **json.loads(row["data"])} if row else None
+        d = {"kind": row["kind"], **json.loads(row["data"])} if row else None
+        return d if d and (include_declined or not d.get("declined")) else None
 
     def save_draft(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
         with self._lock, self._conn:

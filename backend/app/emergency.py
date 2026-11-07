@@ -161,8 +161,9 @@ _ELEC2 = (r"\bzapp\w*|\bshocked\b|electric (?:shock|current)|(?:outlet|socket|sw
           r"(?:outlet|socket|panel|breaker)|fray\w*\W+(?:\w+\W+){0,6}(?:copper|wire|cord)|copper (?:is )?(?:showing|"
           r"exposed)|buzz\w* (?:inside|in|behind) the wall|flicker\w*\W+(?:\w+\W+){0,8}(?:buzz\w*|crackl\w*|burn\w*)")
 _FLOOD2 = (r"\b\d+ (?:inch|inches|in\.?|cm) of water|ankle[- ]deep|knee[- ]deep|soak\w* (?:the|my) (?:carpet|floor|"
-           r"rug|bed)|leaking into my (?:unit|apartment|place) (?:really |so )?(?:fast|bad)|water\W+(?:\w+\W+){0,4}"
-           r"(?:through|from) the (?:ceiling|light)|overflow\w*\W+(?:\w+\W+){0,8}(?:under the door|into the|out of the)"
+           r"rug|bed)|leaking into my (?:unit|apartment|place) (?:really |so )?(?:fast|bad)|water\W+(?:\w+\W+){0,2}"
+           r"(?:pouring|gushing|streaming|flowing|rushing|coming|leaking fast) (?:in )?(?:through|from|out of) the "
+           r"(?:ceiling|light)|overflow\w*\W+(?:\w+\W+){0,8}(?:under the door|into the|out of the)"
            r"|(?:agua|water)\W+(?:\w+\W+){0,8}(?:llega a|por debajo|under the door|into the (?:hall|bedroom|living))|"
            r"se est[aá] saliendo el agua|rising water|water keeps (?:rising|coming)")
 _GAS2 = (r"sulfur|sulphur|rotten[- ]?eggs?|huevo|skunk\W+(?:\w+\W+){0,8}(?:stove|oven|water heater|furnace|kitchen|"
@@ -252,6 +253,8 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r"(?:schedul\w*|when is|book)\W+(?:\w+\W+){0,4}(?:inspection|test(?:ing)?)|(?:fire|smoke|co|carbon monoxide)"
     r" (?:alarm|detector)s? (?:inspection|test(?:ing)?|check)|are there (?:any )?(?:co|smoke|carbon monoxide|fire)"
     r" (?:detectors|alarms)|(?:detectors|alarms) in (?:every|each|all) (?:unit|apartment)s?|"
+    r"(?:smoke |fire |co )?(?:detector|alarm)\W+(?:\w+\W+){0,3}going off\W+(?:\w+\W+){0,2}(?:when|while|whenever|"
+    r"every time) (?:i|we) (?:cook|shower|make|burn toast)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot",
     re.I)
