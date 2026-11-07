@@ -45,6 +45,7 @@ interface Msg {
   error?: { retry: string };
   failed?: boolean; // user message that never reached the assistant
   cleared?: string; // assistant message confirming a card of this kind was not sent
+  restored?: boolean; // brought back after a reload: never re-announced as a new alert
 }
 
 interface SavedSession {
@@ -110,7 +111,7 @@ export function CustomerApp() {
         counter = Math.max(counter, ...saved.messages.map((m) => Number(m.id.slice(1)) || 0));
         setIdentity(who);
         setSessionId(saved.sessionId);
-        setMessages(saved.messages.filter((m) => !m.error));
+        setMessages(saved.messages.filter((m) => !m.error).map((m) => ({ ...m, restored: true })));
         setTurns(saved.turns);
         return;
       }
@@ -394,7 +395,7 @@ export function CustomerApp() {
               t={UI[m.lang ?? lang]}
               speaker={m.role === "assistant" && (i === 0 || messages[i - 1].role === "user")}
               focusRef={m === lastAssistant ? lastAssistantRef : undefined}
-              cardState={cardStates[i] ?? "current"}
+              cardState={cardStates[i] ?? null}
               busy={busy}
               preview={!!preview}
               onFileLabel={onFileLabel}
@@ -660,7 +661,7 @@ function Message({
       <div className="pl-8">
         <span className="sr-only">{t.assistantSaid} </span>
         {emergency && (
-          <div role="alert" className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
+          <div role={msg.restored ? undefined : "alert"} className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
             <p className="flex items-start gap-2 text-lg leading-snug font-bold text-mk-danger">
               <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
               <span>{r?.safety_heading ?? t.call911}</span>
@@ -709,7 +710,7 @@ function Message({
 }
 
 /** Calm, non-alarming line for possible distress or feeling unwell. Never the red emergency alert. */
-function CareNote({ kind, note, t }: { kind: "distress" | "unwell"; note: string; t: UIStrings }) {
+function CareNote({ kind, note, t }: { kind: "distress" | "unwell" | "danger"; note: string; t: UIStrings }) {
   const link = "mk-focus inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-sent/40 bg-mk-surface px-3 font-semibold text-mk-sent";
   return (
     <div className="mb-2 rounded-lg border border-mk-sent/30 bg-mk-sent-soft p-3" data-testid="care-note">
@@ -749,7 +750,7 @@ function StatusList({ items, t }: { items: StatusItem[]; t: UIStrings }) {
   const [all, setAll] = useState(false);
   const listId = useId();
   const sorted = sortStatusItems(items);
-  const pinned = sorted.filter((s) => statusTone(s.status) !== "submitted").length;
+  const pinned = Math.min(3, sorted.filter((s) => statusTone(s.status) !== "submitted").length); // never a wall of alerts
   const limit = pinned + VISIBLE_RECENT;
   const shown = all ? sorted : sorted.slice(0, limit);
   return (

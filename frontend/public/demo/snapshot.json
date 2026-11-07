@@ -1,6 +1,6 @@
 {
  "kind": "static_demo_snapshot",
- "generated_at": "2026-11-06T09:38:24.326165+00:00",
+ "generated_at": "2026-11-07T18:18:20.465318+00:00",
  "notice": "Static demonstration: pre-computed with the deterministic MOCK provider (not a language model) and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
  "workbook_loaded": true,
  "personas": [
@@ -362,8 +362,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "a94339616a7c442b91f07b3eb920d51b",
-    "created_at": "2026-11-06T09:38:24.180650Z",
+    "session_id": "1a8d13d51ea24b27b3de0c555b159ceb",
+    "created_at": "2026-11-07T18:18:20.317822Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -442,7 +442,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "I'd be glad to set up a tour request for you. What time of day is easiest: morning, afternoon or evening?",
@@ -519,8 +521,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "1a57ab0871ef44cc8e68680f2bb25bef",
-    "created_at": "2026-11-06T09:38:24.190359Z",
+    "session_id": "d4aa706255ce45b3b8a47bedf102bad4",
+    "created_at": "2026-11-07T18:18:20.322885Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -620,7 +622,7 @@
       "step": "6_workflow",
       "status": "ok",
       "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5'] | action=tour_request:collecting",
-      "ms": 8
+      "ms": 3
      },
      {
       "step": "7_generate",
@@ -680,7 +682,7 @@
       {
        "key": "move_in",
        "label": "Move-in",
-       "value": "Next month",
+       "value": "This week",
        "source": "you_said"
       }
      ],
@@ -699,7 +701,9 @@
      "Evening"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "I'd be glad to set up a tour request for you. What time of day is easiest: morning, afternoon or evening?",
@@ -781,8 +785,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "471103db046741b2b1f2ce255be90864",
-    "created_at": "2026-11-06T09:38:24.192243Z",
+    "session_id": "cfacaa5ae54e42ee8bc235988efd955c",
+    "created_at": "2026-11-07T18:18:20.324816Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -941,7 +945,7 @@
       {
        "key": "move_in",
        "label": "Move-in",
-       "value": "Next month",
+       "value": "This week",
        "source": "you_said"
       },
       {
@@ -966,7 +970,9 @@
      "Evening"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "case2_price_shopper": {
@@ -1045,8 +1051,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "edc9f97f4224419fbe1f428a334e9064",
-    "created_at": "2026-11-06T09:38:24.193043Z",
+    "session_id": "d9743b728a0b4d58bd0664f8fdd9c871",
+    "created_at": "2026-11-07T18:18:20.325594Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1125,7 +1131,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
@@ -1202,8 +1210,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "02723014ab304ab6bf88a0b00be3e423",
-    "created_at": "2026-11-06T09:38:24.194554Z",
+    "session_id": "bec03c84b6ad4e0187cff5886fec425d",
+    "created_at": "2026-11-07T18:18:20.327206Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1331,7 +1339,9 @@
      "Talk to the leasing team"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
@@ -1411,8 +1421,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "f8b65f326c14423faafd4470ca66c136",
-    "created_at": "2026-11-06T09:38:24.196039Z",
+    "session_id": "e7386c8c45e140a8b061d80fb716450b",
+    "created_at": "2026-11-07T18:18:20.328755Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1540,7 +1550,9 @@
      "Talk to the leasing team"
     ],
     "identity_note": "Browsing as a prospective resident (demo profile)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "case3_repeat_ac_R001": {
@@ -1625,8 +1637,8 @@
     },
     "latency_ms": 22,
     "stop_reason": "mock",
-    "session_id": "1872da67c80145b8b736e0cb87420a6e",
-    "created_at": "2026-11-06T09:38:24.197683Z",
+    "session_id": "95998fa52a4e425fb1fe5295f8e540d9",
+    "created_at": "2026-11-07T18:18:20.330266Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1645,7 +1657,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -1705,10 +1717,12 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Marisol (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
-    "reply": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. When you send this request it will be marked high priority for a manager to review. Got it. If maintenance comes while you're out, may they enter, or should they contact you first? Meanwhile, a few safe checks: Check the thermostat is set to the right mode (cool or heat) and to a temperature past the room's. Make sure the air vents are open and not blocked by furniture.",
+    "reply": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. When you send this request it will be marked high priority for a manager to review. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -1782,14 +1796,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+noctx",
     "usage": {
-     "input_tokens": 1000,
-     "output_tokens": 81,
+     "input_tokens": 964,
+     "output_tokens": 45,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 24,
+    "latency_ms": 13,
     "stop_reason": "mock",
-    "session_id": "52b932516d9c4a60a4a48af49056e5e6",
-    "created_at": "2026-11-06T09:38:24.200762Z",
+    "session_id": "dec827d697994c63b20c08b52ce6ff75",
+    "created_at": "2026-11-07T18:18:20.333406Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -1864,7 +1878,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -1962,10 +1976,12 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Marisol (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
-    "reply": "I'm sorry this is happening again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
+    "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -2066,14 +2082,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 1055,
-     "output_tokens": 49,
+     "input_tokens": 1066,
+     "output_tokens": 60,
      "estimated_cost_usd": 0.0
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "bc63e69e81a34d15a01e1f1f856eac0b",
-    "created_at": "2026-11-06T09:38:24.203027Z",
+    "session_id": "e8f00c5e46df4f519861b0a6c3862481",
+    "created_at": "2026-11-07T18:18:20.335797Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2270,7 +2286,9 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Marisol (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "case4_faucet_no_record": {
@@ -2349,8 +2367,8 @@
     },
     "latency_ms": 10,
     "stop_reason": "mock",
-    "session_id": "87fa0b01c55343859610422ec3e3da34",
-    "created_at": "2026-11-06T09:38:24.204461Z",
+    "session_id": "17b9bb9a6eab4c64bddda155080a8c30",
+    "created_at": "2026-11-07T18:18:20.337145Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -2429,7 +2447,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "I can't match you to a resident account here, so I can't file a repair request for a unit. The office can take it from you directly. If water, gas, smoke or sparks are involved, call 911 or your community's emergency maintenance line now.",
@@ -2506,8 +2526,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "55c295b57d2d44ff97897409fd1f318c",
-    "created_at": "2026-11-06T09:38:24.205520Z",
+    "session_id": "cf8a654dccd145d4b7a50c07e6ad1777",
+    "created_at": "2026-11-07T18:18:20.338458Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2676,7 +2696,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "I can't match you to a resident account here, so I can't file a repair request for a unit. The office can take it from you directly. If water, gas, smoke or sparks are involved, call 911 or your community's emergency maintenance line now.",
@@ -2759,8 +2781,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "a5e464f0ce9142e9bf18d5ff8bd59483",
-    "created_at": "2026-11-06T09:38:24.206603Z",
+    "session_id": "2659fda4db8243bb8e269aadd461c722",
+    "created_at": "2026-11-07T18:18:20.339689Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2929,7 +2951,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "case5_renewal_contact_R003": {
@@ -3019,8 +3043,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "dda4368a0eb0408a8507e5c46bc3e7eb",
-    "created_at": "2026-11-06T09:38:24.207994Z",
+    "session_id": "6e7411c2ea2b44ee85cfbcf3d6164b3f",
+    "created_at": "2026-11-07T18:18:20.341236Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3099,10 +3123,12 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Jordan (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
-    "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+    "reply": "I can't change your contact settings from here, but I can send \"Please don't call me while I'm sleeping\" to the office. The note is below.",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -3110,7 +3136,7 @@
     "audience": "resident",
     "recommended_handoff": true,
     "handoff_reason": "Person asked for a human. Financial or lease-term decision cannot be made by the assistant. | Model suggested: Backend gate requires staff",
-    "handoff_category": "human_requested",
+    "handoff_category": "financial_or_lease",
     "handoff_is_recommendation_only": true,
     "model_handoff": true,
     "policy_signals": [
@@ -3181,14 +3207,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+noctx",
     "usage": {
-     "input_tokens": 922,
-     "output_tokens": 28,
+     "input_tokens": 920,
+     "output_tokens": 26,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 14,
+    "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "65b3fbd2fe4346928c8106b44a6db6bc",
-    "created_at": "2026-11-06T09:38:24.210088Z",
+    "session_id": "6e053c250bf644cbbd30347c0bc90e87",
+    "created_at": "2026-11-07T18:18:20.343678Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3217,7 +3243,7 @@
     "workflow": {
      "id": "human_handoff",
      "label": "Human handoff",
-     "reason": "Person asked to reach a person or the office.",
+     "reason": "Contact preference change: the office updates the account.",
      "instructions_version": "wf-v1"
     },
     "routed_workflow": {
@@ -3242,7 +3268,7 @@
      "completed": false,
      "team": "leasing",
      "priority": "normal",
-     "category": "human_requested",
+     "category": "financial_or_lease",
      "reasons": [
       "Person asked for a human. Financial or lease-term decision cannot be made by the assistant.",
       "Model suggested: Backend gate requires staff"
@@ -3286,7 +3312,7 @@
      {
       "step": "6_workflow",
       "status": "ok",
-      "detail": "human_handoff: Person asked to reach a person or the office. | functions=['F3', 'F9'] | action=staff_handoff:ready",
+      "detail": "human_handoff: Contact preference change: the office updates the account. | functions=['F3', 'F9'] | action=staff_handoff:ready",
       "ms": 0
      },
      {
@@ -3329,7 +3355,7 @@
       {
        "key": "topic",
        "label": "About",
-       "value": "Asked for a person, for the leasing team",
+       "value": "Contact preference change, for the leasing team",
        "source": "assistant"
       },
       {
@@ -3354,10 +3380,12 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Jordan (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
-    "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+    "reply": "I can't change your contact settings from here, but I can send \"Please don't call me while I'm sleeping\" to the office. The note is below.",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -3365,7 +3393,7 @@
     "audience": "resident",
     "recommended_handoff": true,
     "handoff_reason": "Person asked for a human. Financial or lease-term decision cannot be made by the assistant. Record shows an open item where follow-up is owed. | Model suggested: Backend gate requires staff",
-    "handoff_category": "human_requested",
+    "handoff_category": "unresolved_commitment",
     "handoff_is_recommendation_only": true,
     "model_handoff": true,
     "policy_signals": [
@@ -3454,14 +3482,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 1006,
-     "output_tokens": 28,
+     "input_tokens": 1004,
+     "output_tokens": 26,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 5,
+    "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "b2f87ae1d9074a559673a3cef5424167",
-    "created_at": "2026-11-06T09:38:24.212202Z",
+    "session_id": "7593202b88dd4ac89f48bbe7b6dde45e",
+    "created_at": "2026-11-07T18:18:20.346148Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3491,7 +3519,7 @@
     "workflow": {
      "id": "human_handoff",
      "label": "Human handoff",
-     "reason": "Person asked to reach a person or the office.",
+     "reason": "Contact preference change: the office updates the account.",
      "instructions_version": "wf-v1"
     },
     "routed_workflow": {
@@ -3516,7 +3544,7 @@
      "completed": false,
      "team": "leasing",
      "priority": "high",
-     "category": "human_requested",
+     "category": "unresolved_commitment",
      "reasons": [
       "Person asked for a human. Financial or lease-term decision cannot be made by the assistant. Record shows an open item where follow-up is owed.",
       "Model suggested: Backend gate requires staff"
@@ -3571,7 +3599,7 @@
      {
       "step": "6_workflow",
       "status": "ok",
-      "detail": "human_handoff: Person asked to reach a person or the office. | functions=['F3', 'F9'] | action=staff_handoff:ready",
+      "detail": "human_handoff: Contact preference change: the office updates the account. | functions=['F3', 'F9'] | action=staff_handoff:ready",
       "ms": 0
      },
      {
@@ -3614,7 +3642,7 @@
       {
        "key": "topic",
        "label": "About",
-       "value": "Asked for a person, for the leasing team",
+       "value": "Contact preference change, for the leasing team",
        "source": "assistant"
       },
       {
@@ -3632,7 +3660,7 @@
       {
        "key": "contact",
        "label": "Contact preference",
-       "value": "Prefers text; never call before 10 AM, text first",
+       "value": "Prefers text",
        "source": "on_file"
       }
      ],
@@ -3645,7 +3673,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Jordan (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x01_emergency_gas": {
@@ -3730,8 +3760,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "d3810cd8bf4044cc8186d859d9b21ddd",
-    "created_at": "2026-11-06T09:38:24.213624Z",
+    "session_id": "07c5c03dd7dc4c5198d1cb4a8ce8376d",
+    "created_at": "2026-11-07T18:18:20.347468Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3784,6 +3814,12 @@
      },
      {
       "step": "8_validate",
+      "status": "warn",
+      "detail": "possible risk signal (danger): calm safety line added",
+      "ms": 0
+     },
+     {
+      "step": "8_validate",
       "status": "ok",
       "detail": "all checks passed",
       "ms": 0
@@ -3810,7 +3846,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Theo (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": "danger",
+    "care_note": "If anyone is hurt or in danger right now, call 911. If something in your home is unsafe, stay away from it and call your community's emergency maintenance line."
    },
    "prompt_only": {
     "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line.",
@@ -3898,8 +3936,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "3a69e5c497524048abd8fd015c8b3453",
-    "created_at": "2026-11-06T09:38:24.214556Z",
+    "session_id": "8fc620299f674f9ead9be0d0e92cb6f7",
+    "created_at": "2026-11-07T18:18:20.348416Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4033,7 +4071,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Theo (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line.",
@@ -4127,8 +4167,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "5ddb630633904c47a8a6ff5c96dc23dc",
-    "created_at": "2026-11-06T09:38:24.215625Z",
+    "session_id": "d6346f09da5c4d6fbeb280c96c5208b5",
+    "created_at": "2026-11-07T18:18:20.349362Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4268,7 +4308,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Theo (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x02_repeat_sink_R008": {
@@ -4353,8 +4395,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "718cf66a7d6248ecaf60acace0667a41",
-    "created_at": "2026-11-06T09:38:24.217316Z",
+    "session_id": "73a732b5b736429ba0aabd9b44d50418",
+    "created_at": "2026-11-07T18:18:20.350969Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -4373,7 +4415,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -4433,7 +4475,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Desmond (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -4516,8 +4560,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "8826e0aaf93c428cb3be010d78395f1b",
-    "created_at": "2026-11-06T09:38:24.219404Z",
+    "session_id": "1e9305b5c2824c2a9c67e8441062eec4",
+    "created_at": "2026-11-07T18:18:20.353143Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4574,7 +4618,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -4671,10 +4715,12 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Desmond (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
-    "reply": "I'm sorry this is happening again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
+    "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -4774,14 +4820,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 1051,
-     "output_tokens": 49,
+     "input_tokens": 1062,
+     "output_tokens": 60,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 9,
+    "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "15593c462a204ffab134f398127ac32d",
-    "created_at": "2026-11-06T09:38:24.221491Z",
+    "session_id": "4dcd8c901f1847baa9646a1d26828e6b",
+    "created_at": "2026-11-07T18:18:20.355427Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4867,7 +4913,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -4977,7 +5023,9 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Desmond (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x03_unverified_private": {
@@ -5062,8 +5110,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "5c2cd5daf08a47fca803242067efdb90",
-    "created_at": "2026-11-06T09:38:24.222844Z",
+    "session_id": "cbb9a710c4a84ee4917fcd2148f38e6a",
+    "created_at": "2026-11-07T18:18:20.356826Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5142,7 +5190,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "I can't share request or account details until you're signed in to your resident account. The office can look it up after confirming who you are. I've prepared a note for them.",
@@ -5225,8 +5275,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "03964d3b8a1d44d98d1057c761c6451e",
-    "created_at": "2026-11-06T09:38:24.223602Z",
+    "session_id": "8325dd88931b4fdf8199352ca9fcd7e5",
+    "created_at": "2026-11-07T18:18:20.357765Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5397,7 +5447,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "I can't share request or account details until you're signed in to your resident account. The office can look it up after confirming who you are. I've prepared a note for them.",
@@ -5485,8 +5537,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "66209a07c8af4cfdb434a5361084693f",
-    "created_at": "2026-11-06T09:38:24.224293Z",
+    "session_id": "5580b123fa0e406690fe33bfc27e9b41",
+    "created_at": "2026-11-07T18:18:20.358670Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5657,7 +5709,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not matched to a resident account",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x04_sensitive_data": {
@@ -5742,8 +5796,8 @@
     },
     "latency_ms": 7,
     "stop_reason": "mock",
-    "session_id": "98738838b7c7434f9ce1562341fc842e",
-    "created_at": "2026-11-06T09:38:24.225449Z",
+    "session_id": "f797d83928464b669417f1649d9a7088",
+    "created_at": "2026-11-07T18:18:20.359823Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5822,7 +5876,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Hana (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what you sent. Payments and account questions are handled by the office, and I've prepared a note for them.",
@@ -5905,8 +5961,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "64224ab066f247c89e39d34258d23c38",
-    "created_at": "2026-11-06T09:38:24.226878Z",
+    "session_id": "4d6ba682a03140a3928f1ef99f4aafe9",
+    "created_at": "2026-11-07T18:18:20.361455Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6062,7 +6118,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Hana (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what you sent. Payments and account questions are handled by the office, and I've prepared a note for them.",
@@ -6153,8 +6211,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "0fc699fd92f84807bc6965baf8685f78",
-    "created_at": "2026-11-06T09:38:24.228326Z",
+    "session_id": "0760bee072d6433f9779ead5f708c959",
+    "created_at": "2026-11-07T18:18:20.363098Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6324,7 +6382,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Hana (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x05_low_confidence": {
@@ -6403,8 +6463,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "915fbf85eea142bbaacb9a4851653919",
-    "created_at": "2026-11-06T09:38:24.229312Z",
+    "session_id": "08d599aea0904426935208b9175d74cd",
+    "created_at": "2026-11-07T18:18:20.364132Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -6483,7 +6543,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Not signed in",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Happy to help. Are you a current McKinley resident, or are you looking for a new home?",
@@ -6560,8 +6622,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "d9165d9c6a5c4e9dafaada39a95d129c",
-    "created_at": "2026-11-06T09:38:24.230490Z",
+    "session_id": "9dcb5a6614c1415c941c4ec9dd364605",
+    "created_at": "2026-11-07T18:18:20.365529Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6676,7 +6738,9 @@
      "I'm looking for a home"
     ],
     "identity_note": "Not signed in",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "Happy to help. Are you a current McKinley resident, or are you looking for a new home?",
@@ -6753,8 +6817,8 @@
     },
     "latency_ms": 14,
     "stop_reason": "mock",
-    "session_id": "c663f5fe3cbc4ab49c6a51ffb6cdff4d",
-    "created_at": "2026-11-06T09:38:24.231584Z",
+    "session_id": "a736569943574e4caf3297ffa9a5c268",
+    "created_at": "2026-11-07T18:18:20.366803Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6869,7 +6933,9 @@
      "I'm looking for a home"
     ],
     "identity_note": "Not signed in",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x06_human_request_R020": {
@@ -6954,8 +7020,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "f2cd473de3b7407bb44712c97f1f7f4c",
-    "created_at": "2026-11-06T09:38:24.232739Z",
+    "session_id": "954d27a4a17e4b5b9b41f8dbf1113c81",
+    "created_at": "2026-11-07T18:18:20.367967Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7034,7 +7100,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Simone (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
@@ -7117,8 +7185,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "cf522032704845589cb5895e84093cce",
-    "created_at": "2026-11-06T09:38:24.234154Z",
+    "session_id": "e0ede270c0b64767af36619dc1787a04",
+    "created_at": "2026-11-07T18:18:20.369523Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7275,7 +7343,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Simone (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
@@ -7376,8 +7446,8 @@
     },
     "latency_ms": 11,
     "stop_reason": "mock",
-    "session_id": "65e09af358e4442c881c145c6daf5641",
-    "created_at": "2026-11-06T09:38:24.235601Z",
+    "session_id": "9dd8bed4c50b4301b83f1efa3c1d71ba",
+    "created_at": "2026-11-07T18:18:20.371089Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7539,7 +7609,7 @@
       {
        "key": "contact",
        "label": "Contact preference",
-       "value": "Prefers email; Wants anything with numbers in writing (email)",
+       "value": "Prefers email",
        "source": "on_file"
       }
      ],
@@ -7552,7 +7622,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Simone (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x07_injection_history": {
@@ -7637,8 +7709,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "b4960131f23e41ec9b8aa7e42d93d1bd",
-    "created_at": "2026-11-06T09:38:24.237076Z",
+    "session_id": "d4606b5e383148cb85ade02c9e6a4042",
+    "created_at": "2026-11-07T18:18:20.372388Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7717,7 +7789,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Casey (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -7800,8 +7874,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "32febdc3c3b1422d95a541e71734cbab",
-    "created_at": "2026-11-06T09:38:24.238146Z",
+    "session_id": "3bc6b010bb974a3991c18eb72685b1ae",
+    "created_at": "2026-11-07T18:18:20.373519Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -7955,10 +8029,12 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Casey (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
-    "reply": "I'm sorry this is happening again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
+    "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -8054,14 +8130,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 997,
-     "output_tokens": 49,
+     "input_tokens": 1008,
+     "output_tokens": 60,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 23,
+    "latency_ms": 15,
     "stop_reason": "mock",
-    "session_id": "561c178f5fb94a7d9aa282fc13d28155",
-    "created_at": "2026-11-06T09:38:24.239370Z",
+    "session_id": "05f7ea9f55f34ac281b34e73cb438c22",
+    "created_at": "2026-11-07T18:18:20.374745Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8250,7 +8326,9 @@
      "Contact me first"
     ],
     "identity_note": "Signed in as Casey (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x08_renewal_affordability_R011": {
@@ -8335,8 +8413,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "9c917cb7fb41461c93f5deb056f4184f",
-    "created_at": "2026-11-06T09:38:24.241130Z",
+    "session_id": "d2118d8d1f4f4ca9ab9f236cbd5f5a27",
+    "created_at": "2026-11-07T18:18:20.376405Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -8415,7 +8493,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Devon (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "I understand. Renewal decisions are a big deal, and the leasing office can walk you through your options. I can't quote or change renewal terms myself. I've prepared a note for them.",
@@ -8498,8 +8578,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "ed8e824cc06446af8607e516338816e9",
-    "created_at": "2026-11-06T09:38:24.243562Z",
+    "session_id": "46452780f5e24f49a78ea0a1633f0be5",
+    "created_at": "2026-11-07T18:18:20.378895Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8662,7 +8742,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Devon (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "I understand. Renewal decisions are a big deal, and the leasing office can walk you through your options. I can't quote or change renewal terms myself. I've prepared a note for them and noted that you prefer chat.",
@@ -8760,8 +8842,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "d972440ea3d848eeb5ce3ecb0da3bbd9",
-    "created_at": "2026-11-06T09:38:24.246268Z",
+    "session_id": "c97122ddf0c6417fbab69944b18f2886",
+    "created_at": "2026-11-07T18:18:20.381457Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8844,7 +8926,7 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
-      "ms": 1
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -8941,7 +9023,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Devon (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   },
   "x09_spanish_resident_R012": {
@@ -9020,8 +9104,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "0d5aea69c170407882953981a410a305",
-    "created_at": "2026-11-06T09:38:24.248453Z",
+    "session_id": "73966885a99640b8b50a14cef01bc3e1",
+    "created_at": "2026-11-07T18:18:20.383244Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -9100,7 +9184,9 @@
     "status_items": [],
     "suggested_replies": [],
     "identity_note": "Signed in as Valeria (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "prompt_only": {
     "reply": "Entendido. Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle primero?",
@@ -9177,8 +9263,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "86d31e64dfae4f1dafd816bfafa033b5",
-    "created_at": "2026-11-06T09:38:24.250209Z",
+    "session_id": "95ef095b46f640d1a0bc877b18f6b9a9",
+    "created_at": "2026-11-07T18:18:20.384984Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9323,7 +9409,9 @@
      "Llamen antes"
     ],
     "identity_note": "Signed in as Valeria (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    },
    "aware": {
     "reply": "Entendido. Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle primero?",
@@ -9411,8 +9499,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "0c9c1f4a74664f4da8d8aa63611c9f1f",
-    "created_at": "2026-11-06T09:38:24.251948Z",
+    "session_id": "2e97804f46014411bd93b99f6fc71282",
+    "created_at": "2026-11-07T18:18:20.386734Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9545,7 +9633,7 @@
       {
        "key": "contact",
        "label": "Preferencia de contacto",
-       "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+       "value": "Prefiere mensaje de texto",
        "source": "on_file"
       },
       {
@@ -9569,7 +9657,9 @@
      "Llamen antes"
     ],
     "identity_note": "Signed in as Valeria (demo account)",
-    "action_cleared": null
+    "action_cleared": null,
+    "care_kind": null,
+    "care_note": null
    }
   }
  },
@@ -10482,7 +10572,7 @@
      "kind": "chat",
      "message": "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
      "response": {
-      "reply": "I'm sorry this is happening again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
+      "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -10583,14 +10673,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 1055,
-       "output_tokens": 49,
+       "input_tokens": 1066,
+       "output_tokens": 60,
        "estimated_cost_usd": 0.0
       },
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:38:24.270315Z",
+      "created_at": "2026-11-07T18:18:20.406496Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -10787,7 +10877,9 @@
        "Contact me first"
       ],
       "identity_note": "Signed in as Marisol (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -10875,7 +10967,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:38:24.272379Z",
+      "created_at": "2026-11-07T18:18:20.408563Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11035,7 +11127,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Marisol (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -11096,7 +11190,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R001",
         "session_hash": "f1b1a5ef54",
-        "created_at": "2026-11-06T09:38:24.272867Z",
+        "created_at": "2026-11-07T18:18:20.409144Z",
         "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11148,7 +11242,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R001",
        "session_hash": "f1b1a5ef54",
-       "created_at": "2026-11-06T09:38:24.272867Z",
+       "created_at": "2026-11-07T18:18:20.409144Z",
        "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11280,7 +11374,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-06T09:38:24.274849Z",
+      "created_at": "2026-11-07T18:18:20.410902Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11403,7 +11497,7 @@
         "reference": "DEMO-WO-1001",
         "title": "My AC stopped cooling again. This has happened multiple…",
         "status": "Submitted, waiting for staff review",
-        "opened": "2026-11-06",
+        "opened": "2026-11-07",
         "source": "prototype_store",
         "note": "Sent through this assistant (prototype)."
        }
@@ -11413,7 +11507,9 @@
        "Report a new repair"
       ],
       "identity_note": "Signed in as Marisol (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -11427,7 +11523,7 @@
      "kind": "chat",
      "message": "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone explain my choices?",
      "response": {
-      "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+      "reply": "I can't change your contact settings from here, but I can send \"Please don't call me while I'm sleeping\" to the office. The note is below.",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -11435,7 +11531,7 @@
       "audience": "resident",
       "recommended_handoff": true,
       "handoff_reason": "Person asked for a human. Financial or lease-term decision cannot be made by the assistant. Record shows an open item where follow-up is owed. | Model suggested: Backend gate requires staff",
-      "handoff_category": "human_requested",
+      "handoff_category": "unresolved_commitment",
       "handoff_is_recommendation_only": true,
       "model_handoff": true,
       "policy_signals": [
@@ -11524,14 +11620,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 1006,
-       "output_tokens": 28,
+       "input_tokens": 1004,
+       "output_tokens": 26,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 5,
+      "latency_ms": 12,
       "stop_reason": "mock",
       "session_id": "demo-res-renewal",
-      "created_at": "2026-11-06T09:38:24.277679Z",
+      "created_at": "2026-11-07T18:18:20.414050Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -11561,7 +11657,7 @@
       "workflow": {
        "id": "human_handoff",
        "label": "Human handoff",
-       "reason": "Person asked to reach a person or the office.",
+       "reason": "Contact preference change: the office updates the account.",
        "instructions_version": "wf-v1"
       },
       "routed_workflow": {
@@ -11586,7 +11682,7 @@
        "completed": false,
        "team": "leasing",
        "priority": "high",
-       "category": "human_requested",
+       "category": "unresolved_commitment",
        "reasons": [
         "Person asked for a human. Financial or lease-term decision cannot be made by the assistant. Record shows an open item where follow-up is owed.",
         "Model suggested: Backend gate requires staff"
@@ -11641,7 +11737,7 @@
        {
         "step": "6_workflow",
         "status": "ok",
-        "detail": "human_handoff: Person asked to reach a person or the office. | functions=['F3', 'F9'] | action=staff_handoff:ready",
+        "detail": "human_handoff: Contact preference change: the office updates the account. | functions=['F3', 'F9'] | action=staff_handoff:ready",
         "ms": 0
        },
        {
@@ -11684,7 +11780,7 @@
         {
          "key": "topic",
          "label": "About",
-         "value": "Asked for a person, for the leasing team",
+         "value": "Contact preference change, for the leasing team",
          "source": "assistant"
         },
         {
@@ -11702,7 +11798,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         }
        ],
@@ -11715,7 +11811,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Jordan (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -11732,7 +11830,7 @@
         {
          "key": "topic",
          "label": "About",
-         "value": "Asked for a person, for the leasing team",
+         "value": "Contact preference change, for the leasing team",
          "source": "assistant"
         },
         {
@@ -11750,7 +11848,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         }
        ],
@@ -11764,13 +11862,13 @@
         "status_label": "In the office queue",
         "persona_id": "R003",
         "session_hash": "0a00e04e7c",
-        "created_at": "2026-11-06T09:38:24.278147Z",
+        "created_at": "2026-11-07T18:18:20.414461Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
           "key": "topic",
           "label": "About",
-          "value": "Asked for a person, for the leasing team",
+          "value": "Contact preference change, for the leasing team",
           "source": "assistant"
          },
          {
@@ -11788,7 +11886,7 @@
          {
           "key": "contact",
           "label": "Contact preference",
-          "value": "Prefers text; never call before 10 AM, text first",
+          "value": "Prefers text",
           "source": "on_file"
          }
         ],
@@ -11804,13 +11902,13 @@
        "status_label": "In the office queue",
        "persona_id": "R003",
        "session_hash": "0a00e04e7c",
-       "created_at": "2026-11-06T09:38:24.278147Z",
+       "created_at": "2026-11-07T18:18:20.414461Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
          "key": "topic",
          "label": "About",
-         "value": "Asked for a person, for the leasing team",
+         "value": "Contact preference change, for the leasing team",
          "source": "assistant"
         },
         {
@@ -11828,7 +11926,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         }
        ],
@@ -11949,7 +12047,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-res-human",
-      "created_at": "2026-11-06T09:38:24.280580Z",
+      "created_at": "2026-11-07T18:18:20.417247Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -12111,7 +12209,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers email; Wants anything with numbers in writing (email)",
+         "value": "Prefers email",
          "source": "on_file"
         }
        ],
@@ -12124,7 +12222,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Simone (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -12159,7 +12259,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers email; Wants anything with numbers in writing (email)",
+         "value": "Prefers email",
          "source": "on_file"
         }
        ],
@@ -12173,7 +12273,7 @@
         "status_label": "In the office queue",
         "persona_id": "R020",
         "session_hash": "f85c4a5434",
-        "created_at": "2026-11-06T09:38:24.281015Z",
+        "created_at": "2026-11-07T18:18:20.417760Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -12197,7 +12297,7 @@
          {
           "key": "contact",
           "label": "Contact preference",
-          "value": "Prefers email; Wants anything with numbers in writing (email)",
+          "value": "Prefers email",
           "source": "on_file"
          }
         ],
@@ -12213,7 +12313,7 @@
        "status_label": "In the office queue",
        "persona_id": "R020",
        "session_hash": "f85c4a5434",
-       "created_at": "2026-11-06T09:38:24.281015Z",
+       "created_at": "2026-11-07T18:18:20.417760Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -12237,7 +12337,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers email; Wants anything with numbers in writing (email)",
+         "value": "Prefers email",
          "source": "on_file"
         }
        ],
@@ -12351,7 +12451,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-gas",
-      "created_at": "2026-11-06T09:38:24.283313Z",
+      "created_at": "2026-11-07T18:18:20.420134Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12494,7 +12594,7 @@
         {
          "key": "topic",
          "label": "About",
-         "value": "Possible emergency (gas), for the emergency maintenance team",
+         "value": "Possible emergency: gas smell or leak, for the emergency maintenance team",
          "source": "assistant"
         },
         {
@@ -12526,13 +12626,13 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-06T09:38:24.282129Z",
+        "created_at": "2026-11-07T18:18:20.418873Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
           "key": "topic",
           "label": "About",
-          "value": "Possible emergency (gas), for the emergency maintenance team",
+          "value": "Possible emergency: gas smell or leak, for the emergency maintenance team",
           "source": "assistant"
          },
          {
@@ -12567,13 +12667,13 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-06T09:38:24.282129Z",
+        "created_at": "2026-11-07T18:18:20.418873Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
           "key": "topic",
           "label": "About",
-          "value": "Possible emergency (gas), for the emergency maintenance team",
+          "value": "Possible emergency: gas smell or leak, for the emergency maintenance team",
           "source": "assistant"
          },
          {
@@ -12603,7 +12703,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Theo (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -12704,7 +12806,7 @@
       "latency_ms": 23,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:38:24.285478Z",
+      "created_at": "2026-11-07T18:18:20.422533Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12792,6 +12894,12 @@
        },
        {
         "step": "8_validate",
+        "status": "warn",
+        "detail": "possible risk signal (danger): calm safety line added",
+        "ms": 0
+       },
+       {
+        "step": "8_validate",
         "status": "ok",
         "detail": "all checks passed",
         "ms": 0
@@ -12831,7 +12939,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         },
         {
@@ -12858,7 +12966,9 @@
        "Living room"
       ],
       "identity_note": "Signed in as Jordan (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": "danger",
+      "care_note": "If anyone is hurt or in danger right now, call 911. If something in your home is unsafe, stay away from it and call your community's emergency maintenance line."
      }
     },
     {
@@ -12946,7 +13056,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:38:24.286967Z",
+      "created_at": "2026-11-07T18:18:20.423957Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13067,7 +13177,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         },
         {
@@ -13097,7 +13207,9 @@
        "Contact me first"
       ],
       "identity_note": "Signed in as Jordan (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -13186,7 +13298,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-06T09:38:24.288493Z",
+      "created_at": "2026-11-07T18:18:20.425427Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13309,7 +13421,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         },
         {
@@ -13340,7 +13452,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Jordan (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -13363,7 +13477,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         },
         {
@@ -13395,7 +13509,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R003",
         "session_hash": "80198d5585",
-        "created_at": "2026-11-06T09:38:24.288946Z",
+        "created_at": "2026-11-07T18:18:20.425935Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -13407,7 +13521,7 @@
          {
           "key": "contact",
           "label": "Contact preference",
-          "value": "Prefers text; never call before 10 AM, text first",
+          "value": "Prefers text",
           "source": "on_file"
          },
          {
@@ -13441,7 +13555,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R003",
        "session_hash": "80198d5585",
-       "created_at": "2026-11-06T09:38:24.288946Z",
+       "created_at": "2026-11-07T18:18:20.425935Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -13453,7 +13567,7 @@
         {
          "key": "contact",
          "label": "Contact preference",
-         "value": "Prefers text; never call before 10 AM, text first",
+         "value": "Prefers text",
          "source": "on_file"
         },
         {
@@ -13579,7 +13693,7 @@
       "latency_ms": 14,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-06T09:38:24.291181Z",
+      "created_at": "2026-11-07T18:18:20.428270Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -13712,7 +13826,7 @@
         {
          "key": "contact",
          "label": "Preferencia de contacto",
-         "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+         "value": "Prefiere mensaje de texto",
          "source": "on_file"
         },
         {
@@ -13736,7 +13850,9 @@
        "Llamen antes"
       ],
       "identity_note": "Signed in as Valeria (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -13824,7 +13940,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-06T09:38:24.292709Z",
+      "created_at": "2026-11-07T18:18:20.429798Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13953,7 +14069,7 @@
         {
          "key": "contact",
          "label": "Preferencia de contacto",
-         "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+         "value": "Prefiere mensaje de texto",
          "source": "on_file"
         },
         {
@@ -13978,7 +14094,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Signed in as Valeria (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -14007,7 +14125,7 @@
         {
          "key": "contact",
          "label": "Preferencia de contacto",
-         "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+         "value": "Prefiere mensaje de texto",
          "source": "on_file"
         },
         {
@@ -14033,7 +14151,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R012",
         "session_hash": "944a05361a",
-        "created_at": "2026-11-06T09:38:24.293148Z",
+        "created_at": "2026-11-07T18:18:20.430202Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -14051,7 +14169,7 @@
          {
           "key": "contact",
           "label": "Preferencia de contacto",
-          "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+          "value": "Prefiere mensaje de texto",
           "source": "on_file"
          },
          {
@@ -14079,7 +14197,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R012",
        "session_hash": "944a05361a",
-       "created_at": "2026-11-06T09:38:24.293148Z",
+       "created_at": "2026-11-07T18:18:20.430202Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -14097,7 +14215,7 @@
         {
          "key": "contact",
          "label": "Preferencia de contacto",
-         "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+         "value": "Prefiere mensaje de texto",
          "source": "on_file"
         },
         {
@@ -14225,7 +14343,7 @@
       "latency_ms": 5,
       "stop_reason": "mock",
       "session_id": "demo-res-status",
-      "created_at": "2026-11-06T09:38:24.295923Z",
+      "created_at": "2026-11-07T18:18:20.433184Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14414,7 +14532,9 @@
       ],
       "suggested_replies": [],
       "identity_note": "Signed in as Desmond (demo account)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -14463,7 +14583,7 @@
         "status_label": "In the office queue",
         "persona_id": "R008",
         "session_hash": "6f83aefd3b",
-        "created_at": "2026-11-06T09:38:24.296377Z",
+        "created_at": "2026-11-07T18:18:20.433574Z",
         "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
         "fields": [
          {
@@ -14503,7 +14623,7 @@
        "status_label": "In the office queue",
        "persona_id": "R008",
        "session_hash": "6f83aefd3b",
-       "created_at": "2026-11-06T09:38:24.296377Z",
+       "created_at": "2026-11-07T18:18:20.433574Z",
        "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
        "fields": [
         {
@@ -14630,7 +14750,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-unverified-status",
-      "created_at": "2026-11-06T09:38:24.298231Z",
+      "created_at": "2026-11-07T18:18:20.435499Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14799,7 +14919,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not matched to a resident account",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -14893,7 +15015,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-06T09:38:24.300584Z",
+      "created_at": "2026-11-07T18:18:20.438090Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -14998,7 +15120,7 @@
         "step": "6_workflow",
         "status": "ok",
         "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5'] | action=tour_request:collecting",
-        "ms": 0
+        "ms": 1
        },
        {
         "step": "7_generate",
@@ -15052,7 +15174,7 @@
         {
          "key": "move_in",
          "label": "Move-in",
-         "value": "Next month",
+         "value": "This week",
          "source": "you_said"
         },
         {
@@ -15077,7 +15199,9 @@
        "Evening"
       ],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -15164,7 +15288,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-06T09:38:24.302138Z",
+      "created_at": "2026-11-07T18:18:20.439748Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15302,7 +15426,7 @@
         {
          "key": "move_in",
          "label": "Move-in",
-         "value": "Next month",
+         "value": "This week",
          "source": "you_said"
         },
         {
@@ -15327,7 +15451,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -15356,7 +15482,7 @@
         {
          "key": "move_in",
          "label": "Move-in",
-         "value": "Next month",
+         "value": "This week",
          "source": "you_said"
         },
         {
@@ -15382,7 +15508,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "a946b4af24",
-        "created_at": "2026-11-06T09:38:24.302517Z",
+        "created_at": "2026-11-07T18:18:20.440212Z",
         "summary": "Tour request from prospective resident (demo profile).",
         "fields": [
          {
@@ -15400,7 +15526,7 @@
          {
           "key": "move_in",
           "label": "Move-in",
-          "value": "Next month",
+          "value": "This week",
           "source": "you_said"
          },
          {
@@ -15428,7 +15554,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "a946b4af24",
-       "created_at": "2026-11-06T09:38:24.302517Z",
+       "created_at": "2026-11-07T18:18:20.440212Z",
        "summary": "Tour request from prospective resident (demo profile).",
        "fields": [
         {
@@ -15446,7 +15572,7 @@
         {
          "key": "move_in",
          "label": "Move-in",
-         "value": "Next month",
+         "value": "This week",
          "source": "you_said"
         },
         {
@@ -15558,7 +15684,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-06T09:38:24.304641Z",
+      "created_at": "2026-11-07T18:18:20.442569Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15686,7 +15812,9 @@
        "Talk to the leasing team"
       ],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -15771,7 +15899,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-06T09:38:24.306139Z",
+      "created_at": "2026-11-07T18:18:20.443981Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15925,7 +16053,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -16020,7 +16150,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-new-to-area",
-      "created_at": "2026-11-06T09:38:24.308193Z",
+      "created_at": "2026-11-07T18:18:20.446289Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16152,7 +16282,9 @@
        "Talk to the leasing team"
       ],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -16241,7 +16373,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-pro-floor-plans",
-      "created_at": "2026-11-06T09:38:24.310013Z",
+      "created_at": "2026-11-07T18:18:20.448510Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -16366,7 +16498,9 @@
        "Talk to the leasing team"
       ],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -16455,7 +16589,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:38:24.311657Z",
+      "created_at": "2026-11-07T18:18:20.450299Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16588,7 +16722,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -16670,7 +16806,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:38:24.313060Z",
+      "created_at": "2026-11-07T18:18:20.451710Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16812,7 +16948,9 @@
        "Next week"
       ],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -16894,7 +17032,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:38:24.314454Z",
+      "created_at": "2026-11-07T18:18:20.453145Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17041,7 +17179,9 @@
        "Evening"
       ],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -17123,7 +17263,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-06T09:38:24.315909Z",
+      "created_at": "2026-11-07T18:18:20.454674Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17270,7 +17410,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -17319,7 +17461,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "a839f1a538",
-        "created_at": "2026-11-06T09:38:24.316249Z",
+        "created_at": "2026-11-07T18:18:20.455020Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -17359,7 +17501,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "a839f1a538",
-       "created_at": "2026-11-06T09:38:24.316249Z",
+       "created_at": "2026-11-07T18:18:20.455020Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -17485,7 +17627,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-steering",
-      "created_at": "2026-11-06T09:38:24.318096Z",
+      "created_at": "2026-11-07T18:18:20.456979Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -17630,7 +17772,9 @@
        "Talk to the leasing team"
       ],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -17719,7 +17863,7 @@
       "latency_ms": 8,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-06T09:38:24.319959Z",
+      "created_at": "2026-11-07T18:18:20.458960Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -17891,7 +18035,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -17973,7 +18119,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-06T09:38:24.321797Z",
+      "created_at": "2026-11-07T18:18:20.460777Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -18120,7 +18266,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -18169,7 +18317,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "5bcdd3814d",
-        "created_at": "2026-11-06T09:38:24.322139Z",
+        "created_at": "2026-11-07T18:18:20.461093Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -18209,7 +18357,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "5bcdd3814d",
-       "created_at": "2026-11-06T09:38:24.322139Z",
+       "created_at": "2026-11-07T18:18:20.461093Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -18341,7 +18489,7 @@
       "latency_ms": 10,
       "stop_reason": "mock",
       "session_id": "demo-pro-human",
-      "created_at": "2026-11-06T09:38:24.323936Z",
+      "created_at": "2026-11-07T18:18:20.462958Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -18503,7 +18651,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Browsing as a prospective resident (demo profile)",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     },
     {
@@ -18546,7 +18696,7 @@
         "status_label": "In the office queue",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "29f16eb9c8",
-        "created_at": "2026-11-06T09:38:24.324289Z",
+        "created_at": "2026-11-07T18:18:20.463271Z",
         "summary": "Prospect · leasing · urgency medium.",
         "fields": [
          {
@@ -18580,7 +18730,7 @@
        "status_label": "In the office queue",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "29f16eb9c8",
-       "created_at": "2026-11-06T09:38:24.324289Z",
+       "created_at": "2026-11-07T18:18:20.463271Z",
        "summary": "Prospect · leasing · urgency medium.",
        "fields": [
         {
@@ -18695,7 +18845,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-vendor",
-      "created_at": "2026-11-06T09:38:24.326060Z",
+      "created_at": "2026-11-07T18:18:20.465215Z",
       "gate": {
        "audience": "unknown",
        "intent": "maintenance",
@@ -18859,7 +19009,9 @@
       "status_items": [],
       "suggested_replies": [],
       "identity_note": "Not signed in",
-      "action_cleared": null
+      "action_cleared": null,
+      "care_kind": null,
+      "care_note": null
      }
     }
    ]
@@ -18900,7 +19052,7 @@
    "kind": "staff_handoff",
    "session_hash": "29f16eb9c8",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-06T09:38:24.324289+00:00"
+   "created_at": "2026-11-07T18:18:20.463271+00:00"
   },
   {
    "status": "requested",
@@ -18942,7 +19094,7 @@
    "kind": "tour_request",
    "session_hash": "5bcdd3814d",
    "persona_id": null,
-   "created_at": "2026-11-06T09:38:24.322139+00:00"
+   "created_at": "2026-11-07T18:18:20.461093+00:00"
   },
   {
    "status": "requested",
@@ -18984,7 +19136,7 @@
    "kind": "tour_request",
    "session_hash": "a839f1a538",
    "persona_id": null,
-   "created_at": "2026-11-06T09:38:24.316249+00:00"
+   "created_at": "2026-11-07T18:18:20.455020+00:00"
   },
   {
    "status": "requested",
@@ -19007,7 +19159,7 @@
     {
      "key": "move_in",
      "label": "Move-in",
-     "value": "Next month",
+     "value": "This week",
      "source": "you_said"
     },
     {
@@ -19032,7 +19184,7 @@
    "kind": "tour_request",
    "session_hash": "a946b4af24",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-06T09:38:24.302517+00:00"
+   "created_at": "2026-11-07T18:18:20.440212+00:00"
   },
   {
    "status": "queued",
@@ -19074,7 +19226,7 @@
    "kind": "staff_handoff",
    "session_hash": "6f83aefd3b",
    "persona_id": "R008",
-   "created_at": "2026-11-06T09:38:24.296377+00:00"
+   "created_at": "2026-11-07T18:18:20.433574+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19097,7 +19249,7 @@
     {
      "key": "contact",
      "label": "Preferencia de contacto",
-     "value": "Prefiere mensaje de texto; Prefers Spanish, by text",
+     "value": "Prefiere mensaje de texto",
      "source": "on_file"
     },
     {
@@ -19122,7 +19274,7 @@
    "kind": "maintenance_request",
    "session_hash": "944a05361a",
    "persona_id": "R012",
-   "created_at": "2026-11-06T09:38:24.293148+00:00"
+   "created_at": "2026-11-07T18:18:20.430202+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19139,7 +19291,7 @@
     {
      "key": "contact",
      "label": "Contact preference",
-     "value": "Prefers text; never call before 10 AM, text first",
+     "value": "Prefers text",
      "source": "on_file"
     },
     {
@@ -19170,18 +19322,18 @@
    "kind": "maintenance_request",
    "session_hash": "80198d5585",
    "persona_id": "R003",
-   "created_at": "2026-11-06T09:38:24.288946+00:00"
+   "created_at": "2026-11-07T18:18:20.425935+00:00"
   },
   {
    "status": "urgent_queued",
    "status_label": "Urgent; in the office queue",
-   "title": "Possible emergency (gas)",
+   "title": "Possible emergency: gas smell or leak",
    "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
    "fields": [
     {
      "key": "topic",
      "label": "About",
-     "value": "Possible emergency (gas), for the emergency maintenance team",
+     "value": "Possible emergency: gas smell or leak, for the emergency maintenance team",
      "source": "assistant"
     },
     {
@@ -19213,7 +19365,7 @@
    "kind": "staff_handoff",
    "session_hash": "f61c3ca448",
    "persona_id": "R002",
-   "created_at": "2026-11-06T09:38:24.282129+00:00"
+   "created_at": "2026-11-07T18:18:20.418873+00:00"
   },
   {
    "status": "queued",
@@ -19242,7 +19394,7 @@
     {
      "key": "contact",
      "label": "Contact preference",
-     "value": "Prefers email; Wants anything with numbers in writing (email)",
+     "value": "Prefers email",
      "source": "on_file"
     }
    ],
@@ -19255,18 +19407,18 @@
    "kind": "staff_handoff",
    "session_hash": "f85c4a5434",
    "persona_id": "R020",
-   "created_at": "2026-11-06T09:38:24.281015+00:00"
+   "created_at": "2026-11-07T18:18:20.417760+00:00"
   },
   {
    "status": "queued",
    "status_label": "In the office queue",
-   "title": "Asked for a person",
+   "title": "Contact preference change",
    "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
    "fields": [
     {
      "key": "topic",
      "label": "About",
-     "value": "Asked for a person, for the leasing team",
+     "value": "Contact preference change, for the leasing team",
      "source": "assistant"
     },
     {
@@ -19284,20 +19436,20 @@
     {
      "key": "contact",
      "label": "Contact preference",
-     "value": "Prefers text; never call before 10 AM, text first",
+     "value": "Prefers text",
      "source": "on_file"
     }
    ],
    "team": "leasing",
    "priority": "high",
-   "category": "human_requested",
+   "category": "unresolved_commitment",
    "repeat": false,
    "hazard": null,
    "id": "DEMO-TASK-1002",
    "kind": "staff_handoff",
    "session_hash": "0a00e04e7c",
    "persona_id": "R003",
-   "created_at": "2026-11-06T09:38:24.278147+00:00"
+   "created_at": "2026-11-07T18:18:20.414461+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19351,7 +19503,7 @@
    "kind": "maintenance_request",
    "session_hash": "f1b1a5ef54",
    "persona_id": "R001",
-   "created_at": "2026-11-06T09:38:24.272867+00:00"
+   "created_at": "2026-11-07T18:18:20.409144+00:00"
   }
  ],
  "gate_eval": {

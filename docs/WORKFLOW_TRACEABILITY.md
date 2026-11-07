@@ -54,14 +54,14 @@ Global handoff triggers from the source ("any step"), all deterministic, none de
 | I-07 | SMS/email tone, length, signature | Draft | `chat_engine.CHANNEL_RULES` | McKinley approval |
 | I-08 | Topic and status tags | Draft | gate intents, handoff categories, `workflows.LABELS`, `functions` on every response | Team |
 | I-09 | "Who are you?" question | Draft | `templates["who_are_you"]` + chips | Team |
-| I-10 | Resident verification rules | **Not supplied** | Demo sign-in only (`personas.build_context`) | McKinley + legal |
+| I-10 | Resident verification rules | **Not supplied** | Demo sign-in only (`personas.build_context`). Sprint 2: staff, evaluation, gate and records routes are loopback-only unless `STAFF_API_TOKEN` is set (`api/staff_guard.py`); a demo boundary, not authentication | McKinley + legal |
 | I-11 | Permission matrix | Draft (conservative) | `actions.plan_turn`: matched resident → own requests/status; everyone else → public info + office note | McKinley |
 | I-12 | FAQ topic list | Draft | `app/content/knowledge_base.json` | Team |
 | I-13 | Fair Housing topics + approved response | Draft (split: steering → neutral redirect; accommodation → staff) | `intake._STEERING`, `safety` `fair_housing_or_legal`, `templates["steering"/"accommodation"]` | McKinley legal |
 | I-14 | Answer rules: approved info only | Enforced | `knowledge_base.json` `status`, `output_checks` price/offer/time | McKinley approval |
 | I-15 | Required tour questions + tour types | Draft minimum (area, days, time of day) | `actions.REQUIRED["tour_request"]` | McKinley leasing |
 | I-16 | Tour confirmation + reminder templates | Draft confirmation only; no reminders | `templates.CONFIRM["tour_request"]` | Team + consent |
-| I-17 | Emergency definition list | Draft, 11 hazard kinds: gas, CO, fire/smoke, electrical, flood, structural, personal safety, medical, poisoning, entrapment, self-harm; typo-, spacing- and multi-language-tolerant | `app/emergency.py` `KINDS`, used by `safety.pre_model_gates` | McKinley maintenance + risk/legal |
+| I-17 | Emergency definition list | Draft, 11 hazard kinds: gas, CO, fire/smoke, electrical, flood, structural, personal safety, medical, poisoning, entrapment, self-harm; typo-, spacing- and multi-language-tolerant. Sprint 2: second layer that reads word combinations (person + unresponsive, substance + ingestion, symptoms + heat source, threat actor + act, means + intent); a third "possible risk" tier adds a calm care line (988 for distress, 911-if-worse when unwell) without an urgent note. Still a deterministic floor, not a guarantee | `app/emergency.py` `KINDS`, `CONCEPTS`, `possible_risk`, used by `safety.pre_model_gates` and `chat_engine` | McKinley maintenance + risk/legal |
 | I-18 | Safety instructions per emergency | Draft text per hazard (EN + draft ES); `tel:911` / `tel:988` in the UI | `app/emergency.py` `NOTICE`, `CustomerApp` alert | McKinley maintenance + risk/legal; fluent review of Spanish |
 | I-19 | Maintenance categories + intake fields | Draft minimum (issue, room, entry permission) | `actions.REQUIRED["maintenance_request"]`, `workflows.APPROVED_TROUBLESHOOTING` categories | McKinley maintenance |
 | I-20 | Approved self-troubleshooting | Draft (trivially safe checks only) | `workflows.APPROVED_TROUBLESHOOTING` | McKinley maintenance |

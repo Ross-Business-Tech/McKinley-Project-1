@@ -42,6 +42,11 @@ function live(chat: (body: { message: string }) => ChatResponse | Error) {
       return new Response(JSON.stringify(out));
     }
     if (url.endsWith("/api/actions/cancel")) return new Response(JSON.stringify({ ok: true, message: "ok", action: null, record: null, error_code: null }));
+    if (url.endsWith("/api/actions/confirm")) {
+      const record = { id: "DEMO-WO-1001", kind: "maintenance_request", status: "submitted_for_review", status_label: "Submitted, waiting for staff review", persona_id: "R001", session_hash: "abc", created_at: "2026-11-07T00:00:00Z", summary: "s", fields: [], system: "prototype" };
+      const action = { ...readyCard, stage: "submitted", confirm_label: null, record };
+      return new Response(JSON.stringify({ ok: true, message: "Request DEMO-WO-1001 is saved for staff review.", action, record, error_code: null }));
+    }
     throw new TypeError("fetch failed");
   }));
 }
@@ -66,6 +71,18 @@ describe("CustomerApp", () => {
     expect(within(card).queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     // focus never falls to <body> after the focused button disappears
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+  });
+
+  it("retires the read-back card's buttons once the request is sent", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    await screen.findByText(/Submitted, waiting for staff review/);
+    expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
   });
 
   it("gives emergencies a tap-to-call 911 link", async () => {

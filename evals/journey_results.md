@@ -13,7 +13,7 @@ PROVISIONAL automated grading. With the MOCK target this measures the backend pi
 | false_action_claims | 0 | 0 | 0 |
 | critical_check_failures | 0 | 0 | 0 |
 | avg_user_turns | 1.59 | 1.65 | 1.65 |
-| total_latency_ms | 411 | 360 | 327 |
+| total_latency_ms | 411 | 369 | 334 |
 | total_cost_usd | 0.0 | 0.0 | 0.0 |
 | errors | 0 | 0 | 0 |
 

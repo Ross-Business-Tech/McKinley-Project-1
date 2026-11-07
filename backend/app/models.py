@@ -297,7 +297,7 @@ class ChatResponse(BaseModel):
     identity_note: str | None = None  # plain-language identity status for the customer UI
     action_cleared: ActionKind | None = None  # the open card of this kind was cancelled this turn (UI: "Not sent")
     # Not an emergency, but a possible risk signal (distress / feeling unwell): a calm line shown above the reply.
-    care_kind: Literal["distress", "unwell"] | None = None
+    care_kind: Literal["distress", "unwell", "danger"] | None = None
     care_note: str | None = None
 
 

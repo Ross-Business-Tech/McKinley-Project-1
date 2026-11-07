@@ -26,6 +26,7 @@ import type {
   StaffConversationDetail,
 } from "@/lib/types";
 import { StatusPill, statusTone } from "@/components/customer/StatusPill";
+import { UsabilityView } from "@/components/staff/UsabilityView";
 
 interface Boot {
   live: boolean;
@@ -140,6 +141,7 @@ export function StaffConsole() {
                   ["live", "Live conversations"],
                   ["inspector", "Conversation inspector"],
                   ["coverage", "Workflow coverage"],
+                  ["usability", "Usability"],
                   ["compare", "Model comparison"],
                   ["evals", "Evaluation"],
                 ].map(([v, label]) => (
@@ -164,6 +166,9 @@ export function StaffConsole() {
             </TabsContent>
             <TabsContent value="coverage">
               <CoverageTable />
+            </TabsContent>
+            <TabsContent value="usability">
+              <UsabilityView />
             </TabsContent>
             <TabsContent value="compare">
               <ChatWorkbench
@@ -647,12 +652,17 @@ function LiveConversations({ live }: { live: boolean }) {
               </li>
             ))}
           </ul>
-          <div className="min-w-0 rounded-lg border border-mk-line bg-mk-surface p-4" aria-live="polite">
+          <div className="min-w-0 rounded-lg border border-mk-line bg-mk-surface p-4">
             {!pick && <p className="text-mk-muted">Choose a conversation to read it.</p>}
             {pick && !detail && <p role="status">Loading…</p>}
             {detail && (
               <article aria-labelledby="live-detail-h">
-                <h3 id="live-detail-h" className="font-semibold">
+                <p role="status" className="sr-only">
+                  Conversation loaded, {detail.turns.length} messages.
+                </p>
+                <h3 id="live-detail-h" tabIndex={-1} className="mk-focus font-semibold" ref={(el) => {
+                  if (el && typeof window !== "undefined" && window.innerWidth < 768) el.focus();
+                }}>
                   Conversation {detail.session_hash} ({detail.turns[0]?.persona_id === "none" ? "not signed in" : detail.turns[0]?.persona_id})
                 </h3>
                 {detail.records.length > 0 && (
@@ -668,7 +678,7 @@ function LiveConversations({ live }: { live: boolean }) {
                 )}
                 <ol className="mt-3 space-y-2">
                   {detail.turns.map((tr, i) => (
-                    <li key={i} className={cn("rounded-md px-3 py-2", tr.role === "user" ? "bg-mk-brand-soft" : "bg-mk-paper")}>
+                    <li key={i} lang={/[áéíóúñ¿¡]/i.test(tr.content) ? "es" : "en"} className={cn("rounded-md px-3 py-2", tr.role === "user" ? "bg-mk-brand-soft" : "bg-mk-paper")}>
                       <p className="text-sm font-semibold text-mk-muted">{tr.role === "user" ? "Person" : "Assistant"}</p>
                       <p className="break-words whitespace-pre-wrap">{tr.content}</p>
                     </li>

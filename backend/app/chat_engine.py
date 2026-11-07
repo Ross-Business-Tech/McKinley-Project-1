@@ -351,7 +351,11 @@ def run_turn(
 
     # 10. persist safe metadata (turn text for session memory; gate log has no message text)
     if deps.store and use_history:
-        deps.store.append_turns(session_id, mode_key, hist_key, msg, reply)
+        shown = ("emergency safety steps" + (" and 988 crisis line" if ekind == "self_harm" else " and 911")
+                 if safety_notice else {"distress": "988 care line", "danger": "911 safety line",
+                                        "unwell": "911-if-worse line"}.get(care_kind or "", ""))
+        # staff see what the person was shown, not just the text
+        deps.store.append_turns(session_id, mode_key, hist_key, msg, (f"[Shown: {shown}] " if shown else "") + reply)
         if gate:
             deps.store.log_gate(session_id, mode_key, hist_key, {
                 "intent": gate.intent, "urgency": gate.urgency, "requires_human": gate.requires_human,

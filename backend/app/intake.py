@@ -35,7 +35,9 @@ def detect_language(message: str, preferred: str | None = None) -> str:
         return "es"
     if preferred and preferred.lower().startswith("span") and not re.search(
             r"\b(the|is|my|and|please|what|when|can|not|it|in|i|an|to|of|on|with|this|that|me|you|keeps?|"
-            r"working|broken|hello|hi|thanks|hot|water|heat|door|detector|smoke|ac|leak\w*|again|need|help|yes|ok)\b",
+            r"working|broken|hello|hi|thanks|hot|water|heat|door|detector|smoke|ac|leak\w*|again|need|help|yes|ok|"
+            r"kitchen|bathroom|bedroom|sink|tap|faucet|toilet|drip\w*|fridge|light|window|floor|wall|ceiling|noise|"
+            r"update|status|repair|any|thing)\b",
             message, re.IGNORECASE):
         return "es"
     return "en"
@@ -450,7 +452,9 @@ def is_eviction_worry(message: str) -> bool:
     return bool(_EVICTION.search(message))
 
 
-_CANCEL_SUBMITTED = re.compile(r"\bcancel\b.{0,30}\b(request|work order|repair|tour|note|appointment|DEMO-\w+-\d+)\b|"
+_CANCEL_SUBMITTED = re.compile(r"\b(cancel|delete|withdraw|take back|remove|retract)\b.{0,30}\b(request|work order|"
+                               r"repair|"
+                               r"tour|note|appointment|complaint|message|DEMO-\w+-\d+)\b|"
                                r"\bDEMO-(WO|TOUR|TASK)-\d+\b.{0,20}\bcancel|cancel (it|that)\b.{0,40}(fixed|sent)",
                                re.I)
 
@@ -612,7 +616,7 @@ def asks_for_promise(message: str) -> bool:
     return bool(_PROMISE.search(message))
 
 
-_NOISE = re.compile(r"\b(noise|noisy|loud|music|party|parties|barking|stomping)\b|upstairs (neighbor|guy)|ruido|"
+_NOISE = re.compile(r"\b(noise|noisy|loud|music|party|parties|bark\w*|stomping)\b|upstairs (neighbor|guy)|ruido|"
                     r"m[uú]sica alta", re.I)
 
 
@@ -657,7 +661,7 @@ def frustration_only(message: str) -> bool:
 _ISSUE_SWAP = re.compile(
     r"(?:^|\b)(?:it'?s|its|it is|that'?s) not (?:the |my |a )?(?P<old>[\w /-]{2,30}?)[,.;!-]+\s*(?:it'?s|its|it is|"
     r"it'?s actually|the problem is)?\s*(?:the |my |a )?(?P<new>[^.?!]{3,})|"
-    r"^\W*(?:wait|no|actually|sorry|oops)\W+(?:it'?s|its|it is)? ?not (?:the |my )?(?P<old2>[\w /-]{2,30}?)\W+"
+    r"^\W*(?:wait|no|actually|sorry|oops)\W+(?:it'?s|its|it is) not (?:the |my )?(?P<old2>[\w /-]{2,30}?)\W+"
     r"(?:it'?s |its |it is )?(?:the |my )?(?P<new2>[^.?!]{3,})", re.I)
 
 
@@ -746,6 +750,8 @@ _QUESTIONISH = re.compile(r"\?|^\W*(what|when|where|how|can|is|are|do|does|may|a
 
 def policy_topic(message: str) -> str | None:
     """The community-policy topic of a question, if any ('where do packages go' -> 'packages')."""
+    if is_noise_complaint(message) or is_cancel_submitted(message):
+        return None
     if not _QUESTIONISH.search(message.strip()) and len(message.split()) > 3:
         return None
     for name, pat in _POLICY_TOPICS:
@@ -780,6 +786,8 @@ _UNSAFE_DIY = [
                          r"alarm)\b[^.?!]{0,40}\b(smoke|co|carbon)|(smoke|co|carbon monoxide) (detector|alarm)"
                          r"[^.?!]{0,80}\b(take|pull|remove|rip|disconnect|unplug)\b[^.?!]{0,15}\b(batter\w*|it "
                          r"(out|off|down))"),
+    ("mix_chemicals", r"\b(mix\w*|combin\w*)\b[^.?!]{0,30}\b(bleach|ammonia|vinegar|drain cleaner)\b[^.?!]{0,30}"
+                      r"\b(and|with|plus)\b[^.?!]{0,20}\b(bleach|ammonia|vinegar|cleaner|acid)"),
     ("gas_diy", r"(relight|light|fix|tighten) (the )?(pilot|gas (line|valve|leak|pipe))[^.?!]{0,20}(myself|my ?self)?|"
                 r"fix (the )?gas"),
 ]

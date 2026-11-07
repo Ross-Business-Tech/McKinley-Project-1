@@ -16,7 +16,7 @@ _SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b|(?:ssn|social security|social|seguro s
                   r"\d{3}[ -]?\d{2}[ -]?\d{4}\b", re.IGNORECASE)
 _CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _CARD_EXTRA = re.compile(r"\b(?:exp(?:iry|iration|ires|\.)?(?: date)?|vence|"
-                         r"vencimiento)\W{0,3}\d{1,2}\s?[/-]\s?\d{2,4}\b|"
+                         r"vencimiento)\W{0,3}(?:\d{1,2}\s?[/-]\s?\d{2,4}|\d{4})\b|"
                          r"\b(?:cvv2?|cvc|csc|security code|c[oó]digo de seguridad)\W{0,3}\d{3,4}\b", re.I)
 _PHONE = re.compile(r"(?:\+?1[ .-]?)?(?:\(\d{3}\)\s?|\b\d{3}[ .-]?)\d{3}[ .-]?\d{4}\b|\b\d{3}[.-]\d{4}\b")
 _DOB = re.compile(
@@ -44,7 +44,8 @@ def redact(text: str) -> str:
     text = _EMAIL.sub("[email redacted]", text)
     text = _SSN.sub("[SSN redacted]", text)
     text = _CARD.sub(_card_sub, text)
-    text = _CARD_EXTRA.sub("[card detail redacted]", text)
+    text = _CARD_EXTRA.sub(" [card detail redacted]", text)
+    text = re.sub(r"\](?=\w)", "] ", text)
     text = _DOB.sub("[DOB redacted]", text)
     text = _PHONE.sub("[phone redacted]", text)
     return text

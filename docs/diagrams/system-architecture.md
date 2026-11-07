@@ -6,19 +6,21 @@ Reflects the code on `feat/workflow-customer-experience`. Two front-ends share o
 flowchart LR
   subgraph Browser["Browser (static Next.js export in dist/)"]
     CV["Customer view /<br/>CustomerApp + ActionCard"]
-    SC["Staff and demo console /staff/<br/>Inspector, Saved requests, Coverage,<br/>Model comparison, Evaluation"]
+    SC["Staff and demo console /staff/<br/>Work queue, Live conversations, Inspector,<br/>Coverage, Usability, Model comparison, Evaluation"]
     SNAP[("demo/snapshot.json<br/>recorded journeys + evals")]
   end
 
   subgraph API["FastAPI backend (backend/app)"]
     CHAT["POST /api/chat"]
     ACT["POST /api/actions/confirm | cancel"]
-    REC["GET /api/prototype/records"]
+    REC["GET /api/prototype/records<br/>GET /api/staff/conversations"]
     EV["/api/evals/* , /api/gates/*"]
+    GUARD["staff_guard: loopback-only<br/>or X-Staff-Token"]
     ENG["chat_engine.run_turn<br/>(10-step pipeline)"]
     PLAN["actions.plan_turn<br/>(F2-F9 behaviour)"]
     GATE["DecisionGateService<br/>rules always + optional LLM / Jev"]
-    SAFE["safety.py<br/>redaction, emergency + policy gates,<br/>output checks"]
+    SAFE["safety.py + emergency.py<br/>redaction, emergency layers 1+2,<br/>possible-risk care line, output checks"]
+    UX["usability/ (offline)<br/>personas, scenarios, simulator,<br/>independent evaluator"]
     CTX["context.py + personas.py<br/>allowlisted SAFE_CONTEXT"]
     TPL["templates.py + knowledge_base.json<br/>(team drafts)"]
     LLM["LLMGateway<br/>OpenRouter | Ollama | Anthropic | Mock"]
@@ -32,8 +34,11 @@ flowchart LR
   CV -- "live mode" --> CHAT
   CV -- "send / don't send" --> ACT
   CV -. "no backend: replay" .-> SNAP
-  SC --> REC
-  SC --> EV
+  SC --> GUARD
+  GUARD --> REC
+  GUARD --> EV
+  UX -- "real HTTP" --> CHAT
+  UX -- "real HTTP" --> ACT
   SC -. "no backend" .-> SNAP
   CHAT --> ENG
   ACT --> PLAN

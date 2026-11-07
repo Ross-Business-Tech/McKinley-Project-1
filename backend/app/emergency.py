@@ -13,10 +13,11 @@ import unicodedata
 _W = r"(?:\w+\W+){0,6}"  # up to six words in between
 KINDS: list[tuple[str, re.Pattern[str]]] = [
     ("self_harm", re.compile(
-        r"kill(ing)? my ?self|suicid|end (my|it all|my own) ?(life)?\b|want to die|wanna die|don'?t want to (live|be "
+        r"kill(ing)? my ?self|suicid|\bend (my (own )?life|it all)\b|want to die|wanna die|don'?t want to (live|be "
         r"alive|be here anymore)|hurt(ing)? my ?self|no reason to live|matarme|quitarme la vida|suicidar|"
         r"quiero morir|tự tử|muốn chết|(don'?t|dont|do not) (want|wanna) (to )?(be here|exist|wake up|go on)|"
-        r"better off (dead|without me)|ending (it all|my life|things)|end (it|things) all|want to (end it|disappear)|"
+        r"better off (dead|without me)|\bending (it all|my life|things)\b|\bend (it|things) all\b|want to (end it|"
+        r"disappear)|"
         r"ganas de morir|"
         r"no quiero (vivir|estar aqu[ií])", re.I)),
     ("poison", re.compile(
@@ -70,6 +71,7 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
     ("fire_smoke", re.compile(
         r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b))|\bflames?\b|"
         r"on fire|\bburning\b(?! question)|burnt? (smell|plastic|rubber)|smells? (like |of )?(burn|smoke)|"
+        r"smell\w*\W+(?:\w+\W+){0,2}(?:burnt|burning|smoky)|"
         r"\bsmok(e|ing|y|in'?)\b(?! ?(detector|alarm)\b(?!.{0,30}(going off|sounding|won'?t stop|keeps going)))|"
         r"(smoke|fire) (alarm|detector)s? (is |are )?(going off|sounding|won'?t stop|keeps going)|"
         r"\bhumo\b|\bfuego\b|incendio|quemando|quemado|cháy|khói|حريق|دخان|着火|火灾|冒烟", re.I)),
@@ -98,10 +100,17 @@ _PERSON = (r"(?:my|the|a|our|his|her)\s+(?:\w+\s+){0,2}(?:grand(?:ma|pa|mother|f
            r"girlfriend|"
            r"man|woman|guy|lady|person|brother|sister|tenant|someone)|\bsomeone\b|\b(?:he|she|they)(?:'s| is| are)?\b|"
            r"\bmi\s+(?:esposo|esposa|hij[oa]|mam[aá]|pap[aá]|abuel[oa]|vecin[oa]|pareja|beb[eé])")
-_UNRESPONSIVE = (r"won'?t (?:wake|answer|respond|move|open (?:his|her|their) eyes)|wont (?:wake|answer|respond|move)|"
-                 r"(?:not|isn'?t|isnt|stopped) (?:waking|moving|responding|answering|breathing)|breathing "
-                 r"(?:weird|funny|strange|shallow|slow)|turning (?:blue|purple|gr[ae]y)|lying (?:there|on the floor|"
-                 r"in the|outside)|out cold|can'?t wake|no (?:reacciona|responde|despierta|se mueve)")
+# Strong signs stand alone; weak ones ("not answering", "won't move") need a named person nearby, never just
+# "I" or "they" ("I'm not answering more questions", "they're not answering my calls" are not emergencies).
+_UNRESPONSIVE = (r"won'?t (?:wake|open (?:his|her|their) eyes)|wont wake|(?:not|isn'?t|isnt|stopped) (?:waking|"
+                 r"breathing)|breathing (?:weird|funny|strange|shallow|slow)|turning (?:blue|purple|gr[ae]y)|out cold|"
+                 r"can'?t wake|no (?:reacciona|despierta)")
+_WEAK_UNRESP = (r"won'?t (?:answer|respond|move)|wont (?:answer|respond|move)|(?:not|isn'?t|isnt) (?:moving|"
+                r"responding|answering)|lying (?:there|on the floor|in the|outside)|no (?:responde|se mueve)")
+_NAMED_PERSON = (r"\b(?:grand(?:ma|pa|mother|father)|mom|mum|mother|dad|father|husband|wife|partner|roommate|"
+                 r"neighbou?r|kid|son|daughter|baby|child|toddler|friend|boyfriend|girlfriend|man|woman|guy|lady|"
+                 r"person|brother|sister|tenant|resident)\b|\bmi\s+(?:esposo|esposa|hij[oa]|mam[aá]|pap[aá]|"
+                 r"abuel[oa]|vecin[oa]|pareja|beb[eé])")
 _CARDIAC = (r"(?:left )?arm (?:hurts|is numb|pain|went numb)\W+(?:\w+\W+){0,8}(?:chest|sweat)|(?:sweat\w*|gr[ae]y|pale)"
             r"\W+(?:\w+\W+){0,8}(?:left )?arm (?:hurts|pain|numb)|chest (?:is )?(?:tight|pressure|hurts|crushing)|"
             r"can'?t catch (?:his|her|my|their) breath|gasping|lips (?:are )?(?:blue|turning)")
@@ -128,7 +137,7 @@ _HEAT = (r"furnace|heater|heat(?:ing)?(?:'s| is| was| has)?(?: been)? (?:on|runn
 _SELF_HARM2 = (r"\bkms\b|\bunalive|want(?:s|ed)? (?:it all|everything|this|things|my life) to (?:end|stop|be over)|"
                r"nothing (?:left )?to live for|(?:take|swallow|overdose on|down) (?:all|a bunch|the whole bottle|"
                r"every one) (?:of )?(?:my |the |her |his )?(?:pills|meds|medication|tablets)|better off (?:if i"
-               r" (?:was|were)(?:n'?t| not) (?:here|around|alive)|without me|if i (?:died|was dead|disappeared))|end"
+               r" (?:was|were)(?:n'?t| not) (?:here|around|alive)|without me|if i (?:died|was dead|disappeared))|\bend"
                r" (?:my|his|her|their) (?:own )?life|wants? to (?:die|end (?:it|his life|her life|"
                r"their life|everything))|(?:won'?t|wont|will not) be (?:around|here|alive) (?:next|much longer|"
                r"anymore|by)|nobody (?:would|will) (?:even )?(?:notice|care|miss me)|(?:if|when) i(?:'m| am| was|"
@@ -198,6 +207,7 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("poison", re.compile(_FUMES, re.I)),
     ("trapped", re.compile(_TRAPPED2, re.I)),
     ("medical", _near(_PERSON, _UNRESPONSIVE, 10)),
+    ("medical", _near(_NAMED_PERSON, _WEAK_UNRESP, 8)),
     ("medical", re.compile(_UNRESPONSIVE + "|" + _CARDIAC + "|" + _BLEED, re.I)),
     ("personal_safety", _near(_THREAT_ACTOR, _THREAT_ACT, 10)),
     ("co", _near(_SYMPTOM, _HEAT, 14)),
@@ -210,13 +220,39 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("gas", re.compile(_GAS2, re.I)),
 ]
 
+# Danger vocabulary: high recall, low severity. Not enough for the full alert or an urgent note, but enough that
+# the reply leads with "if anyone is hurt or in danger, call 911". Measured separately from full-alert recall.
+_DANGER = re.compile(
+    r"\b(?:burn(?:t|ing|ed)?|scorch\w*|smok(?:e|ing|y)|glow\w*|crackl\w*|flames?|fumes?|sulfur|propane|gas|"
+    r"spark\w*|zap\w*|shock\w*|tingl\w*|electrocut\w*|live wires?|power lines?|downed line|"
+    r"sewage|flood\w*|gush\w*|pouring|(?:through|from) the ceiling|ceiling (?:is )?(?:leak\w*|drip\w*)|"
+    r"collaps\w*|caved?|cave-in|bulg\w*|sagg\w*|spongy|gave way|give out|snapp?ed|fell off|fallen|fell down|"
+    r"brick|masonry|crack\w* (?:wall|ceiling|beam)|"
+    r"hurt|injur\w*|bleed\w*|blood|broken (?:arm|leg|bone|hip|wrist)|bone|bent (?:the )?wrong way|unconscious|"
+    r"faint\w*|seizure|stroke|slurr\w*|droop\w*|chest|breath\w*|chok\w*|hard to wake|won'?t wake|not waking|"
+    r"blood sugar|diabet\w*|overdos\w*|poison\w*|swallow\w*|ingest\w*|edibles?|"
+    r"gun|shoot\w*|knife|stab\w*|threat\w*|stalk\w*|intruder|break(?:ing)? in|broke in|hiding|scared|afraid|"
+    r"someone (?:is )?in my|following (?:me|us|residents)|"
+    r"trapped|stuck in|can'?t get out|won'?t open|locked in|"
+    r"rope|goodbye|giving away|sleep forever|no way out|end it|despedí|lo hago|"
+    r"humo|fuego|incendio|sangr\w*|herid\w*|inconsciente|atrapad\w*|miedo|pistola|cuchillo)\b", re.I)
+_DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
+                         r"test|extinguisher)|chest of drawers|burning question|smoke[- ]free|no smoking|"
+                         r"bone dry|broke (?:the )?bank", re.I)
+_SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to|letter|note)|giving away (?:my|all)|sleep forever|no way out|"
+                             r"won'?t need (?:it|them|anything) (?:soon|anymore)|despedí de todos|esta noche lo hago|"
+                             r"not (?:be )?(?:around|here) (?:much longer|anymore)", re.I)
+
 # Third tier: not enough to call it an emergency, too much to say nothing. The reply keeps going but leads with a
 # calm safety line (no urgent note, no alarm). "distress" adds 988; "unwell" adds 911-if-worse.
 _DISTRESS = re.compile(
-    r"what'?s the point|no point (?:in|anymore|of)|(?:can'?t|cant) (?:do this|go on|take (?:it|this)) anymore|"
-    r"give up on (?:everything|life)|(?:so |really )?hopeless|(?:i'?m|im) (?:so )?done with (?:everything|life)|"
-    r"(?:won'?t|wont) (?:be around|matter)|last straw|ya no puedo m[aá]s|no aguanto m[aá]s", re.I)
-_UNWELL = re.compile(_SYMPTOM + r"|can'?t breathe well|short of breath|chest", re.I)
+    r"what'?s the point(?: of (?:anything|living|trying|it all|going on|me|life)| anymore|\W*$)|no point (?:in living|"
+    r"anymore|in anything)|(?:can'?t|cant) (?:do this|go on|take (?:it|this))(?: like this)? anymore|"
+    r"(?:can'?t|cant) go on like this|give up on (?:everything|life)|(?:feel|feeling|i'?m|im) (?:so |really )?hopeless|"
+    r"(?:i'?m|im) (?:so )?done with (?:everything|life)|(?:won'?t|wont) (?:be around|matter)|"
+    r"everything is falling apart|ya no puedo m[aá]s|no aguanto m[aá]s", re.I)
+_UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick|weird|off)|", "")
+                     + r"|can'?t breathe well|short of breath", re.I)
 
 
 CARE_NOTE = {
@@ -228,6 +264,10 @@ CARE_NOTE = {
                        "para hablar con alguien. Si está en peligro, llame al 911."},
     "unwell": {"en": "If anyone feels very unwell or it gets worse, call 911.",
                "es": "Si alguien se siente muy mal o empeora, llame al 911."},
+    "danger": {"en": "If anyone is hurt or in danger right now, call 911. If something in your home is unsafe, stay "
+                     "away from it and call your community's emergency maintenance line.",
+               "es": "Si alguien está herido o en peligro ahora, llame al 911. Si algo en su casa no es seguro, "
+                     "aléjese y llame a la línea de emergencias de mantenimiento."},
 }
 REFUSE_LEAD = {
     "en": "I understand. I can't send anyone from here, and nobody has been sent. Staying could be dangerous, so "
@@ -240,8 +280,10 @@ REFUSE_LEAD = {
 def possible_risk(message: str) -> str | None:
     """'distress' / 'unwell' / None for messages that are not a clear emergency (use when emergency_kind is None)."""
     text = _prepare(message)
-    if _DISTRESS.search(text):
+    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text):
         return "distress"
+    if _DANGER.search(_DANGER_NOT.sub(" ", text)):
+        return "danger"
     if _UNWELL.search(text):
         return "unwell"
     return None
@@ -255,6 +297,8 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r" (?:detectors|alarms)|(?:detectors|alarms) in (?:every|each|all) (?:unit|apartment)s?|"
     r"(?:smoke |fire |co )?(?:detector|alarm)\W+(?:\w+\W+){0,3}going off\W+(?:\w+\W+){0,2}(?:when|while|whenever|"
     r"every time) (?:i|we) (?:cook|shower|make|burn toast)|"
+    r"fire lane|fire exit|fire door|sparks? joy|(?:can|should) i (?:mix|use)\W+(?:\w+\W+){0,4}(?:bleach|"
+    r"ammonia|vinegar)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot",
     re.I)

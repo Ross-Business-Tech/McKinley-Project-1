@@ -188,7 +188,7 @@ export interface ChatResponse {
   emergency_kind?: string | null;
   safety_heading?: string | null;
   /** Not an emergency but a possible risk signal: a calm line shown above the reply (never the red alert). */
-  care_kind?: "distress" | "unwell" | null;
+  care_kind?: "distress" | "unwell" | "danger" | null;
   care_note?: string | null;
 }
 

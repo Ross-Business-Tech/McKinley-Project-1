@@ -151,8 +151,8 @@ function sentenceCase(v: string): string {
 /** One-line progress note shown instead of a full card while details are still being collected. */
 export function ProgressHint({ action, t }: { action: ProposedAction; t: UIStrings }) {
   return (
-    <p className="mt-2 inline-flex max-w-full items-start gap-1.5 text-sm text-mk-muted" data-testid="progress-hint">
-      <StatusPill tone="draft" className="shrink-0">{action.title}</StatusPill>
+    <p className="mt-2 flex max-w-full flex-wrap items-start gap-1.5 text-sm text-mk-muted" data-testid="progress-hint">
+      <StatusPill tone="draft">{action.title}</StatusPill>
       <span className="pt-0.5">
         {action.missing.length ? `${t.stillNeeded} ${action.missing.join(", ")}` : t.stage.collecting}
       </span>

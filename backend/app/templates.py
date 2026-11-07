@@ -448,6 +448,10 @@ DIY_ADVICE: dict[str, dict[Lang, str]] = {
                                "open a window or use the fan, and maintenance can check or move it.",
                          "es": "Por favor no le quite la batería al detector de humo o CO. Si suena al cocinar, abra "
                                "una ventana o use el extractor, y mantenimiento puede revisarlo o moverlo."},
+    "mix_chemicals": {"en": "Please don't mix bleach with vinegar, ammonia or other cleaners: it makes a toxic gas. "
+                            "Use one product at a time with a window open.",
+                      "es": "Por favor no mezcle cloro con vinagre, amoníaco u otros limpiadores: produce un gas "
+                            "tóxico. Use un producto a la vez con la ventana abierta."},
     "gas_diy": {"en": "Please don't work on gas lines, valves or pilot lights yourself. If you smell gas, leave and "
                       "call 911.",
                 "es": "Por favor no manipule líneas, válvulas ni pilotos de gas. Si huele a gas, salga y llame al "

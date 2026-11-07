@@ -25,10 +25,12 @@ flowchart LR
     STAT["Status list (own account only):<br/>reference, short title, status, opened date"]
   end
 
-  subgraph Staff["Staff console"]
+  subgraph Staff["Staff console (loopback-only, or X-Staff-Token when STAFF_API_TOKEN is set)"]
     DIAG["Per-turn diagnostics:<br/>context field NAMES + provenance,<br/>gate, workflow, checks, model, cost"]
-    RECS["Saved requests:<br/>summary, fields, team, priority,<br/>hashed session id"]
+    RECS["Work queue:<br/>summary, fields, team, priority,<br/>hashed session id"]
+    LIVE["Live conversations:<br/>redacted transcript by session hash"]
   end
+  T[("chat_turns<br/>what was typed + replies")]
 
   R --> ID
   I --> ID
@@ -41,6 +43,8 @@ flowchart LR
   P --> RECS
   D --> CARD
   SC --> DIAG
+  T -- "redact() on read" --> LIVE
+  P --> LIVE
 ```
 
 Never forwarded anywhere: last name, email, phone, unit type, rent, balance, late payments, autopay, household, roommates, vehicles, pets, lead source, default entry permission, raw staff notes, interaction transcripts.
@@ -48,5 +52,6 @@ Never forwarded anywhere: last name, email, phone, unit type, rent, balance, lat
 Known prototype limitations
 
 - **Identity is a demo selector.** The browser sends `persona_id`; production must bind identity to an authenticated session server-side (I-10, I-11).
-- **Staff notes contain a redacted snippet of what the person typed** (max 160 characters), because staff need it to avoid asking again. It is redacted for email, phone, SSN, card and DOB patterns.
+- **Staff notes contain a redacted snippet of what the person typed** (max 240 characters; when the note was created from a button, the person's last three messages), because staff need it to avoid asking again. It is redacted for email, phone, SSN, card number, card expiry/CVV and DOB patterns.
+- **The staff boundary is demo-only.** Without `STAFF_API_TOKEN`, staff, evaluation, gate and records routes answer only requests from this machine; behind a reverse proxy every request looks local, so a shared deployment must set a token, and real staff sign-in is still required.
 - **The static snapshot** contains only the minimized fields above, for synthetic personas.

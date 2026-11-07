@@ -7,20 +7,24 @@ flowchart TD
   M["Message + trusted identity<br/>(demo sign-in)"] --> O{"SMS and an<br/>opt-out keyword?"}
   O -- yes --> OO["F2: confirm opt-out<br/>(no model call)"]
   O -- no --> EM{"Emergency wording?<br/>(any audience)"}
-  EM -- yes --> EE["F6+F9: 911 / leave / emergency line first<br/>urgent note saved once (prototype queue)"]
-  EM -- no --> R{"Card ready and<br/>person says yes / no?"}
+  EM -- yes --> EE["F6+F9: 911 / leave / emergency line first<br/>urgent note saved once (prototype queue)<br/>refusing to leave: steps repeated"]
+  EM -- no --> DS{"Distress wording?"}
+  DS -- yes --> DSA["Calm reply + 988 care line<br/>no form"]
+  DS -- no --> AS{"Question about something<br/>already sent, or 'send it' again?"}
+  AS -- yes --> ASA["Plain answer with the reference:<br/>nobody notified, no time set"]
+  AS -- no --> R{"Card ready and<br/>person says yes / no?"}
   R -- yes --> RC["F7/F5/F9: write prototype record<br/>reference + status"]
-  R -- no --> RD["Clear the draft:<br/>nothing sent"]
+  R -- no --> RD["Not sent; kept once so<br/>'send it after all' restores it"]
   R -- "neither" --> L{"Script without<br/>approved templates?"}
   L -- yes --> H
-  L -- no --> S{"Vendor, steering, sensitive data,<br/>accommodation/legal, unverified status,<br/>asks for a person or the office,<br/>unsure twice, change/cancel request?"}
+  L -- no --> S{"Vendor, steering, sensitive data,<br/>accommodation/legal, unverified status,<br/>asks for a person or the office,<br/>contact-preference change, change/cancel request?<br/>(policy topic: 'not approved yet' + Ask the office;<br/>unsure twice: offer the office, no note)"}
   S -- yes --> H["F9: note for the office<br/>(read-back, person confirms)"]
   S -- no --> ST{"Matched resident<br/>asks for status?"}
   ST -- yes --> STL["F8: open items, no timing<br/>(+ office note if frustrated)"]
   ST -- no --> MT{"Maintenance, or answering<br/>an open repair card?"}
   MT -- "guest" --> MG["Ask to sign in;<br/>911 if dangerous"]
   MT -- "unmatched resident" --> H
-  MT -- "matched resident" --> MI["F6: issue, room, entry permission<br/>(contact + visit window from account)<br/>one question at a time"]
+  MT -- "matched resident" --> MI["F6: issue, room, entry permission<br/>(contact + visit window from account)<br/>one question at a time; vague issue: ask what first<br/>corrections replace, not append"]
   MI --> MR{"All fields?"}
   MR -- no --> MI
   MR -- yes --> MC["F7 read-back card:<br/>Send repair request"]

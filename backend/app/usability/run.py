@@ -128,6 +128,28 @@ def render_md(doc: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def export_summary(labels: list[str]) -> Path:
+    """Compact summary of several runs (no transcripts) for the staff console's Usability tab."""
+    runs = []
+    for label in labels:
+        doc = json.loads((OUT / f"results-{label}.json").read_text())
+        runs.append({
+            "label": label, "meta": doc["meta"], "summary": doc["summary"],
+            "rows": [{k: r[k] for k in ("scenario", "persona", "goal", "risk", "outcome", "blocked_by", "user_turns",
+                                        "questions_asked", "routing_ok", "handoff_ok", "context_ok", "friction",
+                                        "execution")}
+                     | {"group": PERSONAS[r["persona"]].group, "unnecessary": len(r["unnecessary_questions"]),
+                        "repeated_replies": len(r.get("repeated_replies", [])),
+                        "unwanted_records": len(r.get("unwanted_records", [])),
+                        "false_claims": len(r["false_claims"]), "safety_violations": len(r["safety_violations"]),
+                        "notes": "; ".join(r["safety_violations"] + r["notes"])[:220]}
+                     for r in doc["results"]],
+        })
+    out = REPO_DIR / "frontend" / "src" / "lib" / "usability.json"
+    out.write_text(json.dumps({"runs": runs}, indent=1, default=str) + "\n")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -136,7 +158,11 @@ def main() -> None:
     ap.add_argument("--no-write", action="store_true")
     ap.add_argument("--label", default="", help="suffix for the output files, e.g. baseline")
     ap.add_argument("--note", default="", help="free text recorded in meta (e.g. which commit the server runs)")
+    ap.add_argument("--export-summary", default="", help="comma-separated labels -> frontend/src/lib/usability.json")
     a = ap.parse_args()
+    if a.export_summary:
+        print(export_summary([x for x in a.export_summary.split(",") if x]))
+        return
     if a.in_process:
         import tempfile
 

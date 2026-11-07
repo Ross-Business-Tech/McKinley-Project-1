@@ -13,7 +13,7 @@ from fastapi import Depends, HTTPException, Request
 
 from app.state import AppState, get_state
 
-_LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
+_LOOPBACK = {"127.0.0.1", "::1", "testclient"}  # "testclient" = FastAPI's in-process test client only
 
 
 def staff_allowed(request: Request, state: AppState) -> bool:

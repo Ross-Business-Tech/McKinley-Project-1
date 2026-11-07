@@ -3,7 +3,7 @@
  "provisional": true,
  "target": "mock:mock-deterministic-v1",
  "is_mock": true,
- "generated_at": "2026-11-06T09:38:24Z",
+ "generated_at": "2026-11-07T18:10:38Z",
  "note": "PROVISIONAL automated grading. With the MOCK target this measures the backend pipeline (routing, actions, safety net), not language-model quality. Empathy/tone needs human review.",
  "summary": {
   "baseline": {
@@ -30,7 +30,7 @@
    "false_action_claims": 0,
    "critical_check_failures": 0,
    "avg_user_turns": 1.65,
-   "total_latency_ms": 360,
+   "total_latency_ms": 369,
    "total_cost_usd": 0.0,
    "errors": 0
   },
@@ -44,7 +44,7 @@
    "false_action_claims": 0,
    "critical_check_failures": 0,
    "avg_user_turns": 1.65,
-   "total_latency_ms": 327,
+   "total_latency_ms": 334,
    "total_cost_usd": 0.0,
    "errors": 0
   }
@@ -78,7 +78,7 @@
    "context_reused": null,
    "language_correct": null,
    "user_turns": 3,
-   "latency_ms": 31,
+   "latency_ms": 20,
    "cost_usd": 0.0,
    "empathy_tone": null
   },
@@ -126,7 +126,7 @@
    "context_reused": null,
    "language_correct": null,
    "user_turns": 1,
-   "latency_ms": 14,
+   "latency_ms": 23,
    "cost_usd": 0.0,
    "empathy_tone": null
   },
@@ -142,7 +142,7 @@
    "context_reused": null,
    "language_correct": null,
    "user_turns": 1,
-   "latency_ms": 5,
+   "latency_ms": 12,
    "cost_usd": 0.0,
    "empathy_tone": null
   },
@@ -318,7 +318,7 @@
    "context_reused": null,
    "language_correct": true,
    "user_turns": 2,
-   "latency_ms": 21,
+   "latency_ms": 32,
    "cost_usd": 0.0,
    "empathy_tone": null
   },
