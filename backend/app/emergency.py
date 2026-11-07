@@ -155,7 +155,8 @@ _THREAT_ACT = (r"bang\w* on (?:my|the) (?:door|window)|pound\w* on (?:my|the) do
                r"trying (?:the|my|every|all the) (?:door|doors|handles?|door handles?)|outside my (?:door|window|unit)"
                r"\W+(?:\w+\W+){0,6}(?:yell|threat|bang|scream|get me|won'?t leave)|watching (?:me|my (?:unit|apartment|"
                r"place|door))|follow\w* me|chok\w*|strangl\w*|hit (?:me|my)|hits me|punch\w* me|slap\w* me|beat (?:me|"
-               r"up)|get me|hurt me|kill me|coming back (?:tonight|later|again)|(?:said|says|saying) (?:he|she)(?:'ll| "
+               r"up)|(?:\'ll|will|going to|gonna|coming to) get me|hurt me|kill me|coming back (?:tonight|later|"
+               r"again)|(?:said|says|saying) (?:he|she)(?:'ll| "
                r"will| is going to) (?:get|hurt|kill)|me pega|me golpe\w*|me amenaz\w*|tengo miedo")
 _STRUCT2 = (r"(?:ceiling|roof|wall)\W+(?:\w+\W+){0,3}(?:came|fell|caved|crashed) (?:down|in)|part of (?:the|my)"
             r" (?:ceiling|"
@@ -210,6 +211,8 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("medical", _near(_NAMED_PERSON, _WEAK_UNRESP, 8)),
     ("medical", re.compile(_UNRESPONSIVE + "|" + _CARDIAC + "|" + _BLEED, re.I)),
     ("personal_safety", _near(_THREAT_ACTOR, _THREAT_ACT, 10)),
+    ("personal_safety", re.compile(r"\b(?:he|she|they)(?:'ll| will| is going to| are going to|'s going to|'re going to"
+                                   r"| said he'd| said she'd) (?:get|hurt|kill|shoot|stab|beat) me\b", re.I)),
     ("co", _near(_SYMPTOM, _HEAT, 14)),
     ("co", re.compile(r"(?:co |carbon |little |the )?detector\W+(?:\w+\W+){0,8}(?:beep\w* (?:4|four) times|flash\w* "
                       r"red|red light)", re.I)),
@@ -240,6 +243,11 @@ _DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works
                          r"test|extinguisher)|chest of drawers|burning question|smoke[- ]free|no smoking|"
                          r"bone dry|broke (?:the )?bank", re.I)
 _SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to|letter|note)|giving away (?:my|all)|sleep forever|no way out|"
+                             r"(?:rather|want to|wanna) (?:just )?(?:not exist|disappear|be dead|not wake up)|"
+                             r"(?:no|any) reason to (?:keep going|go on|live|stay)|how (?:i would|to) do it|"
+                             r"\bcutting (?:again|myself)|hurting myself|self[- ]harm|(?:won'?t|wont) be (?:alive|here|"
+                             r"around)|not (?:be )?alive|end it all|kill myself|overdos\w*|"
+                             r"sentido (?:a la|de la) vida|desaparecer para siempre|no quiero existir|hacerme da[ñn]o|"
                              r"won'?t need (?:it|them|anything) (?:soon|anymore)|despedí de todos|esta noche lo hago|"
                              r"not (?:be )?(?:around|here) (?:much longer|anymore)", re.I)
 
@@ -250,7 +258,8 @@ _DISTRESS = re.compile(
     r"anymore|in anything)|(?:can'?t|cant) (?:do this|go on|take (?:it|this))(?: like this)? anymore|"
     r"(?:can'?t|cant) go on like this|give up on (?:everything|life)|(?:feel|feeling|i'?m|im) (?:so |really )?hopeless|"
     r"(?:i'?m|im) (?:so )?done with (?:everything|life)|(?:won'?t|wont) (?:be around|matter)|"
-    r"everything is falling apart|ya no puedo m[aá]s|no aguanto m[aá]s", re.I)
+    r"everything is falling apart|nothing matters|it doesn'?t matter anyway|tired of (?:living|everything|life)|"
+    r"ya no puedo m[aá]s|no aguanto m[aá]s", re.I)
 _UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick|weird|off)|", "")
                      + r"|can'?t breathe well|short of breath", re.I)
 
@@ -297,7 +306,8 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r" (?:detectors|alarms)|(?:detectors|alarms) in (?:every|each|all) (?:unit|apartment)s?|"
     r"(?:smoke |fire |co )?(?:detector|alarm)\W+(?:\w+\W+){0,3}going off\W+(?:\w+\W+){0,2}(?:when|while|whenever|"
     r"every time) (?:i|we) (?:cook|shower|make|burn toast)|"
-    r"fire lane|fire exit|fire door|sparks? joy|(?:can|should) i (?:mix|use)\W+(?:\w+\W+){0,4}(?:bleach|"
+    r"fire lane|fire exit|fire door|fire escape|(?:test|check|inspect)\w*\W+(?:\w+\W+){0,2}(?:co|carbon monoxide|"
+    r"smoke|fire) (?:detectors?|alarms?)|sparks? joy|(?:can|should) i (?:mix|use)\W+(?:\w+\W+){0,4}(?:bleach|"
     r"ammonia|vinegar)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot",

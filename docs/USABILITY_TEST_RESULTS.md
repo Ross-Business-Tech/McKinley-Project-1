@@ -1,5 +1,69 @@
 # Usability test results (synthetic personas)
 
+## Sprint 2 (November 2026): persona suite and two rounds of independent simulation
+
+**Every result in this section used the deterministic MOCK response model.** No live model ran: no OpenRouter or
+Anthropic key is configured locally and Ollama is not installed (see `docs/SPRINT_REVIEW_REPORT.md` §7). The tests
+exercise the real backend pipeline (routing, identity rules, questions, actions, safety rules, honesty); they are
+not evidence of language-model quality. "Simulated success" means a record was written to the prototype store,
+never to Yardi or a real queue.
+
+### A. Reusable persona suite (`backend/app/usability/`)
+
+- 25 synthetic personas: 10 resident, 10 prospect, 5 adversarial (`personas.py`); styles include polite,
+  impatient, angry, confused, brief, non-native English, vague, changes intent, wants a human, repeat issue,
+  Spanish.
+- 48 multi-turn scenarios (`scenarios.py`), 29 rated high risk. Scenarios state the goal and how the person
+  talks, never the expected reply.
+- An adaptive simulated user (`simulator.py`) calls the real HTTP endpoints, presses Send / Don't send on
+  read-back cards and answers the assistant's missing-detail questions in the persona's own words, so the
+  conversation follows what the product actually did.
+- A separate evaluator (`evaluator.py`) grades the end state with its own lexicons (it does not import the app's
+  safety checks): outcome, turns, questions, unneeded and repeated questions, identical repeated replies, extra
+  records beyond the goal, routing, handoff, context accuracy, false claims, safety violations, latency, mock vs
+  live.
+- Run: `cd backend && uv run python -m app.usability.run --base-url http://127.0.0.1:8000` (or `--in-process`).
+  Output: `evals/usability/results-<label>.json` (records + full conversations) and `report-<label>.md`. The
+  staff console's **Usability** tab shows baseline vs latest.
+
+| Metric (48 scenarios) | Baseline: sprint-1 code `d3d64d6` | After round-2 fixes `8fdf0d3` |
+| --- | ---: | ---: |
+| Success / simulated success | 13 / 19 | 15 / 22 |
+| Blocked (missing data or approval, said honestly) | 7 | 7 |
+| Partial | 4 | 4 |
+| Failure | 5 | **0** |
+| Safety violations | 1 (CO symptoms missed) | **0** |
+| False claims | 0 | 0 |
+| Correct routing | 44/48 | 48/48 |
+| Handoff correct | 47/48 | 48/48 |
+| Unneeded questions | 6 | 7 |
+| Identical replies repeated | 15 | 10 |
+| Extra records beyond the goal | 23 | 9 |
+| Average user turns | 3.96 | 3.83 |
+
+Limits of this evaluator (found by reading transcripts): "extra records" also counts legitimate notes (a manager
+note the person asked for); it cannot judge tone; a scripted persona sometimes answers out of order, which
+produces partials that are artefacts of the script; it checks the *saved* record, so a detail correctly
+captured but never sent counts as partial. Agent H assessed its leniency independently (see the sprint report).
+
+### B. Independent simulation reviewers (Claude Code subagents, real UI + API)
+
+| Reviewer | Round 1 (`d3d64d6`) | Round 2 (`a9154ac`) | Main round-2 findings |
+| --- | --- | --- | --- |
+| C frustrated residents (15 + 5 convs) | empathy 4, context 3, escalation 3, honesty 7 | empathy 5, context 4, escalation 4, honesty 7 | gas refusal fixed, AC "noise" misroute fixed, honest after-send answers; **P0 "send my" matched self-harm** (fixed in `8fdf0d3`) |
+| D ordinary residents (24 → 32 convs) | efficiency 5, clarity 6, helpfulness 3 | efficiency 6, clarity 6, helpfulness 4 | 5 of 14 fixed, 3 partial; **P0 burnt smell mid-repair not flagged** (fixed in `8fdf0d3`); room question loops for whole-home problems |
+| E prospects (20 + 5 convs) | accuracy 6, sales 3, compliance 8, conversion 5 | accuracy 5, sales 3, compliance 6, conversion 6 | move-in and fake-price fixes hold; **P0 false crisis** (fixed); still no contact capture for guests; Spanish accommodation request missed |
+| B UX walkthrough (12 + 6 journeys) | usability 4, conversation 3, staff 3 | usability 5, conversation 4, staff 5 | 9 of 16 fixed; stale Send buttons (fixed in `8fdf0d3`); "back to the oven" saved as the problem (fixed); ceiling leak not urgent (fixed) |
+
+Round-2 scores were given against `a9154ac`; the P0s they found were fixed afterwards in `8fdf0d3` and checked by
+regression tests and by Agent H's final pass (sprint report §4), not re-scored by the same reviewers.
+
+Raw transcripts and screenshots: session scratchpad `s2/review-{B,C,D,E}/` (not committed; synthetic data only).
+
+---
+
+## Sprint 1 results (kept for comparison)
+
 **Every run below used the deterministic MOCK response model** (`mock-deterministic-v1`, which returns backend templates) and the rules decision gate. They test the real backend pipeline: routing, identity rules, actions, safety net and template wording. They are **not** evidence of language-model quality, and no live-model usability run was done (it would spend free-tier quota; see §4). All personas are synthetic. "Simulated" outcomes were written to the prototype store, never to Yardi, a CRM or a real queue.
 
 Testers were independent Claude Code subagents playing adversarial residents (Agent C) and prospects (Agent D), plus a UX judge (Agent B), driving the running UI with Playwright at 390×844 and calling the API. Raw transcripts and screenshots are in the session scratchpad (`review-B/`, `review-C/`, `review-D/`); they are not committed.

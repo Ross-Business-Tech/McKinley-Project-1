@@ -730,6 +730,21 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return handoff_plan("maint_change", "Change or cancel an earlier request: staff handle it.",
                             topic="Change or cancel an earlier request",
                             ref="your earlier request" if lang == "en" else "su solicitud anterior")
+    hurry = re.search(r"been forever|taking (?:so long|forever|ages)|ask them to hurry|hurry (?:up|them)|still waiting|"
+                      r"been (?:weeks|days|a month)|nobody (?:has )?(?:come|came|called|fixed)|why is(?:n'?t)? it "
+                      r"(?:taking|fixed)", msg, re.I)
+    if hurry and is_resident and verified and not (draft and draft["kind"] == "maintenance_request"):
+        items = sorted(status_items(store, resident, persona_id or ""), key=lambda i: 0 if "owed" in i.status else 1)
+        refs = ", ".join(i.reference for i in items[:3])
+        return handoff_plan("frustrated", "Resident says a request is taking too long: office follow-up.",
+                            topic="Waiting too long on a request" + (f" ({refs})" if refs else ""),
+                            category="unresolved_commitment")
+    if re.search(r"what (?:communities|properties|places|buildings|locations|apartments) do you have|which "
+                 r"communities|list (?:your |the )?communities|where are your (?:communities|properties|apartments)|"
+                 r"que comunidades tienen", msg, re.I) and not is_resident:
+        return done(TurnPlan(template=t("communities", lang), functions=["F4"], skip_model=True,
+                             chips=CHIPS["prospect_next"][lang],
+                             workflow=_sel("faq", "Communities in the demo data (names only; no prices or units).")))
     ptopic = policy_topic(msg)
     if ptopic and not match_faq(msg) and not (draft and draft["kind"] == "maintenance_request" and
                                               _missing("maintenance_request", draft)[:1] == ["entry"]
@@ -796,7 +811,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     adds_detail = bool(re.search(r"\b(also note|add (that|this)|note that|mention that|tell them)\b", msg, re.I))
     question_only = msg.strip().endswith("?") and not is_issue_description(msg) and not location and not entry \
         and not adds_detail
-    off_topic = bool(match_faq(msg) or is_tour_request(msg) or question_only)
+    off_topic = bool(match_faq(msg) or is_tour_request(msg) or question_only) and not entry and not location
     answers_draft = in_maint_draft and not off_topic and (location or entry or gate.intent in ("general", "maintenance")
                                                           or len(effective.split()) >= 3)
     if workflow.id == "maintenance" or gate.intent == "maintenance" and is_resident or answers_draft:

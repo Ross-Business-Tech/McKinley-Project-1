@@ -363,6 +363,14 @@ T: dict[str, dict[Lang, str]] = {
         "es": "De acuerdo, no lo envié. Si cambia de opinión, diga \"envíelo\". ¿Algo más?",
     },
     # ---- sprint 2 (TEAM DRAFTS) ----
+    "communities": {
+        "en": "In this demo the communities are Heron Lake Apartments, Birchwood Commons, Sandpiper Pointe and "
+              "Fernhill Apartments. I don't have approved details on prices or what's open, but I can send a tour "
+              "request to the leasing team for any of them.",
+        "es": "En esta demostración las comunidades son Heron Lake Apartments, Birchwood Commons, Sandpiper Pointe y "
+              "Fernhill Apartments. No tengo información aprobada sobre precios ni disponibilidad, pero puedo enviar "
+              "una solicitud de visita al equipo de arrendamiento.",
+    },
     "distress_ack": {
         "en": "That sounds like a lot to carry right now. There's no rush here. If you'd like help with anything at "
               "home, just tell me what's going on.",

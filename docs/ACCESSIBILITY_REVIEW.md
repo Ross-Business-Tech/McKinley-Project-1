@@ -1,5 +1,52 @@
 # Accessibility review (WCAG 2.2 AA)
 
+## Sprint 2
+
+The **web-accessibility skill is not installed**. Its upstream instructions (hoodini/ai-agents-skills) were read and
+given to Agent F, who found them out of date: WCAG 2.1 only, a `menubar` navigation example the ARIA Authoring
+Practices advise against, a hand-rolled focus trap, and reliance on axe alone (see `docs/DESIGN_SKILL_USAGE.md`).
+Agent F audited manually in Chromium via Playwright (keyboard-only journeys, live-region recorder, accessibility
+tree, computed styles, zoom / text-spacing / 200% text emulation); axe-core ran in 27 states (round 1) and 35
+states (round 2): **0 violations both times**. Every finding below was manual.
+
+| Score | Round 1 (`d3d64d6`) | Round 2 (`a9154ac`) |
+| --- | --- | --- |
+| Customer | 7/10 | 8/10 |
+| Staff | 6/10 | 6.5/10 |
+
+| ID | SC | Round-1 finding | Status after round 2 (Agent F) | Then (main agent, `8fdf0d3`, not yet re-audited) |
+| --- | --- | --- | --- | --- |
+| F1 | 2.4.11, 1.4.10 | Sticky composer hid focused buttons at 400% zoom | Fixed | |
+| F2 | 1.4.12, 1.4.4 | Pills clipped with text spacing / 200% text | Partial: progress line overflowed at 200% | Progress line wraps |
+| F3 | 3.1.2 | Spanish label/button in `lang=en`, English status text in `lang=es` | Partial: status titles still English | |
+| F4 | 3.1.2 | Cancel-failure error English only | Fixed | |
+| F5 | 1.4.11 | Staff tab focus ~1.5:1 | Fixed (3px solid) | |
+| F6 | 2.4.7 | Tab panel focus invisible | Not fixed | `outline-hidden focus-visible:outline-solid` |
+| F7 | 3.2.2 risk | Sign-in change silently reset | Fixed (visible hint + confirm) | |
+| F8 | — | Composer didn't grow | Fixed | |
+| F9 | 4.1.2 | `aria-label` on plain divs | Fixed | |
+| F10 | 1.3.1 | Card title h2 at same level as Conversation | Fixed (h3) | |
+| F11 | — | Stale "Not sent" bubble after retry | Fixed | |
+| F12 | 4.1.3 | Focus to plain div after confirm/cancel | Fixed (`role=article`) | |
+| F13 | 1.4.1 | Urgent items green | Fixed (red + icon) | |
+| F14 | 2.5.8 | Evaluation checkboxes 16 px | Not fixed (P3; passes via label) | |
+| N1 | 1.4.4 | Progress line off-screen at 200% text | New in round 2 | Fixed |
+| N2 | 4.1.3 | Reload re-announced an old emergency alert | New | Restored messages render without `role=alert` |
+| N3 | 2.4.3 | Phone: transcript opens 1,800 px below, focus stays on list | New | Focus moves to the transcript heading below 768 px |
+| N4 | 4.1.3 | Transcript pane `aria-live` read everything twice | New | One short status: "Conversation loaded, N messages" |
+| N5 | 3.1.2 | Spanish staff transcript turns tagged `en` | New | Per-turn `lang` (simple heuristic) |
+| N6 | 2.4.11 | "Show fewer" pushed behind the composer at 1440 | New (P3) | Not fixed |
+| N7 | — | Every urgent item pinned (21) | New (P3) | Capped at 3 |
+| N8 | 1.3.1 | Staff queue cards have no headings | New (P3) | Not fixed |
+
+Not tested: real screen readers (NVDA, JAWS, VoiceOver, TalkBack), real phones and on-screen keyboards, Windows
+select/confirm behaviour, forced colours, dark mode, preview (replay) mode in depth.
+
+---
+
+## Sprint 1 (kept for comparison)
+
+
 The **web-accessibility skill was not installed**, so Agent E (an independent accessibility subagent) reviewed directly against WCAG 2.2 AA. It used Playwright (Chromium), axe-core 4.x (tags wcag2a/aa, wcag21a/aa, wcag22aa, best-practice), the accessibility tree, computed styles and screenshots. The main agent also ran axe in 10 journey states after every rebuild (`scratchpad/smoke/drive.cjs`).
 
 ## 1. Automated results

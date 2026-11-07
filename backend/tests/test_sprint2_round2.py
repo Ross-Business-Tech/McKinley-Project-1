@@ -99,3 +99,36 @@ def test_yes_after_unclear_offer_prepares_the_note(client):  # D G5
 def test_cancel_an_earlier_request_prepares_an_office_note(client):  # D G4
     r = chat(client, "cancel my repair", persona="R003", session="cx1")
     assert r["action"] and r["action"]["kind"] == "staff_handoff"
+
+
+@pytest.mark.parametrize("msg", ["dont give me a form, get me a person", "can someone get me the manager",
+                                 "just get me someone who can help", "is there a fire escape plan i can see",
+                                 "how often do you test the carbon monoxide detectors"])
+def test_agent_h_false_alarms(msg):  # H §1 regression + false alarms
+    assert emergency_kind(msg) is None, msg
+
+
+def test_get_me_a_person_is_a_handoff_not_an_emergency(client):  # H regression
+    r = chat(client, "dont give me a form, get me a person", persona="R003", session="gm1")
+    assert r["emergency_kind"] is None and r["action"]["kind"] == "staff_handoff"
+    assert r["action"]["stage"] == "ready"  # nothing saved until the person presses send
+
+
+def test_threats_with_pronouns_still_alarm():
+    assert emergency_kind("my ex says he will kill me") == "personal_safety"
+
+
+def test_fine_to_enter_is_an_entry_answer_not_a_pet_question(client):  # H B3
+    chat(client, "dishwasher is leaking", persona="R003", session="fe1")
+    r = chat(client, "Actually it's fine to enter, I have a dog but he's crated", persona="R003", session="fe1")
+    assert r["action"]["stage"] == "ready"
+
+
+def test_waiting_too_long_prepares_an_escalation(client):  # H D-F4
+    r = chat(client, "its been forever, ask them to hurry", persona="R003", session="hu1")
+    assert r["action"]["kind"] == "staff_handoff" and r["recommended_handoff"]
+
+
+def test_prospect_can_ask_which_communities_exist(client):  # H E-F6
+    r = chat(client, "what communities do you have?", persona="", session="cm1")
+    assert "Heron Lake" in r["reply"] and "$" not in r["reply"]

@@ -169,11 +169,14 @@ def main() -> None:
         from fastapi.testclient import TestClient
 
         from app.config import Settings
-        from app.main import create_app
+        from app.db import Store
+        from app.llm import LLMGateway
+        from app.main import app
+        from app.state import build_state, set_state
 
-        tmp = tempfile.mkdtemp()
-        app = create_app(Settings(llm_provider="mock", llm_model="mock-deterministic-v1",
-                                  db_path=Path(tmp) / "ux.sqlite3", _env_file=None))  # type: ignore[call-arg]
+        settings = Settings(llm_provider="mock", llm_model="mock-deterministic-v1",  # type: ignore[call-arg]
+                            db_path=Path(tempfile.mkdtemp()) / "ux.sqlite3", _env_file=None)
+        set_state(build_state(settings=settings, gateway=LLMGateway(settings), store=Store(settings.db_path)))
         transport: Transport = InProcessTransport(TestClient(app))
         target = "in-process TestClient (mock)"
     else:

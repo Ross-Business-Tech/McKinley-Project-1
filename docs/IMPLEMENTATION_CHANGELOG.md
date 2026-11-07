@@ -6,6 +6,29 @@ Status legend used throughout: **WORKING** · **SIMULATED** (prototype store) ·
 
 ---
 
+## Phase 8: UX hardening and multi-agent user simulation (sprint 2, same branch)
+
+Commits: `d8e5fcc` safety layer + persona suite · `765ae41` conversation fixes · `a9154ac` frontend rework ·
+`8fdf0d3` round-2 fixes · plus the docs commit. All results are mock-model only (no API key available).
+
+- **Safety (WORKING, deterministic floor):** emergency layer 2 (word combinations), possible-risk tier (care line:
+  distress → 988; danger / unwell → 911), refusal-to-leave handling, unsafe do-it-yourself warnings, card
+  expiry/CVV redaction, private handling of self-harm/medical/safety notes, people-safety notes routed to
+  management. Fresh-paraphrase full-alert recall is still low (see sprint report); the danger line is the
+  conservative fallback.
+- **Access (DEMO BOUNDARY):** staff, eval, gate and records routes loopback-only unless `STAFF_API_TOKEN` is set;
+  chat model override staff-only. Customer routes still trust the demo sign-in (deployment blocker).
+- **Conversation (WORKING):** corrections replace; decline kept once; honest after-send answers; no junk notes;
+  manager requests win over forms; policy questions name the topic; stated prices never confirmed; tour slot
+  fixes; vague issues ask "what" first; distress gets no form.
+- **Frontend (WORKING):** card only at read-back, shared status colours, short status list, first-screen tasks,
+  composer fixes, Spanish `lang`, sign-in confirm, reload restore, care note, staff work queue, Live
+  conversations, Usability tab.
+- **Evaluation (PROVISIONAL):** `app/usability` persona suite (25 personas, 48 scenarios, adaptive simulator,
+  independent evaluator) with baseline and after runs in `evals/usability/`; journey A/B/C eval and five-case eval
+  unchanged and still passing.
+- **Tests:** backend 296 → 527; frontend 27 → 32.
+
 ## Phase 7: workflow-driven customer experience (branch `feat/workflow-customer-experience`)
 
 | Commit | What changed |

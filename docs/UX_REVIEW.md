@@ -1,5 +1,52 @@
 # UX review: design, independent reviews, fixes and verification
 
+> **Sprint 2 (November 2026)** is summarised first; the sprint-1 review follows unchanged below the line.
+> Full evidence, scores and remaining blockers: [SPRINT_REVIEW_REPORT.md](SPRINT_REVIEW_REPORT.md). Design skills:
+> [DESIGN_SKILL_USAGE.md](DESIGN_SKILL_USAGE.md).
+
+## Sprint 2 at a glance
+
+**Reviewers** (fresh, session-scoped subagents; no `.claude/` files changed): A UI critic, B UX/product critic,
+C frustrated resident, D ordinary resident, E prospect, F accessibility, G safety/security adversary, H
+independent regression verifier (implemented nothing). A–G ran round 1 on `d3d64d6` and round 2 on `a9154ac`.
+The frontend fixes were made by a separate implementer agent; backend fixes by the main agent. Nobody scored
+their own work.
+
+| Score (0–10, strict) | Round 1 | Round 2 |
+| --- | --- | --- |
+| Visual design, customer (A) | 7 | 7 |
+| Visual design, staff (A) | 5 | 6 |
+| Customer usability (B) | 4 | 5 |
+| Conversational quality (B) | 3 | 4 |
+| Staff console usefulness (B) | 3 | 5 |
+| Accessibility customer / staff (F) | 7 / 6 | 8 / 6.5 |
+| Safety (G) | 3 | 4 |
+| Security / privacy (G) | 5 | 6 |
+
+**What the design questions in the brief turned into:**
+
+| Question | Answer from the reviews | Change |
+| --- | --- | --- |
+| Does every request need an action card? Is it shown at the right moment? | No: a card on every collecting turn, stacked "Earlier version" stubs (A7, B12) | Card only at read-back; a one-line "Still needed" progress note before that; superseded cards hidden |
+| Confirming things that don't need it? | Office notes were filed for misunderstandings nobody asked to escalate (D F3) | "Not understood twice" offers the office; a note exists only if the person says yes |
+| Too many questions before helping? | Vague issues led straight to "which room?" (D F7) | Ask *what* first, once; corrections replace instead of append |
+| Can customers recover from misunderstandings? | Declines were final; corrections silently ignored (B1–B4) | Decline is kept once ("send it after all"); every applied change is said out loud |
+| Too many internal status indicators? | Status list unbounded, urgent in green (A1, A2) | One status colour map; urgent/owed first (max 3), 3 most recent, Show all |
+| Can customers reach a human quickly? | Manager requests ignored while a form was open (C-2) | Person/manager phrasings win at any stage and carry the details |
+| Staff dashboard: decisions or noise? | Unfiltered list of 70 machine rows; no live view (B5, B6) | Work queue (urgent first, filters, readable rows, stacked on phones) + Live conversations + Usability tab |
+| Mobile composer always usable? | Hid focused buttons at high zoom (F1) | Scroll padding follows the composer; not sticky on short screens |
+| Draft vs submitted vs completed clear? | Sent cards kept live Send buttons (A N1, B17, C R-5, D F12) | Fixed in `8fdf0d3` (a hidden card state was being coerced to "current") |
+
+**Suggestions not adopted (with reason):** collecting guest phone numbers in the tour card (E F7): we don't store
+contact details from guests in a public-repo prototype; the honest "contact the office" note remains and this is
+listed as a product decision. Full-screen detail view for staff conversations on phones (A N3): focus now moves to
+the transcript instead; a separate route was out of scope.
+
+---
+
+## Sprint 1 review (unchanged)
+
+
 Branch `feat/workflow-customer-experience`. Covers the customer view (`/`) and the staff and demo console (`/staff/`). Usability transcripts: [USABILITY_TEST_RESULTS.md](USABILITY_TEST_RESULTS.md). Accessibility: [ACCESSIBILITY_REVIEW.md](ACCESSIBILITY_REVIEW.md).
 
 ## 1. Design skills: what was actually used

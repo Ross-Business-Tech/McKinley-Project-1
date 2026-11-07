@@ -201,6 +201,8 @@ _STAFF = re.compile(
     r"can (someone|somebody|you) (just )?(text|call|email|contact) me|can (someone|somebody) (just )?(talk|speak|call|"
     r"explain|help)|\bescalate\b|"
     r"(get|find|bring) me (the |a |my |your )?(property |community |building |site |general )?manager|"
+    r"(get|give|find) me (a |an |the )?(real |actual |live )?(human|person|agent|representative|rep|salesperson|"
+    r"sales ?person|someone|somebody)\b|"
     r"(talk|speak|chat) (to|with) (the |a |my |your )?(property|community|building|site|general) manager|"
     r"(speak|talk) (to|with) whoever(?:'s| is)? in charge|(flag|send|pass|escalate) (it|this|that) (to|for) (the )?"
     r"(property )?manager|(want|need) (a |to talk to a |to speak to a )?(salesperson|sales person|sales rep|"
@@ -282,6 +284,9 @@ _ENTRY_YES = re.compile(r"\b(yes|ok|okay|sure|si|sí)\b\W+(?:\w+\W+){0,2}(enter|
                         r"(yes|ok|okay|fine|sure)[, ]*(you |they |maintenance |the tech\w* )?(can|may) (come in|"
                         r"enter|go in)|(can|may) (come in|enter)( anytime| any time| if i'?m not home)?|"
                         r"enter (without me|if i'?m not (home|there))|permission to enter|"
+                        r"(fine|ok|okay|alright|all right) (for them |for you )?to (enter|come in|go in)|"
+                        r"(you|they) can (just )?(go|come|let yourselves) in|no need to (call|text|contact|wait for)"
+                        r"( me)?( first)?|"
                         r"pueden entrar|puede entrar", re.IGNORECASE)
 _ENTRY_NO = re.compile(r"(don'?t|dont|do not|please don'?t|no,? (don'?t|do not)) (come in|enter|go in)|without me\b|"
                        r"(call|contact|text|message) (me )?(first|before)|only (when|if) i'?m (home|there)|"
