@@ -117,6 +117,7 @@ export function actionTone(a: ProposedAction): Tone {
 /** Customer-facing UI strings. Spanish = draft translation (needs review by a fluent McKinley staff member). */
 export const UI = {
   en: {
+    lang: "en",
     stage: { collecting: "Draft: a few details to go", ready: "Check, then send", submitted: "Sent", blocked: "Not available here" },
     source: { you_said: "You told us", on_file: "On your account", assistant: "Added by the assistant", missing: "Still needed" },
     stillNeeded: "Still needed:",
@@ -150,8 +151,20 @@ export const UI = {
     tryAgain: "Please try again. In an emergency, call 911.",
     notSaved: "That didn't save, so nothing was sent. Please try again, or contact the office directly.",
     declinedMsg: "Okay, I haven't sent anything. Is there something else I can help with?",
+    whatItSaid: "What it said",
+    fromProfile: "From your profile",
+    cancelFailed: "I couldn't update that just now. Nothing has been sent.",
+    opened: "opened",
+    showAll: (n: number) => `Show all (${n})`,
+    showFewer: "Show fewer",
+    assistantName: "McKinley assistant",
+    assistantMessage: "Assistant message",
+    signInHint: "Changing this starts a new conversation.",
+    signInConfirm: "Switch sign-in? This conversation will be cleared from this screen.",
+    howCanIHelp: "What do you need help with?",
   },
   es: {
+    lang: "es",
     stage: { collecting: "Borrador: faltan algunos datos", ready: "Revise y envíe", submitted: "Enviada", blocked: "No disponible aquí" },
     source: { you_said: "Lo que dijo", on_file: "En su cuenta", assistant: "Agregado por el asistente", missing: "Falta" },
     stillNeeded: "Falta:",
@@ -185,10 +198,57 @@ export const UI = {
     tryAgain: "Inténtelo de nuevo. En una emergencia, llame al 911.",
     notSaved: "No se guardó, así que no se envió nada. Inténtelo de nuevo o comuníquese con la oficina.",
     declinedMsg: "De acuerdo, no envié nada. ¿Le ayudo con algo más?",
+    whatItSaid: "Lo que decía",
+    fromProfile: "De su perfil",
+    cancelFailed: "No pude actualizar eso ahora. No se ha enviado nada.",
+    opened: "abierta el",
+    showAll: (n: number) => `Ver todas (${n})`,
+    showFewer: "Ver menos",
+    assistantName: "Asistente de McKinley",
+    assistantMessage: "Mensaje del asistente",
+    signInHint: "Si cambia esto, empieza una conversación nueva.",
+    signInConfirm: "¿Cambiar de cuenta? Esta conversación se borrará de la pantalla.",
+    howCanIHelp: "¿En qué le puedo ayudar?",
   },
 } as const;
 
 export type UIStrings = (typeof UI)["en"] | (typeof UI)["es"];
+
+export function formatDate(iso: string, lang: Lang): string {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ---- customer session restore (live mode only; same tab, sessionStorage) ----
+
+export const SESSION_KEY = "mckinley.customerSession";
+
+export function saveSession<T>(data: T): void {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  } catch {
+    /* storage unavailable: a reload starts a new conversation */
+  }
+}
+
+export function loadSession<T>(): T | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSession(): void {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 // ---- conversation hand-off to the staff console (same browser, sessionStorage only) ----
 

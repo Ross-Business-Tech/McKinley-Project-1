@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
-import { ALL_MODES, MODE_META, effectiveVerdict, formatCost, formatLatency, formatTokens } from "@/lib/format";
+import { ALL_MODES, MODE_META, effectiveVerdict, formatCost, formatLatency, formatTokens, plainStatus } from "@/lib/format";
 import type { DemoSnapshot, EvalCase, EvalResult, EvalSummary, GateConfig, Mode, ModelTarget, Verdict } from "@/lib/types";
 
 import { GateEvalPanel } from "./GateEvalPanel";
@@ -55,7 +55,7 @@ function ResultCell({ r, onReviewed }: { r: EvalResult | undefined; onReviewed: 
     <div className="space-y-2 text-sm">
       <div className="flex flex-wrap items-center gap-1.5">
         <VerdictBadge r={r} />
-        {r.is_mock && <Badge variant="outline">MOCK</Badge>}
+        {r.is_mock && <Badge variant="outline">Mock</Badge>}
         {r.recommended_handoff && <Badge variant="outline">handoff: {r.handoff_category}</Badge>}
       </div>
       {(r.gate_intent || r.workflow_id) && (
@@ -224,8 +224,8 @@ function FiveCaseEval({ targets, cases: allCases }: { targets: ModelTarget[]; ca
                     }
                   />
                   <span className="break-all">{t.key}</span>
-                  {t.is_mock && <Badge variant="outline">MOCK</Badge>}
-                  {!t.ready && <Badge variant="destructive">{t.status}</Badge>}
+                  {t.is_mock && <Badge variant="outline">Mock</Badge>}
+                  {!t.ready && <Badge variant="destructive">{plainStatus(t.status)}</Badge>}
                 </label>
               ))}
             </div>
@@ -289,7 +289,7 @@ function FiveCaseEval({ targets, cases: allCases }: { targets: ModelTarget[]; ca
                 {Object.values(summary.by_target_mode).map((g) => (
                   <TableRow key={`${g.target}|${g.mode}`}>
                     <TableCell className="max-w-56 break-all">
-                      {g.target} {g.is_mock ? <Badge variant="outline">MOCK</Badge> : null}
+                      {g.target} {g.is_mock ? <Badge variant="outline">Mock</Badge> : null}
                     </TableCell>
                     <TableCell>{MODE_META[g.mode as Mode]?.title ?? g.mode}</TableCell>
                     <TableCell>{g.good}/{g.runs}</TableCell>
@@ -334,7 +334,7 @@ function FiveCaseEval({ targets, cases: allCases }: { targets: ModelTarget[]; ca
                   <div className={`grid gap-4 md:grid-cols-2 ${resultModes.length > 2 ? "xl:grid-cols-3" : ""}`}>
                     {resultModes.map((m) => (
                       <div key={m} className="min-w-0 rounded-md border p-3">
-                        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="mb-2 text-sm font-medium text-muted-foreground">
                           {MODE_META[m].letter} · {MODE_META[m].title}
                         </p>
                         <ResultCell key={find(c.id, t, m)?.id ?? "none"} r={find(c.id, t, m)}

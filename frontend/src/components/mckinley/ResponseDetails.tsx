@@ -26,7 +26,7 @@ export function HandoffPanel({ r }: { r: Pick<ChatResponse, "recommended_handoff
 export function SafetyNotice({ text }: { text: string }) {
   return (
     <div role="alert" className="rounded-md border-2 border-red-400 bg-red-50 p-3 text-sm font-medium text-red-950 dark:border-red-700 dark:bg-red-950/50 dark:text-red-100">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide">Safety notice</p>
+      <p className="mb-1 text-sm font-semibold">Safety notice</p>
       <p>{text}</p>
     </div>
   );
@@ -265,7 +265,7 @@ export function ResponseView({ r }: { r: ChatResponse }) {
     <div className="space-y-2">
       {r.is_mock && (
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary" title="Deterministic template, not a language model">MOCK</Badge>
+          <Badge variant="secondary" title="Deterministic template, not a language model">Mock</Badge>
         </div>
       )}
       {r.safety_notice && <SafetyNotice text={r.safety_notice} />}

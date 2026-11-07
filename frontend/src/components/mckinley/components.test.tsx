@@ -98,7 +98,7 @@ describe("ResponseView", () => {
     expect(alert).toHaveTextContent("Leave the area now and call 911.");
     const reply = screen.getByText("Your safety comes first.");
     expect(alert.compareDocumentPosition(reply) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText("MOCK")).toBeInTheDocument();
+    expect(screen.getByText("Mock")).toBeInTheDocument();
   });
 
   it("shows no safety alert when there is no notice", () => {
@@ -172,7 +172,7 @@ describe("ChatWorkbench", () => {
     expect(bodies.map((b) => b.mode).sort()).toEqual(["aware", "baseline"]);
     expect(new Set(bodies.map((b) => b.message)).size).toBe(1);
     expect(bodies.every((b) => b.gate_provider === "rules")).toBe(true);
-    expect(screen.getAllByText("MOCK").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mock").length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText("Marisol")).toBeInTheDocument());
   });
 

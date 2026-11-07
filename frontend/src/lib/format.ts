@@ -67,3 +67,12 @@ export const CHECK_LABELS: Record<string, string> = {
   emergency_guidance: "Emergency guidance",
   structured_output: "JSON contract",
 };
+
+/** Machine status codes as plain sentence-case labels ("NEEDS_API_KEY" -> "Needs API key"). */
+export function plainStatus(s: string | null | undefined): string {
+  if (!s) return "";
+  if (!/^[A-Z0-9_]+$/.test(s)) return s;
+  const words = s.toLowerCase().split("_").map((w) => (["api", "llm", "url", "ok"].includes(w) ? w.toUpperCase() : w));
+  const out = words.join(" ");
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}

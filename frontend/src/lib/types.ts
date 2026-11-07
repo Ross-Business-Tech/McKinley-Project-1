@@ -187,6 +187,9 @@ export interface ChatResponse {
   action_cleared?: ActionKind | null;
   emergency_kind?: string | null;
   safety_heading?: string | null;
+  /** Not an emergency but a possible risk signal: a calm line shown above the reply (never the red alert). */
+  care_kind?: "distress" | "unwell" | null;
+  care_note?: string | null;
 }
 
 export type Channel = "web_chat" | "sms" | "email";
@@ -468,4 +471,20 @@ export interface DemoSnapshot {
   gate_eval: Pick<GateEvalResponse, "note" | "summary" | "rows">;
   journeys?: Journey[];
   prototype_records?: PrototypeRecord[];
+}
+
+/** Staff console: a recent live conversation (keyed by a one-way session hash, never the session id). */
+export interface StaffConversation {
+  session_hash: string;
+  persona_id: string | null;
+  messages: number;
+  started: string;
+  last: string;
+  records: { id: string; kind: ActionKind; status_label: string | null; priority: string | null }[];
+}
+
+export interface StaffConversationDetail {
+  session_hash: string;
+  turns: { role: "user" | "assistant"; content: string; persona_id: string; created_at: string }[];
+  records: PrototypeRecord[];
 }

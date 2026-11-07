@@ -19,6 +19,8 @@ import type {
   ModelTarget,
   Persona,
   PrototypeRecord,
+  StaffConversation,
+  StaffConversationDetail,
   SafeContext,
   Verdict,
 } from "./types";
@@ -99,6 +101,8 @@ export const api = {
   cancelAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
     request<ActionResult>("/api/actions/cancel", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
   prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`),
+  staffConversations: (limit = 30) => request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`),
+  staffConversation: (hash: string) => request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`),
 };
 
 /** Root-relative static snapshot served with the site (used when the backend is unreachable). */

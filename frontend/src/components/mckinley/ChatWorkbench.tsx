@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
-import { ALL_MODES, MODE_META, newSessionId } from "@/lib/format";
+import { ALL_MODES, MODE_META, newSessionId, plainStatus } from "@/lib/format";
 import type { ChatResponse, DemoSnapshot, EvalCase, GateConfig, GateProvider, Mode, ModelTarget, Persona, SafeContext } from "@/lib/types";
 
 import { ContextPreview } from "./ContextPreview";
@@ -213,7 +213,7 @@ export function ChatWorkbench({
             </div>
             {demo ? (
               <p className="text-xs text-muted-foreground">
-                Model: <strong>MOCK</strong> (deterministic template) · Decision gate: <strong>rules</strong> (pre-computed)
+                Model: <strong>mock</strong> (fixed templates) · Decision gate: <strong>rules</strong> (pre-computed)
               </p>
             ) : (
               <>
@@ -231,13 +231,13 @@ export function ChatWorkbench({
                     {targets.map((t) => (
                       <option key={t.key} value={t.key}>
                         {t.key}
-                        {t.is_mock ? " (MOCK)" : ""}
-                        {!t.ready ? ` — ${t.status}` : ""}
+                        {t.is_mock ? " (mock)" : ""}
+                        {!t.ready ? `, ${plainStatus(t.status)}` : ""}
                       </option>
                     ))}
                   </select>
                   {selectedTarget && !selectedTarget.ready && (
-                    <p className="text-xs text-destructive">This target is not ready: {selectedTarget.status}</p>
+                    <p className="text-xs text-destructive">This model is not ready: {plainStatus(selectedTarget.status)}</p>
                   )}
                 </div>
                 {gateConfig && (
@@ -345,13 +345,13 @@ export function ChatWorkbench({
           {orderedModes.map((mode) => {
             const meta = MODE_META[mode];
             return (
-              <Card key={mode} aria-label={`${meta.title} responses`} className="min-w-0">
+              <Card key={mode} role="region" aria-label={`${meta.title} responses`} className="min-w-0">
                 <CardHeader>
                   <CardTitle className="flex flex-wrap items-center gap-2">
                     <span>
                       {meta.letter} · {meta.title}
                     </span>
-                    {(demo || selectedTarget?.is_mock) && <Badge variant="secondary">MOCK</Badge>}
+                    {(demo || selectedTarget?.is_mock) && <Badge variant="secondary">Mock</Badge>}
                   </CardTitle>
                   <CardDescription>{meta.description}</CardDescription>
                 </CardHeader>

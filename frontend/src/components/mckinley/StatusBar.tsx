@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { plainStatus } from "@/lib/format";
 import type { Health } from "@/lib/types";
 
 export function DemoBanner() {
@@ -37,16 +38,16 @@ export function StatusBar({ health, error }: { health: Health | null; error: str
   }
   if (!health) return <p className="text-sm text-muted-foreground" aria-live="polite">Checking backend…</p>;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm" aria-label="Backend status">
+    <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="Backend status">
       <Badge variant="outline">
         Default: {health.provider}:{health.model}
       </Badge>
       {health.provider === "mock" ? (
-        <Badge variant="secondary">MOCK provider — not a language model</Badge>
+        <Badge variant="secondary">Mock provider, not a language model</Badge>
       ) : health.provider_ready ? (
-        <Badge variant="secondary">{health.provider_status}</Badge>
+        <Badge variant="secondary">{plainStatus(health.provider_status)}</Badge>
       ) : (
-        <Badge variant="destructive">{health.provider_status}</Badge>
+        <Badge variant="destructive">{plainStatus(health.provider_status)}</Badge>
       )}
       <Badge variant="outline">Prompt {health.prompt_version}</Badge>
       {health.data_loaded ? (

@@ -49,6 +49,8 @@ function live(chat: (body: { message: string }) => ChatResponse | Error) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe("CustomerApp", () => {
@@ -100,8 +102,72 @@ describe("CustomerApp", () => {
     await user.type(screen.getByLabelText("Escriba al asistente"), "el horno no calienta{Enter}");
     const reply = await screen.findByText("¿En qué parte del apartamento es?");
     expect(reply.closest("[lang]")).toHaveAttribute("lang", "es");
-    expect(screen.getByText("Borrador: faltan algunos datos")).toBeInTheDocument();
+    // still collecting: a one-line progress note, not a full card
+    expect(screen.getByTestId("progress-hint")).toHaveTextContent("Falta: Dónde");
+    expect(screen.queryByRole("group", { name: "Repair request" })).not.toBeInTheDocument();
     expect(screen.getByText("el horno no calienta").closest("[lang]")).toHaveAttribute("lang", "es");
+  });
+
+  it("shows a calm care note with 988 links, not the emergency alert", async () => {
+    live(() => resp({ reply: "I can help with the sink.", care_kind: "distress", care_note: "You can call or text 988 any time." }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "what's the point{Enter}");
+    const note = await screen.findByTestId("care-note");
+    expect(within(note).getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
+    expect(within(note).getByRole("link", { name: /Text 988/ })).toHaveAttribute("href", "sms:988");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("lists urgent and overdue requests first and hides the rest behind Show all", async () => {
+    const item = (n: number, status: string, opened: string) => ({ reference: `DEMO-WO-${n}`, title: `Request ${n}`, status, opened, source: "prototype_store" as const, note: null });
+    live(() => resp({ reply: "Here are your requests.", status_items: [
+      item(1, "Submitted, waiting for staff review", "2026-11-01"), item(2, "Submitted, waiting for staff review", "2026-11-02"),
+      item(3, "Submitted, waiting for staff review", "2026-11-03"), item(4, "Submitted, waiting for staff review", "2026-11-04"),
+      item(5, "Urgent; in the office queue", "2026-10-01"), item(6, "Follow-up owed", "2026-09-01"),
+    ] }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "check my requests{Enter}");
+    const list = await screen.findByRole("list", { name: "Your open requests" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(5); // 2 pinned + 3 most recent
+    expect(rows[0]).toHaveTextContent("DEMO-WO-5");
+    expect(rows[1]).toHaveTextContent("DEMO-WO-6");
+    expect(rows[2]).toHaveTextContent("DEMO-WO-4");
+    await user.click(screen.getByRole("button", { name: "Show all (6)" }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(6);
+  });
+
+  it("asks before a sign-in change clears the conversation", async () => {
+    live(() => resp({ reply: "ok" }));
+    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    const who = await screen.findByLabelText("Demo sign-in");
+    expect(screen.getByText("Changing this starts a new conversation.")).toBeVisible();
+    await user.type(screen.getByLabelText("Message the assistant"), "hello there{Enter}");
+    await screen.findByText("hello there");
+    await user.selectOptions(who, "R001");
+    expect(ask).toHaveBeenCalled();
+    expect(who).toHaveValue(""); // stayed on the guest identity
+    expect(screen.getByText("hello there")).toBeInTheDocument();
+  });
+
+  it("restores the conversation after a reload in the same tab", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    const first = render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await screen.findByRole("group", { name: "Repair request" });
+    first.unmount();
+    render(<CustomerApp />);
+    expect(await screen.findByText("My kitchen faucet drips")).toBeInTheDocument();
+    expect(screen.getByLabelText("Demo sign-in")).toHaveValue("R001");
+    expect(screen.getByRole("group", { name: "Repair request" })).toBeInTheDocument();
   });
 
   it("preview mode never shows a disabled primary button", async () => {
