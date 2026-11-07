@@ -344,6 +344,11 @@ _SMALL_TALK = re.compile(r"^\s*(?:(?P<hi>hi|hello|hey|hola|good (morning|afterno
                          r"adi[oó]s|eso es todo))[\s.!,]*(there|so much|a lot)?[\s.!,]*$", re.I)
 _EMERGENCY_FOLLOW = re.compile(r"what (now|next|should i do)|(i'?m|we'?re|i am) (outside|out|safe|ok)|anyone coming|"
                                r"someone coming|is help|ya sal[ií]|alguien viene|y ahora", re.I)
+_EMERGENCY_REFUSE = re.compile(
+    r"(?:not|n'?t|never) (?:going to |gonna )?(?:leav|go(?:ing)? out|evacuat|get out)\w*|(?:won'?t|wont|can'?t|cant|"
+    r"refuse to) (?:leave|go out|get out|evacuate)|just send (?:someone|somebody|help|a tech|maintenance)|"
+    r"send (?:someone|somebody|help|a tech) (?:now|over|up)|i'?m (?:fine|ok|okay) (?:here|staying|inside)|"
+    r"staying (?:here|inside|put)|no (?:me )?voy a salir|no (?:quiero|puedo) salir|manden a alguien", re.I)
 _NEG_SEGMENT = re.compile(r"\b(not|instead of|rather than)\s+(the\s+|my\s+)?[\w-]+(\s[\w-]+)?", re.I)
 PRIORITY_RANK = {"normal": 0, "high": 1, "urgent": 2}
 KIND_FN: dict[str, FunctionId] = {"maintenance_request": "F7", "tour_request": "F5", "staff_handoff": "F9"}
@@ -464,6 +469,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     # 1b. Right after an emergency, short follow-ups keep the safety context.
     urgent_mine = [r for r in mine if r.get("status") == "urgent_queued"]
+    if urgent_mine and _EMERGENCY_REFUSE.search(msg):
+        from app.emergency import REFUSE_LEAD
+        hz = (urgent_mine[-1].get("hazard") or "other")
+        steps = emergency_notice(hz, lang) if hz != "other" else t("emergency", lang).split(" An urgent note")[0]
+        return done(TurnPlan(template=REFUSE_LEAD[lang] + steps, functions=["F6", "F9"], skip_model=True,
+                             consumed_by_draft=True, force_handoff=True, handoff=handoff,
+                             workflow=_sel("maintenance", "Resident resisting emergency guidance: repeat it.")))
     if urgent_mine and (_EMERGENCY_FOLLOW.search(msg) or is_status_request(msg)
                         or ("low_confidence" in flags and len(msg) < 60)):
         return done(TurnPlan(template=t("emergency_follow", lang, ref=urgent_mine[0]["id"]), functions=["F6", "F9"],

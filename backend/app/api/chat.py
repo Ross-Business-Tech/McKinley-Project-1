@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.errors import llm_error_response
+from app.api.staff_guard import require_staff, staff_allowed
 from app.chat_engine import resolve_target, run_turn
 from app.llm import LLMError
 from app.models import ChatRequest, ChatResponse, ContextPreviewRequest, ErrorBody, Persona, SafeContext
@@ -15,7 +16,7 @@ def personas(state: AppState = Depends(get_state)) -> list[Persona]:
     return list_personas(state.deps.workbook)
 
 
-@router.post("/context/preview", response_model=SafeContext)
+@router.post("/context/preview", response_model=SafeContext, dependencies=[Depends(require_staff)])
 def context_preview(req: ContextPreviewRequest, state: AppState = Depends(get_state)) -> SafeContext:
     """Exactly the minimized context the aware mode would send for this persona + message."""
     from app.chat_engine import clean_message
@@ -24,7 +25,10 @@ def context_preview(req: ContextPreviewRequest, state: AppState = Depends(get_st
 
 
 @router.post("/chat", response_model=ChatResponse, responses={502: {"model": ErrorBody}, 503: {"model": ErrorBody}})
-def chat(req: ChatRequest, state: AppState = Depends(get_state)):
+def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state)):
+    if req.target and not staff_allowed(request, state):  # choosing a (possibly paid) model is a staff tool
+        raise HTTPException(status_code=403, detail={"code": "STAFF_ONLY", "message": "Model override is staff-only.",
+                                                     "retryable": False})
     try:
         target = resolve_target(state.deps, req.target)
         # Interactive chat: a provider-reported model mismatch is surfaced as an error, never hidden.

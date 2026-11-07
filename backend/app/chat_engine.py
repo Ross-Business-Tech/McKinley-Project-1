@@ -18,7 +18,7 @@ from app.actions import TurnPlan, identity_note, plan_turn, resident_for
 from app.config import Settings
 from app.context import Workbook
 from app.db import Store
-from app.emergency import emergency_kind
+from app.emergency import CARE_NOTE, emergency_kind, possible_risk
 from app.emergency import heading as emergency_heading
 from app.emergency import notice as emergency_notice
 from app.gates import DecisionGateService, GateContext
@@ -310,6 +310,10 @@ def run_turn(
         safety_notice = emergency_notice(ekind, lang) if ekind else EMERGENCY_NOTICE
     else:
         safety_notice = None
+    care_kind = possible_risk(msg) if not safety_notice else None
+    care_note = CARE_NOTE[care_kind][lang] if care_kind else None
+    if care_kind:
+        trace.add("8_validate", "warn", f"possible risk signal ({care_kind}): calm safety line added")
     failed = [c.code for c in checks if not c.passed]
     unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
@@ -367,6 +371,8 @@ def run_turn(
         reply=reply,
         safety_notice=safety_notice,
         emergency_kind=ekind,
+        care_kind=care_kind,
+        care_note=care_note,
         safety_heading=emergency_heading(ekind, lang) if safety_notice else None,
         mode=mode,
         audience=audience,  # type: ignore[arg-type]

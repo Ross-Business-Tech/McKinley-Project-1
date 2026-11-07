@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     gate_override_enabled: bool = False  # GATE_OVERRIDE_ENABLED=true for local experiments only
     decision_gate_timeout_seconds: float = Field(default=8, gt=0, le=60)
     typesafe_api_key: SecretStr | None = None
+    # Staff/eval/diagnostics routes: loopback-only unless this token is set (then the X-Staff-Token header).
+    staff_api_token: SecretStr | None = None
     typesafe_base_url: str = "https://api.typesafe.ai"
     jev_model: str = "jev-latest"
 

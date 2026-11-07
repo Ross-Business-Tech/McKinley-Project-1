@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.errors import llm_error_response
+from app.api.staff_guard import require_staff
 from app.chat_engine import resolve_target
 from app.evals import CASES, CASES_BY_ID, export_results, run_evals, summarize
 from app.llm import LLMError
@@ -15,7 +16,7 @@ from app.models import (
 )
 from app.state import AppState, get_state
 
-router = APIRouter(prefix="/api/evals")
+router = APIRouter(prefix="/api/evals", dependencies=[Depends(require_staff)])
 
 
 @router.get("/cases", response_model=list[EvalCase])

@@ -109,6 +109,31 @@ class Store:
                  (session_id, mode, persona_id, "assistant", assistant, ts)],
             )
 
+    def conversations(self, limit: int = 30) -> list[dict[str, Any]]:
+        """STAFF view: recent aware-mode conversations, keyed by a one-way session hash (never the session id)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT session_id, persona_id, COUNT(*) AS n, MIN(created_at) AS started, MAX(created_at) AS last "
+                "FROM chat_turns WHERE mode LIKE 'aware|%' GROUP BY session_id, persona_id "
+                "ORDER BY MAX(id) DESC LIMIT ?",
+                (limit,)).fetchall()
+        return [{"session_hash": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
+                 "persona_id": r["persona_id"] if r["persona_id"] not in ("", "none") else None,
+                 "messages": r["n"] // 2, "started": r["started"], "last": r["last"]} for r in rows]
+
+    def conversation(self, session_hash: str, limit: int = 200) -> list[dict[str, str]]:
+        with self._lock:
+            ids = [r["session_id"] for r in self._conn.execute(
+                "SELECT DISTINCT session_id FROM chat_turns WHERE mode LIKE 'aware|%'").fetchall()]
+            sid = next((i for i in ids if hashlib.sha256(i.encode()).hexdigest()[:10] == session_hash), None)
+            if sid is None:
+                return []
+            rows = self._conn.execute(
+                "SELECT role, content, persona_id, created_at FROM chat_turns "
+                "WHERE session_id=? AND mode LIKE 'aware|%' "
+                "ORDER BY id LIMIT ?", (sid, limit)).fetchall()
+        return [dict(r) for r in rows]
+
     # ---- gate decision log ----
     def log_gate(self, session_id: str, mode: str, persona_id: str, data: dict[str, Any]) -> None:
         with self._lock, self._conn:

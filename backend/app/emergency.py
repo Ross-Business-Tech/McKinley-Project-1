@@ -46,7 +46,8 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"won'?t stop)|choking|"
         r"dolor (en el|de) pecho|no respira|inconsciente|se desmay|đau ngực|không thở", re.I)),
     ("personal_safety", re.compile(
-        r"break(ing)? ?in\b|breaking into|broke into|broken into|(trying|tried) to (get|break) in|intruder|"
+        r"break(ing)? ?in\b|\bbroke (?:in|into)\b|breaking into|broke into|broken into|(trying|tried) to (get|break)"
+        r" in|intruder|"
         r"someone (is )?(in|inside) my (apartment|unit|home|place)|threat(en|ening)|stalk(ing|er)|"
         r"domestic (violence|abuse)|abus(e|ing|ive) (me|partner)|(hit|hitting|beat|beating|hurt|hurting) "
         r"(me|her|him|them|someone|a child|the kids?)\b|(screaming|yelling)\W+(?:\w+\W+){0,8}(hit|hurt|help)|"
@@ -88,14 +89,174 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         re.I)),
 ]
 
+# ---- second layer: meaning from word COMBINATIONS (person + state, substance + ingestion, symptom + source) ----
+# Catches understated or indirect reports that never name the hazard. Still deterministic and still a floor, not a
+# guarantee; run after KINDS so explicit wording keeps its specific kind.
+_PERSON = (r"(?:my|the|a|our|his|her)\s+(?:\w+\s+){0,2}(?:grand(?:ma|pa|mother|father)|mom|mum|mother|dad|father|"
+           r"husband|"
+           r"wife|partner|roommate|room mate|neighbou?r|kid|son|daughter|baby|child|toddler|friend|boyfriend|"
+           r"girlfriend|"
+           r"man|woman|guy|lady|person|brother|sister|tenant|someone)|\bsomeone\b|\b(?:he|she|they)(?:'s| is| are)?\b|"
+           r"\bmi\s+(?:esposo|esposa|hij[oa]|mam[aá]|pap[aá]|abuel[oa]|vecin[oa]|pareja|beb[eé])")
+_UNRESPONSIVE = (r"won'?t (?:wake|answer|respond|move|open (?:his|her|their) eyes)|wont (?:wake|answer|respond|move)|"
+                 r"(?:not|isn'?t|isnt|stopped) (?:waking|moving|responding|answering|breathing)|breathing "
+                 r"(?:weird|funny|strange|shallow|slow)|turning (?:blue|purple|gr[ae]y)|lying (?:there|on the floor|"
+                 r"in the|outside)|out cold|can'?t wake|no (?:reacciona|responde|despierta|se mueve)")
+_CARDIAC = (r"(?:left )?arm (?:hurts|is numb|pain|went numb)\W+(?:\w+\W+){0,8}(?:chest|sweat)|(?:sweat\w*|gr[ae]y|pale)"
+            r"\W+(?:\w+\W+){0,8}(?:left )?arm (?:hurts|pain|numb)|chest (?:is )?(?:tight|pressure|hurts|crushing)|"
+            r"can'?t catch (?:his|her|my|their) breath|gasping|lips (?:are )?(?:blue|turning)")
+_BLEED = (r"spurt\w*|bleeding (?:everywhere|a lot|so much|nonstop|non-stop)|won'?t stop bleeding|blood everywhere|"
+          r"lots? of blood|deep cut|cut (?:my|his|her) (?:hand|arm|leg|wrist)\W+(?:\w+\W+){0,6}(?:bad|deep|won'?t|"
+          r"spurt|blood)|sangr\w+ mucho|mucha sangre")
+_INGEST = (r"drank|drunk|drink|ate|eaten|eating|swallow\w*|chew\w*|lick\w*|got into|ingest\w*|put (?:it|some) in "
+           r"(?:his|her) mouth|se (?:comi[oó]|tom[oó]|trag[oó]|bebi[oó])|comi[oó]|bebi[oó]")
+_SUBSTANCE = (r"drano|drain cleaner|bleach|clean(?:er|ing (?:stuff|product|spray))\w*|chemical\w*|laundry pod|pods?\b|"
+              r"pills?|tablets?|pastillas|medic\w*|meds\b|rat (?:bait|poison)|bait|poison\w*|pesticide|insecticide|"
+              r"bug spray|roach|ant (?:bait|trap)|the stuff (?:the |that )?(?:pest|exterminator|bug)\w*|sprayed|"
+              r"antifreeze|detergent|button batter\w*|batter(?:y|ies)|magnets?|lye|weed killer|cloro|veneno|"
+              r"limpiador|lej[ií]a|cigarette|vape (?:juice|liquid)|nicotine")
+_FUMES = (r"mix\w* (?:the )?(?:bleach|cleaners|chemicals)\W+(?:\w+\W+){0,4}(?:and|with) (?:ammonia|vinegar|"
+          r"another|other)|bleach and ammonia|(?:fumes|chemical smell)\W+(?:\w+\W+){0,10}(?:cough\w*|can'?t breathe|"
+          r"eyes (?:burn|sting)|dizz\w*)")
+_SYMPTOM = (r"head ?aches?|head (?:hurts|is (?:pounding|killing))|pounding head|dizz\w*|light-?headed|nause\w*|"
+            r"throwing up|vomit\w*|drows\w*|sleepy|confus\w*|faint\w*|letharg\w*|feel (?:sick|weird|off)|"
+            r"mare\w*|dolor de cabeza|n[aá]use\w*|v[oó]mit\w*|somnolien\w*")
+_HEAT = (r"furnace|heater|heat(?:ing)?(?:'s| is| was| has)?(?: been)? (?:on|running|blasting|cranked)|turned (?:the"
+         r" )?heat (?:on|up)|boiler|"
+         r"water heater|generator|fireplace|gas stove|stove|oven|car (?:running|on)|garage|exhaust|calefacci\w*|"
+         r"calentador|estufa|caldera")
+_SELF_HARM2 = (r"\bkms\b|\bunalive|want(?:s|ed)? (?:it all|everything|this|things|my life) to (?:end|stop|be over)|"
+               r"nothing (?:left )?to live for|(?:take|swallow|overdose on|down) (?:all|a bunch|the whole bottle|"
+               r"every one) (?:of )?(?:my |the |her |his )?(?:pills|meds|medication|tablets)|better off (?:if i"
+               r" (?:was|were)(?:n'?t| not) (?:here|around|alive)|without me|if i (?:died|was dead|disappeared))|end"
+               r" (?:my|his|her|their) (?:own )?life|wants? to (?:die|end (?:it|his life|her life|"
+               r"their life|everything))|(?:won'?t|wont|will not) be (?:around|here|alive) (?:next|much longer|"
+               r"anymore|by)|nobody (?:would|will) (?:even )?(?:notice|care|miss me)|(?:if|when) i(?:'m| am| was|"
+               r" were) "
+               r"gone|goodbye (?:note|letter|message)|suicide note|(?:pills|meds) (?:lined up|saved up|ready|counted)|"
+               r"(?:jump|jumping) (?:off|from) (?:the|a|my)\W+(?:\w+\W+){0,3}(?:roof|bridge|garage|balcony|building|"
+               r"window|ledge|overpass)|(?:thinking|thought) (?:of|about) (?:jumping|ending (?:it|things|my)|killing|"
+               r"not waking up)|(?:no|ya no) quiero seguir|nicht mehr leben|will sterben|me quiero morir|quiero "
+               r"morirme|hurt (?:himself|herself|themselves)|(?:cutting|cut) myself|"
+               r"(?:can'?t|cant) (?:do this|go on|take (?:it|this)) anymore\W+(?:\w+\W+){0,10}(?:pills|end|die|gone|"
+               r"jump|note|over|goodbye)")
+_THREAT_ACTOR = (r"\b(?:my |an? |the |some )?(?:ex|ex-\w+|boyfriend|girlfriend|husband|wife|partner|man|guy|"
+                 r"stranger|someone|somebody|person|people|neighbou?r)\b|pareja|esposo|novio|un hombre|alguien")
+_THREAT_ACT = (r"bang\w* on (?:my|the) (?:door|window)|pound\w* on (?:my|the) door|kick\w* (?:in )?(?:my|the) door|"
+               r"trying (?:the|my|every|all the) (?:door|doors|handles?|door handles?)|outside my (?:door|window|unit)"
+               r"\W+(?:\w+\W+){0,6}(?:yell|threat|bang|scream|get me|won'?t leave)|watching (?:me|my (?:unit|apartment|"
+               r"place|door))|follow\w* me|chok\w*|strangl\w*|hit (?:me|my)|hits me|punch\w* me|slap\w* me|beat (?:me|"
+               r"up)|get me|hurt me|kill me|coming back (?:tonight|later|again)|(?:said|says|saying) (?:he|she)(?:'ll| "
+               r"will| is going to) (?:get|hurt|kill)|me pega|me golpe\w*|me amenaz\w*|tengo miedo")
+_STRUCT2 = (r"(?:ceiling|roof|wall)\W+(?:\w+\W+){0,3}(?:came|fell|caved|crashed) (?:down|in)|part of (?:the|my)"
+            r" (?:ceiling|"
+            r"roof|wall|floor) (?:came|fell|collapsed|caved)|crack\w*\W+(?:\w+\W+){0,8}(?:bowing|bulging|sagging|"
+            r"widening|spreading|getting bigger)|bowing (?:down|in|out)|pull\w* away from (?:the )?(?:building|wall)|"
+            r"about to (?:give out|collapse|fall|cave)|g[ai]ve way|tree (?:fell|came down|crashed) (?:on|through|into)|"
+            r"hole in (?:the|my) (?:roof|ceiling)|hole above|se est[aá] cayendo el techo|grieta")
+_ELEC2 = (r"\bzapp\w*|\bshocked\b|electric (?:shock|current)|(?:outlet|socket|switch|plug|panel|"
+          r"breaker)\W+(?:\w+\W+){0,8}"
+          r"(?:pop\w*|bang|black mark|scorch\w*|crackl\w*|warm|hot to the touch|burn\w*)|(?:pop\w*|"
+          r"bang)\W+(?:\w+\W+){0,6}"
+          r"(?:outlet|socket|panel|breaker)|fray\w*\W+(?:\w+\W+){0,6}(?:copper|wire|cord)|copper (?:is )?(?:showing|"
+          r"exposed)|buzz\w* (?:inside|in|behind) the wall|flicker\w*\W+(?:\w+\W+){0,8}(?:buzz\w*|crackl\w*|burn\w*)")
+_FLOOD2 = (r"\b\d+ (?:inch|inches|in\.?|cm) of water|ankle[- ]deep|knee[- ]deep|soak\w* (?:the|my) (?:carpet|floor|"
+           r"rug|bed)|leaking into my (?:unit|apartment|place) (?:really |so )?(?:fast|bad)|water\W+(?:\w+\W+){0,4}"
+           r"(?:through|from) the (?:ceiling|light)|overflow\w*\W+(?:\w+\W+){0,8}(?:under the door|into the|out of the)"
+           r"|(?:agua|water)\W+(?:\w+\W+){0,8}(?:llega a|por debajo|under the door|into the (?:hall|bedroom|living))|"
+           r"se est[aá] saliendo el agua|rising water|water keeps (?:rising|coming)")
+_GAS2 = (r"sulfur|sulphur|rotten[- ]?eggs?|huevo|skunk\W+(?:\w+\W+){0,8}(?:stove|oven|water heater|furnace|kitchen|"
+         r"burner|closet)|(?:smells?|smelling|odou?r)\W+(?:\w+\W+){0,3}(?:funky|weird|strange|off|"
+         r"funny)\W+(?:\w+\W+){0,8}"
+         r"(?:stove|burner|oven|water heater|furnace)|(?:stove|burner|oven|range)\W+(?:\w+\W+){0,8}(?:hiss\w*|"
+         r"left on (?:for|all|overnight))|hiss\w*\W+(?:\w+\W+){0,8}(?:stove|burner|gas line|meter)|"
+         r"(?:burner|knob|stove)\W+(?:\w+\W+){0,5}left on\W+(?:\w+\W+){0,8}(?:smell|smells)|huele"
+         r" raro\W+(?:\w+\W+){0,6}"
+         r"(?:cocina|estufa|huevo)")
+_FIRE2 = (r"black (?:stuff|smoke)\W+(?:\w+\W+){0,4}(?:pour\w*|coming|out of)|pour\w* out of the (?:dryer|vent|oven|"
+          r"microwave)\W+(?:\w+\W+){0,6}(?:smell|black)|(?:went|go(?:ing)?) up in flames|grease\W+(?:\w+\W+){0,6}"
+          r"(?:went up|caught|flar\w*|ignit\w*)|\bcharred\b|\bablaze\b|(?:caught|catch\w*) fire|set (?:the )?\w+ on"
+          r" fire|"
+          r"\bsmoldering\b|\bsmouldering\b")
+_TRAPPED2 = (r"(?:locked|stuck|trapped) (?:himself|herself|themselves|myself|in)\W+(?:\w+\W+){0,8}(?:isn'?t|not|won'?t|"
+             r"can'?t)\W+(?:\w+\W+){0,1}(?:answer\w*|respond\w*|open|get out)|(?:locked|stuck|trapped) in (?:my|the|"
+             r"his|"
+             r"her) (?:bedroom|bathroom|room|closet|unit)|door (?:handle|knob)\W+(?:\w+\W+){0,4}(?:broke|came off)\W+"
+             r"(?:\w+\W+){0,6}(?:locked|stuck|trapped)|atorad[oa]|atrapad[oa]|encerrad[oa]")
+
+
+def _near(a: str, b: str, gap: int = 12) -> re.Pattern[str]:
+    """a then b, or b then a, within `gap` words."""
+    w = rf"\W+(?:\w+\W+){{0,{gap}}}"
+    return re.compile(rf"(?:{a}){w}(?:{b})|(?:{b}){w}(?:{a})", re.I)
+
+
+CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
+    ("self_harm", re.compile(_SELF_HARM2, re.I)),
+    ("poison", _near(_INGEST, _SUBSTANCE, 8)),
+    ("poison", re.compile(_FUMES, re.I)),
+    ("trapped", re.compile(_TRAPPED2, re.I)),
+    ("medical", _near(_PERSON, _UNRESPONSIVE, 10)),
+    ("medical", re.compile(_UNRESPONSIVE + "|" + _CARDIAC + "|" + _BLEED, re.I)),
+    ("personal_safety", _near(_THREAT_ACTOR, _THREAT_ACT, 10)),
+    ("co", _near(_SYMPTOM, _HEAT, 14)),
+    ("co", re.compile(r"(?:co |carbon |little |the )?detector\W+(?:\w+\W+){0,8}(?:beep\w* (?:4|four) times|flash\w* "
+                      r"red|red light)", re.I)),
+    ("structural", re.compile(_STRUCT2, re.I)),
+    ("fire_smoke", re.compile(_FIRE2, re.I)),
+    ("electrical", re.compile(_ELEC2, re.I)),
+    ("flood", re.compile(_FLOOD2, re.I)),
+    ("gas", re.compile(_GAS2, re.I)),
+]
+
+# Third tier: not enough to call it an emergency, too much to say nothing. The reply keeps going but leads with a
+# calm safety line (no urgent note, no alarm). "distress" adds 988; "unwell" adds 911-if-worse.
+_DISTRESS = re.compile(
+    r"what'?s the point|no point (?:in|anymore|of)|(?:can'?t|cant) (?:do this|go on|take (?:it|this)) anymore|"
+    r"give up on (?:everything|life)|(?:so |really )?hopeless|(?:i'?m|im) (?:so )?done with (?:everything|life)|"
+    r"(?:won'?t|wont) (?:be around|matter)|last straw|ya no puedo m[aá]s|no aguanto m[aá]s", re.I)
+_UNWELL = re.compile(_SYMPTOM + r"|can'?t breathe well|short of breath|chest", re.I)
+
+
+CARE_NOTE = {
+    "distress": {"en": "If things feel like too much right now, you can call or text 988 any time to talk with"
+                       " someone. "
+                       "If you're in danger, call 911.",
+                 "es": "Si siente que todo es demasiado ahora, puede llamar o enviar un mensaje al 988 a cualquier"
+                       " hora "
+                       "para hablar con alguien. Si está en peligro, llame al 911."},
+    "unwell": {"en": "If anyone feels very unwell or it gets worse, call 911.",
+               "es": "Si alguien se siente muy mal o empeora, llame al 911."},
+}
+REFUSE_LEAD = {
+    "en": "I understand. I can't send anyone from here, and nobody has been sent. Staying could be dangerous, so "
+          "please follow these steps now: ",
+    "es": "Entiendo. Desde aquí no puedo enviar a nadie y no se ha enviado a nadie. Quedarse podría ser peligroso, "
+          "así que por favor siga estos pasos ahora: ",
+}
+
+
+def possible_risk(message: str) -> str | None:
+    """'distress' / 'unwell' / None for messages that are not a clear emergency (use when emergency_kind is None)."""
+    text = _prepare(message)
+    if _DISTRESS.search(text):
+        return "distress"
+    if _UNWELL.search(text):
+        return "unwell"
+    return None
+
+
 _SPACED = re.compile(r"\b[A-Za-z]([ .*_\-])(?:[A-Za-z]\1){1,}[A-Za-z]\b")  # one separator style per word
 _POLICY_OR_FIGURATIVE = re.compile(
     r"smoking (allowed|policy|permitted|area|section)|(no|non)[- ]?smoking|smoke[- ]free|allow smoking|can i smoke|"
+    r"(?:schedul\w*|when is|book)\W+(?:\w+\W+){0,4}(?:inspection|test(?:ing)?)|(?:fire|smoke|co|carbon monoxide)"
+    r" (?:alarm|detector)s? (?:inspection|test(?:ing)?|check)|are there (?:any )?(?:co|smoke|carbon monoxide|fire)"
+    r" (?:detectors|alarms)|(?:detectors|alarms) in (?:every|each|all) (?:unit|apartment)s?|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot",
     re.I)
-_BENIGN_CHIRP = re.compile(r"(smoke|co) (alarm|detector).{0,40}(chirp|beep)\w*.{0,40}batter|batter\w*.{0,40}"
-                           r"(smoke|co) (alarm|detector)", re.I)
+_BENIGN_CHIRP = re.compile(r"(smoke|co|carbon monoxide) (alarm|detector).{0,40}(chirp|beep|batter)\w*.{0,40}"
+                           r"(batter|chirp)|batter\w*.{0,40}(smoke|co|carbon monoxide) (alarm|detector)", re.I)
 
 
 def _prepare(message: str) -> str:
@@ -120,6 +281,9 @@ def emergency_kind(message: str) -> str | None:
     if _BENIGN_CHIRP.search(text) and not re.search(r"smoke (is|coming)|fire|flame|head|dizz|nause", text, re.I):
         return None
     for kind, pat in KINDS:
+        if pat.search(text):
+            return kind
+    for kind, pat in CONCEPTS:
         if pat.search(text):
             return kind
     return None

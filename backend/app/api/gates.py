@@ -3,10 +3,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.staff_guard import require_staff
 from app.gate_evals import evaluate_gates, gate_scenarios
 from app.state import AppState, get_state
 
-router = APIRouter(prefix="/api/gates")
+router = APIRouter(prefix="/api/gates", dependencies=[Depends(require_staff)])
 
 
 class GateConfig(BaseModel):
