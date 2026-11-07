@@ -1,6 +1,6 @@
 {
  "kind": "static_demo_snapshot",
- "generated_at": "2026-11-07T18:23:15.469124+00:00",
+ "generated_at": "2026-11-07T18:28:44.428571+00:00",
  "notice": "Static demonstration: pre-computed with the deterministic MOCK provider (not a language model) and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
  "workbook_loaded": true,
  "personas": [
@@ -362,8 +362,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "77c71ea2ba95492b9a524060344e7605",
-    "created_at": "2026-11-07T18:23:15.314672Z",
+    "session_id": "e1fe74d9d1274d1f969e019a763b1a4e",
+    "created_at": "2026-11-07T18:28:44.279605Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -521,8 +521,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "c0e2b3332b3444f59ca8412ec787e9d1",
-    "created_at": "2026-11-07T18:23:15.319905Z",
+    "session_id": "79912b99874b45a5af32c278f71d0557",
+    "created_at": "2026-11-07T18:28:44.285132Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -785,8 +785,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "9b7f8c2c98094144a7a88b0084b3c745",
-    "created_at": "2026-11-07T18:23:15.322059Z",
+    "session_id": "e3e07f3ce2fb43038e1a219443e30783",
+    "created_at": "2026-11-07T18:28:44.287263Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1051,8 +1051,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "923dc3839e43410ea33c6dd9b29233e4",
-    "created_at": "2026-11-07T18:23:15.322879Z",
+    "session_id": "a94a072a9cc544338c2613e15bb7ccd8",
+    "created_at": "2026-11-07T18:28:44.288095Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1210,8 +1210,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "2b4bdfd607e5488988512de3060ebf0c",
-    "created_at": "2026-11-07T18:23:15.324559Z",
+    "session_id": "cb7f0221d3f94e03a3fe15354833d86a",
+    "created_at": "2026-11-07T18:28:44.289768Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1421,8 +1421,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "67424965e8634f8ebbc5c68eccd1a626",
-    "created_at": "2026-11-07T18:23:15.326196Z",
+    "session_id": "111fb45792f44edf924aeed77923a650",
+    "created_at": "2026-11-07T18:28:44.291401Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1637,8 +1637,8 @@
     },
     "latency_ms": 22,
     "stop_reason": "mock",
-    "session_id": "fcb2047954564896a4c7fd7ab8fb9647",
-    "created_at": "2026-11-07T18:23:15.327746Z",
+    "session_id": "3de810ff98d740cb80ab980998c3da38",
+    "created_at": "2026-11-07T18:28:44.292937Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1802,8 +1802,8 @@
     },
     "latency_ms": 13,
     "stop_reason": "mock",
-    "session_id": "7e79b4d859f1465eb860b15d783caee9",
-    "created_at": "2026-11-07T18:23:15.330992Z",
+    "session_id": "c1cdf3f523bf4da6a9c8527bf888a984",
+    "created_at": "2026-11-07T18:28:44.296116Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2088,8 +2088,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "2a9b9191198c4292b9e64dd0f9cd3c77",
-    "created_at": "2026-11-07T18:23:15.333511Z",
+    "session_id": "a929ef1f955046f8ab13dceb69dbe18a",
+    "created_at": "2026-11-07T18:28:44.298572Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2367,8 +2367,8 @@
     },
     "latency_ms": 10,
     "stop_reason": "mock",
-    "session_id": "161a122c1d484d1f838ff0e4fa5c469e",
-    "created_at": "2026-11-07T18:23:15.334909Z",
+    "session_id": "8a0bd100e0034c7fa211d004c03edc58",
+    "created_at": "2026-11-07T18:28:44.299936Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -2526,8 +2526,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "d878d62c9bf3425ab024056bd64fdca0",
-    "created_at": "2026-11-07T18:23:15.336278Z",
+    "session_id": "58c044a3a8d84bb4ad8508fe5fc8aabc",
+    "created_at": "2026-11-07T18:28:44.301272Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2781,8 +2781,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "151e076fef124684bfb281a34a9af15f",
-    "created_at": "2026-11-07T18:23:15.337572Z",
+    "session_id": "56bb98522acc472eac136e8681746a3d",
+    "created_at": "2026-11-07T18:28:44.302548Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -3043,8 +3043,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "15bdb5583fdd4a4fbed1998f569433a7",
-    "created_at": "2026-11-07T18:23:15.339165Z",
+    "session_id": "ccb464c1e32d4b17a0941b702af4eae8",
+    "created_at": "2026-11-07T18:28:44.304112Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3213,8 +3213,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "36aa1f2389564c4082388e82f2cc39bc",
-    "created_at": "2026-11-07T18:23:15.341705Z",
+    "session_id": "f90c0e13370b4131b52ef19ebb54a9f1",
+    "created_at": "2026-11-07T18:28:44.306584Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3488,8 +3488,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "bf7ecbc6b9b14fa1b12e707757f11565",
-    "created_at": "2026-11-07T18:23:15.344282Z",
+    "session_id": "5f9b0a3a7ef54017b1cdb06f6089ba9e",
+    "created_at": "2026-11-07T18:28:44.309155Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3760,8 +3760,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "6c41ee4a9d2049ea86c8e2166e2a10b9",
-    "created_at": "2026-11-07T18:23:15.345640Z",
+    "session_id": "fb89f3bdd3c74ad89bd6c2491ed0f16d",
+    "created_at": "2026-11-07T18:28:44.310489Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3936,8 +3936,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "e6bd0189744241c2a51258ec24f6a8df",
-    "created_at": "2026-11-07T18:23:15.346618Z",
+    "session_id": "fbdb5e74c9804f13954408fbefc98bec",
+    "created_at": "2026-11-07T18:28:44.311460Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4167,8 +4167,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "64074d91fe754c74a15407ea864a1b00",
-    "created_at": "2026-11-07T18:23:15.347604Z",
+    "session_id": "95d1e44bb6304748a7aa889d2ecdaaa8",
+    "created_at": "2026-11-07T18:28:44.312411Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4395,8 +4395,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "7223c1137c08407fba447590acac9a02",
-    "created_at": "2026-11-07T18:23:15.349262Z",
+    "session_id": "08393e02d2794a1fb8d26cfac51ffe1a",
+    "created_at": "2026-11-07T18:28:44.314011Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -4560,8 +4560,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "6e097756badd4e3886135e050e490b60",
-    "created_at": "2026-11-07T18:23:15.351503Z",
+    "session_id": "e189738144f3439aa5f6d30e56650bff",
+    "created_at": "2026-11-07T18:28:44.316234Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4826,8 +4826,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "89850a51989e4f89995582bf0fc5d233",
-    "created_at": "2026-11-07T18:23:15.353784Z",
+    "session_id": "72d63f44793344e1bf25c484ff630635",
+    "created_at": "2026-11-07T18:28:44.318492Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5110,8 +5110,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "7812033c41e6452fa9c8e7033ae59bb5",
-    "created_at": "2026-11-07T18:23:15.355231Z",
+    "session_id": "356b1d5634e047b1b198879d3f2c86f2",
+    "created_at": "2026-11-07T18:28:44.319899Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5275,8 +5275,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "3f2025c532c244528b00ddc168a8ceb5",
-    "created_at": "2026-11-07T18:23:15.356209Z",
+    "session_id": "7a832437c4364063986932a9ca9be0c1",
+    "created_at": "2026-11-07T18:28:44.320853Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5537,8 +5537,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "e82fea673cc345348cbe7874aab456ab",
-    "created_at": "2026-11-07T18:23:15.357140Z",
+    "session_id": "c04ea615942840339ad26c8cf9fca789",
+    "created_at": "2026-11-07T18:28:44.321790Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5796,8 +5796,8 @@
     },
     "latency_ms": 7,
     "stop_reason": "mock",
-    "session_id": "a9152834da97406197d0c276ee1d5538",
-    "created_at": "2026-11-07T18:23:15.358320Z",
+    "session_id": "36af9c3f338a45c2982d527157c86a4e",
+    "created_at": "2026-11-07T18:28:44.322970Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5961,8 +5961,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "0d42b77d1a65403abf4288ebfd8742a9",
-    "created_at": "2026-11-07T18:23:15.359996Z",
+    "session_id": "d58754e4197944d48838e711c0dbbfec",
+    "created_at": "2026-11-07T18:28:44.324639Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6211,8 +6211,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "f9867180102a49b59831e013002a852c",
-    "created_at": "2026-11-07T18:23:15.361669Z",
+    "session_id": "7354e0c1b0974b1eb34d0f4b4f556eb7",
+    "created_at": "2026-11-07T18:28:44.326307Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6463,8 +6463,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "e05b641b52a24d4ab8bfa33c8e3bdab0",
-    "created_at": "2026-11-07T18:23:15.362731Z",
+    "session_id": "f1f46feb6a39432d873a2ec1a0509b47",
+    "created_at": "2026-11-07T18:28:44.327341Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -6622,8 +6622,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "c2d44805339449c0b21b2a6394a4c9f0",
-    "created_at": "2026-11-07T18:23:15.364207Z",
+    "session_id": "df6a7d94cc4b4b4087c78ac3713d538d",
+    "created_at": "2026-11-07T18:28:44.328792Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6817,8 +6817,8 @@
     },
     "latency_ms": 14,
     "stop_reason": "mock",
-    "session_id": "3331b74e3ca94950a5219ba16d228a4a",
-    "created_at": "2026-11-07T18:23:15.365579Z",
+    "session_id": "299a41d0ca26494c8b5c7d2823250b8a",
+    "created_at": "2026-11-07T18:28:44.330245Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -7020,8 +7020,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "5f4ac23b68634d21944e13a84355cc38",
-    "created_at": "2026-11-07T18:23:15.366813Z",
+    "session_id": "e060b177d50a4cc7871d891151e6c2dd",
+    "created_at": "2026-11-07T18:28:44.331479Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7185,8 +7185,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "30acb8596bd844249af8d91be6c4ef5a",
-    "created_at": "2026-11-07T18:23:15.368445Z",
+    "session_id": "4ae6ada493bb4abcaee8a7626d5d28d5",
+    "created_at": "2026-11-07T18:28:44.333017Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7446,8 +7446,8 @@
     },
     "latency_ms": 11,
     "stop_reason": "mock",
-    "session_id": "17095657dfad4541885d6f9e51c61221",
-    "created_at": "2026-11-07T18:23:15.370077Z",
+    "session_id": "6ffd8a8e06cb4918b210945cb6a1c577",
+    "created_at": "2026-11-07T18:28:44.334540Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7709,8 +7709,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "8b98f77c1c2b4a5c8bfd27b5f06b0335",
-    "created_at": "2026-11-07T18:23:15.371379Z",
+    "session_id": "586976de98a3470297010ac61e21e0eb",
+    "created_at": "2026-11-07T18:28:44.335778Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7874,8 +7874,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "30c1aff8790f451cad0511e99fd47488",
-    "created_at": "2026-11-07T18:23:15.372567Z",
+    "session_id": "916ea9589a5940d1a141a60ba41dc84e",
+    "created_at": "2026-11-07T18:28:44.336911Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8136,8 +8136,8 @@
     },
     "latency_ms": 15,
     "stop_reason": "mock",
-    "session_id": "a20dcb0900e44247a00d3629dcfa1d2d",
-    "created_at": "2026-11-07T18:23:15.373846Z",
+    "session_id": "dd1a448795444fb29df055701e5412d7",
+    "created_at": "2026-11-07T18:28:44.338123Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8413,8 +8413,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "5209364839614eb5b145e027644f8456",
-    "created_at": "2026-11-07T18:23:15.375565Z",
+    "session_id": "fc32b315712945348cb9adf646ebf01b",
+    "created_at": "2026-11-07T18:28:44.339765Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -8578,8 +8578,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "804508b6c89147d0b6188819959b2ed7",
-    "created_at": "2026-11-07T18:23:15.378151Z",
+    "session_id": "d1a4de7cfd1541c88301979eebe438f2",
+    "created_at": "2026-11-07T18:28:44.342295Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8842,8 +8842,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "e0e2fd2745a44925815eeb6a8732d7ae",
-    "created_at": "2026-11-07T18:23:15.380810Z",
+    "session_id": "dd66d546d8574a48917ab7e24ee9a4df",
+    "created_at": "2026-11-07T18:28:44.344914Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -9104,8 +9104,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "97111e30ede946e2a1e7d30e71d84efc",
-    "created_at": "2026-11-07T18:23:15.382671Z",
+    "session_id": "3f1c5fb177264707b0a615a4122d1fe4",
+    "created_at": "2026-11-07T18:28:44.346734Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -9263,8 +9263,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "7b58be598e594e5b97e2cb030b4ccb3a",
-    "created_at": "2026-11-07T18:23:15.384472Z",
+    "session_id": "5866a6be8ffb424d9959b124d38ef2c8",
+    "created_at": "2026-11-07T18:28:44.348538Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9499,8 +9499,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "12cca06b55074f4cb476cea46204c811",
-    "created_at": "2026-11-07T18:23:15.386280Z",
+    "session_id": "a356f827ffb54f69b049a082a04f1d4a",
+    "created_at": "2026-11-07T18:28:44.350327Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -10680,7 +10680,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:23:15.407523Z",
+      "created_at": "2026-11-07T18:28:44.369882Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -10791,7 +10791,7 @@
         "step": "6_workflow",
         "status": "ok",
         "detail": "maintenance: Maintenance intent. | functions=['F3', 'F6', 'F7', 'F9'] | action=maintenance_request:collecting",
-        "ms": 2
+        "ms": 1
        },
        {
         "step": "7_generate",
@@ -10967,7 +10967,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:23:15.409680Z",
+      "created_at": "2026-11-07T18:28:44.371830Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11190,7 +11190,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R001",
         "session_hash": "f1b1a5ef54",
-        "created_at": "2026-11-07T18:23:15.410163Z",
+        "created_at": "2026-11-07T18:28:44.372313Z",
         "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11242,7 +11242,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R001",
        "session_hash": "f1b1a5ef54",
-       "created_at": "2026-11-07T18:23:15.410163Z",
+       "created_at": "2026-11-07T18:28:44.372313Z",
        "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11374,7 +11374,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:23:15.412015Z",
+      "created_at": "2026-11-07T18:28:44.374111Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11627,7 +11627,7 @@
       "latency_ms": 12,
       "stop_reason": "mock",
       "session_id": "demo-res-renewal",
-      "created_at": "2026-11-07T18:23:15.415199Z",
+      "created_at": "2026-11-07T18:28:44.377339Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -11862,7 +11862,7 @@
         "status_label": "In the office queue",
         "persona_id": "R003",
         "session_hash": "0a00e04e7c",
-        "created_at": "2026-11-07T18:23:15.415693Z",
+        "created_at": "2026-11-07T18:28:44.377815Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11902,7 +11902,7 @@
        "status_label": "In the office queue",
        "persona_id": "R003",
        "session_hash": "0a00e04e7c",
-       "created_at": "2026-11-07T18:23:15.415693Z",
+       "created_at": "2026-11-07T18:28:44.377815Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -12047,7 +12047,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-res-human",
-      "created_at": "2026-11-07T18:23:15.418188Z",
+      "created_at": "2026-11-07T18:28:44.380358Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -12273,7 +12273,7 @@
         "status_label": "In the office queue",
         "persona_id": "R020",
         "session_hash": "f85c4a5434",
-        "created_at": "2026-11-07T18:23:15.418605Z",
+        "created_at": "2026-11-07T18:28:44.380758Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -12313,7 +12313,7 @@
        "status_label": "In the office queue",
        "persona_id": "R020",
        "session_hash": "f85c4a5434",
-       "created_at": "2026-11-07T18:23:15.418605Z",
+       "created_at": "2026-11-07T18:28:44.380758Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -12451,7 +12451,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-gas",
-      "created_at": "2026-11-07T18:23:15.420619Z",
+      "created_at": "2026-11-07T18:28:44.382928Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12626,7 +12626,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-07T18:23:15.419607Z",
+        "created_at": "2026-11-07T18:28:44.381738Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12667,7 +12667,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-07T18:23:15.419607Z",
+        "created_at": "2026-11-07T18:28:44.381738Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12806,7 +12806,7 @@
       "latency_ms": 23,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:23:15.422805Z",
+      "created_at": "2026-11-07T18:28:44.385076Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -13056,7 +13056,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:23:15.424334Z",
+      "created_at": "2026-11-07T18:28:44.386452Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13298,7 +13298,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:23:15.427189Z",
+      "created_at": "2026-11-07T18:28:44.387944Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13396,7 +13396,7 @@
         "step": "10_persist",
         "status": "ok",
         "detail": "gate metadata logged (no message text)",
-        "ms": 1
+        "ms": 0
        }
       ],
       "channel": "web_chat",
@@ -13509,7 +13509,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R003",
         "session_hash": "80198d5585",
-        "created_at": "2026-11-07T18:23:15.427602Z",
+        "created_at": "2026-11-07T18:28:44.388353Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -13555,7 +13555,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R003",
        "session_hash": "80198d5585",
-       "created_at": "2026-11-07T18:23:15.427602Z",
+       "created_at": "2026-11-07T18:28:44.388353Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -13693,7 +13693,7 @@
       "latency_ms": 14,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-07T18:23:15.429763Z",
+      "created_at": "2026-11-07T18:28:44.390584Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -13940,7 +13940,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-07T18:23:15.431450Z",
+      "created_at": "2026-11-07T18:28:44.392141Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -14151,7 +14151,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R012",
         "session_hash": "944a05361a",
-        "created_at": "2026-11-07T18:23:15.431933Z",
+        "created_at": "2026-11-07T18:28:44.392592Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -14197,7 +14197,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R012",
        "session_hash": "944a05361a",
-       "created_at": "2026-11-07T18:23:15.431933Z",
+       "created_at": "2026-11-07T18:28:44.392592Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -14343,7 +14343,7 @@
       "latency_ms": 5,
       "stop_reason": "mock",
       "session_id": "demo-res-status",
-      "created_at": "2026-11-07T18:23:15.435563Z",
+      "created_at": "2026-11-07T18:28:44.395598Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14583,7 +14583,7 @@
         "status_label": "In the office queue",
         "persona_id": "R008",
         "session_hash": "6f83aefd3b",
-        "created_at": "2026-11-07T18:23:15.436027Z",
+        "created_at": "2026-11-07T18:28:44.395998Z",
         "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
         "fields": [
          {
@@ -14623,7 +14623,7 @@
        "status_label": "In the office queue",
        "persona_id": "R008",
        "session_hash": "6f83aefd3b",
-       "created_at": "2026-11-07T18:23:15.436027Z",
+       "created_at": "2026-11-07T18:28:44.395998Z",
        "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
        "fields": [
         {
@@ -14750,7 +14750,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-unverified-status",
-      "created_at": "2026-11-07T18:23:15.438035Z",
+      "created_at": "2026-11-07T18:28:44.397947Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -15015,7 +15015,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-07T18:23:15.440741Z",
+      "created_at": "2026-11-07T18:28:44.400645Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15288,7 +15288,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-07T18:23:15.442264Z",
+      "created_at": "2026-11-07T18:28:44.402083Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15508,7 +15508,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "a946b4af24",
-        "created_at": "2026-11-07T18:23:15.442620Z",
+        "created_at": "2026-11-07T18:28:44.402436Z",
         "summary": "Tour request from prospective resident (demo profile).",
         "fields": [
          {
@@ -15554,7 +15554,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "a946b4af24",
-       "created_at": "2026-11-07T18:23:15.442620Z",
+       "created_at": "2026-11-07T18:28:44.402436Z",
        "summary": "Tour request from prospective resident (demo profile).",
        "fields": [
         {
@@ -15684,7 +15684,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-07T18:23:15.444963Z",
+      "created_at": "2026-11-07T18:28:44.404810Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15899,7 +15899,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-07T18:23:15.446403Z",
+      "created_at": "2026-11-07T18:28:44.406242Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -16150,7 +16150,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-new-to-area",
-      "created_at": "2026-11-07T18:23:15.448895Z",
+      "created_at": "2026-11-07T18:28:44.408667Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16373,7 +16373,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-pro-floor-plans",
-      "created_at": "2026-11-07T18:23:15.451164Z",
+      "created_at": "2026-11-07T18:28:44.411108Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -16589,7 +16589,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:23:15.453070Z",
+      "created_at": "2026-11-07T18:28:44.413036Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16806,7 +16806,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:23:15.454558Z",
+      "created_at": "2026-11-07T18:28:44.414577Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17032,7 +17032,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:23:15.456026Z",
+      "created_at": "2026-11-07T18:28:44.415991Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17263,7 +17263,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:23:15.457479Z",
+      "created_at": "2026-11-07T18:28:44.417433Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17461,7 +17461,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "a839f1a538",
-        "created_at": "2026-11-07T18:23:15.457836Z",
+        "created_at": "2026-11-07T18:28:44.417792Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -17501,7 +17501,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "a839f1a538",
-       "created_at": "2026-11-07T18:23:15.457836Z",
+       "created_at": "2026-11-07T18:28:44.417792Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -17627,7 +17627,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-steering",
-      "created_at": "2026-11-07T18:23:15.460065Z",
+      "created_at": "2026-11-07T18:28:44.419886Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -17863,7 +17863,7 @@
       "latency_ms": 8,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-07T18:23:15.462377Z",
+      "created_at": "2026-11-07T18:28:44.421988Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -17962,7 +17962,7 @@
         "step": "6_workflow",
         "status": "ok",
         "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5'] | action=tour_request:ready",
-        "ms": 1
+        "ms": 0
        },
        {
         "step": "7_generate",
@@ -18119,7 +18119,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-07T18:23:15.464289Z",
+      "created_at": "2026-11-07T18:28:44.423822Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -18317,7 +18317,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "5bcdd3814d",
-        "created_at": "2026-11-07T18:23:15.464658Z",
+        "created_at": "2026-11-07T18:28:44.424190Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -18357,7 +18357,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "5bcdd3814d",
-       "created_at": "2026-11-07T18:23:15.464658Z",
+       "created_at": "2026-11-07T18:28:44.424190Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -18489,7 +18489,7 @@
       "latency_ms": 10,
       "stop_reason": "mock",
       "session_id": "demo-pro-human",
-      "created_at": "2026-11-07T18:23:15.466649Z",
+      "created_at": "2026-11-07T18:28:44.426144Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -18696,7 +18696,7 @@
         "status_label": "In the office queue",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "29f16eb9c8",
-        "created_at": "2026-11-07T18:23:15.467011Z",
+        "created_at": "2026-11-07T18:28:44.426486Z",
         "summary": "Prospect · leasing · urgency medium.",
         "fields": [
          {
@@ -18730,7 +18730,7 @@
        "status_label": "In the office queue",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "29f16eb9c8",
-       "created_at": "2026-11-07T18:23:15.467011Z",
+       "created_at": "2026-11-07T18:28:44.426486Z",
        "summary": "Prospect · leasing · urgency medium.",
        "fields": [
         {
@@ -18845,7 +18845,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-vendor",
-      "created_at": "2026-11-07T18:23:15.469026Z",
+      "created_at": "2026-11-07T18:28:44.428481Z",
       "gate": {
        "audience": "unknown",
        "intent": "maintenance",
@@ -19052,7 +19052,7 @@
    "kind": "staff_handoff",
    "session_hash": "29f16eb9c8",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-07T18:23:15.467011+00:00"
+   "created_at": "2026-11-07T18:28:44.426486+00:00"
   },
   {
    "status": "requested",
@@ -19094,7 +19094,7 @@
    "kind": "tour_request",
    "session_hash": "5bcdd3814d",
    "persona_id": null,
-   "created_at": "2026-11-07T18:23:15.464658+00:00"
+   "created_at": "2026-11-07T18:28:44.424190+00:00"
   },
   {
    "status": "requested",
@@ -19136,7 +19136,7 @@
    "kind": "tour_request",
    "session_hash": "a839f1a538",
    "persona_id": null,
-   "created_at": "2026-11-07T18:23:15.457836+00:00"
+   "created_at": "2026-11-07T18:28:44.417792+00:00"
   },
   {
    "status": "requested",
@@ -19184,7 +19184,7 @@
    "kind": "tour_request",
    "session_hash": "a946b4af24",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-07T18:23:15.442620+00:00"
+   "created_at": "2026-11-07T18:28:44.402436+00:00"
   },
   {
    "status": "queued",
@@ -19226,7 +19226,7 @@
    "kind": "staff_handoff",
    "session_hash": "6f83aefd3b",
    "persona_id": "R008",
-   "created_at": "2026-11-07T18:23:15.436027+00:00"
+   "created_at": "2026-11-07T18:28:44.395998+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19274,7 +19274,7 @@
    "kind": "maintenance_request",
    "session_hash": "944a05361a",
    "persona_id": "R012",
-   "created_at": "2026-11-07T18:23:15.431933+00:00"
+   "created_at": "2026-11-07T18:28:44.392592+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19322,7 +19322,7 @@
    "kind": "maintenance_request",
    "session_hash": "80198d5585",
    "persona_id": "R003",
-   "created_at": "2026-11-07T18:23:15.427602+00:00"
+   "created_at": "2026-11-07T18:28:44.388353+00:00"
   },
   {
    "status": "urgent_queued",
@@ -19365,7 +19365,7 @@
    "kind": "staff_handoff",
    "session_hash": "f61c3ca448",
    "persona_id": "R002",
-   "created_at": "2026-11-07T18:23:15.419607+00:00"
+   "created_at": "2026-11-07T18:28:44.381738+00:00"
   },
   {
    "status": "queued",
@@ -19407,7 +19407,7 @@
    "kind": "staff_handoff",
    "session_hash": "f85c4a5434",
    "persona_id": "R020",
-   "created_at": "2026-11-07T18:23:15.418605+00:00"
+   "created_at": "2026-11-07T18:28:44.380758+00:00"
   },
   {
    "status": "queued",
@@ -19449,7 +19449,7 @@
    "kind": "staff_handoff",
    "session_hash": "0a00e04e7c",
    "persona_id": "R003",
-   "created_at": "2026-11-07T18:23:15.415693+00:00"
+   "created_at": "2026-11-07T18:28:44.377815+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19503,7 +19503,7 @@
    "kind": "maintenance_request",
    "session_hash": "f1b1a5ef54",
    "persona_id": "R001",
-   "created_at": "2026-11-07T18:23:15.410163+00:00"
+   "created_at": "2026-11-07T18:28:44.372313+00:00"
   }
  ],
  "gate_eval": {

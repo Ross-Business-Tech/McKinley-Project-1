@@ -132,3 +132,13 @@ def test_waiting_too_long_prepares_an_escalation(client):  # H D-F4
 def test_prospect_can_ask_which_communities_exist(client):  # H E-F6
     r = chat(client, "what communities do you have?", persona="", session="cm1")
     assert "Heron Lake" in r["reply"] and "$" not in r["reply"]
+
+
+@pytest.mark.parametrize("msg", ["I'm scared of spiders, do you spray?", "where is the nearest fire station",
+                                 "cuándo es la inspección de los detectores de humo"])
+def test_agent_h_final_false_alarms(msg):  # H final pass P1
+    assert emergency_kind(msg) is None, msg
+
+
+def test_fear_of_a_person_still_alarms():
+    assert emergency_kind("im scared he will hurt me") == "personal_safety"

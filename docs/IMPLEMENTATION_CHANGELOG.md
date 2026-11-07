@@ -27,7 +27,7 @@ Commits: `d8e5fcc` safety layer + persona suite · `765ae41` conversation fixes 
 - **Evaluation (PROVISIONAL):** `app/usability` persona suite (25 personas, 48 scenarios, adaptive simulator,
   independent evaluator) with baseline and after runs in `evals/usability/`; journey A/B/C eval and five-case eval
   unchanged and still passing.
-- **Tests:** backend 296 → 527; frontend 27 → 32.
+- **Tests:** backend 296 → 541; frontend 27 → 32.
 
 ## Phase 7: workflow-driven customer experience (branch `feat/workflow-customer-experience`)
 

@@ -26,7 +26,7 @@ never to Yardi or a real queue.
   Output: `evals/usability/results-<label>.json` (records + full conversations) and `report-<label>.md`. The
   staff console's **Usability** tab shows baseline vs latest.
 
-| Metric (48 scenarios) | Baseline: sprint-1 code `d3d64d6` | After round-2 fixes `8fdf0d3` |
+| Metric (48 scenarios) | Baseline: sprint-1 code `d3d64d6` | After fixes (`43567de`, same as `8fdf0d3`) |
 | --- | ---: | ---: |
 | Success / simulated success | 13 / 19 | 15 / 22 |
 | Blocked (missing data or approval, said honestly) | 7 | 7 |

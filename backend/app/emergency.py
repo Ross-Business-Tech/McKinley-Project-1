@@ -54,7 +54,9 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"(me|her|him|them|someone|a child|the kids?)\b|(screaming|yelling)\W+(?:\w+\W+){0,8}(hit|hurt|help)|"
         r"(don'?t|do not|no longer) feel safe\b|\bgun(s|shots?|fire)?\b|shots? fired|\bknife\b|"
         r"(kill|hurt) me\b|following me|stranger (is )?in (my|the) (apartment|unit|home)|"
-        r"won'?t leave\W+(?:\w+\W+){0,4}scared|i'?m scared|"
+        r"won'?t leave\W+(?:\w+\W+){0,4}scared|i'?m scared (?:for my life|he|she|they|of (?:him|her|them|my (?:ex|"
+        r"partner|"
+        r"husband|wife|boyfriend|girlfriend)))|"
         r"\bweapon|attack(ed|ing)? me|"
         r"me (amenaza|golpea|quiere hacer daño)|entraron a (mi|robar)|no me siento segur", re.I)),
     ("gas", re.compile(
@@ -69,7 +71,8 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r" (for|de) (co|mon[oó]xido)",
         re.I)),
     ("fire_smoke", re.compile(
-        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b))|\bflames?\b|"
+        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b|station|house|escape|"
+        r"lane))|\bflames?\b|"
         r"on fire|\bburning\b(?! question)|burnt? (smell|plastic|rubber)|smells? (like |of )?(burn|smoke)|"
         r"smell\w*\W+(?:\w+\W+){0,2}(?:burnt|burning|smoky)|"
         r"\bsmok(e|ing|y|in'?)\b(?! ?(detector|alarm)\b(?!.{0,30}(going off|sounding|won'?t stop|keeps going)))|"
@@ -306,7 +309,8 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r" (?:detectors|alarms)|(?:detectors|alarms) in (?:every|each|all) (?:unit|apartment)s?|"
     r"(?:smoke |fire |co )?(?:detector|alarm)\W+(?:\w+\W+){0,3}going off\W+(?:\w+\W+){0,2}(?:when|while|whenever|"
     r"every time) (?:i|we) (?:cook|shower|make|burn toast)|"
-    r"fire lane|fire exit|fire door|fire escape|(?:test|check|inspect)\w*\W+(?:\w+\W+){0,2}(?:co|carbon monoxide|"
+    r"fire lane|fire exit|fire door|fire escape|fire station|inspecci[oó]n de (?:los )?detectores(?: de humo)?|"
+    r"detectores? de humo|(?:test|check|inspect)\w*\W+(?:\w+\W+){0,2}(?:co|carbon monoxide|"
     r"smoke|fire) (?:detectors?|alarms?)|sparks? joy|(?:can|should) i (?:mix|use)\W+(?:\w+\W+){0,4}(?:bleach|"
     r"ammonia|vinegar)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
