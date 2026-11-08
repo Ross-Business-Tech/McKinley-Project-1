@@ -2,7 +2,7 @@
 
 These rules apply to `backend/`, `frontend/`, `prompts/` and `evals/`. They sit alongside the root `CLAUDE.md`, which Ross IT maintains for the here.now workflow. Where both apply, follow both. The root file wins on publishing, branches and the staff-owned paths (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`).
 
-Before implementing anything, read `README.md`, `docs/PROJECT_SPEC.md`, `docs/ARCHITECTURE.md`, `prompts/mckinley_system_prompt.md` and `evals/five_cases.md`. Keep the Next.js / TypeScript + Python / FastAPI + uv architecture.
+Before implementing anything, read `README.md`, `docs/workflows/product-spec.md`, `docs/architecture/overview.md`, `prompts/mckinley_system_prompt.md` and `evals/five_cases.md`. Keep the Next.js / TypeScript + Python / FastAPI + uv architecture.
 
 ## Engineering rules
 - Inspect the repo first and NEVER overwrite active work. Work on feature branches; open pull requests into `development` and never push to `main`. Create feature commits at coherent milestones (scaffold, data adapter, chat engine, UI, evals). Do not force-push or commit secrets.

@@ -10,7 +10,7 @@
 | `web-accessibility` | No | Not used; WCAG 2.2 checks done by the reviewers directly. |
 
 No design change was made to raise a subjective score; each traces to a reviewer finding in
-`docs/ACCESSIBILITY_REVIEW.md` or `docs/UX_REVIEW.md`.
+`docs/evaluation/accessibility-review.md` or `docs/evaluation/ux-review.md`.
 
 ---
 
@@ -43,7 +43,7 @@ touched.
   scores. The UX walkthrough reviewer was given no expected paths, only the live page. Fixes were implemented
   by a separate agent, then re-reviewed (round 2) and verified by an agent that implemented nothing (Agent H).
 - **"Good-looking and task-completing are accepted separately."** Separate scores are kept for visual design,
-  usability, accessibility, conversation quality and safety (see `docs/SPRINT_REVIEW_REPORT.md`).
+  usability, accessibility, conversation quality and safety (see `docs/archive/sprint2/sprint2-review-report.md`).
 
 ### frontend-design
 - **Avoid the "SaaS card kit" tells**: identical cards with the same stripe/shadow, a tracked all-caps label on

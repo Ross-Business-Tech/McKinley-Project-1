@@ -155,7 +155,7 @@ Commits: `d8e5fcc` safety layer + persona suite · `765ae41` conversation fixes 
   - A gate decision log (no message text).
   - `/api/gates/*` endpoints.
   - A static demo exporter.
-  - `docs/WORKFLOW_REVIEW.md`, a review of the team's 9 reference workflow modules by a workflow-analyst subagent.
+  - `docs/workflows/source-review.md`, a review of the team's 9 reference workflow modules by a workflow-analyst subagent.
 - **Why:** the five business workflows needed explicit routing, a deterministic safety floor and a structured handoff. Per ADR-003, all of this uses ordinary Python with one response LLM call per turn.
 - **Design finding during testing:** "Can someone explain my choices?" (case 5) triggered the human-request pattern and would have hijacked the renewal workflow. Explicit demands for a person are now handled separately from soft requests.
 - **Tests:** 46 → 99 passing (now 123).

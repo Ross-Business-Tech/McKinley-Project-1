@@ -3,7 +3,7 @@
 Runs on every message, for every audience, before identity, drafts or any model. Errs on the side of treating a
 message as an emergency: a false alarm costs a phone call, a miss can cost a life. The safety text never tells the
 person to do anything risky and never claims anyone was dispatched. McKinley maintenance and risk/legal must
-approve the list and the wording (docs/WORKFLOW_TRACEABILITY.md, I-17/I-18).
+approve the list and the wording (docs/workflows/traceability.md, I-17/I-18).
 """
 
 import re

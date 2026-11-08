@@ -2,7 +2,7 @@
 
 ## Sprint 3 (November 2026): adaptive simulators, independent judge, regression verification
 
-**Mock response model throughout; 0 live-model conversations** (no key; see `docs/LIVE_LLM_EVALUATION.md`). The
+**Mock response model throughout; 0 live-model conversations** (no key; see `docs/evaluation/live-llm.md`). The
 simulated people were independent Claude agents adapting turn by turn to the real API; the assistant side was the
 deterministic pipeline.
 
@@ -22,7 +22,7 @@ Transcripts and grading are kept outside the repository (synthetic but bulky); t
 ## Sprint 2 (November 2026): persona suite and two rounds of independent simulation
 
 **Every result in this section used the deterministic MOCK response model.** No live model ran: no OpenRouter or
-Anthropic key is configured locally and Ollama is not installed (see `docs/SPRINT_REVIEW_REPORT.md` §7). The tests
+Anthropic key is configured locally and Ollama is not installed (see `docs/archive/sprint2/sprint2-review-report.md` §7). The tests
 exercise the real backend pipeline (routing, identity rules, questions, actions, safety rules, honesty); they are
 not evidence of language-model quality. "Simulated success" means a record was written to the prototype store,
 never to Yardi or a real queue.

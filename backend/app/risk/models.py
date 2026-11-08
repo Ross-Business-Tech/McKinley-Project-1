@@ -61,7 +61,7 @@ class RiskDecision(BaseModel):
     needs_human: bool = False
     escalation_priority: Literal["urgent", "high", "normal"] | None = None
     sources: list[str] = Field(default_factory=list)  # deterministic | window | semantic | policy
-    rule: str  # which policy rule decided (see docs/SAFETY_EVALUATION.md)
+    rule: str  # which policy rule decided (see docs/safety/safety-evaluation.md)
     conflict: str | None = None  # how a disagreement between layers was resolved
     degraded: bool = False  # semantic layer did not produce a usable answer this turn
 

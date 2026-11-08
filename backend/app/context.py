@@ -178,7 +178,7 @@ def load_workbook(path: Path) -> Workbook:
 TOPIC_KEYWORDS: dict[str, list[str]] = {
     "hvac": ["ac", "a/c", "air condition", "cooling", "cool", "heat", "heater", "hvac", "thermostat",
              "furnace", "compressor", "air handler",
-             # Spanish (minimal; R012 prefers Spanish). Other languages: see docs/GATE_DESIGN.md limitations.
+             # Spanish (minimal; R012 prefers Spanish). Other languages: docs/architecture/decision-gate.md.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
                  "shower", "tub", "water", "toliet", "clogd", "overflow", "fuga", "gotea", "grifo", "llave",

@@ -1,7 +1,7 @@
 # UX review: design, independent reviews, fixes and verification
 
 > **Sprint 3 (November 2026)** is summarised first, then sprint 2 and sprint 1 unchanged. Full sprint-3 evidence:
-> [SPRINT3_REPORT.md](SPRINT3_REPORT.md), [SAFETY_EVALUATION.md](SAFETY_EVALUATION.md).
+> [SPRINT3_REPORT.md](../archive/sprint3/sprint3-report.md), [SAFETY_EVALUATION.md](../safety/safety-evaluation.md).
 
 ## Sprint 3 at a glance
 
@@ -57,8 +57,8 @@ financial questions fall back to policy text.
 ---
 
 > **Sprint 2 (November 2026)** is summarised first; the sprint-1 review follows unchanged below the line.
-> Full evidence, scores and remaining blockers: [SPRINT_REVIEW_REPORT.md](SPRINT_REVIEW_REPORT.md). Design skills:
-> [DESIGN_SKILL_USAGE.md](DESIGN_SKILL_USAGE.md).
+> Full evidence, scores and remaining blockers: [SPRINT_REVIEW_REPORT.md](../archive/sprint2/sprint2-review-report.md). Design skills:
+> [DESIGN_SKILL_USAGE.md](../archive/design-skill-usage.md).
 
 ## Sprint 2 at a glance
 
@@ -103,7 +103,7 @@ the transcript instead; a separate route was out of scope.
 ## Sprint 1 review (unchanged)
 
 
-Branch `feat/workflow-customer-experience`. Covers the customer view (`/`) and the staff and demo console (`/staff/`). Usability transcripts: [USABILITY_TEST_RESULTS.md](USABILITY_TEST_RESULTS.md). Accessibility: [ACCESSIBILITY_REVIEW.md](ACCESSIBILITY_REVIEW.md).
+Branch `feat/workflow-customer-experience`. Covers the customer view (`/`) and the staff and demo console (`/staff/`). Usability transcripts: [USABILITY_TEST_RESULTS.md](usability-results.md). Accessibility: [ACCESSIBILITY_REVIEW.md](accessibility-review.md).
 
 ## 1. Design skills: what was actually used
 

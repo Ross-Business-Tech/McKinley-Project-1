@@ -14,7 +14,7 @@
       "status": "approved",
       "answer": "Every McKinley community accepts housing vouchers. A leasing team member confirms the details for your voucher and the community you're interested in.",
       "answer_es": "Todas las comunidades de McKinley aceptan vales de vivienda (vouchers). Un miembro del equipo de arrendamiento confirma los detalles de su vale y de la comunidad que le interesa.",
-      "source": "McKinley sprint brief, recorded in prompts/mckinley_system_prompt.md and docs/WORKFLOW_REVIEW.md (finding 15)",
+      "source": "McKinley sprint brief, recorded in prompts/mckinley_system_prompt.md and docs/workflows/source-review.md (finding 15)",
       "handoff": true
     },
     {

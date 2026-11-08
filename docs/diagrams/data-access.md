@@ -31,7 +31,7 @@ flowchart LR
 
   subgraph Staff["Staff console (loopback-only, or X-Staff-Token when STAFF_API_TOKEN is set)"]
     DIAG["Per-turn diagnostics:<br/>context field NAMES + provenance,<br/>gate, workflow, checks, model, cost"]
-    RECS["Work queue:<br/>summary, fields, team, priority,<br/>hashed session id"]
+    RECS["Saved requests:<br/>summary, fields, team, priority,<br/>hashed session id"]
     LIVE["Live conversations:<br/>redacted transcript by session hash"]
   end
   T[("chat_turns<br/>what was typed + replies")]

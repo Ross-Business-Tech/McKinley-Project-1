@@ -1,8 +1,8 @@
 # Sprint 2 review report: UX hardening and multi-agent user simulation
 
 > **Sprint 3 update (November 2026).** Superseding results for safety, live-LLM status and conversational UX are in
-> [SPRINT3_REPORT.md](SPRINT3_REPORT.md), [SAFETY_EVALUATION.md](SAFETY_EVALUATION.md) and
-> [LIVE_LLM_EVALUATION.md](LIVE_LLM_EVALUATION.md). The sprint-2 P0 (emergency detection) is **still open**: on a
+> [SPRINT3_REPORT.md](../sprint3/sprint3-report.md), [SAFETY_EVALUATION.md](../../safety/safety-evaluation.md) and
+> [LIVE_LLM_EVALUATION.md](../../evaluation/live-llm.md). The sprint-2 P0 (emergency detection) is **still open**: on a
 > fresh independent suite the rules-only build gives 64.5% full alert / 78.5% any guidance, with immediate-danger
 > misses. Verdict unchanged: not production ready. This sprint-2 report is kept unchanged below.
 
@@ -75,15 +75,15 @@ The P0 and P1 defects, grouped by area:
 - **Accessibility**
   - The sticky composer hid focused buttons at high zoom (F1).
 
-Full tables are in `docs/UX_REVIEW.md`, `docs/USABILITY_TEST_RESULTS.md` and `docs/ACCESSIBILITY_REVIEW.md`.
+Full tables are in `docs/evaluation/ux-review.md`, `docs/evaluation/usability-results.md` and `docs/evaluation/accessibility-review.md`.
 Raw reviewer reports are in the session scratchpad and are not committed.
 
 ## 3. Fixes implemented
 
-Code links: [`emergency.py`](../backend/app/emergency.py), [`actions.py`](../backend/app/actions.py),
-[`intake.py`](../backend/app/intake.py), [`staff_guard.py`](../backend/app/api/staff_guard.py),
-[`usability/`](../backend/app/usability/), [`CustomerApp.tsx`](../frontend/src/components/customer/CustomerApp.tsx),
-[`StaffConsole.tsx`](../frontend/src/components/staff/StaffConsole.tsx).
+Code links: [`emergency.py`](../../../backend/app/emergency.py), [`actions.py`](../../../backend/app/actions.py),
+[`intake.py`](../../../backend/app/intake.py), [`staff_guard.py`](../../../backend/app/api/staff_guard.py),
+[`usability/`](../../../backend/app/usability), [`CustomerApp.tsx`](../../../frontend/src/components/customer/CustomerApp.tsx),
+[`StaffConsole.tsx`](../../../frontend/src/components/staff/StaffConsole.tsx).
 
 **Safety**
 
@@ -255,11 +255,11 @@ trust in it.
 
 | Before (round 1) | After (final) |
 | --- | --- |
-| ![](screenshots/sprint2/before-empty-390.png) | ![](screenshots/sprint2/after-empty-390.png) |
-| ![](screenshots/sprint2/before-submitted-390.png) | ![](screenshots/sprint2/after-submitted-390.png) |
-| ![](screenshots/sprint2/before-staff-1440.png) | ![](screenshots/sprint2/after-staff-1440.png) |
+| ![](screenshots/before-empty-390.png) | ![](screenshots/after-empty-390.png) |
+| ![](screenshots/before-submitted-390.png) | ![](screenshots/after-submitted-390.png) |
+| ![](screenshots/before-staff-1440.png) | ![](screenshots/after-staff-1440.png) |
 
-The emergency state, after: ![](screenshots/sprint2/after-emergency-390.png)
+The emergency state, after: ![](screenshots/after-emergency-390.png)
 
 **Scores after round 2** (given on `a9154ac`; later fixes were not re-scored by the same reviewers):
 
@@ -298,7 +298,7 @@ Agent H judged this evaluator too lenient, and the criticism is accepted:
 - Unwanted records and repeated replies never lower the outcome.
 
 So treat these numbers as a floor check, not a quality score. Data is in
-[`evals/usability/`](../evals/usability/) and the staff console's Usability tab.
+[`evals/usability/`](../../../evals/usability) and the staff console's Usability tab.
 
 **Test counts:** backend 296 → 541, frontend 27 → 32, the journey A/B/C eval unchanged (C 17/17, 0 false claims),
 and the five-case eval preserved.

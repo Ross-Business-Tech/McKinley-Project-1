@@ -6,7 +6,7 @@ Reflects the code on `feat/workflow-customer-experience`. Two front-ends share o
 flowchart LR
   subgraph Browser["Browser (static Next.js export in dist/)"]
     CV["Customer view /<br/>CustomerApp + ActionCard"]
-    SC["Staff and demo console /staff/<br/>Work queue, Live conversations, Inspector,<br/>Coverage, Usability, Model comparison, Evaluation"]
+    SC["Staff and demo console /staff/<br/>Saved requests, Live conversations, Conversation inspector,<br/>Workflow coverage, Usability, Model comparison, Evaluation"]
     SNAP[("demo/snapshot.json<br/>recorded journeys + evals")]
   end
 
@@ -16,7 +16,7 @@ flowchart LR
     REC["GET /api/prototype/records<br/>GET /api/staff/conversations"]
     EV["/api/evals/* , /api/gates/*"]
     GUARD["staff_guard: loopback-only<br/>or X-Staff-Token"]
-    ENG["chat_engine.run_turn<br/>(10-step pipeline)"]
+    ENG["chat_engine.run_turn<br/>(11 steps: 1, 2, 2b safety, 3-10)"]
     PLAN["actions.plan_turn<br/>(F2-F9 behaviour)"]
     GATE["DecisionGateService<br/>rules always + optional LLM / Jev"]
     SAFE["safety.py + emergency.py<br/>redaction, output checks,<br/>emergency rules (KINDS + CONCEPTS + framing)"]

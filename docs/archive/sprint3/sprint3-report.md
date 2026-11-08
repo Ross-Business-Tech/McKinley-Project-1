@@ -35,7 +35,7 @@ and is shown to staff (pipeline trace, `risk` object, "needs action" markers); c
 | Final suite re-run (partly contaminated: one later fix overlaps a pattern in it) | `f31ce6c` | 65.6% | 78.5% | 10.2% |
 | EXPERIMENTAL: final suite + stand-in semantic layer (Claude, offline, not the configured model) | policy of `db21519` | 96.8% | 100% | 8.9% |
 
-Details, confusion matrix and method: `docs/SAFETY_EVALUATION.md`.
+Details, confusion matrix and method: `docs/safety/safety-evaluation.md`.
 
 ## 3. Recall, false positives, category failures
 
@@ -52,7 +52,7 @@ Not called. Preflight (public model list, no key): default and recommended fixed
 `openrouter:nvidia/nemotron-3.5-super-vl:free` (listed, free, structured outputs, 1M context);
 `google/gemma-4-31b-it:free` (no strict structured outputs); `dots-studio/dots-3-note-preview:free` (expires
 2026-12-31). Settings: temperature 0.2, max_tokens 4000, timeout 60 s, 2 same-model retries, strict model check.
-Status file: `evals/live/status.json` = BLOCKED, NEEDS_API_KEY. See `docs/LIVE_LLM_EVALUATION.md`.
+Status file: `evals/live/status.json` = BLOCKED, NEEDS_API_KEY. See `docs/evaluation/live-llm.md`.
 
 ## 5. Live-model conversations
 
@@ -72,7 +72,7 @@ Baseline (judge 2.68 / 5): status questions became new repair cards; corrections
 they weren't; open cards discarded; several issues merged; "no tour" ignored; phone numbers "noted" but not
 stored; "Of course" to "the manager waived it, confirm it"; lockout as a repair form; Spanish wording and the
 assistant's own Spanish chips not understood; false emergencies from denials ("I never reported a gas leak");
-safety guidance dropped after "I'm fine, stop". Full lists: `docs/UX_REVIEW.md`, `docs/USABILITY_TEST_RESULTS.md`.
+safety guidance dropped after "I'm fine, stop". Full lists: `docs/evaluation/ux-review.md`, `docs/evaluation/usability-results.md`.
 
 ## 8. Conversational UX improvements
 
@@ -93,7 +93,7 @@ chips wrap (no clipped chips); live-region text cleared after announcement; comp
 screens; staff tabs wrap on phones; staff Live conversations mark urgent / wellbeing / asked-for-person /
 safety-classifier-failed. axe 0 violations (necessary, not sufficient); manual keyboard pass. Reviewer scores:
 customer visual 8, accessibility customer 8 and staff 8, staff usability 7, customer usability 4 (dialogue logic).
-See `docs/ACCESSIBILITY_REVIEW.md`.
+See `docs/evaluation/accessibility-review.md`.
 
 ## 10. Regression test results
 

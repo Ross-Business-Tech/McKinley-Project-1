@@ -2,7 +2,7 @@
 
 Everything here is regex over the already-redacted message. Nothing calls a model, nothing has side effects.
 Patterns are TEAM DRAFTS: the lists McKinley must approve (I-06 opt-out keywords, I-13 fair-housing topics,
-I-15 tour questions, I-19 intake fields) are marked as such in docs/WORKFLOW_TRACEABILITY.md.
+I-15 tour questions, I-19 intake fields) are marked as such in docs/workflows/traceability.md.
 """
 
 import json
@@ -461,7 +461,7 @@ def match_faq(message: str) -> list[KBTopic]:
     return [t for t, kws in topics if any(re.search(rf"(?<![a-z]){re.escape(k)}", low) for k in kws)]
 
 
-# ---- added after the independent review (see docs/UX_REVIEW.md) ---------------------------------------
+# ---- added after the independent review (see docs/evaluation/ux-review.md) ---------------------------------------
 
 _BOOKING_Q = re.compile(r"\b(am i|are we|is it|is that) (booked|confirmed|scheduled|set)|\b(i'?m|we'?re|i am|we are) "
                         r"(booked|confirmed|scheduled|all set)|(what|which) time (do|should|can) (i|we) (show up|come|"

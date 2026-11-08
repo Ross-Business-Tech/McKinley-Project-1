@@ -1,6 +1,6 @@
 """Layered safety pipeline: detect (rules) -> classify (semantic LLM) -> decide (policy) -> select (approved text)
 -> recommend (human escalation). Runs before workflow routing and before any response generation.
-See docs/SAFETY_EVALUATION.md and docs/diagrams/safety-architecture.md."""
+See docs/safety/safety-evaluation.md and docs/diagrams/safety-architecture.md."""
 
 from app.risk.classifier import SemanticRiskClassifier
 from app.risk.detect import detect

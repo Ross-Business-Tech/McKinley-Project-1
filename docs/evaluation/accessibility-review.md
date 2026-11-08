@@ -31,7 +31,7 @@ accessibility 7.5 → 8.
 
 The **web-accessibility skill is not installed**. Its upstream instructions (hoodini/ai-agents-skills) were read and
 given to Agent F, who found them out of date: WCAG 2.1 only, a `menubar` navigation example the ARIA Authoring
-Practices advise against, a hand-rolled focus trap, and reliance on axe alone (see `docs/DESIGN_SKILL_USAGE.md`).
+Practices advise against, a hand-rolled focus trap, and reliance on axe alone (see `docs/archive/design-skill-usage.md`).
 Agent F audited manually in Chromium via Playwright (keyboard-only journeys, live-region recorder, accessibility
 tree, computed styles, zoom / text-spacing / 200% text emulation); axe-core ran in 27 states (round 1) and 35
 states (round 2): **0 violations both times**. Every finding below was manual.

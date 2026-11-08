@@ -24,6 +24,8 @@ approved response selection (`select`), human escalation (`recommend`). See `doc
 
 ## 2. How conflicts are resolved (policy, first match wins)
 
+Evaluation order: R1, R2, R3, R4, R5, R6, R9e, R7, R9, R8. Tests: `backend/tests/test_risk_policy_table.py`.
+
 | Rule | Condition | Result |
 | --- | --- | --- |
 | R1 | Rules find an emergency being reported (message or window) | Full alert, rules' category. A semantic "none" is recorded as a conflict and **never applied**. If the semantic layer sees self-harm, 988 is added |
@@ -32,7 +34,8 @@ approved response selection (`select`), human escalation (`recommend`). See `doc
 | R4 | Semantic `urgent`/`uncertain` with a category | Category care line; staff check-in for self-harm or urgent |
 | R5 | Rules: hazard only as a hypothetical or past event | Calm safety info (same approved steps, no alarm, no note) |
 | R6 | Rules: distress or "unwell" wording | That care line; the semantic layer cannot remove it |
-| R7 | Rules: broad danger vocabulary | 911 care line, unless the semantic layer ran OK, says `none` with confidence ≥ 0.8 and there was no earlier person-danger alert (the only thing the semantic layer may remove) |
+| R9e | Danger words after an earlier threat / medical / poison / trapped alert in this session (checked before R7) | Full alert again, same kind ("he's outside my door right now") |
+| R7 | Rules: broad danger vocabulary | 911 care line (988 if self-harm was alerted earlier in the session), unless the semantic layer ran OK, says `none` with confidence ≥ 0.8 and there was no earlier person-danger alert (the only thing the semantic layer may remove; recorded as `R7-suppressed`) |
 | R9 | An urgent person-danger note exists in this session | Calm line kept (988 for self-harm, otherwise 911) |
 | R8 | Nothing | No safety text |
 

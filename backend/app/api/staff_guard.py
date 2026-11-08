@@ -3,7 +3,7 @@
 - If STAFF_API_TOKEN is set, these routes need the header ``X-Staff-Token: <token>``.
 - If it is not set (local demo default), they answer only requests from this machine (loopback). Behind a reverse
   proxy every request looks local, so any shared deployment MUST set a token (and real staff sign-in is still a
-  deployment blocker; see docs/SPRINT_REVIEW_REPORT.md).
+  deployment blocker; see docs/archive/sprint2/sprint2-review-report.md).
 Customer routes (/api/chat, /api/personas, /api/actions/*) are not guarded here; the chat ``target`` override is.
 """
 

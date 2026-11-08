@@ -8,8 +8,8 @@ the live runner refuses to start without a key and writes `evals/live/status.jso
 | Item | State |
 | --- | --- |
 | Live-model conversations run | **0** |
-| Mock conversations (pipeline only) | 48 persona-suite scenarios (in-process), 49 adaptive simulator conversations (baseline build), ≥12 regression conversations (frozen sprint-3 build), 37 mock dry-run calls in the A/B/C runner |
-| Semantic safety classifier on a live model | **Not run** (see `docs/SAFETY_EVALUATION.md` §5 for an offline, clearly labelled stand-in experiment) |
+| Mock conversations (pipeline only) | 48 persona-suite scenarios (in-process), 49 adaptive simulator conversations (baseline build), 47 regression conversations (29 defect re-tests + 18 fresh, frozen sprint-3 build), 37 mock dry-run calls in the A/B/C runner |
+| Semantic safety classifier on a live model | **Not run** (see `docs/safety/safety-evaluation.md` §5 for an offline, clearly labelled stand-in experiment) |
 
 ## 1. Configuration verified without spending (`evals/live/preflight.json`)
 

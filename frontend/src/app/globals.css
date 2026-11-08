@@ -127,9 +127,9 @@
     @apply font-sans;
   }
 }
-/* ---- McKinley customer + staff tokens (see docs/UX_REVIEW.md, "Design system") ----
+/* ---- McKinley customer + staff tokens (see docs/evaluation/ux-review.md, "Colour tokens") ----
    Every status colour is paired with text and an icon; none carries meaning alone.
-   Contrast (WCAG 2.2 AA) was checked for each text/background pair listed in docs/ACCESSIBILITY_REVIEW.md. */
+   Contrast (WCAG 2.2 AA) was checked for each text/background pair listed in docs/evaluation/accessibility-review.md. */
 @theme {
   --color-mk-ink: #14231c;        /* body text: 15.2:1 on paper */
   --color-mk-muted: #4b5d54;      /* secondary text: 6.5:1 on paper, 7.0:1 on white */

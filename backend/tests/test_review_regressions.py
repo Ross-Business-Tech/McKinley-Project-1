@@ -1,4 +1,4 @@
-"""Regression tests built from the independent reviewers' reproduction steps (docs/UX_REVIEW.md, round 1).
+"""Regression tests built from the independent reviewers' reproduction steps (docs/evaluation/ux-review.md, round 1).
 
 Each test names the finding it covers: A=UI, B=UX, C=resident simulator, D=prospect simulator, E=accessibility,
 F=backend/safety.
@@ -267,7 +267,7 @@ def test_languages_and_sms_opt_in(client):  # C P1-10, B-14
     assert "subscribed" in r["reply"]
 
 
-# ---------------- round 2 (docs/UX_REVIEW.md §4) ----------------
+# ---------------- round 2 (docs/evaluation/ux-review.md §4) ----------------
 
 ROUND2_EMERGENCIES = [
     "wires hangin out the wall n its smokin a lil", "my stove burner wont turn off and theres a weird rotten egg smell",

@@ -6,7 +6,7 @@
   failures are replaced by the backend template) -> 9 handoff recommendation -> 10 persist safe metadata
 
 Modes: baseline (generic prompt; steps 4-6 and 9 skipped), prompt_only (McKinley prompt + gate/workflow, no
-resident context), aware (everything). See docs/diagrams/sequence.md.
+resident context), aware (everything). See docs/diagrams/chat-turn-sequence.md.
 """
 
 import re

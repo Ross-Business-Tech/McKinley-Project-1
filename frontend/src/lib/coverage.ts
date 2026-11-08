@@ -1,4 +1,4 @@
-/** F1-F9 implementation status shown in the staff console. Mirrors docs/WORKFLOW_TRACEABILITY.md. */
+/** F1-F9 implementation status shown in the staff console. Mirrors docs/workflows/traceability.md. */
 export type CoverageStatus = "working" | "simulated" | "partial" | "unavailable";
 
 export interface Coverage {
@@ -50,7 +50,7 @@ export const COVERAGE: Coverage[] = [
     name: "Maintenance request intake",
     status: "working",
     works: "Emergency first for every audience; asks one question at a time; reuses what's on the account; read-back before sending.",
-    blockedOn: "Approved emergency list and safety text (I-17, I-18); categories and fields (I-19); troubleshooting guides (I-20); on-call (D-03)",
+    blockedOn: "NOT production ready: emergency detection misses some immediate dangers (independent holdout: 64.5% full alert). Approved emergency list and safety text (I-17, I-18); categories and fields (I-19); troubleshooting guides (I-20); on-call (D-03)",
   },
   {
     id: "F7",

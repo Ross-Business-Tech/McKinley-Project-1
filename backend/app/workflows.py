@@ -1,7 +1,8 @@
 """Business workflow selection and per-workflow deterministic analysis (no side effects, no extra LLM calls).
 
 One response-generation LLM is used for every workflow; workflows differ only in the trusted instructions and
-backend-computed facts appended to the system prompt. See docs/WORKFLOW_REVIEW.md and docs/DECISIONS.md.
+backend-computed facts appended to the system prompt. See docs/workflows/source-review.md
+and docs/architecture/decisions.md.
 """
 
 import re

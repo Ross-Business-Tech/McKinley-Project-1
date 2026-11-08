@@ -4,12 +4,35 @@ Short records of the major decisions. Each one gives its status, context, the de
 
 ---
 
+## ADR-011: Live evaluation refuses to fall back to the mock
+**Status:** accepted (sprint 3). **Decision:** `app.live_eval.abc` refuses to start without a ready provider and
+writes `evals/live/status.json` = blocked; a mock dry run is explicitly flagged (`--allow-mock`), labelled MOCK,
+`comparable: false`, and writes its own status file. Template replies are never counted as live in any report.
+**Why:** mock or template output presented as model evidence was the main honesty risk in earlier sprints.
+
+## ADR-010: Customer view and staff console are separate; staff routes are guarded
+**Status:** accepted (sprint 2–3). **Decision:** the customer sees only approved text and their own cards; all
+diagnostics, records and evaluations live in `/staff/`. Staff routes are loopback-only (no proxy headers, local Host)
+unless `STAFF_API_TOKEN` is set. **Limit:** a demo boundary, not authentication; customer identity is client-asserted.
+
+## ADR-009: Confirm before save, into a labelled prototype store
+**Status:** accepted (sprint 2). **Decision:** every action (repair, tour, office note) is a read-back card that the
+person must confirm; only then is a `DEMO-WO/TOUR/TASK` record written to SQLite. Urgent safety notes are the one
+exception (saved immediately, once per hazard). **Why:** no false completion claims, no real integration exists.
+
+## ADR-008: Layered safety, rules first; the semantic classifier may only add caution
+**Status:** accepted (sprint 3). **Decision:** `app/risk/` separates detection, semantic classification, policy,
+approved responses and escalation; policy rules R1–R9e are explicit and tested
+(`tests/test_risk_policy_table.py`). The semantic layer never removes a rules alert; a failed classifier marks the
+turn degraded and is never "safe". **Status of evidence:** rules-only fresh holdout 64.5% full alert (release-blocking
+misses); the semantic layer has never run on a live model. See `docs/safety/safety-evaluation.md`.
+
 ## ADR-007: Static demo snapshot for the hosted site
 **Status:** Accepted (2026-11-05)
 
 **Context:** here.now hosts static files only. The browser-hosted app cannot reach the local FastAPI backend, so the published preview used to show only a connection error.
 
-**Decision:** `uv run python -m app.export_demo` writes `frontend/public/demo/snapshot.json`. It holds 14 scenarios × 3 modes, pre-computed with the **MOCK** provider and the rules gate. The UI loads it only when the backend is unreachable, labels every response as pre-computed MOCK output, and disables free-text chat.
+**Decision:** `uv run python -m app.export_demo` writes `frontend/public/demo/snapshot.json`. It holds 17 recorded customer journeys (replayed by the customer view) plus 14 scenarios × 3 modes for the console, pre-computed with the **MOCK** provider and the rules gate. The UI loads it only when the backend is unreachable, labels every response as pre-computed MOCK output, and disables free-text chat.
 
 **Consequences:**
 - Executives can click through the gate, workflow and handoff behaviour on a phone.
@@ -59,7 +82,7 @@ Short records of the major decisions. Each one gives its status, context, the de
 
 **Context:** Five business workflows could each get their own LLM "agent", and frameworks such as LangChain, LangGraph and CrewAI exist for that.
 
-**Decision:** Use one response-generation LLM call per turn, wrapped in an ordinary-Python 10-step pipeline (`chat_engine.run_turn`). Workflows differ only in the trusted instructions and the backend-computed facts appended to the system prompt. No agent framework is used.
+**Decision:** Use one response-generation LLM call per turn, wrapped in an ordinary-Python pipeline (`chat_engine.run_turn`, 11 traced steps: 1, 2, 2b safety, 3–10). A second, optional model call is the semantic safety classifier (ADR-008). Workflows differ only in the trusted instructions and the backend-computed facts appended to the system prompt. No agent framework is used.
 
 **Why:**
 - Each workflow is a short, linear policy (classify → retrieve → instruct → check). There are no tool calls with side effects to coordinate, and no long-horizon planning.
@@ -72,7 +95,7 @@ Short records of the major decisions. Each one gives its status, context, the de
 ---
 
 ## ADR-002: Rules gate as default and permanent safety floor; LLM and Jev optional
-**Status:** Accepted. Details in [GATE_DESIGN.md](GATE_DESIGN.md).
+**Status:** Accepted. Details in [GATE_DESIGN.md](decision-gate.md).
 
 **Decision:** `DECISION_GATE_PROVIDER=rules` by default. LLM and Jev gates are opt-in and can only *add* risk. Emergencies, identity, privacy and Fair Housing never depend on model confidence. Any external failure falls back to rules, and the fallback is recorded.
 

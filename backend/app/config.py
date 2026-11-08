@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         "ollama:llama3.2"
     )
 
-    # ---- decision gate (see docs/GATE_DESIGN.md) ----
+    # ---- decision gate (see docs/architecture/decision-gate.md) ----
     # rules = deterministic only (default, free) | llm = structured-output LLM gate | jev = EXPERIMENTAL Jev.
     # Rules always run as the safety floor; external gates fall back to rules on any failure.
     decision_gate_provider: Literal["rules", "llm", "jev"] = "rules"
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     # Staff/eval/diagnostics routes: loopback-only unless this token is set (then the X-Staff-Token header).
     staff_api_token: SecretStr | None = None
     typesafe_base_url: str = "https://api.typesafe.ai"
-    # ---- semantic safety classifier (layer 2, see docs/SAFETY_EVALUATION.md) ----
+    # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
     # per non-baseline turn. It can only ADD caution; deterministic alerts never depend on it.
     safety_classifier: Literal["auto", "off"] = "auto"

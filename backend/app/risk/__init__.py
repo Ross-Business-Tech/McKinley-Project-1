@@ -1,1 +1,1 @@
-"""Layered safety pipeline (see app/risk/pipeline.py, docs/SAFETY_EVALUATION.md)."""
+"""Layered safety pipeline (see app/risk/pipeline.py, docs/safety/safety-evaluation.md)."""

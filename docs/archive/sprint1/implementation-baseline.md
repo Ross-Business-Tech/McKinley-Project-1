@@ -1,6 +1,6 @@
 # Implementation baseline (before the agentic-workflow-gates sprint)
 
-This document records what existed at commit `c9c77c1`, on branch `feat/context-aware-ai-assistant`, which is one commit ahead of `origin/development` (`fb710d7`). It was inspected on 2026-11-05 before any changes. For what changed afterwards, see [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md).
+This document records what existed at commit `c9c77c1`, on branch `feat/context-aware-ai-assistant`, which is one commit ahead of `origin/development` (`fb710d7`). It was inspected on 2026-11-05 before any changes. For what changed afterwards, see [IMPLEMENTATION_CHANGELOG.md](../implementation-changelog.md).
 
 Legend: **WORKING** = implemented and tested · **MOCKED** = deterministic stand-in, labelled · **NOT IMPLEMENTED**
 
