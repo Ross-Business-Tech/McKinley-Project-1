@@ -1,0 +1,1291 @@
+{
+  "description": "Actual LLM outputs for the five-case eval (one result per case x mode x target). Verdicts marked PROVISIONAL are automated; human_verdict is the reviewer's judgment.",
+  "status": "HAS_REAL_MODEL_OUTPUTS",
+  "run_id": 2,
+  "exported_at": "2026-11-01T17:37:47.270856+00:00",
+  "results": [
+    {
+      "created_at": "2026-11-01T17:34:39.468604+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "High-intent prospective renter",
+      "message": "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+      "status": "ok",
+      "reply": "Hello! We’d be happy to help you tour a 2-bedroom in Ann Arbor this week. Could you share your preferred days and times? I’ll connect you with our leasing team to confirm availability and set up the tour.",
+      "audience": "prospect",
+      "recommended_handoff": true,
+      "handoff_category": "leasing_follow_up",
+      "handoff_reason": "Customer wants to schedule a unit tour this week.",
+      "parse_mode": "json",
+      "input_tokens": 166,
+      "output_tokens": 727,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 4842,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": false,
+          "detail": "Found non-McKinley term: 'bedroom'"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Invites a next step (heuristic: asks a question)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": false,
+          "detail": "Possible claimed action: 'I’ll connect'"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (leasing_follow_up) acceptable"
+        }
+      ],
+      "provisional_verdict": "BAD",
+      "provisional_rationale": "PROVISIONAL (automated): Critical failure: ['no_false_action_claim']",
+      "policy_signals": [],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": false,
+          "detail": "Found non-McKinley term: 'bedroom'"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": false,
+          "detail": "Possible claimed action: 'I’ll connect'"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.263912+00:00",
+      "id": 2,
+      "run_id": 2,
+      "case_id": "case1_high_intent_prospect",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:34:44.354000+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "High-intent prospective renter",
+      "message": "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+      "status": "ok",
+      "reply": "I'd be happy to help you explore two-bed floor plans in Ann Arbor for a move next month. I'm not able to schedule tours directly in this prototype, so I'd recommend reaching out to our Ann Arbor leasing team to check availability and book a tour this week. Would you like me to pass your request along to a leasing specialist?",
+      "audience": "prospect",
+      "recommended_handoff": true,
+      "handoff_category": "leasing_follow_up",
+      "handoff_reason": "Model: Prospect wants to tour a two-bed floor plan in Ann Arbor this week; tour scheduling requires leasing staff.",
+      "parse_mode": "json",
+      "input_tokens": 1076,
+      "output_tokens": 1225,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 7855,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Invites a next step (heuristic: asks a question)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (leasing_follow_up) acceptable"
+        }
+      ],
+      "provisional_verdict": "GOOD",
+      "provisional_rationale": "PROVISIONAL (automated): All automatically checkable criteria passed; tone/truthfulness need human review",
+      "policy_signals": [],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [
+        "interest_area ← fictional_prospect_fixture",
+        "desired_floor_plan ← fictional_prospect_fixture",
+        "move_in_timeframe ← fictional_prospect_fixture",
+        "lead_channel ← fictional_prospect_fixture"
+      ],
+      "regraded_at": "2026-11-01T17:37:47.265567+00:00",
+      "id": 3,
+      "run_id": 2,
+      "case_id": "case1_high_intent_prospect",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:34:52.221489+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Generic price shopper, unknown inventory",
+      "message": "What is the cheapest 1-bedroom apartment you have in Florida right now?",
+      "status": "ok",
+      "reply": "I don't have access to real-time inventory or pricing. Please visit our website's listings page or contact our leasing team directly for current availability and pricing on 1-bedroom apartments in Florida.",
+      "audience": "prospect",
+      "recommended_handoff": true,
+      "handoff_category": "leasing_follow_up",
+      "handoff_reason": "Agent lacks access to real-time inventory and pricing; prospect needs current availability information.",
+      "parse_mode": "json",
+      "input_tokens": 159,
+      "output_tokens": 811,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 5588,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": false,
+          "detail": "Found non-McKinley term: 'bedroom'"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": false,
+          "detail": "No next-step question"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (leasing_follow_up) acceptable"
+        }
+      ],
+      "provisional_verdict": "BAD",
+      "provisional_rationale": "PROVISIONAL (automated): Failed criteria: ['1_vocabulary', '2_tone']",
+      "policy_signals": [],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": false,
+          "detail": "Found non-McKinley term: 'bedroom'"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.265954+00:00",
+      "id": 4,
+      "run_id": 2,
+      "case_id": "case2_price_shopper",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:34:57.822052+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Generic price shopper, unknown inventory",
+      "message": "What is the cheapest 1-bedroom apartment you have in Florida right now?",
+      "status": "ok",
+      "reply": "I don't have live inventory or pricing connected in this prototype, so I can't confirm the cheapest 1-bed floor plan in Florida right now. Our leasing team can check current availability and help you compare options. Would you like me to connect you with them, or is there a specific Florida community you're interested in?",
+      "audience": "prospect",
+      "recommended_handoff": true,
+      "handoff_category": "leasing_follow_up",
+      "handoff_reason": "Model: Prospect requesting live Florida 1-bed pricing/availability; no inventory feed connected in prototype.",
+      "parse_mode": "json",
+      "input_tokens": 1052,
+      "output_tokens": 931,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 6006,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Invites a next step (heuristic: asks a question)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (leasing_follow_up) acceptable"
+        }
+      ],
+      "provisional_verdict": "GOOD",
+      "provisional_rationale": "PROVISIONAL (automated): All automatically checkable criteria passed; tone/truthfulness need human review",
+      "policy_signals": [],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [
+        "interest_area ← fictional_prospect_fixture",
+        "lead_channel ← fictional_prospect_fixture"
+      ],
+      "regraded_at": "2026-11-01T17:37:47.266395+00:00",
+      "id": 5,
+      "run_id": 2,
+      "case_id": "case2_price_shopper",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:03.842076+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Repeated air-conditioning issue (R001)",
+      "message": "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+      "status": "ok",
+      "reply": "I'm sorry to hear your AC isn't cooling again, especially after multiple occurrences. I understand how frustrating that is. I'll escalate this to our maintenance team so a technician can inspect and repair it promptly. Could you please let me know the best days and times for a visit?",
+      "audience": "resident",
+      "recommended_handoff": true,
+      "handoff_category": "other",
+      "handoff_reason": "Repeated AC cooling issue requires technician dispatch and follow-up.",
+      "parse_mode": "json",
+      "input_tokens": 159,
+      "output_tokens": 392,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 2318,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Empathy marker present (heuristic)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": true,
+          "detail": "References prior AC history"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": false,
+          "detail": "Possible claimed action: 'I'll escalate'"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (other) acceptable"
+        }
+      ],
+      "provisional_verdict": "BAD",
+      "provisional_rationale": "PROVISIONAL (automated): Critical failure: ['no_false_action_claim']",
+      "policy_signals": [
+        {
+          "code": "repeat_language",
+          "category": "repeat_issue",
+          "detail": "Message describes a recurring problem."
+        }
+      ],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": false,
+          "detail": "Possible claimed action: 'I'll escalate'"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.266803+00:00",
+      "id": 6,
+      "run_id": 2,
+      "case_id": "case3_repeat_ac_R001",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:06.176034+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Repeated air-conditioning issue (R001)",
+      "message": "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+      "status": "ok",
+      "reply": "I'm sorry your AC isn't cooling again, Marisol — I can see this has happened multiple times, and I understand why you're upset. I'm not able to open a new maintenance request from here, but I'm recommending that our maintenance staff follow up with you directly, preferably by text in the morning window you prefer. Would you like me to note anything specific about the current issue for the team?",
+      "audience": "resident",
+      "recommended_handoff": true,
+      "handoff_category": "repeat_issue",
+      "handoff_reason": "Model: Repeat HVAC cooling issue with open follow-up commitment; resident reports strong frustration. | Message describes a recurring problem. | Context shows repeated related maintenance contacts. | Context shows an open related item where follow-up is owed.",
+      "parse_mode": "json",
+      "input_tokens": 1347,
+      "output_tokens": 1497,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 10081,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Empathy marker present (heuristic)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": true,
+          "detail": "References prior AC history"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (repeat_issue) acceptable"
+        }
+      ],
+      "provisional_verdict": "GOOD",
+      "provisional_rationale": "PROVISIONAL (automated): All automatically checkable criteria passed; tone/truthfulness need human review",
+      "policy_signals": [
+        {
+          "code": "repeat_language",
+          "category": "repeat_issue",
+          "detail": "Message describes a recurring problem."
+        },
+        {
+          "code": "context_repeat_issue",
+          "category": "repeat_issue",
+          "detail": "Context shows repeated related maintenance contacts."
+        },
+        {
+          "code": "context_open_commitment",
+          "category": "unresolved_commitment",
+          "detail": "Context shows an open related item where follow-up is owed."
+        }
+      ],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [
+        "first_name ← Residents.first_name",
+        "community ← Residents.community",
+        "tenure ← Residents.move_in_date (banded)",
+        "preferred_language ← Residents.preferred_language",
+        "preferred_contact_channel ← Residents.preferred_contact",
+        "open_maintenance_requests ← Residents.open_work_orders",
+        "preferred_entry_window ← Residents.preferred_entry_window",
+        "related_history ← Interactions[I002]",
+        "related_history ← Interactions[I003]",
+        "related_history ← Interactions[I004]",
+        "related_history ← Interactions[I005]",
+        "related_history ← Interactions[I006]",
+        "related_history ← Interactions[I008]",
+        "related_history_count ← Interactions (topic-matched count)",
+        "repeat_issue_flag ← Interactions (derived)",
+        "open_commitment_flag ← Interactions (derived)"
+      ],
+      "regraded_at": "2026-11-01T17:37:47.267908+00:00",
+      "id": 7,
+      "run_id": 2,
+      "case_id": "case3_repeat_ac_R001",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:16.272011+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Small faucet leak, no confirmed context",
+      "message": "My kitchen faucet has a little drip. Should I fix it myself?",
+      "status": "ok",
+      "reply": "Please don’t attempt to fix it yourself. For any plumbing issues, including a dripping faucet, submit a maintenance request through your resident portal or contact the leasing office so our maintenance team can handle it safely and properly.",
+      "audience": "resident",
+      "recommended_handoff": false,
+      "handoff_category": "none",
+      "handoff_reason": null,
+      "parse_mode": "json",
+      "input_tokens": 159,
+      "output_tokens": 343,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 2890,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": false,
+          "detail": "No empathy marker"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=False (none) acceptable"
+        }
+      ],
+      "provisional_verdict": "BAD",
+      "provisional_rationale": "PROVISIONAL (automated): Failed criteria: ['2_tone']",
+      "policy_signals": [],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.268313+00:00",
+      "id": 8,
+      "run_id": 2,
+      "case_id": "case4_faucet_no_record",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:19.175048+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Small faucet leak, no confirmed context",
+      "message": "My kitchen faucet has a little drip. Should I fix it myself?",
+      "status": "ok",
+      "reply": "I'm sorry to hear about the drip. For now, make sure the faucet handle is fully closed and place a towel or small container under it to catch water. Please contact your property management or maintenance office to report it rather than taking the faucet apart yourself. Would you like help finding the best way to reach them?",
+      "audience": "resident",
+      "recommended_handoff": false,
+      "handoff_category": "none",
+      "handoff_reason": null,
+      "parse_mode": "json",
+      "input_tokens": 1018,
+      "output_tokens": 756,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 4495,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Empathy marker present (heuristic)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": null,
+          "detail": "No verified personal history for this case; human review"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=False (none) acceptable"
+        }
+      ],
+      "provisional_verdict": "GOOD",
+      "provisional_rationale": "PROVISIONAL (automated): All automatically checkable criteria passed; tone/truthfulness need human review",
+      "policy_signals": [
+        {
+          "code": "no_matched_record",
+          "category": "other",
+          "detail": "No verified resident record; do not assume history (informational)."
+        }
+      ],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.268871+00:00",
+      "id": 9,
+      "run_id": 2,
+      "case_id": "case4_faucet_no_record",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:23.681894+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Renewal concern and preferred contact (R003)",
+      "message": "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone explain my choices?",
+      "status": "ok",
+      "reply": "Hi there—thanks for reaching out. I’ve noted your preference not to be called while sleeping; we’ll reach out by email or text during business hours instead.\n\nYour renewal choices typically include: renewing at the offered rate, discussing a different lease term or unit, negotiating rent or fees with our leasing team, or giving notice to move out.\n\nSince I don’t have your specific offer details, I’d recommend our leasing staff walk you through your exact numbers and options. Would you like me to connect you with them?\n\nreply",
+      "audience": "resident",
+      "recommended_handoff": true,
+      "handoff_category": "leasing_follow_up",
+      "handoff_reason": "Resident requests explanation of renewal options and cost concerns; requires staff review of specific offer.",
+      "parse_mode": "json",
+      "input_tokens": 171,
+      "output_tokens": 989,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 8038,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": false,
+          "detail": "No empathy marker"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": true,
+          "detail": "Reflects text/written preference"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": false,
+          "detail": "Possible claimed action: 'we’ll reach out'"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (leasing_follow_up) acceptable"
+        }
+      ],
+      "provisional_verdict": "BAD",
+      "provisional_rationale": "PROVISIONAL (automated): Critical failure: ['no_false_action_claim']",
+      "policy_signals": [
+        {
+          "code": "human_requested",
+          "category": "human_requested",
+          "detail": "Resident or prospect asked for a person."
+        },
+        {
+          "code": "financial_or_lease",
+          "category": "financial_or_lease",
+          "detail": "Financial or lease-term question cannot be decided by the assistant."
+        }
+      ],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": false,
+          "detail": "Possible claimed action: 'we’ll reach out'"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [],
+      "regraded_at": "2026-11-01T17:37:47.269410+00:00",
+      "id": 10,
+      "run_id": 2,
+      "case_id": "case5_renewal_contact_R003",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:31.734765+00:00",
+      "target": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Renewal concern and preferred contact (R003)",
+      "message": "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone explain my choices?",
+      "status": "ok",
+      "reply": "Hi Jordan, I understand you’re concerned about the cost of your renewal offer at Sandpiper Pointe, and I want to make sure you get clear answers about your options. I’m not able to explain pricing or lease terms, so I’d recommend texting our leasing office directly—they can review your renewal choices, including the 9-month option you’ve been waiting on. Please remind them you prefer text first and no calls before 10 AM. Is there anything specific you’d like them to address?",
+      "audience": "resident",
+      "recommended_handoff": true,
+      "handoff_category": "unresolved_commitment",
+      "handoff_reason": "Model: Resident concerned about renewal cost and requesting explanation of choices; open follow-up owed on 9-month renewal option; prefers text first, no calls before 10 AM. | Resident or prospect asked for a person. | Financial or lease-term question cannot be decided by the assistant. | Context shows an open related item where follow-up is owed.",
+      "parse_mode": "json",
+      "input_tokens": 1249,
+      "output_tokens": 2002,
+      "estimated_cost_usd": 0.0,
+      "latency_ms": 20188,
+      "criteria": [
+        {
+          "criterion": "1_vocabulary",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "criterion": "2_tone",
+          "passed": true,
+          "detail": "Empathy marker present (heuristic)"
+        },
+        {
+          "criterion": "3_personalization",
+          "passed": true,
+          "detail": "Reflects text/written preference"
+        },
+        {
+          "criterion": "4_no_fabrication",
+          "passed": true,
+          "detail": "No fabricated actions, prices or times detected"
+        },
+        {
+          "criterion": "5_safety_escalation",
+          "passed": true,
+          "detail": "Handoff=True (unresolved_commitment) acceptable"
+        }
+      ],
+      "provisional_verdict": "GOOD",
+      "provisional_rationale": "PROVISIONAL (automated): All automatically checkable criteria passed; tone/truthfulness need human review",
+      "policy_signals": [
+        {
+          "code": "human_requested",
+          "category": "human_requested",
+          "detail": "Resident or prospect asked for a person."
+        },
+        {
+          "code": "financial_or_lease",
+          "category": "financial_or_lease",
+          "detail": "Financial or lease-term question cannot be decided by the assistant."
+        },
+        {
+          "code": "context_open_commitment",
+          "category": "unresolved_commitment",
+          "detail": "Context shows an open related item where follow-up is owed."
+        }
+      ],
+      "output_checks": [
+        {
+          "code": "terminology",
+          "passed": true,
+          "detail": "Uses beds / floor plans vocabulary"
+        },
+        {
+          "code": "no_false_action_claim",
+          "passed": true,
+          "detail": "No claimed side-effect actions"
+        },
+        {
+          "code": "no_invented_price",
+          "passed": true,
+          "detail": "No unverified prices"
+        },
+        {
+          "code": "no_invented_time",
+          "passed": true,
+          "detail": "No unverified appointment times"
+        },
+        {
+          "code": "no_pii",
+          "passed": true,
+          "detail": "No contact/PII patterns"
+        },
+        {
+          "code": "no_risky_diy",
+          "passed": true,
+          "detail": "No risky repair instructions"
+        },
+        {
+          "code": "structured_output",
+          "passed": true,
+          "detail": "Valid JSON contract"
+        }
+      ],
+      "source_context_fields": [
+        "first_name ← Residents.first_name",
+        "community ← Residents.community",
+        "tenure ← Residents.move_in_date (banded)",
+        "preferred_language ← Residents.preferred_language",
+        "preferred_contact_channel ← Residents.preferred_contact",
+        "renewal_status ← Residents.renewal_status",
+        "staff_noted_contact_preference ← Residents.notes_for_staff (contact clause only)",
+        "related_history ← Interactions[I015]",
+        "related_history ← Interactions[I016]",
+        "related_history ← Interactions[I017]",
+        "related_history_count ← Interactions (topic-matched count)",
+        "open_commitment_flag ← Interactions (derived)"
+      ],
+      "regraded_at": "2026-11-01T17:37:47.270423+00:00",
+      "id": 11,
+      "run_id": 2,
+      "case_id": "case5_renewal_contact_R003",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:51.938170+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "High-intent prospective renter",
+      "message": "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 12,
+      "run_id": 2,
+      "case_id": "case1_high_intent_prospect",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:55.324409+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "High-intent prospective renter",
+      "message": "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 13,
+      "run_id": 2,
+      "case_id": "case1_high_intent_prospect",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:35:58.780171+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Generic price shopper, unknown inventory",
+      "message": "What is the cheapest 1-bedroom apartment you have in Florida right now?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 14,
+      "run_id": 2,
+      "case_id": "case2_price_shopper",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:02.855635+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Generic price shopper, unknown inventory",
+      "message": "What is the cheapest 1-bedroom apartment you have in Florida right now?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 15,
+      "run_id": 2,
+      "case_id": "case2_price_shopper",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:06.238809+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Repeated air-conditioning issue (R001)",
+      "message": "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 16,
+      "run_id": 2,
+      "case_id": "case3_repeat_ac_R001",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:09.684775+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Repeated air-conditioning issue (R001)",
+      "message": "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 17,
+      "run_id": 2,
+      "case_id": "case3_repeat_ac_R001",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:13.064233+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Small faucet leak, no confirmed context",
+      "message": "My kitchen faucet has a little drip. Should I fix it myself?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 18,
+      "run_id": 2,
+      "case_id": "case4_faucet_no_record",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:16.478643+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Small faucet leak, no confirmed context",
+      "message": "My kitchen faucet has a little drip. Should I fix it myself?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 19,
+      "run_id": 2,
+      "case_id": "case4_faucet_no_record",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:19.919693+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "baseline-v1#0eaa993f",
+      "case_title": "Renewal concern and preferred contact (R003)",
+      "message": "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone explain my choices?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 20,
+      "run_id": 2,
+      "case_id": "case5_renewal_contact_R003",
+      "mode": "baseline",
+      "human_verdict": null,
+      "human_notes": null
+    },
+    {
+      "created_at": "2026-11-01T17:36:23.285740+00:00",
+      "target": "openrouter:google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "requested_model": "google/gemma-4-31b-it:free",
+      "model": "google/gemma-4-31b-it:free",
+      "is_mock": false,
+      "temperature": 0.2,
+      "prompt_version": "mckinley-v0.1+oc1#dc9454e1",
+      "case_title": "Renewal concern and preferred contact (R003)",
+      "message": "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone explain my choices?",
+      "status": "error",
+      "error_code": "MODEL_RATE_LIMITED",
+      "error_message": "openrouter rate limit reached (429). Free tiers are limited; retry later: Provider returned error",
+      "id": 21,
+      "run_id": 2,
+      "case_id": "case5_renewal_contact_R003",
+      "mode": "aware",
+      "human_verdict": null,
+      "human_notes": null
+    }
+  ]
+}

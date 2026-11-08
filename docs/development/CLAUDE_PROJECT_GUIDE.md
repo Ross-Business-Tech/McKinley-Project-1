@@ -1,0 +1,80 @@
+# Project guide for developers and Claude Code (McKinley AI)
+
+Supplements the Ross IT root [`CLAUDE.md`](../../CLAUDE.md) (publishing, branches, protected paths — it wins on
+those) and [`engineering-rules.md`](engineering-rules.md) (imported by `backend/CLAUDE.md` and `frontend/CLAUDE.md`).
+Keep this file short; link to the authoritative documents instead of copying them.
+
+## Before you start
+1. Read `README.md`, [`docs/PROJECT_HANDOFF.md`](../PROJECT_HANDOFF.md) and this guide. For safety work also read
+   [`docs/safety/safety-evaluation.md`](../safety/safety-evaluation.md).
+2. `git status`; `git fetch origin development`; merge it if you are behind. Never lose uncommitted work.
+3. Work on a feature branch. Pull requests go into `development`. Never push to `main`, never force-push, never
+   rewrite shared history. Do not merge your own PR unless the team asked you to.
+
+## Architecture in one breath
+Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`). A chat turn is
+`chat_engine.run_turn`: receive → identity → **2b safety (`app/risk`)** → privacy → context → gate → plan
+(`actions.plan_turn`) → generate (one model call, often skipped) → validate → handoff → persist. Details:
+[`architecture/overview.md`](../architecture/overview.md), [`diagrams/`](../diagrams/).
+
+## Conventions
+- **Python:** `uv` only (`uv sync`, `uv add`, `uv run …`); Pydantic models for every request/response; one error
+  envelope `{"error": {code, message, retryable}}` (raise `HTTPException(detail={"code": …, "message": …})`);
+  ruff line length 120.
+- **TypeScript:** strict; types in `frontend/src/lib/types.ts` mirror the backend Pydantic models (keep literals in
+  sync); colours through the `mk-*` tokens; customer text in `src/lib/customer.ts` (EN + draft ES).
+- **Planner:** `plan_turn` is an ordered list of checks — the order is the specification. Add a branch at the right
+  place, never reorder silently; add a test that pins the new behaviour.
+- **Detectors and safety regexes** (`emergency.py`, `intake.py`): extend, don't merge similar-looking patterns; each
+  change needs positive and negative tests.
+- **Wording:** customer-facing text lives in `templates.py` / `customer.ts`; never split template strings to reuse
+  part of them — add a key.
+
+## LLM providers and secrets
+- Provider-agnostic gateway (`app/llm/`); configure with `LLM_PROVIDER`, `LLM_MODEL`, `OPENROUTER_API_KEY` in
+  `backend/.env` (git-ignored). Never print, log, commit or copy keys; check presence as booleans only.
+- Never silently switch models (`MODEL_SWITCHED`), never fall back to the mock without labelling it, never call the
+  mock or a template "live".
+- Free hosted models may log prompts: synthetic data only. The resident workbook is git-ignored; never commit
+  real personal data, `.env` files or databases. The repository is public.
+
+## Safety-critical changes (`app/risk`, `emergency.py`, safety templates, staff guard, identity rules)
+- The semantic layer may only add caution; a failed classifier is never "safe"; safety text is fixed and approved
+  wording, never model-written; never claim anyone was dispatched or notified.
+- Every change: unit tests for the rule plus the policy table (`tests/test_risk_policy_table.py`), run the full
+  suite, and ask for an **independent** review (a reviewer or subagent that did not write the change).
+- Measure recall only on a **fresh holdout written by someone else**; keep it out of the repo; never tune on it and
+  then report it as held-out. Do not remove a test because it encodes a known safety failure.
+- Do not downgrade documented P0s (missed emergencies, client-asserted identity, unapproved scripts) in any doc.
+
+## Tests (required before every commit)
+```bash
+cd backend && uv run pytest && uv run ruff check .
+cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+npm run smoke          # from the root, when the UI changed (open the phone screenshots)
+```
+Tests are offline: an autouse fixture removes provider keys and staff tokens from the environment.
+
+## UI/UX standards
+WCAG 2.2 AA (keyboard, visible focus, 44 px targets, live regions announce once, reflow at 320 px); customer UI stays
+simple — diagnostics belong in `/staff/`; read-back before any save; say plainly what was and was not sent. Check
+real screenshots at 375, 390, 768 and 1440 px for visible changes.
+
+## Docs and diagrams
+- Update the docs your change makes untrue, in the same PR: README status, `docs/workflows/traceability.md`,
+  `docs/safety/safety-evaluation.md`, `docs/evaluation/README.md`, [`docs/PROJECT_HANDOFF.md`](../PROJECT_HANDOFF.md).
+- Mermaid diagrams must match the code; validate syntax after editing. Do not describe planned work as implemented;
+  historical records go to `docs/archive/` unchanged.
+
+## Subagents
+Delegate independent work (reviews, audits, simulations) with a precise brief: goal, files, what not to touch,
+expected output. Reviewers and verifiers must not grade their own work, and holdout writers must be separate from
+implementers. Read-only audits report; the lead integrates. Never let a subagent edit Ross IT paths or secrets.
+
+## Definition of Done
+- Behaviour implemented with tests; backend and frontend suites, lint, typecheck and build pass; smoke run when UI
+  changed.
+- No secrets or real data; mock and live clearly separated in results.
+- Affected docs and diagrams updated; known limitations still stated.
+- Focused commits on a feature branch; PR into `development` with what changed, what was tested, and the
+  production-readiness caveat.
