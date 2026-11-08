@@ -116,6 +116,8 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "fair_housing_or_legal",
         re.compile(
             r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
+            r"(?:take|taking|go|going|see|seeing) (?:you |this |it |us )?(?:to |in )court|small claims|"
+            r"legal action|press charges|"
             r"retaliat|"
             r"accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|autis\w*|adhd|"
             r"special needs|medical condition|mobility|blind(?!s)|deaf|hearing impair|"
