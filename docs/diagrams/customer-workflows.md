@@ -6,11 +6,15 @@ The order of checks in `actions.plan_turn`. Earlier checks win. Every branch end
 flowchart TD
   M["Message + trusted identity<br/>(demo sign-in)"] --> O{"SMS and an<br/>opt-out keyword?"}
   O -- yes --> OO["F2: confirm opt-out<br/>(no model call)"]
-  O -- no --> EM{"Emergency wording?<br/>(any audience)"}
+  O -- no --> EM{"Safety policy: full alert?<br/>(risk/: rules, window, optional semantic)"}
   EM -- yes --> EE["F6+F9: 911 / leave / emergency line first<br/>urgent note saved once (prototype queue)<br/>refusing to leave: steps repeated"]
-  EM -- no --> DS{"Distress wording?"}
-  DS -- yes --> DSA["Calm reply + 988 care line<br/>no form"]
-  DS -- no --> AS{"Question about something<br/>already sent, or 'send it' again?"}
+  EM -- no --> DS{"Policy care: distress?"}
+  DS -- yes --> DSA["Calm reply + 988 care line<br/>no form; staff check-in recommended"]
+  DS -- no --> SI{"Policy: safety info<br/>(hypothetical / past hazard)?"}
+  SI -- yes --> SIA["Steps shown calmly;<br/>'Is it happening now?'"]
+  SI -- no --> OP{"Not the account holder? Pasted instructions?<br/>Lockout? 'Did that go in / just notes?'"}
+  OP -- yes --> OPA["No account details / refuse instructions /<br/>after-hours line / what this chat actually saved"]
+  OP -- no --> AS{"Question about something<br/>already sent, or 'send it' again?"}
   AS -- yes --> ASA["Plain answer with the reference:<br/>nobody notified, no time set"]
   AS -- no --> R{"Card ready and<br/>person says yes / no?"}
   R -- yes --> RC["F7/F5/F9: write prototype record<br/>reference + status"]
@@ -19,17 +23,18 @@ flowchart TD
   L -- yes --> H
   L -- no --> S{"Vendor, steering, sensitive data,<br/>accommodation/legal, unverified status,<br/>asks for a person or the office,<br/>contact-preference change, change/cancel request?<br/>(policy topic: 'not approved yet' + Ask the office;<br/>unsure twice: offer the office, no note)"}
   S -- yes --> H["F9: note for the office<br/>(read-back, person confirms)"]
+  S -- "claims a prior decision" --> PC["Not agreed with; note for staff to check"]
   S -- no --> ST{"Matched resident<br/>asks for status?"}
   ST -- yes --> STL["F8: open items, no timing<br/>(+ office note if frustrated)"]
   ST -- no --> MT{"Maintenance, or answering<br/>an open repair card?"}
   MT -- "guest" --> MG["Ask to sign in;<br/>911 if dangerous"]
   MT -- "unmatched resident" --> H
-  MT -- "matched resident" --> MI["F6: issue, room, entry permission<br/>(contact + visit window from account)<br/>one question at a time; vague issue: ask what first<br/>corrections replace, not append"]
+  MT -- "matched resident" --> MI["F6: issue, room, entry permission<br/>(contact + visit window from account)<br/>one question at a time; vague issue: ask what first<br/>corrections replace, not append ('the hall one')<br/>several problems: one request each, next offered after Send"]
   MI --> MR{"All fields?"}
   MR -- no --> MI
   MR -- yes --> MC["F7 read-back card:<br/>Send repair request"]
   MT -- no --> TR{"Prospect or guest asks to tour,<br/>or answers an open tour card?"}
-  TR -- yes --> TI["F5: community/city, days, time of day<br/>changes overwrite earlier answers"]
+  TR -- yes --> TI["F5: community/city, days, time of day<br/>changes overwrite earlier answers; 'not Saturday' removes it<br/>'no tour' is respected"]
   TI --> TC["Read-back card:<br/>Send tour request (not a booking)"]
   TR -- no --> RN{"Renewal from<br/>a resident?"}
   RN -- yes --> H

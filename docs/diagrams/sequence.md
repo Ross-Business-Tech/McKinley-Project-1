@@ -21,11 +21,19 @@ sequenceDiagram
   A->>E: run_turn(..., fallback_on_model_error=True)
   E->>E: 1 receive: NFKC fold, strip delimiter tags, redact PII
   E->>C: 2 identity: build_context(persona_id) gives trusted audience + verified
+  E->>S: earlier user turns (last 3) + urgent notes already saved in this session
+  E->>E: 2b safety: risk.detect (rules, framing, window)
+  opt classifier configured (key present, not mock)
+    E->>L: risk classifier (structured JSON, 6 s, no retry)
+    L-->>E: SemanticRisk or failure status (never treated as safe)
+  end
+  E->>E: risk.policy.decide (R1-R9): full alert / care line / safety info / none
   E->>E: 3 privacy: note redacted PII types
   E->>C: 4 context: allowlisted, topic-gated, injection-screened fields
   E->>S: prior gate decision (ignored while a draft is open)
   E->>G: 5 classify(message, GateContext)
   G-->>E: GateDecision (rules floor, an external gate can only add risk)
+  E->>E: safety full alert forces urgency=emergency (never the reverse)
   E->>P: 6 select_workflow + plan_turn(gate, ctx, draft, channel, lang)
   P->>S: read or save the action draft, write an urgent note on emergency
   P-->>E: TurnPlan (functions, template, action card, chips, handoff, records)
@@ -39,9 +47,9 @@ sequenceDiagram
       L-->>E: JSON {reply, handoff, ...}
     end
   end
-  E->>E: 8 output_checks, a critical failure means the template replaces the reply
+  E->>E: 8 output_checks, a critical failure means the template replaces the reply;<br/>approved safety text selected from the policy decision (risk.responses)
   E->>E: 9 handoff recommendation (gate flags or plan), delivery note
-  E->>S: 10 session turns + gate metadata (no message text in gate log)
+  E->>S: 10 session turns + gate metadata incl. safety rule / semantic status (no message text in gate log)
   E-->>U: ChatResponse (reply, action, status_items, suggested_replies, diagnostics)
 ```
 

@@ -1,6 +1,6 @@
 {
  "kind": "static_demo_snapshot",
- "generated_at": "2026-11-07T18:28:44.428571+00:00",
+ "generated_at": "2026-11-08T07:42:08.524384+00:00",
  "notice": "Static demonstration: pre-computed with the deterministic MOCK provider (not a language model) and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
  "workbook_loaded": true,
  "personas": [
@@ -362,8 +362,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "e1fe74d9d1274d1f969e019a763b1a4e",
-    "created_at": "2026-11-07T18:28:44.279605Z",
+    "session_id": "77d87ddacfdc431ca2a66dc447946518",
+    "created_at": "2026-11-08T07:42:08.308811Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -383,6 +383,12 @@
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
       "ms": 2
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
+      "ms": 0
      },
      {
       "step": "3_privacy",
@@ -444,7 +450,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I'd be glad to set up a tour request for you. What time of day is easiest: morning, afternoon or evening?",
@@ -521,8 +557,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "79912b99874b45a5af32c278f71d0557",
-    "created_at": "2026-11-07T18:28:44.285132Z",
+    "session_id": "a814e4360b594a65b47896fde5a558c9",
+    "created_at": "2026-11-08T07:42:08.315737Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -598,6 +634,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -703,7 +745,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I'd be glad to set up a tour request for you. What time of day is easiest: morning, afternoon or evening?",
@@ -785,8 +857,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "e3e07f3ce2fb43038e1a219443e30783",
-    "created_at": "2026-11-07T18:28:44.287263Z",
+    "session_id": "d9e4faf25fef4e5492ff6c566e24154e",
+    "created_at": "2026-11-08T07:42:08.319086Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -870,6 +942,12 @@
       "ms": 0
      },
      {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
+      "ms": 0
+     },
+     {
       "step": "3_privacy",
       "status": "ok",
       "detail": "no PII patterns in message",
@@ -891,7 +969,7 @@
       "step": "6_workflow",
       "status": "ok",
       "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5'] | action=tour_request:collecting",
-      "ms": 0
+      "ms": 1
      },
      {
       "step": "7_generate",
@@ -972,7 +1050,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "case2_price_shopper": {
@@ -1051,8 +1159,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "a94a072a9cc544338c2613e15bb7ccd8",
-    "created_at": "2026-11-07T18:28:44.288095Z",
+    "session_id": "420e203e2bac490e9a1cd687f65afa5b",
+    "created_at": "2026-11-08T07:42:08.320578Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1071,6 +1179,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -1133,7 +1247,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
@@ -1210,8 +1354,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "cb7f0221d3f94e03a3fe15354833d86a",
-    "created_at": "2026-11-07T18:28:44.289768Z",
+    "session_id": "65e1116f6bd84129971aaabc49f7b021",
+    "created_at": "2026-11-08T07:42:08.323107Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1273,6 +1417,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -1341,7 +1491,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. The leasing team has current rent prices. Would you like to request a tour?",
@@ -1421,8 +1601,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "111fb45792f44edf924aeed77923a650",
-    "created_at": "2026-11-07T18:28:44.291401Z",
+    "session_id": "45f096278f9a4f77aed469e001f30e72",
+    "created_at": "2026-11-08T07:42:08.325656Z",
     "gate": {
      "audience": "prospect",
      "intent": "leasing",
@@ -1484,6 +1664,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -1552,7 +1738,37 @@
     "identity_note": "Browsing as a prospective resident (demo profile)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "case3_repeat_ac_R001": {
@@ -1637,8 +1853,8 @@
     },
     "latency_ms": 22,
     "stop_reason": "mock",
-    "session_id": "3de810ff98d740cb80ab980998c3da38",
-    "created_at": "2026-11-07T18:28:44.292937Z",
+    "session_id": "7af2394115cf49c49108fa989959cbd6",
+    "created_at": "2026-11-08T07:42:08.328080Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -1657,6 +1873,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -1719,7 +1941,37 @@
     "identity_note": "Signed in as Marisol (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. When you send this request it will be marked high priority for a manager to review. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -1802,8 +2054,8 @@
     },
     "latency_ms": 13,
     "stop_reason": "mock",
-    "session_id": "c1cdf3f523bf4da6a9c8527bf888a984",
-    "created_at": "2026-11-07T18:28:44.296116Z",
+    "session_id": "4f83a05193b144a5afebebddc1b0ca55",
+    "created_at": "2026-11-08T07:42:08.332545Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -1878,6 +2130,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -1978,7 +2236,37 @@
     "identity_note": "Signed in as Marisol (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -2088,8 +2376,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "a929ef1f955046f8ab13dceb69dbe18a",
-    "created_at": "2026-11-07T18:28:44.298572Z",
+    "session_id": "e89fda9516c74f748f58d426e69d773a",
+    "created_at": "2026-11-08T07:42:08.336098Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2176,6 +2464,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -2288,7 +2582,37 @@
     "identity_note": "Signed in as Marisol (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "case4_faucet_no_record": {
@@ -2367,8 +2691,8 @@
     },
     "latency_ms": 10,
     "stop_reason": "mock",
-    "session_id": "8a0bd100e0034c7fa211d004c03edc58",
-    "created_at": "2026-11-07T18:28:44.299936Z",
+    "session_id": "d5739f3d0fee4a77875bc682e90205e6",
+    "created_at": "2026-11-08T07:42:08.338003Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -2387,6 +2711,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -2449,7 +2779,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I can't match you to a resident account here, so I can't file a repair request for a unit. The office can take it from you directly. If water, gas, smoke or sparks are involved, call 911 or your community's emergency maintenance line now.",
@@ -2526,8 +2886,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "58c044a3a8d84bb4ad8508fe5fc8aabc",
-    "created_at": "2026-11-07T18:28:44.301272Z",
+    "session_id": "85869edc57534d9ea16acdbf9bba4e4a",
+    "created_at": "2026-11-08T07:42:08.340089Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2599,6 +2959,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -2698,7 +3064,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I can't match you to a resident account here, so I can't file a repair request for a unit. The office can take it from you directly. If water, gas, smoke or sparks are involved, call 911 or your community's emergency maintenance line now.",
@@ -2781,8 +3177,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "56bb98522acc472eac136e8681746a3d",
-    "created_at": "2026-11-07T18:28:44.302548Z",
+    "session_id": "af03fe2ea48e4b24a1d6e6b8bac986a9",
+    "created_at": "2026-11-08T07:42:08.342028Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -2854,6 +3250,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -2953,7 +3355,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "case5_renewal_contact_R003": {
@@ -3043,8 +3475,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "ccb464c1e32d4b17a0941b702af4eae8",
-    "created_at": "2026-11-07T18:28:44.304112Z",
+    "session_id": "dfd80ba25ff44929b7f41edf2aa540c4",
+    "created_at": "2026-11-08T07:42:08.344728Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3063,6 +3495,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -3125,7 +3563,37 @@
     "identity_note": "Signed in as Jordan (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I can't change your contact settings from here, but I can send \"Please don't call me while I'm sleeping\" to the office. The note is below.",
@@ -3213,8 +3681,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "f90c0e13370b4131b52ef19ebb54a9f1",
-    "created_at": "2026-11-07T18:28:44.306584Z",
+    "session_id": "4a60c4de4fdb402da3634983be920ffb",
+    "created_at": "2026-11-08T07:42:08.348492Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3289,6 +3757,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -3382,7 +3856,37 @@
     "identity_note": "Signed in as Jordan (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I can't change your contact settings from here, but I can send \"Please don't call me while I'm sleeping\" to the office. The note is below.",
@@ -3488,8 +3992,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "5f9b0a3a7ef54017b1cdb06f6089ba9e",
-    "created_at": "2026-11-07T18:28:44.309155Z",
+    "session_id": "1e32c8616b244f54a1e51116c59b367d",
+    "created_at": "2026-11-08T07:42:08.352347Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -3576,6 +4080,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -3675,7 +4185,37 @@
     "identity_note": "Signed in as Jordan (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x01_emergency_gas": {
@@ -3760,8 +4300,8 @@
     },
     "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "fb89f3bdd3c74ad89bd6c2491ed0f16d",
-    "created_at": "2026-11-07T18:28:44.310489Z",
+    "session_id": "aa8574e8963e4ab9bf25cb01cb2e2458",
+    "created_at": "2026-11-08T07:42:08.354260Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -3780,6 +4320,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R1: full_alert (gas); semantic=disabled",
       "ms": 0
      },
      {
@@ -3814,12 +4360,6 @@
      },
      {
       "step": "8_validate",
-      "status": "warn",
-      "detail": "possible risk signal (danger): calm safety line added",
-      "ms": 0
-     },
-     {
-      "step": "8_validate",
       "status": "ok",
       "detail": "all checks passed",
       "ms": 0
@@ -3847,8 +4387,40 @@
     "suggested_replies": [],
     "identity_note": "Signed in as Theo (demo account)",
     "action_cleared": null,
-    "care_kind": "danger",
-    "care_note": "If anyone is hurt or in danger right now, call 911. If something in your home is unsafe, stay away from it and call your community's emergency maintenance line."
+    "care_kind": null,
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": "gas",
+      "framing": "report",
+      "mentioned_kind": null,
+      "care": "danger",
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "full_alert",
+      "kind": "gas",
+      "care": null,
+      "also_988": false,
+      "needs_human": true,
+      "escalation_priority": "urgent",
+      "sources": [
+       "deterministic"
+      ],
+      "rule": "R1",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line.",
@@ -3936,8 +4508,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "fbdb5e74c9804f13954408fbefc98bec",
-    "created_at": "2026-11-07T18:28:44.311460Z",
+    "session_id": "11945429f2684225be9180d722479eb7",
+    "created_at": "2026-11-08T07:42:08.355810Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4010,6 +4582,12 @@
       "ms": 0
      },
      {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R1: full_alert (gas); semantic=mock",
+      "ms": 0
+     },
+     {
       "step": "3_privacy",
       "status": "ok",
       "detail": "no PII patterns in message",
@@ -4073,7 +4651,39 @@
     "identity_note": "Signed in as Theo (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": "gas",
+      "framing": "report",
+      "mentioned_kind": null,
+      "care": "danger",
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "full_alert",
+      "kind": "gas",
+      "care": null,
+      "also_988": false,
+      "needs_human": true,
+      "escalation_priority": "urgent",
+      "sources": [
+       "deterministic"
+      ],
+      "rule": "R1",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "Leave now. Don't use light switches, phones or flames inside. Once you're outside, call 911 or your gas company, then your community's emergency maintenance line.",
@@ -4167,8 +4777,8 @@
     },
     "latency_ms": 0,
     "stop_reason": "deterministic",
-    "session_id": "95d1e44bb6304748a7aa889d2ecdaaa8",
-    "created_at": "2026-11-07T18:28:44.312411Z",
+    "session_id": "0ad4ce5202bd40078972d4f0042218fc",
+    "created_at": "2026-11-08T07:42:08.357366Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4247,6 +4857,12 @@
       "ms": 0
      },
      {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R1: full_alert (gas); semantic=mock",
+      "ms": 0
+     },
+     {
       "step": "3_privacy",
       "status": "ok",
       "detail": "no PII patterns in message",
@@ -4310,7 +4926,39 @@
     "identity_note": "Signed in as Theo (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": "gas",
+      "framing": "report",
+      "mentioned_kind": null,
+      "care": "danger",
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "full_alert",
+      "kind": "gas",
+      "care": null,
+      "also_988": false,
+      "needs_human": true,
+      "escalation_priority": "urgent",
+      "sources": [
+       "deterministic"
+      ],
+      "rule": "R1",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x02_repeat_sink_R008": {
@@ -4395,8 +5043,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "08393e02d2794a1fb8d26cfac51ffe1a",
-    "created_at": "2026-11-07T18:28:44.314011Z",
+    "session_id": "e0234e58591c48c1ba109451decd71b9",
+    "created_at": "2026-11-08T07:42:08.359730Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -4415,6 +5063,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -4477,7 +5131,37 @@
     "identity_note": "Signed in as Desmond (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -4560,8 +5244,8 @@
     },
     "latency_ms": 18,
     "stop_reason": "mock",
-    "session_id": "e189738144f3439aa5f6d30e56650bff",
-    "created_at": "2026-11-07T18:28:44.316234Z",
+    "session_id": "9cfc3b254c8c4272a2eab20c07eb50a0",
+    "created_at": "2026-11-08T07:42:08.362985Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4618,6 +5302,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -4717,7 +5407,37 @@
     "identity_note": "Signed in as Desmond (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -4826,8 +5546,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "72d63f44793344e1bf25c484ff630635",
-    "created_at": "2026-11-07T18:28:44.318492Z",
+    "session_id": "2224b2d57b9b45469797b87809d5da0b",
+    "created_at": "2026-11-08T07:42:08.366605Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -4913,6 +5633,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 1
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -5025,7 +5751,37 @@
     "identity_note": "Signed in as Desmond (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x03_unverified_private": {
@@ -5110,8 +5866,8 @@
     },
     "latency_ms": 21,
     "stop_reason": "mock",
-    "session_id": "356b1d5634e047b1b198879d3f2c86f2",
-    "created_at": "2026-11-07T18:28:44.319899Z",
+    "session_id": "aba79f5b4d4a4351b9acf1e3ff4b3550",
+    "created_at": "2026-11-08T07:42:08.368643Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5130,6 +5886,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -5192,7 +5954,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I can't share request or account details until you're signed in to your resident account. The office can look it up after confirming who you are. I've prepared a note for them.",
@@ -5275,8 +6067,8 @@
     },
     "latency_ms": 6,
     "stop_reason": "mock",
-    "session_id": "7a832437c4364063986932a9ca9be0c1",
-    "created_at": "2026-11-07T18:28:44.320853Z",
+    "session_id": "aab0ab3d763441738b2c89aa32eeb48a",
+    "created_at": "2026-11-08T07:42:08.370328Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5350,6 +6142,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -5449,7 +6247,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I can't share request or account details until you're signed in to your resident account. The office can look it up after confirming who you are. I've prepared a note for them.",
@@ -5537,8 +6365,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "c04ea615942840339ad26c8cf9fca789",
-    "created_at": "2026-11-07T18:28:44.321790Z",
+    "session_id": "a2b5ff0a937b4582820e7b30208ea57b",
+    "created_at": "2026-11-08T07:42:08.371884Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -5612,6 +6440,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -5711,7 +6545,37 @@
     "identity_note": "Not matched to a resident account",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x04_sensitive_data": {
@@ -5796,8 +6660,8 @@
     },
     "latency_ms": 7,
     "stop_reason": "mock",
-    "session_id": "36af9c3f338a45c2982d527157c86a4e",
-    "created_at": "2026-11-07T18:28:44.322970Z",
+    "session_id": "2dabd69c4d2641e6825ed44931a179c7",
+    "created_at": "2026-11-08T07:42:08.373763Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -5816,6 +6680,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -5878,7 +6748,37 @@
     "identity_note": "Signed in as Hana (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what you sent. Payments and account questions are handled by the office, and I've prepared a note for them.",
@@ -5961,8 +6861,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "d58754e4197944d48838e711c0dbbfec",
-    "created_at": "2026-11-07T18:28:44.324639Z",
+    "session_id": "cb0c01e63875443fb5ef1397d52f50bf",
+    "created_at": "2026-11-08T07:42:08.376269Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6027,6 +6927,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -6120,7 +7026,37 @@
     "identity_note": "Signed in as Hana (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what you sent. Payments and account questions are handled by the office, and I've prepared a note for them.",
@@ -6211,8 +7147,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "7354e0c1b0974b1eb34d0f4b4f556eb7",
-    "created_at": "2026-11-07T18:28:44.326307Z",
+    "session_id": "ef70be796fd4423b8f21bc18a7c66681",
+    "created_at": "2026-11-08T07:42:08.378769Z",
     "gate": {
      "audience": "resident",
      "intent": "general",
@@ -6285,6 +7221,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -6384,7 +7326,37 @@
     "identity_note": "Signed in as Hana (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x05_low_confidence": {
@@ -6463,8 +7435,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "f1f46feb6a39432d873a2ec1a0509b47",
-    "created_at": "2026-11-07T18:28:44.327341Z",
+    "session_id": "47893c8cdccd4f3982c71b7a8bbf5ffd",
+    "created_at": "2026-11-08T07:42:08.380288Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -6483,6 +7455,12 @@
       "step": "2_identity",
       "status": "warn",
       "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -6545,7 +7523,37 @@
     "identity_note": "Not signed in",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Happy to help. Are you a current McKinley resident, or are you looking for a new home?",
@@ -6622,8 +7630,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "df6a7d94cc4b4b4087c78ac3713d538d",
-    "created_at": "2026-11-07T18:28:44.328792Z",
+    "session_id": "cb42400cae2d417c8bc93c68eecaf8b6",
+    "created_at": "2026-11-08T07:42:08.382399Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6673,6 +7681,12 @@
       "step": "2_identity",
       "status": "warn",
       "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -6740,7 +7754,37 @@
     "identity_note": "Not signed in",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "Happy to help. Are you a current McKinley resident, or are you looking for a new home?",
@@ -6817,8 +7861,8 @@
     },
     "latency_ms": 14,
     "stop_reason": "mock",
-    "session_id": "299a41d0ca26494c8b5c7d2823250b8a",
-    "created_at": "2026-11-07T18:28:44.330245Z",
+    "session_id": "fd836e8a5d444f7e939fc545ac5d9791",
+    "created_at": "2026-11-08T07:42:08.384306Z",
     "gate": {
      "audience": "unknown",
      "intent": "general",
@@ -6868,6 +7912,12 @@
       "step": "2_identity",
       "status": "warn",
       "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -6935,7 +7985,37 @@
     "identity_note": "Not signed in",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x06_human_request_R020": {
@@ -7020,8 +8100,8 @@
     },
     "latency_ms": 17,
     "stop_reason": "mock",
-    "session_id": "e060b177d50a4cc7871d891151e6c2dd",
-    "created_at": "2026-11-07T18:28:44.331479Z",
+    "session_id": "f8c690bddd1941799535035a99270114",
+    "created_at": "2026-11-08T07:42:08.386103Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7040,6 +8120,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -7102,10 +8188,40 @@
     "identity_note": "Signed in as Simone (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
-    "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+    "reply": "A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -7179,14 +8295,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+noctx",
     "usage": {
-     "input_tokens": 895,
-     "output_tokens": 28,
+     "input_tokens": 893,
+     "output_tokens": 26,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 23,
+    "latency_ms": 24,
     "stop_reason": "mock",
-    "session_id": "4ae6ada493bb4abcaee8a7626d5d28d5",
-    "created_at": "2026-11-07T18:28:44.333017Z",
+    "session_id": "5d50cfed7cf649dd8c3d03fdec014cb5",
+    "created_at": "2026-11-08T07:42:08.388350Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7252,6 +8368,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -7345,10 +8467,40 @@
     "identity_note": "Signed in as Simone (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
-    "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+    "reply": "A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
     "safety_notice": null,
     "emergency_kind": null,
     "safety_heading": null,
@@ -7440,14 +8592,14 @@
     "temperature": 0.2,
     "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
     "usage": {
-     "input_tokens": 986,
-     "output_tokens": 28,
+     "input_tokens": 984,
+     "output_tokens": 26,
      "estimated_cost_usd": 0.0
     },
-    "latency_ms": 11,
+    "latency_ms": 16,
     "stop_reason": "mock",
-    "session_id": "6ffd8a8e06cb4918b210945cb6a1c577",
-    "created_at": "2026-11-07T18:28:44.334540Z",
+    "session_id": "19a37998d2cb4d9b81f5590c732397be",
+    "created_at": "2026-11-08T07:42:08.390857Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -7525,6 +8677,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -7624,7 +8782,37 @@
     "identity_note": "Signed in as Simone (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x07_injection_history": {
@@ -7709,8 +8897,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "586976de98a3470297010ac61e21e0eb",
-    "created_at": "2026-11-07T18:28:44.335778Z",
+    "session_id": "eb1b1d0ae12c4ddaa1a46249d58e1167",
+    "created_at": "2026-11-08T07:42:08.392449Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -7729,6 +8917,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -7791,7 +8985,37 @@
     "identity_note": "Signed in as Casey (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -7874,8 +9098,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "916ea9589a5940d1a141a60ba41dc84e",
-    "created_at": "2026-11-07T18:28:44.336911Z",
+    "session_id": "2aaa7603dbc6473da01fb719ffe6fe9d",
+    "created_at": "2026-11-08T07:42:08.393937Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -7932,6 +9156,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -8031,7 +9261,37 @@
     "identity_note": "Signed in as Casey (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again. I can see related requests on your record, so I'll mark this as a repeat issue for a manager to review, not just another routine repair. Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
@@ -8136,8 +9396,8 @@
     },
     "latency_ms": 15,
     "stop_reason": "mock",
-    "session_id": "dd1a448795444fb29df055701e5412d7",
-    "created_at": "2026-11-07T18:28:44.338123Z",
+    "session_id": "3e7eaf5f1966477e844ed08431cae48c",
+    "created_at": "2026-11-08T07:42:08.395599Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -8222,6 +9482,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -8328,7 +9594,37 @@
     "identity_note": "Signed in as Casey (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x08_renewal_affordability_R011": {
@@ -8413,8 +9709,8 @@
     },
     "latency_ms": 8,
     "stop_reason": "mock",
-    "session_id": "fc32b315712945348cb9adf646ebf01b",
-    "created_at": "2026-11-07T18:28:44.339765Z",
+    "session_id": "3ec84ec7b79f46f4b9b6c498abab7063",
+    "created_at": "2026-11-08T07:42:08.398097Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -8433,6 +9729,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -8495,7 +9797,37 @@
     "identity_note": "Signed in as Devon (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "I understand. Renewal decisions are a big deal, and the leasing office can walk you through your options. I can't quote or change renewal terms myself. I've prepared a note for them.",
@@ -8578,8 +9910,8 @@
     },
     "latency_ms": 12,
     "stop_reason": "mock",
-    "session_id": "d1a4de7cfd1541c88301979eebe438f2",
-    "created_at": "2026-11-07T18:28:44.342295Z",
+    "session_id": "7815399bd0d943b5ae6d51f72c44691c",
+    "created_at": "2026-11-08T07:42:08.401814Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8651,6 +9983,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -8744,7 +10082,37 @@
     "identity_note": "Signed in as Devon (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "I understand. Renewal decisions are a big deal, and the leasing office can walk you through your options. I can't quote or change renewal terms myself. I've prepared a note for them and noted that you prefer chat.",
@@ -8842,8 +10210,8 @@
     },
     "latency_ms": 19,
     "stop_reason": "mock",
-    "session_id": "dd66d546d8574a48917ab7e24ee9a4df",
-    "created_at": "2026-11-07T18:28:44.344914Z",
+    "session_id": "67a403098ce24f2984a363d5ac058d65",
+    "created_at": "2026-11-08T07:42:08.405573Z",
     "gate": {
      "audience": "resident",
      "intent": "renewal",
@@ -8926,6 +10294,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -9025,7 +10399,37 @@
     "identity_note": "Signed in as Devon (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   },
   "x09_spanish_resident_R012": {
@@ -9104,8 +10508,8 @@
     },
     "latency_ms": 9,
     "stop_reason": "mock",
-    "session_id": "3f1c5fb177264707b0a615a4122d1fe4",
-    "created_at": "2026-11-07T18:28:44.346734Z",
+    "session_id": "8deb1bb881524d9a9ec7e1a9c399a2e6",
+    "created_at": "2026-11-08T07:42:08.407856Z",
     "gate": null,
     "workflow": null,
     "routed_workflow": null,
@@ -9124,6 +10528,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "ok",
+      "detail": "R8: none; semantic=disabled",
       "ms": 0
      },
      {
@@ -9186,7 +10596,37 @@
     "identity_note": "Signed in as Valeria (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "disabled",
+      "risk": null,
+      "target": null,
+      "model": null,
+      "latency_ms": null,
+      "detail": "no classifier in this context"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": false
+     }
+    }
    },
    "prompt_only": {
     "reply": "Entendido. Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle primero?",
@@ -9263,8 +10703,8 @@
     },
     "latency_ms": 20,
     "stop_reason": "mock",
-    "session_id": "5866a6be8ffb424d9959b124d38ef2c8",
-    "created_at": "2026-11-07T18:28:44.348538Z",
+    "session_id": "57e14c77fc6245daa974f98cea866b51",
+    "created_at": "2026-11-08T07:42:08.410578Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9318,6 +10758,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -9411,7 +10857,37 @@
     "identity_note": "Signed in as Valeria (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    },
    "aware": {
     "reply": "Entendido. Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle primero?",
@@ -9499,8 +10975,8 @@
     },
     "latency_ms": 23,
     "stop_reason": "mock",
-    "session_id": "a356f827ffb54f69b049a082a04f1d4a",
-    "created_at": "2026-11-07T18:28:44.350327Z",
+    "session_id": "c4c16594da5546c88fad2919bb729287",
+    "created_at": "2026-11-08T07:42:08.413103Z",
     "gate": {
      "audience": "resident",
      "intent": "maintenance",
@@ -9554,6 +11030,12 @@
       "step": "2_identity",
       "status": "ok",
       "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+      "ms": 0
+     },
+     {
+      "step": "2b_safety",
+      "status": "warn",
+      "detail": "R8: none; semantic=mock",
       "ms": 0
      },
      {
@@ -9659,7 +11141,37 @@
     "identity_note": "Signed in as Valeria (demo account)",
     "action_cleared": null,
     "care_kind": null,
-    "care_note": null
+    "care_note": null,
+    "risk": {
+     "deterministic": {
+      "kind": null,
+      "framing": "none",
+      "mentioned_kind": null,
+      "care": null,
+      "via_window": false,
+      "self_harm_intent": false
+     },
+     "semantic": {
+      "status": "mock",
+      "risk": null,
+      "target": "mock:mock-deterministic-v1",
+      "model": null,
+      "latency_ms": null,
+      "detail": "mock provider is not a classifier"
+     },
+     "decision": {
+      "response": "none",
+      "kind": null,
+      "care": null,
+      "also_988": false,
+      "needs_human": false,
+      "escalation_priority": null,
+      "sources": [],
+      "rule": "R8",
+      "conflict": null,
+      "degraded": true
+     }
+    }
    }
   }
  },
@@ -10680,7 +12192,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:28:44.369882Z",
+      "created_at": "2026-11-08T07:42:08.438816Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -10767,6 +12279,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -10879,7 +12397,37 @@
       "identity_note": "Signed in as Marisol (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -10967,7 +12515,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:28:44.371830Z",
+      "created_at": "2026-11-08T07:42:08.442200Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11018,6 +12566,12 @@
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
         "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 1
        },
        {
         "step": "3_privacy",
@@ -11129,7 +12683,37 @@
       "identity_note": "Signed in as Marisol (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -11190,7 +12774,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R001",
         "session_hash": "f1b1a5ef54",
-        "created_at": "2026-11-07T18:28:44.372313Z",
+        "created_at": "2026-11-08T07:42:08.442817Z",
         "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11242,7 +12826,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R001",
        "session_hash": "f1b1a5ef54",
-       "created_at": "2026-11-07T18:28:44.372313Z",
+       "created_at": "2026-11-08T07:42:08.442817Z",
        "summary": "Resident · maintenance · urgency high. Topics: hvac. Maintenance triage: repeat (hvac); no work order exists. 6 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11374,7 +12958,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-repeat-ac",
-      "created_at": "2026-11-07T18:28:44.374111Z",
+      "created_at": "2026-11-08T07:42:08.446405Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -11425,6 +13009,12 @@
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
         "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 1
        },
        {
         "step": "3_privacy",
@@ -11497,7 +13087,7 @@
         "reference": "DEMO-WO-1001",
         "title": "My AC stopped cooling again. This has happened multiple…",
         "status": "Submitted, waiting for staff review",
-        "opened": "2026-11-07",
+        "opened": "2026-11-08",
         "source": "prototype_store",
         "note": "Sent through this assistant (prototype)."
        }
@@ -11509,7 +13099,37 @@
       "identity_note": "Signed in as Marisol (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -11627,7 +13247,7 @@
       "latency_ms": 12,
       "stop_reason": "mock",
       "session_id": "demo-res-renewal",
-      "created_at": "2026-11-07T18:28:44.377339Z",
+      "created_at": "2026-11-08T07:42:08.451089Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -11714,6 +13334,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -11813,7 +13439,37 @@
       "identity_note": "Signed in as Jordan (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -11862,7 +13518,7 @@
         "status_label": "In the office queue",
         "persona_id": "R003",
         "session_hash": "0a00e04e7c",
-        "created_at": "2026-11-07T18:28:44.377815Z",
+        "created_at": "2026-11-08T07:42:08.451576Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -11902,7 +13558,7 @@
        "status_label": "In the office queue",
        "persona_id": "R003",
        "session_hash": "0a00e04e7c",
-       "created_at": "2026-11-07T18:28:44.377815Z",
+       "created_at": "2026-11-08T07:42:08.451576Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal, contact_preference. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -11948,7 +13604,7 @@
      "kind": "chat",
      "message": "I want to talk to a real person about my renewal, not a bot.",
      "response": {
-      "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+      "reply": "A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -12040,14 +13696,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 986,
-       "output_tokens": 28,
+       "input_tokens": 984,
+       "output_tokens": 26,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 11,
+      "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-human",
-      "created_at": "2026-11-07T18:28:44.380358Z",
+      "created_at": "2026-11-08T07:42:08.454944Z",
       "gate": {
        "audience": "resident",
        "intent": "renewal",
@@ -12125,6 +13781,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -12224,7 +13886,37 @@
       "identity_note": "Signed in as Simone (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -12273,7 +13965,7 @@
         "status_label": "In the office queue",
         "persona_id": "R020",
         "session_hash": "f85c4a5434",
-        "created_at": "2026-11-07T18:28:44.380758Z",
+        "created_at": "2026-11-08T07:42:08.455455Z",
         "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
         "fields": [
          {
@@ -12313,7 +14005,7 @@
        "status_label": "In the office queue",
        "persona_id": "R020",
        "session_hash": "f85c4a5434",
-       "created_at": "2026-11-07T18:28:44.380758Z",
+       "created_at": "2026-11-08T07:42:08.455455Z",
        "summary": "Resident · renewal · urgency medium. Topics: renewal. 3 related prior contact(s) on record. An earlier follow-up is still owed.",
        "fields": [
         {
@@ -12451,7 +14143,7 @@
       "latency_ms": 0,
       "stop_reason": "deterministic",
       "session_id": "demo-res-gas",
-      "created_at": "2026-11-07T18:28:44.382928Z",
+      "created_at": "2026-11-08T07:42:08.458204Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12527,6 +14219,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R1: full_alert (gas); semantic=mock",
         "ms": 0
        },
        {
@@ -12626,7 +14324,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-07T18:28:44.381738Z",
+        "created_at": "2026-11-08T07:42:08.456970Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12667,7 +14365,7 @@
         "status_label": "Urgent; in the office queue",
         "persona_id": "R002",
         "session_hash": "f61c3ca448",
-        "created_at": "2026-11-07T18:28:44.381738Z",
+        "created_at": "2026-11-08T07:42:08.456970Z",
         "summary": "Resident · maintenance · urgency emergency. Maintenance triage: emergency (other); no work order exists.",
         "fields": [
          {
@@ -12705,7 +14403,39 @@
       "identity_note": "Signed in as Theo (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": "gas",
+        "framing": "report",
+        "mentioned_kind": null,
+        "care": "danger",
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "full_alert",
+        "kind": "gas",
+        "care": null,
+        "also_988": false,
+        "needs_human": true,
+        "escalation_priority": "urgent",
+        "sources": [
+         "deterministic"
+        ],
+        "rule": "R1",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -12806,7 +14536,7 @@
       "latency_ms": 23,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:28:44.385076Z",
+      "created_at": "2026-11-08T07:42:08.461156Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -12863,6 +14593,12 @@
         "ms": 0
        },
        {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 0
+       },
+       {
         "step": "3_privacy",
         "status": "ok",
         "detail": "no PII patterns in message",
@@ -12890,12 +14626,6 @@
         "step": "7_generate",
         "status": "ok",
         "detail": "mock:mock-deterministic-v1 parse=json (MOCK)",
-        "ms": 0
-       },
-       {
-        "step": "8_validate",
-        "status": "warn",
-        "detail": "possible risk signal (danger): calm safety line added",
         "ms": 0
        },
        {
@@ -12967,8 +14697,38 @@
       ],
       "identity_note": "Signed in as Jordan (demo account)",
       "action_cleared": null,
-      "care_kind": "danger",
-      "care_note": "If anyone is hurt or in danger right now, call 911. If something in your home is unsafe, stay away from it and call your community's emergency maintenance line."
+      "care_kind": null,
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -13056,7 +14816,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:28:44.386452Z",
+      "created_at": "2026-11-08T07:42:08.463141Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13104,6 +14864,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -13209,7 +14975,37 @@
       "identity_note": "Signed in as Jordan (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -13298,7 +15094,7 @@
       "latency_ms": 16,
       "stop_reason": "mock",
       "session_id": "demo-res-text-pref",
-      "created_at": "2026-11-07T18:28:44.387944Z",
+      "created_at": "2026-11-08T07:42:08.465364Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13348,6 +15144,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -13454,7 +15256,37 @@
       "identity_note": "Signed in as Jordan (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -13509,7 +15341,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R003",
         "session_hash": "80198d5585",
-        "created_at": "2026-11-07T18:28:44.388353Z",
+        "created_at": "2026-11-08T07:42:08.465841Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -13555,7 +15387,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R003",
        "session_hash": "80198d5585",
-       "created_at": "2026-11-07T18:28:44.388353Z",
+       "created_at": "2026-11-08T07:42:08.465841Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -13693,7 +15525,7 @@
       "latency_ms": 14,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-07T18:28:44.390584Z",
+      "created_at": "2026-11-08T07:42:08.468611Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -13747,6 +15579,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -13852,7 +15690,37 @@
       "identity_note": "Signed in as Valeria (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -13940,7 +15808,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-res-spanish",
-      "created_at": "2026-11-07T18:28:44.392141Z",
+      "created_at": "2026-11-08T07:42:08.470838Z",
       "gate": {
        "audience": "resident",
        "intent": "general",
@@ -13990,6 +15858,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -14096,7 +15970,37 @@
       "identity_note": "Signed in as Valeria (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -14151,7 +16055,7 @@
         "status_label": "Submitted, waiting for staff review",
         "persona_id": "R012",
         "session_hash": "944a05361a",
-        "created_at": "2026-11-07T18:28:44.392592Z",
+        "created_at": "2026-11-08T07:42:08.471351Z",
         "summary": "Resident repair request (prototype).",
         "fields": [
          {
@@ -14197,7 +16101,7 @@
        "status_label": "Submitted, waiting for staff review",
        "persona_id": "R012",
        "session_hash": "944a05361a",
-       "created_at": "2026-11-07T18:28:44.392592Z",
+       "created_at": "2026-11-08T07:42:08.471351Z",
        "summary": "Resident repair request (prototype).",
        "fields": [
         {
@@ -14343,7 +16247,7 @@
       "latency_ms": 5,
       "stop_reason": "mock",
       "session_id": "demo-res-status",
-      "created_at": "2026-11-07T18:28:44.395598Z",
+      "created_at": "2026-11-08T07:42:08.475335Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14425,6 +16329,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=True (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -14534,7 +16444,37 @@
       "identity_note": "Signed in as Desmond (demo account)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -14583,7 +16523,7 @@
         "status_label": "In the office queue",
         "persona_id": "R008",
         "session_hash": "6f83aefd3b",
-        "created_at": "2026-11-07T18:28:44.395998Z",
+        "created_at": "2026-11-08T07:42:08.475787Z",
         "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
         "fields": [
          {
@@ -14623,7 +16563,7 @@
        "status_label": "In the office queue",
        "persona_id": "R008",
        "session_hash": "6f83aefd3b",
-       "created_at": "2026-11-07T18:28:44.395998Z",
+       "created_at": "2026-11-08T07:42:08.475787Z",
        "summary": "Resident · maintenance · urgency high. Topics: maintenance_general. Maintenance triage: repeat (other); no work order exists. 3 related prior contact(s) on record.",
        "fields": [
         {
@@ -14750,7 +16690,7 @@
       "latency_ms": 11,
       "stop_reason": "mock",
       "session_id": "demo-unverified-status",
-      "created_at": "2026-11-07T18:28:44.397947Z",
+      "created_at": "2026-11-08T07:42:08.478627Z",
       "gate": {
        "audience": "resident",
        "intent": "maintenance",
@@ -14822,6 +16762,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=resident, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -14921,7 +16867,37 @@
       "identity_note": "Not matched to a resident account",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -15015,7 +16991,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-07T18:28:44.400645Z",
+      "created_at": "2026-11-08T07:42:08.482330Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15096,6 +17072,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -15201,7 +17183,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -15288,7 +17300,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-tour-week",
-      "created_at": "2026-11-07T18:28:44.402083Z",
+      "created_at": "2026-11-08T07:42:08.484907Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15348,6 +17360,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -15453,7 +17471,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -15508,7 +17556,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "a946b4af24",
-        "created_at": "2026-11-07T18:28:44.402436Z",
+        "created_at": "2026-11-08T07:42:08.485317Z",
         "summary": "Tour request from prospective resident (demo profile).",
         "fields": [
          {
@@ -15554,7 +17602,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "a946b4af24",
-       "created_at": "2026-11-07T18:28:44.402436Z",
+       "created_at": "2026-11-08T07:42:08.485317Z",
        "summary": "Tour request from prospective resident (demo profile).",
        "fields": [
         {
@@ -15684,7 +17732,7 @@
       "latency_ms": 6,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-07T18:28:44.404810Z",
+      "created_at": "2026-11-08T07:42:08.488610Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15746,6 +17794,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -15814,7 +17868,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -15899,7 +17983,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-price",
-      "created_at": "2026-11-07T18:28:44.406242Z",
+      "created_at": "2026-11-08T07:42:08.491127Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -15980,6 +18064,12 @@
         "ms": 0
        },
        {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 0
+       },
+       {
         "step": "3_privacy",
         "status": "ok",
         "detail": "no PII patterns in message",
@@ -16055,7 +18145,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -16150,7 +18270,7 @@
       "latency_ms": 9,
       "stop_reason": "mock",
       "session_id": "demo-pro-new-to-area",
-      "created_at": "2026-11-07T18:28:44.408667Z",
+      "created_at": "2026-11-08T07:42:08.494699Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16219,6 +18339,12 @@
         "ms": 0
        },
        {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 0
+       },
+       {
         "step": "3_privacy",
         "status": "ok",
         "detail": "no PII patterns in message",
@@ -16284,7 +18410,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -16373,7 +18529,7 @@
       "latency_ms": 24,
       "stop_reason": "mock",
       "session_id": "demo-pro-floor-plans",
-      "created_at": "2026-11-07T18:28:44.411108Z",
+      "created_at": "2026-11-08T07:42:08.497707Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -16432,6 +18588,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -16500,7 +18662,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -16589,7 +18781,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:28:44.413036Z",
+      "created_at": "2026-11-08T07:42:08.500232Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16639,6 +18831,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -16724,7 +18922,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -16806,7 +19034,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:28:44.414577Z",
+      "created_at": "2026-11-08T07:42:08.502675Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -16856,6 +19084,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -16950,14 +19184,44 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
      "kind": "chat",
      "message": "Weekdays",
      "response": {
-      "reply": "What time of day is easiest: morning, afternoon or evening?",
+      "reply": "Updated: preferred days are now Weekdays. What time of day is easiest: morning, afternoon or evening?",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -17025,14 +19289,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 813,
-       "output_tokens": 10,
+       "input_tokens": 819,
+       "output_tokens": 16,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 15,
+      "latency_ms": 18,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:28:44.415991Z",
+      "created_at": "2026-11-08T07:42:08.505261Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17082,6 +19346,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -17181,7 +19451,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -17263,7 +19563,7 @@
       "latency_ms": 13,
       "stop_reason": "mock",
       "session_id": "demo-pro-incomplete",
-      "created_at": "2026-11-07T18:28:44.417433Z",
+      "created_at": "2026-11-08T07:42:08.507650Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -17313,6 +19613,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -17412,7 +19718,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -17461,7 +19797,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "a839f1a538",
-        "created_at": "2026-11-07T18:28:44.417792Z",
+        "created_at": "2026-11-08T07:42:08.508039Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -17501,7 +19837,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "a839f1a538",
-       "created_at": "2026-11-07T18:28:44.417792Z",
+       "created_at": "2026-11-08T07:42:08.508039Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -17627,7 +19963,7 @@
       "latency_ms": 19,
       "stop_reason": "mock",
       "session_id": "demo-pro-steering",
-      "created_at": "2026-11-07T18:28:44.419886Z",
+      "created_at": "2026-11-08T07:42:08.511499Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -17708,6 +20044,12 @@
         "ms": 0
        },
        {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 0
+       },
+       {
         "step": "3_privacy",
         "status": "ok",
         "detail": "no PII patterns in message",
@@ -17774,7 +20116,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -17863,7 +20235,7 @@
       "latency_ms": 8,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-07T18:28:44.421988Z",
+      "created_at": "2026-11-08T07:42:08.514605Z",
       "gate": {
        "audience": "unknown",
        "intent": "leasing",
@@ -17941,6 +20313,12 @@
         "ms": 0
        },
        {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
+        "ms": 0
+       },
+       {
         "step": "3_privacy",
         "status": "ok",
         "detail": "no PII patterns in message",
@@ -17962,7 +20340,7 @@
         "step": "6_workflow",
         "status": "ok",
         "detail": "tour_request: Tour request from a prospect or visitor. | functions=['F3', 'F5'] | action=tour_request:ready",
-        "ms": 0
+        "ms": 1
        },
        {
         "step": "7_generate",
@@ -18037,7 +20415,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -18119,7 +20527,7 @@
       "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-change-tour",
-      "created_at": "2026-11-07T18:28:44.423822Z",
+      "created_at": "2026-11-08T07:42:08.517717Z",
       "gate": {
        "audience": "unknown",
        "intent": "general",
@@ -18169,6 +20577,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -18268,7 +20682,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -18317,7 +20761,7 @@
         "status_label": "Requested; leasing team to confirm a time",
         "persona_id": null,
         "session_hash": "5bcdd3814d",
-        "created_at": "2026-11-07T18:28:44.424190Z",
+        "created_at": "2026-11-08T07:42:08.518142Z",
         "summary": "Tour request from not signed in.",
         "fields": [
          {
@@ -18357,7 +20801,7 @@
        "status_label": "Requested; leasing team to confirm a time",
        "persona_id": null,
        "session_hash": "5bcdd3814d",
-       "created_at": "2026-11-07T18:28:44.424190Z",
+       "created_at": "2026-11-08T07:42:08.518142Z",
        "summary": "Tour request from not signed in.",
        "fields": [
         {
@@ -18403,7 +20847,7 @@
      "kind": "chat",
      "message": "Can I talk to a real person in sales?",
      "response": {
-      "reply": "Of course. A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
+      "reply": "A team member should handle this. I've written a short note so you won't have to repeat yourself. Send it to the office when you're ready.",
       "safety_notice": null,
       "emergency_kind": null,
       "safety_heading": null,
@@ -18482,14 +20926,14 @@
       "temperature": 0.2,
       "prompt_version": "mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx",
       "usage": {
-       "input_tokens": 917,
-       "output_tokens": 28,
+       "input_tokens": 915,
+       "output_tokens": 26,
        "estimated_cost_usd": 0.0
       },
-      "latency_ms": 10,
+      "latency_ms": 15,
       "stop_reason": "mock",
       "session_id": "demo-pro-human",
-      "created_at": "2026-11-07T18:28:44.426144Z",
+      "created_at": "2026-11-08T07:42:08.520818Z",
       "gate": {
        "audience": "prospect",
        "intent": "leasing",
@@ -18560,6 +21004,12 @@
         "step": "2_identity",
         "status": "ok",
         "detail": "audience=prospect, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -18653,7 +21103,37 @@
       "identity_note": "Browsing as a prospective resident (demo profile)",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     },
     {
@@ -18696,7 +21176,7 @@
         "status_label": "In the office queue",
         "persona_id": "P-RELOCATE-AA",
         "session_hash": "29f16eb9c8",
-        "created_at": "2026-11-07T18:28:44.426486Z",
+        "created_at": "2026-11-08T07:42:08.521251Z",
         "summary": "Prospect · leasing · urgency medium.",
         "fields": [
          {
@@ -18730,7 +21210,7 @@
        "status_label": "In the office queue",
        "persona_id": "P-RELOCATE-AA",
        "session_hash": "29f16eb9c8",
-       "created_at": "2026-11-07T18:28:44.426486Z",
+       "created_at": "2026-11-08T07:42:08.521251Z",
        "summary": "Prospect · leasing · urgency medium.",
        "fields": [
         {
@@ -18845,7 +21325,7 @@
       "latency_ms": 7,
       "stop_reason": "mock",
       "session_id": "demo-vendor",
-      "created_at": "2026-11-07T18:28:44.428481Z",
+      "created_at": "2026-11-08T07:42:08.524261Z",
       "gate": {
        "audience": "unknown",
        "intent": "maintenance",
@@ -18912,6 +21392,12 @@
         "step": "2_identity",
         "status": "warn",
         "detail": "audience=unknown, identity_verified=False (demo persona = trusted app context)",
+        "ms": 0
+       },
+       {
+        "step": "2b_safety",
+        "status": "warn",
+        "detail": "R8: none; semantic=mock",
         "ms": 0
        },
        {
@@ -19011,7 +21497,37 @@
       "identity_note": "Not signed in",
       "action_cleared": null,
       "care_kind": null,
-      "care_note": null
+      "care_note": null,
+      "risk": {
+       "deterministic": {
+        "kind": null,
+        "framing": "none",
+        "mentioned_kind": null,
+        "care": null,
+        "via_window": false,
+        "self_harm_intent": false
+       },
+       "semantic": {
+        "status": "mock",
+        "risk": null,
+        "target": "mock:mock-deterministic-v1",
+        "model": null,
+        "latency_ms": null,
+        "detail": "mock provider is not a classifier"
+       },
+       "decision": {
+        "response": "none",
+        "kind": null,
+        "care": null,
+        "also_988": false,
+        "needs_human": false,
+        "escalation_priority": null,
+        "sources": [],
+        "rule": "R8",
+        "conflict": null,
+        "degraded": true
+       }
+      }
      }
     }
    ]
@@ -19052,7 +21568,7 @@
    "kind": "staff_handoff",
    "session_hash": "29f16eb9c8",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-07T18:28:44.426486+00:00"
+   "created_at": "2026-11-08T07:42:08.521251+00:00"
   },
   {
    "status": "requested",
@@ -19094,7 +21610,7 @@
    "kind": "tour_request",
    "session_hash": "5bcdd3814d",
    "persona_id": null,
-   "created_at": "2026-11-07T18:28:44.424190+00:00"
+   "created_at": "2026-11-08T07:42:08.518142+00:00"
   },
   {
    "status": "requested",
@@ -19136,7 +21652,7 @@
    "kind": "tour_request",
    "session_hash": "a839f1a538",
    "persona_id": null,
-   "created_at": "2026-11-07T18:28:44.417792+00:00"
+   "created_at": "2026-11-08T07:42:08.508039+00:00"
   },
   {
    "status": "requested",
@@ -19184,7 +21700,7 @@
    "kind": "tour_request",
    "session_hash": "a946b4af24",
    "persona_id": "P-RELOCATE-AA",
-   "created_at": "2026-11-07T18:28:44.402436+00:00"
+   "created_at": "2026-11-08T07:42:08.485317+00:00"
   },
   {
    "status": "queued",
@@ -19226,7 +21742,7 @@
    "kind": "staff_handoff",
    "session_hash": "6f83aefd3b",
    "persona_id": "R008",
-   "created_at": "2026-11-07T18:28:44.395998+00:00"
+   "created_at": "2026-11-08T07:42:08.475787+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19274,7 +21790,7 @@
    "kind": "maintenance_request",
    "session_hash": "944a05361a",
    "persona_id": "R012",
-   "created_at": "2026-11-07T18:28:44.392592+00:00"
+   "created_at": "2026-11-08T07:42:08.471351+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19322,7 +21838,7 @@
    "kind": "maintenance_request",
    "session_hash": "80198d5585",
    "persona_id": "R003",
-   "created_at": "2026-11-07T18:28:44.388353+00:00"
+   "created_at": "2026-11-08T07:42:08.465841+00:00"
   },
   {
    "status": "urgent_queued",
@@ -19365,7 +21881,7 @@
    "kind": "staff_handoff",
    "session_hash": "f61c3ca448",
    "persona_id": "R002",
-   "created_at": "2026-11-07T18:28:44.381738+00:00"
+   "created_at": "2026-11-08T07:42:08.456970+00:00"
   },
   {
    "status": "queued",
@@ -19407,7 +21923,7 @@
    "kind": "staff_handoff",
    "session_hash": "f85c4a5434",
    "persona_id": "R020",
-   "created_at": "2026-11-07T18:28:44.380758+00:00"
+   "created_at": "2026-11-08T07:42:08.455455+00:00"
   },
   {
    "status": "queued",
@@ -19449,7 +21965,7 @@
    "kind": "staff_handoff",
    "session_hash": "0a00e04e7c",
    "persona_id": "R003",
-   "created_at": "2026-11-07T18:28:44.377815+00:00"
+   "created_at": "2026-11-08T07:42:08.451576+00:00"
   },
   {
    "status": "submitted_for_review",
@@ -19503,7 +22019,7 @@
    "kind": "maintenance_request",
    "session_hash": "f1b1a5ef54",
    "persona_id": "R001",
-   "created_at": "2026-11-07T18:28:44.372313+00:00"
+   "created_at": "2026-11-08T07:42:08.442817+00:00"
   }
  ],
  "gate_eval": {

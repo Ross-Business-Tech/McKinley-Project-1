@@ -6,6 +6,28 @@ Status legend used throughout: **WORKING** · **SIMULATED** (prototype store) ·
 
 ---
 
+## Phase 9: safety hardening and conversational UX (sprint 3, same branch)
+
+Commits: `46b2c59` layered safety pipeline · `9dc72d8` live-eval classifier switch · `fa70631` (merged) live A/B/C
+harness · `db21519` conversation fixes · `bf6575b` UI · plus docs. **No live model was available** (no key):
+everything below is implemented and tested with the mock or fake providers.
+
+- **Safety (WORKING floor; semantic layer EXPERIMENTAL / not live-verified):** `app/risk/` separates detection,
+  semantic classification, policy (R1–R9), approved responses and escalation. Framing (hypothetical / past /
+  joking), narrow negation, idioms, contraction normalisation, wider Spanish, meaning-level concepts, a 3-turn
+  conversation window, 988 on deliberate overdoses, persistent calm line after "I'm fine, stop". Independent fresh
+  holdout: 64.5% full alert, 78.5% any guidance, 10% benign false alerts; **release-blocking misses remain**.
+- **Live LLM (BLOCKED):** preflight against OpenRouter's public list; controlled A/B/C runner with budget,
+  comparability rules and human-review status; refuses to run without a key (no mock fallback).
+- **Conversation (WORKING, mock):** "did that go in / just notes?" answered from what was saved; room and day
+  corrections applied and said; one request per problem; lockout path; "no tour" respected; typed contact details
+  not falsely "noted"; false premises not agreed with; other-person and pasted-instruction handling; rent
+  withholding to a manager note; English/Spanish switching and Spanish repair wording.
+- **Security (DEMO BOUNDARY):** staff routes refuse any proxied request when no token is set.
+- **UI (WORKING):** calm safety-info note, next-step chips after Send / Don't send, always-visible "Talk to a
+  person", gas/CO button wording, 988 button on overdose alerts, live-region clearing, composer focus on short
+  screens, staff tabs wrap on phones, "needs action" markers in Live conversations.
+
 ## Phase 8: UX hardening and multi-agent user simulation (sprint 2, same branch)
 
 Commits: `d8e5fcc` safety layer + persona suite · `765ae41` conversation fixes · `a9154ac` frontend rework ·
