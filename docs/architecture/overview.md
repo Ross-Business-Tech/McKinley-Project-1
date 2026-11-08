@@ -35,7 +35,9 @@ Customer (open; identity is the demo `persona_id`, not authentication): `POST /a
 Staff / demo (loopback only, or `X-Staff-Token` when `STAFF_API_TOKEN` is set; any proxy-forwarding header or a
 non-local `Host` is refused): `GET /api/prototype/records`, `GET /api/staff/conversations[/{session_hash}]`,
 `POST /api/context/preview`, `/api/evals/*` (cases, run, runs, results, summary), `/api/gates/*` (scenarios, evaluate,
-log). The browser never sends `X-Staff-Token`, so with a token set the console's staff tabs only work from tools
+log). Note: `POST /api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`, `source_context_fields`) to every
+caller, including the customer browser; decide before any deployment whether to strip them for non-staff callers.
+The browser never sends `X-Staff-Token`, so with a token set the console's staff tabs only work from tools
 that send the header.
 
 ## LLM provider abstraction
@@ -81,4 +83,4 @@ runner is blocked until a key is configured.
 Server-side keys only (`backend/.env`, gitignored); request validation (`extra="forbid"`, length limits); restricted CORS; model output treated as untrusted text; logs contain status/latency/token counts only, never message content or keys; no external writes. Free hosted models may log prompts, so only synthetic or de-identified data is allowed. Production would additionally require authentication, RBAC, audit logs, retention controls, encryption, rate limits, vendor/legal review (including provider data-use terms) and documented data access contracts.
 
 ## Future integration, NOT MVP
-Yardi Voyager / RentCafe -> authorized Databricks replica (Joshua says ~10-minute delay) -> least-privilege data gateway -> context engine -> channels (web, phone, email, SMS). Live lookups and write actions need separate permissions and robust reconciliation. For maintenance emergencies, route to actual emergency channels, not unsupported self-service instructions.
+Yardi Voyager / RentCafe -> authorized Databricks replica (about a 10-minute delay, per the sprint brief) -> least-privilege data gateway -> context engine -> channels (web, phone, email, SMS). Live lookups and write actions need separate permissions and robust reconciliation. For maintenance emergencies, route to actual emergency channels, not unsupported self-service instructions.

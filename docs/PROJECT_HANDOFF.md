@@ -40,7 +40,7 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
    McKinley risk/legal reviews every failure and the safety scripts.
 3. Decide production identity (server-side session binding) and whether diagnostics leave the API for customers.
 4. Lower-risk refactors still open (from the consolidation audit, not done to avoid behaviour risk):
-   split `actions.plan_turn` (774 lines) into its three largest leaf blocks without reordering, with a
+   split `actions.plan_turn` (~780 lines) into its three largest leaf blocks without reordering, with a
    characterization snapshot first; split `CustomerApp.tsx` / `StaffConsole.tsx` (add StaffConsole tab tests
    first); unify status-colour maps; move inline `lang == "en"` strings in `actions.py` into `templates.py`;
    consolidate sprint-named test files by behaviour area (mapping in the consolidation PR description).

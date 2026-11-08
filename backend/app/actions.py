@@ -596,8 +596,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]
     if is_resident and not_account_holder(msg) and gate.urgency != "emergency":
-        if draft and store:  # an open card built on that account is parked, never sent from here
-            store.save_draft(session_id, pkey, draft["kind"], {**draft, "declined": True})
+        if draft and store:  # a card built on that account is discarded (not parked: it can't be restored or shown)
+            store.clear_draft(session_id, pkey)
             touched["draft"] = True
         return done(TurnPlan(template=t("other_person", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["prospect_next"][lang],

@@ -186,3 +186,13 @@ def test_send_button_cannot_submit_after_not_account_holder(client):
     chat(client, "this is my roommate's account, she let me use her phone", "b1")
     res = confirm(client, "b1", "maintenance_request")
     assert not res["ok"] and not res.get("record")
+
+
+def test_card_from_someone_elses_account_cannot_be_restored(client):
+    """Consolidation verifier P2: 'send it after all' must not bring back a card with the holder's account data."""
+    chat(client, "the kitchen faucet is dripping", "b2")
+    chat(client, "yes you can come in", "b2")
+    chat(client, "this is my roommate's account, she let me use her phone", "b2")
+    r = chat(client, "send it after all", "b2")
+    assert not (r["action"] and r["action"]["kind"] == "maintenance_request")
+    assert "mornings" not in str(r) and "Prefers" not in str(r)
