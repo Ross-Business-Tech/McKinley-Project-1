@@ -2,7 +2,7 @@
 
 import { Info } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatWorkbench } from "@/components/mckinley/ChatWorkbench";
@@ -41,7 +41,9 @@ interface Boot {
 async function boot(): Promise<Boot> {
   const snapshot = await loadDemoSnapshot().catch(() => null);
   try {
-    const [health, personas, targets, cases] = await Promise.all([api.health(), api.personas(), api.models(), api.evalCases()]);
+    const [health, personas, targets] = await Promise.all([api.health(), api.personas(), api.models()]);
+    // staff-only route: refused (403) when this browser isn't local and has no staff token; fall back, don't fail
+    const cases = await api.evalCases().catch(() => snapshot?.cases ?? []);
     const gateConfig = await api.gatesConfig().catch(() => null);
     return { live: true, health, personas, targets, cases, gateConfig, snapshot };
   } catch (e) {
@@ -596,6 +598,13 @@ function LiveConversations({ live }: { live: boolean }) {
   const [err, setErr] = useState<string | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [detail, setDetail] = useState<StaffConversationDetail | null>(null);
+  const [detailErr, setDetailErr] = useState<string | null>(null);
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const loadedHash = detail?.session_hash;
+  useEffect(() => {
+    // phones: move focus to the opened conversation once per selection (not on every re-render)
+    if (loadedHash && window.innerWidth < 768) detailHeadingRef.current?.focus();
+  }, [loadedHash]);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!live) return;
@@ -612,8 +621,16 @@ function LiveConversations({ live }: { live: boolean }) {
     let stale = false;
     api
       .staffConversation(pick)
-      .then((d) => !stale && setDetail(d))
-      .catch(() => !stale && setDetail(null));
+      .then((d) => {
+        if (stale) return;
+        setDetail(d);
+        setDetailErr(null);
+      })
+      .catch((e: unknown) => {
+        if (stale) return;
+        setDetail(null);
+        setDetailErr(e instanceof ApiError ? e.message : "Could not load this conversation");
+      });
     return () => {
       stale = true;
     };
@@ -648,7 +665,12 @@ function LiveConversations({ live }: { live: boolean }) {
                 <button
                   type="button"
                   aria-pressed={pick === c.session_hash}
-                  onClick={() => setPick(c.session_hash)}
+                  onClick={() => {
+                    if (c.session_hash === pick) return;
+                    setDetail(null); // never show the previous conversation under the new selection
+                    setDetailErr(null);
+                    setPick(c.session_hash);
+                  }}
                   className={cn(
                     "mk-focus w-full rounded-lg border bg-mk-surface p-3 text-left hover:bg-mk-paper",
                     pick === c.session_hash ? "border-mk-brand ring-1 ring-mk-brand" : "border-mk-line",
@@ -677,15 +699,14 @@ function LiveConversations({ live }: { live: boolean }) {
           </ul>
           <div className="min-w-0 rounded-lg border border-mk-line bg-mk-surface p-4">
             {!pick && <p className="text-mk-muted">Choose a conversation to read it.</p>}
-            {pick && !detail && <p role="status">Loading…</p>}
+            {pick && detailErr && <p role="alert">{detailErr}</p>}
+            {pick && !detail && !detailErr && <p role="status">Loading…</p>}
             {detail && (
               <article aria-labelledby="live-detail-h">
                 <p role="status" className="sr-only">
                   Conversation loaded, {detail.turns.length} messages.
                 </p>
-                <h3 id="live-detail-h" tabIndex={-1} className="mk-focus font-semibold" ref={(el) => {
-                  if (el && typeof window !== "undefined" && window.innerWidth < 768) el.focus();
-                }}>
+                <h3 id="live-detail-h" tabIndex={-1} className="mk-focus font-semibold" ref={detailHeadingRef}>
                   Conversation {detail.session_hash} ({detail.turns[0]?.persona_id === "none" ? "not signed in" : detail.turns[0]?.persona_id})
                 </h3>
                 {detail.records.length > 0 && (

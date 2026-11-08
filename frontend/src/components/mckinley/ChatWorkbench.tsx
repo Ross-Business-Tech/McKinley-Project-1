@@ -76,18 +76,23 @@ export function ChatWorkbench({
   // Live mode: context preview follows persona + draft message (debounced). Demo mode uses snapshot contexts.
   useEffect(() => {
     if (demo) return;
+    let stale = false; // an older, slower reply must not overwrite a newer one
     const handle = setTimeout(() => {
       setCtxLoading(true);
       api
         .contextPreview(personaId || null, message)
         .then((c) => {
+          if (stale) return;
           setCtx(c);
           setCtxError(null);
         })
-        .catch((e: unknown) => setCtxError(e instanceof ApiError ? e.message : "Context preview failed"))
-        .finally(() => setCtxLoading(false));
+        .catch((e: unknown) => !stale && setCtxError(e instanceof ApiError ? e.message : "Context preview failed"))
+        .finally(() => !stale && setCtxLoading(false));
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      stale = true;
+      clearTimeout(handle);
+    };
   }, [personaId, message, demo]);
 
   const selectedTarget = useMemo(() => targets.find((t) => t.key === target), [targets, target]);

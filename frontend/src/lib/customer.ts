@@ -1,4 +1,4 @@
-import type { ActionResult, ChatResponse, Journey, Persona, ProposedAction } from "./types";
+import type { ActionKind, ActionResult, ChatResponse, Journey, Persona, ProposedAction } from "./types";
 
 /** Security-test fixture personas never appear in the customer view (staff console only). */
 const STAFF_ONLY = new Set(["F-INJECT"]);
@@ -92,19 +92,6 @@ export function starters(identity: Identity): string[] {
   }
 }
 
-export function identityStatus(identity: Identity): string {
-  switch (identity.kind) {
-    case "resident":
-      return `Signed in as ${identity.firstName} (demo account)`;
-    case "prospect":
-      return "Browsing with a demo prospect profile";
-    case "unmatched_resident":
-      return "Not matched to a resident account";
-    default:
-      return "Not signed in";
-  }
-}
-
 export type Tone = "draft" | "ready" | "sent" | "urgent" | "blocked";
 
 export function actionTone(a: ProposedAction): Tone {
@@ -125,7 +112,6 @@ export const UI = {
     sending: "Sending…",
     whatWasSent: "What was sent",
     notSent: "Not sent",
-    replaced: "Earlier version",
     reference: "Reference",
     assistantSaid: "Assistant said:",
     youSaid: "You said:",
@@ -177,7 +163,6 @@ export const UI = {
     sending: "Enviando…",
     whatWasSent: "Lo que se envió",
     notSent: "No enviada",
-    replaced: "Versión anterior",
     reference: "Referencia",
     assistantSaid: "El asistente dijo:",
     youSaid: "Usted dijo:",
@@ -264,7 +249,7 @@ export function clearSession(): void {
 
 export const CONVERSATION_KEY = "mckinley.lastConversation";
 
-export type StoredTurn = { message: string; response: ChatResponse } | { confirm: string; result: ActionResult };
+export type StoredTurn = { message: string; response: ChatResponse } | { confirm: ActionKind; result: ActionResult };
 
 export interface StoredConversation {
   persona_id: string;

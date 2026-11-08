@@ -33,9 +33,23 @@ export interface SafeContext {
   notes: string[];
 }
 
+/** Mirrors backend/app/models.py HandoffCategory. */
+export type HandoffCategory =
+  | "none"
+  | "safety_emergency"
+  | "repeat_issue"
+  | "unresolved_commitment"
+  | "human_requested"
+  | "policy_or_eligibility"
+  | "financial_or_lease"
+  | "fair_housing_or_legal"
+  | "leasing_follow_up"
+  | "sensitive_data_request"
+  | "other";
+
 export interface PolicySignal {
   code: string;
-  category: string;
+  category: HandoffCategory;
   detail: string;
 }
 
@@ -126,7 +140,7 @@ export interface HandoffRecommendation {
   completed: false;
   team: HandoffTeam;
   priority: "urgent" | "high" | "normal";
-  category: string;
+  category: HandoffCategory;
   reasons: string[];
   summary: string;
   included_fields: string[];
@@ -148,7 +162,7 @@ export interface ChatResponse {
   audience: Audience;
   recommended_handoff: boolean;
   handoff_reason: string | null;
-  handoff_category: string;
+  handoff_category: HandoffCategory;
   handoff_is_recommendation_only: boolean;
   model_handoff: boolean;
   policy_signals: PolicySignal[];
@@ -392,18 +406,6 @@ export interface GateConfig {
   low_confidence_threshold: number;
 }
 
-export interface GateScenario {
-  id: string;
-  title: string;
-  suite: Suite;
-  persona_id: string;
-  message: string;
-  expected_intent: Intent | null;
-  expected_workflow: WorkflowId | null;
-  expected_urgency: Urgency | null;
-  expect_handoff: boolean | null;
-}
-
 export interface GateEvalRow {
   scenario: string;
   provider: string;
@@ -449,14 +451,6 @@ export interface GateEvalResponse {
   rows: GateEvalRow[];
 }
 
-/** Routing metadata only (never message text): gate_decisions row + the stored decision JSON. */
-export type GateLogEntry = {
-  id: number;
-  session_id: string | null;
-  mode: Mode;
-  persona_id: string | null;
-  created_at: string;
-} & Partial<GateDecision> & Record<string, unknown>;
 
 // ---- static demo snapshot (frontend/public/demo/snapshot.json, built by backend/app/export_demo.py) ----
 
@@ -491,10 +485,58 @@ export interface StaffConversationDetail {
   records: PrototypeRecord[];
 }
 
-/** Layered safety result (staff/demo console only; the customer sees the approved text, never this). */
+/** Layered safety result (mirrors backend/app/risk/models.py). Shown in the staff/demo console only; note the
+ * customer API response also carries it, so it must never contain anything the customer may not see. */
+export type RiskCategory =
+  | "fire_smoke" | "gas" | "co" | "electrical" | "flood" | "structural" | "trapped" | "medical" | "poison"
+  | "personal_safety" | "self_harm";
+export type Framing = "report" | "hypothetical" | "past" | "joking" | "quoted" | "figurative" | "none";
+export type ClassifierStatus =
+  | "ok" | "disabled" | "unavailable" | "timeout" | "rate_limited" | "error" | "bad_output" | "mock";
+
+export interface DeterministicRisk {
+  kind: string | null;
+  framing: Framing;
+  mentioned_kind: string | null;
+  care: "distress" | "unwell" | "danger" | null;
+  via_window: boolean;
+  self_harm_intent: boolean;
+}
+
+export interface SemanticRisk {
+  risk_level: "none" | "uncertain" | "urgent" | "emergency";
+  risk_categories: RiskCategory[];
+  immediate_danger: boolean;
+  needs_human: boolean;
+  confidence: number | null;
+  framing: Framing;
+  reason: string;
+}
+
+export interface SemanticResult {
+  status: ClassifierStatus;
+  risk?: SemanticRisk | null;
+  target?: string | null;
+  model?: string | null;
+  latency_ms?: number | null;
+  detail?: string | null;
+}
+
+export interface RiskDecision {
+  response: "full_alert" | "care_line" | "safety_info" | "none";
+  kind: string | null;
+  care: "distress" | "unwell" | "danger" | "info" | null;
+  also_988: boolean;
+  needs_human: boolean;
+  escalation_priority: "urgent" | "high" | "normal" | null;
+  sources: string[];
+  rule: string;
+  conflict: string | null;
+  degraded: boolean;
+}
+
 export interface RiskAssessment {
-  deterministic: { kind: string | null; framing: string; mentioned_kind: string | null; care: string | null; via_window: boolean; self_harm_intent: boolean };
-  semantic: { status: string; target?: string | null; model?: string | null; latency_ms?: number | null; detail?: string | null;
-    risk?: { risk_level: string; risk_categories: string[]; immediate_danger: boolean; needs_human: boolean; confidence: number | null; framing: string; reason: string } | null };
-  decision: { response: string; kind: string | null; care: string | null; also_988: boolean; needs_human: boolean; rule: string; conflict: string | null; degraded: boolean; sources: string[] };
+  deterministic: DeterministicRisk;
+  semantic: SemanticResult;
+  decision: RiskDecision;
 }

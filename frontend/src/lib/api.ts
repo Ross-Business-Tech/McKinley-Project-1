@@ -7,9 +7,7 @@ import type {
   DemoSnapshot,
   GateConfig,
   GateEvalResponse,
-  GateLogEntry,
   GateProvider,
-  GateScenario,
   EvalCase,
   EvalResult,
   EvalRunResponse,
@@ -50,6 +48,11 @@ export async function parseError(res: Response): Promise<ApiError> {
   if (body && typeof body === "object") {
     const b = body as { error?: ApiErrorBody; detail?: unknown };
     if (b.error?.code) return new ApiError(b.error.code, b.error.message, b.error.retryable, res.status);
+    // FastAPI HTTPException with a structured detail: {"detail": {code, message, retryable}}
+    if (b.detail && typeof b.detail === "object" && typeof (b.detail as ApiErrorBody).code === "string") {
+      const d = b.detail as ApiErrorBody;
+      return new ApiError(d.code, d.message ?? `Request failed (${res.status})`, !!d.retryable, res.status);
+    }
     if (b.detail) {
       const detail = typeof b.detail === "string" ? b.detail : "Request validation failed";
       return new ApiError(res.status === 422 ? "VALIDATION_ERROR" : `HTTP_${res.status}`, detail, false, res.status);
@@ -90,11 +93,9 @@ export const api = {
       body: JSON.stringify({ human_verdict, human_notes }),
     }),
   gatesConfig: () => request<GateConfig>("/api/gates/config"),
-  gateScenarios: () => request<GateScenario[]>("/api/gates/scenarios"),
   /** Routing-only comparison. "llm" makes one model call per scenario. */
   evaluateGates: (providers: GateProvider[]) =>
     request<GateEvalResponse>("/api/gates/evaluate", { method: "POST", body: JSON.stringify({ providers }) }),
-  gateLog: (limit = 50) => request<GateLogEntry[]>(`/api/gates/log?limit=${limit}`),
   /** The body names the session and kind only; the backend saves its own server-side draft. */
   confirmAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
     request<ActionResult>("/api/actions/confirm", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),

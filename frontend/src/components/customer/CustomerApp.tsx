@@ -188,7 +188,7 @@ export function CustomerApp() {
     if (!journey) {
       tasks = preview.journeys
         .filter((j) => j.persona_id === identity.id)
-        .map((j) => ({ label: j.title, send: (j.steps[0] as { message: string }).message }));
+        .flatMap((j) => (j.steps[0]?.kind === "chat" ? [{ label: j.title, send: j.steps[0].message }] : []));
     } else if (nextStep?.kind === "chat") {
       chips = [{ label: nextStep.message, send: nextStep.message }];
     }

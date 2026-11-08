@@ -14,6 +14,14 @@ describe("api client", () => {
     expect(e.status).toBe(503);
   });
 
+  it("keeps the message of structured HTTPException details (e.g. staff-only 403)", async () => {
+    const body = { detail: { code: "STAFF_ONLY", message: "Staff tools are local only.", retryable: false } };
+    const e = await parseError(new Response(JSON.stringify(body), { status: 403 }));
+    expect(e.code).toBe("STAFF_ONLY");
+    expect(e.message).toBe("Staff tools are local only.");
+    expect(e.status).toBe(403);
+  });
+
   it("maps validation errors", async () => {
     const e = await parseError(new Response(JSON.stringify({ detail: [{ msg: "bad" }] }), { status: 422 }));
     expect(e.code).toBe("VALIDATION_ERROR");

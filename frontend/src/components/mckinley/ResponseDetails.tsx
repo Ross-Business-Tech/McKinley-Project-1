@@ -280,4 +280,3 @@ export function ResponseView({ r }: { r: ChatResponse }) {
 }
 
 /** Back-compat export. */
-export const ResponseDetails = ResponseView;
