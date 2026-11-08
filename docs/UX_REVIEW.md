@@ -1,5 +1,61 @@
 # UX review: design, independent reviews, fixes and verification
 
+> **Sprint 3 (November 2026)** is summarised first, then sprint 2 and sprint 1 unchanged. Full sprint-3 evidence:
+> [SPRINT3_REPORT.md](SPRINT3_REPORT.md), [SAFETY_EVALUATION.md](SAFETY_EVALUATION.md).
+
+## Sprint 3 at a glance
+
+**Mock response model throughout** (no key): these findings are about routing, memory, state and honesty, not
+AI-written prose.
+
+Independent evidence, none of it from agents that read the code:
+- Resident (16), prospect (14) and adversarial (19) simulator agents held adaptive conversations against a frozen
+  baseline build; a separate Conversational UX Judge graded all transcripts on 12 dimensions with evidence.
+- A UI + accessibility reviewer drove the real browser at four sizes.
+- After the fixes, a regression verifier re-tested every reported defect, held 18 fresh conversations and repeated
+  the browser pass; the same judge re-graded its 47 transcripts.
+
+| Conversational UX (judge, 1–5) | Baseline (48 conv.) | Sprint 3 build `bf6575b` (47 conv.) |
+| --- | --- | --- |
+| Corrections | 1.67 | 2.73 |
+| Unnecessary questions | 3.48 | 4.40 |
+| Repetition | 2.65 | 3.55 |
+| Escalation | 2.90 | 3.50 |
+| User frustration (5 = low) | 2.46 | 3.13 |
+| Task status accuracy | 3.15 | 3.50 |
+| Context awareness | 2.40 | 2.74 |
+| Task completion | 2.69 | 2.89 |
+| **Overall** | **2.68** | **3.19** (fresh conversations only: 3.12) |
+
+The judge notes the later conversations are shorter (median 3 turns), which flatters repetition and frustration;
+the fresh-conversation figure (3.12) is the fairer comparison. Several problems in the re-graded build were fixed
+afterwards (`f31ce6c`, `c11af3b`) and have **not** been re-graded: the threat-at-the-door P0, self-harm disclosure
+blocking service, privacy for someone who is not the account holder, "send my note" / "Ask the office", injected
+text in repair issues, typed phone numbers, and corrections at the read-back stage.
+
+| UI reviewer scores (0–10) | Baseline | Sprint 3 |
+| --- | --- | --- |
+| Customer visual design | 8 | 8 |
+| Customer usability | 6.5 | 4 (verifier: "the layout is good, but the dialogue logic often falls back to the menu or loses data") |
+| Staff console usability | 6 | 7 |
+
+The two usability scores come from different reviewers with different test depth (the verifier deliberately
+re-tested known failure areas); they are not a like-for-like trend.
+
+What changed for people (all mock-verified): "did that go in / is it just a note?" answers from what this chat
+saved; room and day corrections are applied and said; one request per problem; lockout gets the after-hours line;
+"no tour" is respected; typed contact details are not falsely "noted"; claims that something was already agreed are
+not agreed with; someone using another resident's account sees nothing from it; pasted instructions are dropped;
+rent-withholding statements go to a manager note; English/Spanish switching works; next-step chips after Send and
+Don't send; an always-visible "Talk to a person"; calm safety information for hypothetical questions.
+
+Still open (P1): open cards are still one per conversation (a second topic replaces the first, though its details
+go into the office note and the person is told); merged issues in Spanish; some corrections (visit days on repair
+cards, "both rooms"); records-known commitments rarely mentioned; Spanish card values partly English; emotional
+financial questions fall back to policy text.
+
+---
+
 > **Sprint 2 (November 2026)** is summarised first; the sprint-1 review follows unchanged below the line.
 > Full evidence, scores and remaining blockers: [SPRINT_REVIEW_REPORT.md](SPRINT_REVIEW_REPORT.md). Design skills:
 > [DESIGN_SKILL_USAGE.md](DESIGN_SKILL_USAGE.md).

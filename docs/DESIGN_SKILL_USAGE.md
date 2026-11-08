@@ -1,5 +1,19 @@
 # Design skill usage (sprint 2)
 
+## Sprint 3
+
+| Skill | Installed? | Used this sprint |
+| --- | --- | --- |
+| `oil-ui` | Yes (v0.32.0; 0.33.1 available, not applied) | Not re-invoked. The sprint-3 UI changes were small, local fixes driven by reviewer findings (chips after Send, a "Talk to a person" button, a neutral safety-info note, wording on the gas button, wrapping). For that scope oil-ui's own guidance is a self-check plus an independent reviewer, which is what was done (UI reviewer before, regression verifier after, neither read the code). |
+| `frontend-design` | Plugin present (other project) | Its copy rule ("errors and actions say what happens and what to do") informed "Get outside, then call 911" and the honest "I haven't saved it" reply to typed phone numbers. Not invoked. |
+| `ui-ux-pro-max` | No | Sprint-2 notes reused (`focus-not-obscured`, `chip-collection-reflow`); nothing new read. |
+| `web-accessibility` | No | Not used; WCAG 2.2 checks done by the reviewers directly. |
+
+No design change was made to raise a subjective score; each traces to a reviewer finding in
+`docs/ACCESSIBILITY_REVIEW.md` or `docs/UX_REVIEW.md`.
+
+---
+
 This records which design skills were available, what each one actually told us to do, what we changed
 because of it, and how it was checked. Where a skill could not be used, that is said plainly.
 

@@ -1,5 +1,32 @@
 # Accessibility review (WCAG 2.2 AA)
 
+## Sprint 3
+
+Reviewed in a real browser twice by independent agents that did not read the code: a UI + accessibility reviewer on
+the baseline build and a regression verifier on the sprint-3 build (frozen `bf6575b`), at 375×812, 390×844,
+768×1024, 1440×900 and 375×420 (keyboard-proxy height). The `web-accessibility` skill is still not installed.
+
+| Finding (baseline reviewer) | WCAG | Sprint 3 change | Regression verifier |
+| --- | --- | --- | --- |
+| Corrections applied silently; identical sentence announced twice | 4.1.3 | Backend says what changed ("Updated: the location is now Hall bathroom") | Fixed |
+| Hidden live-region paragraph stays in the page, so browsing reads each reply twice | 4.1.3 (best practice) | Live-region text clears 6 s after it is announced | Fixed (one polite region, each reply announced once) |
+| Composer off-screen when focused on short screens | 2.4.11 | Composer scrolls into view on focus below 480 px height | Fixed at 375×420 |
+| Chip row scrolls sideways, last chip clipped | 1.4.10 (reflow, practical) | Chips wrap; "Talk to a person" no longer duplicated as a chip | Fixed after the verifier's run (`f31ce6c`); re-check pending |
+| No permanent way to reach a person | 3.2.6 (consistent help, AA in 2.2) | Always-visible "Talk to a person" button under the composer | Fixed |
+| Staff tab bar clipped at 390 px | 1.4.10 | Tabs wrap on phones | Fixed |
+| Gas alert button "Call 911" contradicts "don't use phones inside" | – (content) | "Get outside, then call 911"; gas/CO headings say to leave first | Fixed |
+| Safety info for a hypothetical question | – | Neutral note, no call buttons, no `role=alert` | Verified |
+
+axe-core 4.14 on the sprint-3 build: 0 violations on the customer page and the staff console (Next.js dev overlay
+excluded). Automated checks are not sufficient; the manual keyboard pass (visible 3 px focus, chips and Send
+reachable, focus returns to the composer) passed. Not verified: real screen readers (VoiceOver/NVDA), real phones
+with on-screen keyboards, forced colours, dark mode.
+
+Scores from the independent reviewers (0–10): customer accessibility 7.5 (baseline) → 8 (sprint 3); staff
+accessibility 7.5 → 8.
+
+---
+
 ## Sprint 2
 
 The **web-accessibility skill is not installed**. Its upstream instructions (hoodini/ai-agents-skills) were read and

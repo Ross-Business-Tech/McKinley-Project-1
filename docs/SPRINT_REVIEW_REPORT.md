@@ -1,5 +1,11 @@
 # Sprint 2 review report: UX hardening and multi-agent user simulation
 
+> **Sprint 3 update (November 2026).** Superseding results for safety, live-LLM status and conversational UX are in
+> [SPRINT3_REPORT.md](SPRINT3_REPORT.md), [SAFETY_EVALUATION.md](SAFETY_EVALUATION.md) and
+> [LIVE_LLM_EVALUATION.md](LIVE_LLM_EVALUATION.md). The sprint-2 P0 (emergency detection) is **still open**: on a
+> fresh independent suite the rules-only build gives 64.5% full alert / 78.5% any guidance, with immediate-danger
+> misses. Verdict unchanged: not production ready. This sprint-2 report is kept unchanged below.
+
 Branch `feat/workflow-customer-experience`. Sprint commits, in order:
 
 | Commit | What it did |

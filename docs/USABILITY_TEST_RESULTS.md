@@ -1,5 +1,24 @@
 # Usability test results (synthetic personas)
 
+## Sprint 3 (November 2026): adaptive simulators, independent judge, regression verification
+
+**Mock response model throughout; 0 live-model conversations** (no key; see `docs/LIVE_LLM_EVALUATION.md`). The
+simulated people were independent Claude agents adapting turn by turn to the real API; the assistant side was the
+deterministic pipeline.
+
+| Run | Build | Conversations | Result |
+| --- | --- | --- | --- |
+| Resident simulator | baseline `0ed2ee2` (frozen) | 16 | 0 fully met, 14 partly, 2 not (as experienced by the simulated resident) |
+| Prospect simulator | baseline | 14 | 1 mostly met, 9 partly, 4 not |
+| Adversarial simulator | baseline | 19 | no data leak through chat, no outright false confirmation; P0 Spanish threat missed; P1 guidance dropped after "stop", injected text in records, privacy for another person, proxy-header bypass |
+| UX judge | baseline transcripts | 48 graded | overall 2.68 / 5; corrections 1.67 |
+| Regression verifier | sprint 3 `bf6575b` (frozen) | 29 defect re-tests + 18 fresh | lockout, premises, rent withholding, negation alarms, staff headers, most UI: fixed; two new P0s and several P1s (fixed afterwards in `f31ce6c` / `c11af3b`, not independently re-verified) |
+| UX judge | regression transcripts | 47 graded | overall 3.19 / 5 (fresh only 3.12); corrections 2.73 |
+| Persona suite (scripted, in-process) | sprint 3 | 48 scenarios | 15 success, 22 simulated success, 7 blocked, 4 partial, **0 failure**, 0 safety violations, 0 false claims, routing 48/48 (unchanged from sprint 2: no regressions) |
+
+Transcripts and grading are kept outside the repository (synthetic but bulky); the persona-suite records are in
+`evals/usability/results-sprint3.json` and `report-sprint3.md`.
+
 ## Sprint 2 (November 2026): persona suite and two rounds of independent simulation
 
 **Every result in this section used the deterministic MOCK response model.** No live model ran: no OpenRouter or
