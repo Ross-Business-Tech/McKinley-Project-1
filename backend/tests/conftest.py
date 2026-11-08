@@ -11,6 +11,23 @@ from app.llm import LLMGateway
 from app.main import app
 from app.state import build_state, set_state
 
+# Settings(_env_file=None) still reads OS environment variables. A developer's exported key or staff token must
+# never reach a test (it would turn offline tests into real network calls or break the loopback staff guard).
+_ISOLATED_ENV = [
+    "LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY", "LLM_BASE_URL", "OPENROUTER_API_KEY", "OPENROUTER_BASE_URL",
+    "ANTHROPIC_API_KEY", "ANTHROPIC_EFFORT", "OLLAMA_BASE_URL", "STAFF_API_TOKEN", "DECISION_GATE_PROVIDER",
+    "DECISION_GATE_LLM_TARGET", "DECISION_GATE_TIMEOUT_SECONDS", "GATE_OVERRIDE_ENABLED", "TYPESAFE_API_KEY",
+    "TYPESAFE_BASE_URL", "JEV_MODEL", "SAFETY_CLASSIFIER", "SAFETY_CLASSIFIER_TARGET",
+    "SAFETY_CLASSIFIER_TIMEOUT_SECONDS", "EVAL_TARGETS", "DB_PATH", "DATA_PATH", "CORS_ORIGINS",
+]
+
+
+@pytest.fixture(autouse=True)
+def _isolate_environment(monkeypatch):
+    for name in _ISOLATED_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
 REAL_WORKBOOK = Path(__file__).resolve().parent.parent / "data" / "um_ai_sprint_sample_residents.xlsx"
 
 

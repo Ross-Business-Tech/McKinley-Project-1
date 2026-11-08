@@ -2,10 +2,12 @@
 
 import logging
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import actions, chat, evals, gates
+from app.api.errors import http_error_response
 from app.chat_engine import prompt_for
 from app.config import get_settings
 from app.models import HealthResponse, ModelTarget
@@ -21,6 +23,13 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_error(_: Request, exc: StarletteHTTPException):  # noqa: ANN202 - FastAPI handler signature
+    return http_error_response(exc.status_code, exc.detail, getattr(exc, "headers", None))
+
+
 app.include_router(chat.router)
 app.include_router(evals.router)
 app.include_router(gates.router)

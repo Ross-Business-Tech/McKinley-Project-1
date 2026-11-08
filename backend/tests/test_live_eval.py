@@ -134,7 +134,8 @@ def test_mock_dry_run_labelled_and_never_comparable(tmp_path):
     assert all(r["human_review_status"] == "pending" for r in doc["records"])
     md = (tmp_path / "out" / "report-dry.md").read_text()
     assert md.startswith("# MOCK DRY RUN") and "LIVE A/B/C" not in md
-    assert json.loads((tmp_path / "out" / "status.json").read_text())["status"] == "mock_dry_run"
+    assert json.loads((tmp_path / "out" / "status-mock-dryrun.json").read_text())["status"] == "mock_dry_run"
+    assert not (tmp_path / "out" / "status.json").exists()  # a dry run never replaces the live status
 
 
 def test_live_success_records_everything(tmp_path):

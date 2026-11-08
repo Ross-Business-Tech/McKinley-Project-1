@@ -1,6 +1,6 @@
 {
   "status": "blocked",
-  "updated_at": "2026-11-08T07:11:55+00:00",
+  "updated_at": "2026-11-08T08:20:49+00:00",
   "reason_code": "NEEDS_API_KEY",
   "reason": "openrouter is not ready (NEEDS_API_KEY). Add OPENROUTER_API_KEY to backend/.env (or start Ollama) and re-run preflight.",
   "target": "recommended",

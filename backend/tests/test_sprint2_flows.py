@@ -1,7 +1,6 @@
 """Sprint 2 conversation regressions, each from an independent reviewer's reproduction (B=UX, C=frustrated
 resident, D=ordinary resident, E=prospect, G=safety). Mock model; tests the deterministic product pipeline."""
 
-from app.state import get_state
 
 from .test_customer_flows import chat, confirm
 
@@ -148,9 +147,12 @@ def test_guest_wanting_an_apartment_is_not_asked_who_they_are(client):  # E F6
 
 
 def test_internal_account_notes_never_show_on_customer_cards(client):  # B13
-    r = chat(client, "kitchen faucet drips", persona="R003", session="in1")
-    assert "gym" not in str(fields(r)).lower()
-    assert get_state()  # state exists
+    """The fixture workbook's private notes, contact details and rent must never reach the customer response."""
+    for persona, session in (("R003", "in1"), ("R001", "in2")):
+        r = chat(client, "kitchen faucet drips", persona=persona, session=session)
+        blob = str(r).lower()  # the whole response, card fields and reply included
+        for private in ("overnight shifts", "works from home", "biscuit", "@example.com", "555-01", "1585", "1349"):
+            assert private not in blob, (persona, private)
 
 
 def test_distress_gets_care_line_and_no_form(client):  # fork screenshot note

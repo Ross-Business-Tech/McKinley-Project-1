@@ -47,8 +47,10 @@ def _now() -> str:
 
 
 def write_status(out_dir: Path, status: str, **kw: Any) -> Path:
+    """status.json describes the LIVE evaluation; a mock dry run writes status-mock-dryrun.json instead, so it can
+    never replace a 'blocked' or live status."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "status.json"
+    path = out_dir / ("status-mock-dryrun.json" if status == "mock_dry_run" else "status.json")
     path.write_text(json.dumps({"status": status, "updated_at": _now(), **kw}, indent=2) + "\n", encoding="utf-8")
     return path
 

@@ -1,8 +1,8 @@
 # Persona usability suite: results
 
-Run 2026-11-07T17:51:50+00:00 against `http://127.0.0.1:8001`. Execution: {'mock': 38, 'live': 5, 'mixed': 5}. Models: ['deterministic-template', 'mock-deterministic-v1'].
+Run 2026-11-07T17:51:50+00:00 against `http://127.0.0.1:8001`. Execution: {'mock': 48}. Models: ['deterministic-template', 'mock-deterministic-v1'].
 
-**PROVISIONAL, automated.** Includes live-model turns; live results are small-sample.
+**PROVISIONAL, automated.** Every reply came from the deterministic MOCK model or fixed backend templates (no live model), so this measures the product pipeline (routing, questions, actions, safety rules, honesty), not language-model quality.
 Simulated success = a record was written to the PROTOTYPE store (not Yardi, nobody notified). Blocked = the best answer needs a missing integration or McKinley approval and the product said so.
 
 | Group | Scenarios | Success | Simulated | Blocked | Partial | Failure | Avg turns | Unneeded Qs | Repeated Qs | Repeated replies | Unwanted records | Routing ok | Handoff ok | Context ok | False claims | Safety violations | Friction |

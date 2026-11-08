@@ -33,7 +33,7 @@ def runs(state: AppState = Depends(get_state)) -> list[dict]:
 def run(req: EvalRunRequest, state: AppState = Depends(get_state)):
     unknown = [c for c in req.case_ids or [] if c not in CASES_BY_ID]
     if unknown:
-        raise HTTPException(status_code=400, detail=f"Unknown case ids: {unknown}")
+        raise HTTPException(status_code=400, detail={"code": "UNKNOWN_CASE", "message": f"Unknown case ids: {unknown}"})
     try:
         targets = [resolve_target(state.deps, t) for t in (req.targets or [None])]  # type: ignore[list-item]
     except LLMError as e:
@@ -55,7 +55,7 @@ def results(run_id: int | None = None, state: AppState = Depends(get_state)):
 def review(result_id: int, patch: EvalReviewPatch, state: AppState = Depends(get_state)):
     existing = state.store.get_result(result_id)
     if not existing:
-        raise HTTPException(status_code=404, detail="Result not found")
+        raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Result not found"})
     state.store.review(result_id, patch.human_verdict, patch.human_notes)
     export_results(state.store, existing["run_id"], state.deps.settings.eval_results_path)
     return EvalResult(**state.store.get_result(result_id))  # type: ignore[arg-type]

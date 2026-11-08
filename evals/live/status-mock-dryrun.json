@@ -1,0 +1,13 @@
+{
+  "status": "mock_dry_run",
+  "updated_at": "2026-11-08T08:21:14+00:00",
+  "execution": "MOCK",
+  "label": "mock-dryrun",
+  "target": "mock:mock-deterministic-v1",
+  "stop_code": null,
+  "stop_message": null,
+  "model_calls_made": 37,
+  "results": "results-mock-dryrun.json",
+  "report": "report-mock-dryrun.md",
+  "note": "Dry run only; live evaluation not yet run."
+}

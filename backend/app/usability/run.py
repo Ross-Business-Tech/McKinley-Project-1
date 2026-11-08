@@ -93,8 +93,9 @@ def render_md(doc: dict[str, Any]) -> str:
         "# Persona usability suite: results", "",
         f"Run {meta['run_at']} against `{meta['target']}`. Execution: {s['execution']}. Models: {s['models']}.", "",
         "**PROVISIONAL, automated.** " + (
-            "Every turn used the deterministic MOCK model, so this measures the product pipeline (routing, "
-            "questions, actions, safety rules, honesty), not language-model quality."
+            "Every reply came from the deterministic MOCK model or fixed backend templates (no live model), so "
+            "this measures the product pipeline (routing, questions, actions, safety rules, honesty), not "
+            "language-model quality."
             if s["execution"].get("mock") == len(doc["results"]) else
             "Includes live-model turns; live results are small-sample."),
         "Simulated success = a record was written to the PROTOTYPE store (not Yardi, nobody notified). "

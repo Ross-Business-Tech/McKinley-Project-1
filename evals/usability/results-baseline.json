@@ -4,7 +4,8 @@
     "target": "http://127.0.0.1:8001",
     "scenarios": 48,
     "personas": 25,
-    "note": "server at commit d3d64d6 (sprint-1 final), mock model"
+    "note": "server at commit d3d64d6 (sprint-1 final), mock model",
+    "relabelled": "2026-11-08: execution labels recomputed from the stored per-turn data; template-only turns were previously miscounted as live. No conversation or score changed."
   },
   "summary": {
     "all": {
@@ -108,9 +109,7 @@
       "latency_ms_max": 15
     },
     "execution": {
-      "mock": 38,
-      "live": 5,
-      "mixed": 5
+      "mock": 48
     },
     "models": [
       "deterministic-template",
@@ -4218,7 +4217,7 @@
       "latency_ms": [
         1
       ],
-      "execution": "live",
+      "execution": "mock",
       "models": [
         "deterministic-template"
       ],
@@ -9306,7 +9305,7 @@
       "latency_ms": [
         1
       ],
-      "execution": "live",
+      "execution": "mock",
       "models": [
         "deterministic-template"
       ],
@@ -9365,7 +9364,7 @@
       "latency_ms": [
         2
       ],
-      "execution": "live",
+      "execution": "mock",
       "models": [
         "deterministic-template"
       ],
@@ -9670,7 +9669,7 @@
         1,
         2
       ],
-      "execution": "mixed",
+      "execution": "mock",
       "models": [
         "deterministic-template",
         "mock-deterministic-v1"
@@ -10033,7 +10032,7 @@
       "latency_ms": [
         2
       ],
-      "execution": "live",
+      "execution": "mock",
       "models": [
         "deterministic-template"
       ],
@@ -10206,7 +10205,7 @@
       "latency_ms": [
         1
       ],
-      "execution": "live",
+      "execution": "mock",
       "models": [
         "deterministic-template"
       ],
@@ -10614,7 +10613,7 @@
         1,
         1
       ],
-      "execution": "mixed",
+      "execution": "mock",
       "models": [
         "deterministic-template",
         "mock-deterministic-v1"
@@ -10916,7 +10915,7 @@
         1,
         1
       ],
-      "execution": "mixed",
+      "execution": "mock",
       "models": [
         "deterministic-template",
         "mock-deterministic-v1"
@@ -12422,7 +12421,7 @@
         1,
         1
       ],
-      "execution": "mixed",
+      "execution": "mock",
       "models": [
         "deterministic-template",
         "mock-deterministic-v1"
@@ -14274,7 +14273,7 @@
         1,
         1
       ],
-      "execution": "mixed",
+      "execution": "mock",
       "models": [
         "deterministic-template",
         "mock-deterministic-v1"

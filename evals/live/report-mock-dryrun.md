@@ -2,7 +2,7 @@
 
 > **MOCK DRY RUN.** Every reply came from deterministic templates. This proves the pipeline and recording only; it says nothing about language-model quality. All records are `comparable: false`.
 
-- Label `mock-dryrun`, 2026-11-08T07:11:48+00:00 → 2026-11-08T07:11:48+00:00; run status **completed**
+- Label `mock-dryrun`, 2026-11-08T08:21:14+00:00 → 2026-11-08T08:21:14+00:00; run status **completed**
 - Requested `mock:mock-deterministic-v1`; served models seen: ['mock-deterministic-v1']
 - Generation: {'temperature': 0.2, 'max_tokens': 4000, 'timeout_seconds': 60.0, 'max_retries_same_model': 2}; gate: rules (deterministic; no gate model calls)
 - Prompt versions: {'baseline': 'baseline-v1#0eaa993f', 'prompt_only': 'mckinley-v0.1+oc1#dc9454e1+wf-v1+noctx', 'aware': 'mckinley-v0.1+oc1#dc9454e1+wf-v1+ctx'}
@@ -15,7 +15,7 @@
 | Mode | Records | Would-be comparable (MOCK) | Excluded | Errors | Templates | Validation replacements | Model-error fallbacks | Auto GOOD / graded | Handoffs | False action claims | JSON failures | Tokens in | Tokens out | Latency avg ms | Cost USD |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | A baseline | 12 | 12 | 0 | 0 | 0 | 0 | 0 | 4/5 | 3 | 0 | 0 | 1044 | 350 | 17 | 0 |
-| B prompt_only | 16 | 13 | 3 | 0 | 3 | 0 | 0 | 3/5 | 5 | 0 | 0 | 11457 | 332 | 15 | 0 |
+| B prompt_only | 16 | 13 | 3 | 0 | 3 | 0 | 0 | 3/5 | 5 | 0 | 0 | 11456 | 331 | 16 | 0 |
 | C aware | 15 | 12 | 3 | 0 | 3 | 0 | 0 | 2/5 | 7 | 0 | 0 | 11205 | 388 | 12 | 0 |
 
 ## Five core cases (single turn)

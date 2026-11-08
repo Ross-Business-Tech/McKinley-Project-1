@@ -213,8 +213,21 @@ def evaluate(sc: Scenario, convo: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def turn_source(t: dict[str, Any]) -> str | None:
+    """What produced this reply: 'template' (fixed backend text, no model call), 'mock' or 'live'. A template turn
+    is never live evidence even though no mock was involved (is_mock is False for templates)."""
+    if t.get("model") == "deterministic-template" or str(t.get("reply_source") or "").startswith("template"):
+        return "template"
+    if t.get("is_mock") is None:
+        return None
+    return "mock" if t.get("is_mock") else "live"
+
+
 def _execution(turns: list[dict[str, Any]]) -> str:
-    flags = {t.get("is_mock") for t in turns if t.get("is_mock") is not None}
-    if not flags:
+    """'live' only when a real model wrote replies and no mock did; template turns don't count either way."""
+    kinds = {k for t in turns if (k := turn_source(t))}
+    if not kinds:
         return "unknown"
-    return "mock" if flags == {True} else ("live" if flags == {False} else "mixed")
+    if kinds <= {"template", "mock"}:
+        return "mock" if "mock" in kinds or kinds == {"template"} else "unknown"
+    return "live" if kinds <= {"template", "live"} else "mixed"
