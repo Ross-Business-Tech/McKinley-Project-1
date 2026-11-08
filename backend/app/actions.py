@@ -600,10 +600,19 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return done(TurnPlan(template=t("other_person", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Person says they are not the account holder.")))
-    if looks_like_injection(msg) and not draft and gate.urgency != "emergency":
+    own_words = " ".join(x for x in re.split(r"(?<=[.!?])\s+|\n+|\s(?=>)", msg)
+                         if x.strip() and not looks_like_injection(x) and not x.strip().startswith(">"))
+    if looks_like_injection(msg) and not draft and gate.urgency != "emergency" and not (
+            own_words and (gate.intent == "maintenance" or is_issue_description(own_words))):
         return done(TurnPlan(template=t("injection_note", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Instructions inside the message: treated as text.")))
+    if re.fullmatch(r"\W*(?:(?:my|mi) (?:number|phone|cell|email|n[uú]mero|tel[eé]fono|correo)(?: is| es)?\W*)?"
+                    r"\[(?:phone|email) redacted\]\W*(?:\w+\W*){0,4}", msg, re.I) and gate.urgency != "emergency":
+        return done(TurnPlan(template=t("contact_only", lang), functions=["F2"], skip_model=True,
+                             consumed_by_draft=True, action=_proposed(draft["kind"], draft, lang)
+                             if draft and not draft.get("declined") else None,
+                             workflow=_sel("general_inquiry", "Contact detail typed in chat: not stored.")))
     if is_lockout(msg) and gate.urgency != "emergency" and not (draft and draft["kind"] == "staff_handoff"):
         rec = synthesize_handoff(gate, ctx, "other", "maintenance", "Resident locked out (after-hours line advised)")
         return done(TurnPlan(template=t("lockout", lang), functions=["F6", "F9"], skip_model=True,
@@ -611,7 +620,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              chips=["Leave a note for the office" if lang == "en"
                                     else "Dejar una nota para la oficina"],
                              workflow=_sel("maintenance", "Lockout: after-hours line, no repair form.")))
-    if is_meta_question(msg) and gate.urgency != "emergency":  # "did that go in?", "is it in or just notes?"
+    status_from_record = bool(is_meta_question(msg) and not sent and not draft and is_resident and verified)
+    # "did that go in?", "is it in or just notes?"
+    if is_meta_question(msg) and gate.urgency != "emergency" and not status_from_record:
         listed = [f"{WHAT[r['kind']][lang]} {r['id']} {'saved' if lang == 'en' else 'guardada'}" for r in sent[:4]]
         none_txt = "nothing has been sent yet" if lang == "en" else "todavía no se ha enviado nada"
         pending = ""
@@ -878,7 +889,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return handoff_plan("handoff_offer", workflow.reason)
 
     # 7. Status lookup (F8) for a verified resident.
-    if is_resident and verified and is_status_request(msg):
+    if is_resident and verified and (is_status_request(msg) or status_from_record):
         items = sorted(status_items(store, resident, persona_id or ""),
                        key=lambda i: 0 if "owed" in i.status else 1)
         frustrated = "complaint_or_frustration" in flags
@@ -918,8 +929,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         effective = re.sub(r"^\W*(?:ok(?:ay)?|so|and|anyway)?[\s,]*(?:back to|about|regarding|re:?) (?:the |my )?",
                            "", effective, flags=re.I) or effective  # "ok, back to the oven" resumes; it isn't a problem
         clean = strip_greeting(redact(effective))
-        if looks_like_injection(clean):
-            clean = "[flagged: message contained instructions; shown as text] " + clean
+        injection_lead = ""
+        if looks_like_injection(clean):  # keep the person's own words, drop the instruction-like part
+            kept = [x for x in re.split(r"(?<=[.!?])\s+|\n+|\s(?=>)", clean)
+                    if x.strip() and not looks_like_injection(x) and not x.strip().startswith(">")]
+            clean = " ".join(kept).strip()
+            effective = clean or effective
+            injection_lead = t("injection_dropped", lang)
         multi_note = ""
         parts = split_issues(effective) if not in_maint_draft and not d["fields"].get("issue") else [effective]
         if len(parts) > 1:  # one request per problem; the rest wait and are offered after this one is sent
@@ -1054,6 +1070,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             template += (" Meanwhile, a few safe checks: " if lang == "en" else " Mientras tanto: ") + tip
         if multi_note:
             template = multi_note + " " + template
+        template = injection_lead + template
         save("maintenance_request", d)
         return done(TurnPlan(template=template, functions=["F6", "F7"] + (["F9"] if gate.requires_human else []),
                              action=_proposed("maintenance_request", d, lang), chips=chips,

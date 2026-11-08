@@ -204,6 +204,8 @@ export function CustomerApp() {
       chips = t.afterDecline.map((s) => ({ label: s, send: s })); // and after Don't send
     }
   }
+  // the "Talk to a person" button is always under the composer, so it is never repeated as a chip
+  chips = chips.filter((c) => c.label.toLowerCase() !== t.talkToPerson.toLowerCase()).slice(0, 4);
   const journeyDone = !!journey && step >= journey.steps.length;
 
   // ---- actions -----------------------------------------------------------------------------------------------
@@ -463,7 +465,7 @@ export function CustomerApp() {
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 py-1.5 [mask-image:linear-gradient(to_right,#000_85%,transparent)] [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-1 sm:[mask-image:none]"
+              className="mb-2 flex flex-wrap gap-2 py-1.5 sm:px-1"
             >
               {chips.map((c) => (
                 <button
@@ -471,7 +473,7 @@ export function CustomerApp() {
                   type="button"
                   disabled={busy}
                   onClick={() => send(c.send)}
-                  className="mk-focus min-h-11 shrink-0 rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base whitespace-nowrap text-mk-brand hover:bg-mk-brand-soft disabled:opacity-60 sm:shrink sm:whitespace-normal"
+                  className="mk-focus min-h-11 rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base text-mk-brand hover:bg-mk-brand-soft disabled:opacity-60"
                 >
                   {c.label}
                 </button>

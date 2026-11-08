@@ -34,7 +34,10 @@ _EXPLICIT_HUMAN = re.compile(
 )
 _FRUSTRATION = re.compile(r"really upset|frustrat|unacceptable|ridiculous|angry|fed up|furious|complain|nobody came|"
                           r"no one came|still waiting|been \d+ (days|weeks)|are you (even )?listening|keep telling|"
-                          r"why do i have to",
+                          r"why do i have to|no(?:body| one) (?:ever )?does anything|(?:second|third|fourth|fifth|"
+                          r"\d+(?:st|nd|rd|th)) time (?:i'?m |i am |i'?ve |i have )?(?:report|ask|call|messag|tell|wri"
+                          r"t)|"
+                          r"keeps? happening|still (?:not|isn'?t|hasn'?t been) fixed",
                           re.IGNORECASE)
 
 FLAG_REASONS = {

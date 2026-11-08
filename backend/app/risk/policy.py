@@ -10,6 +10,7 @@ Rules are applied in order; the first that fires decides. Each has an id recorde
   R6 deterministic care tier: distress / unwell                 -> that care line (semantic cannot remove it).
   R7 deterministic "danger" vocabulary line                     -> 911 care line, UNLESS the semantic layer ran ok and
      says none with confidence >= 0.8 (the only thing the semantic layer may remove: the broad, low-severity line).
+  R9e after a person-danger alert, new danger words             -> full alert again (same kind)
   R9 earlier in this conversation: a person-danger alert       -> keep a calm line (988 for self-harm, else 911)
      on every later turn, even if the person says "I'm fine, stop" (applies wherever R7/R8 would show nothing).
   R8 nothing                                                    -> no safety text.
@@ -74,14 +75,18 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
                             sources=["deterministic"] + (["semantic"] if s else []), degraded=degraded,
                             conflict=(f"semantic said none; {det.care} line kept" if s and s.risk_level == "none"
                                       else None))
+    prior = [h for h in (prior_hazards or []) if is_people_hazard(h)]
+    if prior and det.care == "danger" and prior[-1] != "self_harm":  # R9e: "he's outside my door right now"
+        return RiskDecision(response="full_alert", kind=prior[-1], needs_human=True, escalation_priority="urgent",
+                            rule="R9e", sources=["session", "deterministic"], degraded=degraded,
+                            conflict=f"danger words after an earlier {prior[-1]} alert: alert shown again")
     if det.care == "danger":  # R7
         if s and s.risk_level == "none" and (s.confidence or 0) >= SUPPRESS_CONFIDENCE and not any(
                 is_people_hazard(h) for h in (prior_hazards or [])):
             return RiskDecision(response="none", rule="R7-suppressed", sources=["deterministic", "semantic"],
                                 conflict=f"broad 911 line suppressed: semantic none ({s.confidence:.2f})")
-        return RiskDecision(response="care_line", care="danger", rule="R7",
-                            sources=["deterministic"] + (["semantic"] if s else []), degraded=degraded)
-    prior = [h for h in (prior_hazards or []) if is_people_hazard(h)]
+        return RiskDecision(response="care_line", care="distress" if "self_harm" in prior else "danger",
+                            rule="R7", sources=["deterministic"] + (["semantic"] if s else []), degraded=degraded)
     if prior:  # R9
         care = "distress" if "self_harm" in prior else "danger"
         return RiskDecision(response="care_line", care=care, rule="R9",  # type: ignore[arg-type]

@@ -449,6 +449,16 @@ T: dict[str, dict[Lang, str]] = {
         "es": "No puedo seguir instrucciones escritas dentro de un mensaje, ni confirmar horarios, eximir cargos o "
               "cambiar nada en una cuenta. Si necesita algo, dígamelo con sus palabras y le ayudo.",
     },
+    "contact_only": {
+        "en": "Thanks. For privacy, this prototype doesn't keep phone numbers or emails typed into the chat, so I "
+              "haven't saved it. When the office contacts you, you can confirm your details with them.",
+        "es": "Gracias. Por privacidad, este prototipo no guarda teléfonos ni correos escritos en el chat, así que no "
+              "lo guardé. Cuando la oficina le contacte, puede confirmar sus datos con ellos.",
+    },
+    "injection_dropped": {
+        "en": "I left out the part of your message that looked like instructions to me. ",
+        "es": "Omití la parte de su mensaje que parecía darme instrucciones. ",
+    },
     "lockout": {
         "en": "Being locked out is stressful, especially at night. I can't unlock doors or send anyone from this chat, "
               "and nobody is notified by it. Please call your community's after-hours or emergency maintenance line "

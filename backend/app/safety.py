@@ -66,7 +66,8 @@ def contains_pii(text: str) -> list[str]:
 _INJECTION = re.compile(
     r"ignore (all|any|previous|prior|the above)|disregard|system prompt|you are now|new instructions|"
     r"api[ _-]?key|secret|password|reveal|jailbreak|developer mode|</?\s*(system|safe_context)|"
-    r"\boverride\b|act as",
+    r"\boverride\b|act as|\b(?:assistant|system|ai|bot) instructions?\b|(?:^|\n)\s*>?\s*(?:system|assistant)\s*:|"
+    r"reply (?:only )?with ['\"]",
     re.IGNORECASE,
 )
 

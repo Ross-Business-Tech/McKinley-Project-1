@@ -283,6 +283,13 @@ _CHEM_HARM = (r"coughing (?:a lot|nonstop|and)|chok\w*|can'?t breathe|hard to br
               r"(?:burn|"
               r"sting)\w*|dizz\w*|vomit\w*|throwing up|faint\w*|passed out")
 # Threats and violence without "kill/hurt me".
+_AT_DOOR = (r"\b(?:he|she|they|someone|somebody|my ex|a man|a guy|a stranger|a woman)(?:'s| is| are|'re)? (?:standing |"
+            r"waiting |sitting |still |back |banging )?(?:outside|at|by|in front of) my (?:door|window|unit|apartment|"
+            r"car)\b\W+(?:\w+\W+){0,8}(?:right now|now|again|won'?t leave|scared|afraid|help)|(?:scared|afraid|terrifi"
+            r"ed)"
+            r"\W+(?:\w+\W+){0,6}(?:he|she|they|someone)(?:'s| is| are|'re)? (?:standing |waiting |still )?(?:outside|a"
+            r"t)"
+            r" my (?:door|window)|(?:est[aá]|sigue) (?:afuera|fuera|en la puerta) de mi (?:puerta|casa|apartamento)")
 _VIOLENCE = (r"\b(?:he|she|they|my (?:ex|partner|husband|wife|boyfriend|girlfriend|roommate|dad|mom)|someone)\b\W+"
              r"(?:\w+\W+){0,4}(?:grabbed|choked|strangled|shoved|pushed|slapped|punched|hit|kicked|threw \w+ at|pinned|"
              r"dragged) (?:me|my|us|the kids?)\b|(?:i'?ll|i will|gonna|going to|is going to) (?:stab|shoot|kill|cut|"
@@ -340,7 +347,7 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("self_harm", _near(_GONE, _GONE_PLAN, 20)),
     ("poison", re.compile(_OD_SIGNS, re.I)),
     ("poison", _near(_CHEM, _CHEM_HARM, 10)),
-    ("personal_safety", re.compile(_VIOLENCE, re.I)),
+    ("personal_safety", re.compile(_VIOLENCE + "|" + _AT_DOOR, re.I)),
     ("medical", re.compile(_MED_SIGNS, re.I)),
     ("trapped", re.compile(_TRAPPED3, re.I)),
     ("flood", re.compile(_WATER3, re.I)),
@@ -384,7 +391,14 @@ _DANGER = re.compile(
     r"humo|fuego|incendio|sangr\w*|herid\w*|inconsciente|atrapad\w*|miedo|pistola|cuchillo)\b", re.I)
 _DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
                          r"test|extinguisher)|chest of drawers|burning question|smoke[- ]free|no smoking|"
-                         r"bone dry|broke (?:the )?bank|burn(?:t|ed) (?:toast|food|popcorn|rice|dinner)|shoot(?:ing)? "
+                         r"bone dry|broke (?:the )?bank|smoke (?:detector|alarm)s? (?:repair|battery|batteries|replace"
+                         r"ment|replaced|"
+                         r"install\w*|check|test|inspection|cover)|(?:repair|replace|fix|install|send)\w* (?:the |my |"
+                         r"a )?"
+                         r"smoke (?:detector|alarm)|(?:scared|afraid|terrified) of (?:spiders?|bugs?|heights|the d"
+                         r"ark|mice|roaches|"
+                         r"dogs?|clowns|needles|snakes|flying|public speaking)|burn(?:t|ed) (?:toast|food|popcorn|rice"
+                         r"|dinner)|shoot(?:ing)? "
                          r"(?:me |you |us |them )?(?:an? |the |over )?"
                          r"(?:email|text|message|note|line|star|photos?|pics?|video|quick)|shooting stars?|photo ?shoo"
                          r"ts?|"
@@ -415,7 +429,8 @@ _DISTRESS = re.compile(
     r"(?:can'?t|cant) go on like this|give up on (?:everything|life)|(?:feel|feeling|i'?m|im) (?:so |really )?hopeless|"
     r"(?:i'?m|im) (?:so )?done with (?:everything|life)|(?:won'?t|wont) (?:be around|matter)|"
     r"everything is falling apart|nothing matters|it doesn'?t matter anyway|tired of (?:living|everything|life)|"
-    r"ya no puedo m[aá]s|no aguanto m[aá]s|" + _OVERWHELM, re.I)
+    r"ya no puedo m[aá]s|no aguanto m[aá]s|feels? (?:so |really |completely )?hopeless|so stressed (?:that )?i "
+    r"can'?t (?:sleep|eat|breathe)|panic attacks?|" + _OVERWHELM, re.I)
 _UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick|weird|off)|", "")
                      + r"|can'?t breathe well|short of breath", re.I)
 _NEGATED_SELF_HARM = re.compile(
@@ -653,6 +668,8 @@ QUEUE_NOTE = {
 
 HEADING = {
     "self_harm": {"en": "You can call or text 988 now", "es": "Puede llamar o enviar un mensaje al 988 ahora"},
+    "gas": {"en": "Leave now, then call 911 from outside", "es": "Salga ahora y llame al 911 desde afuera"},
+    "co": {"en": "Get everyone outside, then call 911", "es": "Salgan todos y llame al 911"},
     "default": {"en": "If anyone is in danger, call 911 now", "es": "Si hay peligro, llame al 911 ahora"},
 }
 
@@ -742,5 +759,5 @@ def notice(kind: str, lang: str = "en") -> str:
 
 
 def heading(kind: str | None, lang: str = "en") -> str:
-    h = HEADING["self_harm" if kind == "self_harm" else "default"]
+    h = HEADING[kind if kind in ("self_harm", "gas", "co") else "default"]
     return h.get(lang) or h["en"]

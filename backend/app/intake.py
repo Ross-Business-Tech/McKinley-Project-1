@@ -18,6 +18,7 @@ KB_PATH = Path(__file__).resolve().parent / "content" / "knowledge_base.json"
 
 _ES_WORDS = re.compile(
     r"\b(hola|gracias|por favor|necesito|tengo|mi|mis|está|esta|no funciona|ayuda|cocina|baño|bano|puerta|"
+    r"reportar|reparaci[oó]n|solicitudes|una|oficina|ver|env[ií]elo|"
     r"agua|luz|renta|contrato|cuándo|cuando|quiero|hablar|persona|apartamento|horno|fuga|gotea|olor|"
     r"mantenimiento|solicitud|estado|sí|usted|español|espanol|el|la|los|las|refrigerador|enfría|enfria|"
     r"funciona|lavaplatos|ba[ñn]era|ducha|calefacci[oó]n|aire|luz|puede|pueden|entrar|hay|muy|también)\b",
@@ -198,7 +199,10 @@ _STAFF = re.compile(
     r"send (a |the )?note to the office|contact (the )?(office|staff|leasing)|"
     r"(?:want|need|like|have|get) (?:someone|somebody|a person|an agent|a human|a real person|leasing|the office|"
     r"the manager|a manager|staff) to (?:call|text|email|contact|reach|phone) me|\bcall me back\b|"
-    r"have (?:someone|somebody) (?:call|text|email|contact) me|quiero que (?:alguien|una persona) me (?:llame|"
+    r"have (?:someone|somebody) (?:call|text|email|contact) me|\bask the office\b|preguntar a la oficina|"
+    r"\b(?:send|submit) (?:my|the|a|that|this) note\b|\bsend (?:that|it|this) to (?:whoever|the office|someone|a "
+    r"person|staff)|env[ií]e la nota|"
+    r"quiero que (?:alguien|una persona) me (?:llame|"
     r"contacte)|"
     r"^\W*(agent|representative|rep|operator|human|a human|person|real person|manager|supervisor)\W*(please|now|pls)?"
     r"\W*$|\b(get|give) me (a |an |the )?(human|person|manager|agent|representative)\b|(want|need) (a |an |to talk to "
@@ -765,6 +769,9 @@ def extract_issue_swap(message: str) -> str | None:
     return new[0].upper() + new[1:]
 
 
+_LOC_CHANGE_ES = re.compile(r"\b(?:en realidad |de hecho |no,? )?(?:es|est[aá]) (?:en )?(?:el |la )(?P<loc>ba[ñn]o"
+                            r"(?: del pasillo| principal| de visitas)?|cocina|sala|dormitorio|rec[aá]mara|pasillo|"
+                            r"balc[oó]n|lavander[ií]a)\b", re.I)
 _LOC_CHANGE = re.compile(r"\bchange (?:the )?(?:location|room|place|where it is|spot) to (?:the |my"
                          r" )?(?P<loc>[^.?!,]{3,40})|"
                          r"\b(?:it'?s|its|it is) (?:actually )?in (?:the |my )(?P<loc2>[^.?!,]{3,30})", re.I)
@@ -779,6 +786,9 @@ _LOC_DETAIL = re.compile(rf"\b(?<!not )(?<!not the )(?:the |my )?(?P<q>{_QUAL})\
 def extract_location_change(message: str, current: str | None = None) -> str | None:
     """'change the location to the bedroom', "it's in the hall bathroom", 'the hall one, not the main one'."""
     m = _LOC_CHANGE.search(message)
+    if not m and (es := _LOC_CHANGE_ES.search(message)) and len(message.split()) <= 10:
+        loc = es.group("loc")
+        return loc[0].upper() + loc[1:]
     if not m:
         d = _LOC_DETAIL.search(re.sub(rf"\b(?:not|isn'?t|no) (?:the |my )?(?:{_QUAL})\s+\w+", " ", message, flags=re.I))
         if not d or len(message.split()) > 12:
@@ -821,7 +831,10 @@ _META_Q = re.compile(
     r"notify|tell|pass|forward|file|save|put)|\bwill (?:a |any )?(?:human|person|real person|someone|anyone|staff)"
     r" (?:actually |ever )?(?:read|see|get|look at)|\bwhen (?:will|do|would) i hear back|\bwhat did you (?:send|"
     r"submit|save|do)|\bwhat (?:have|has) (?:you |been )?(?:sent|submitted|saved)|\bse envi[oó]|\blo envi[oó]|"
-    r"\bya se mand[oó]|\bwhat (?:got|was) sent", re.I)
+    r"\bya se mand[oó]|\bwhat (?:got|was) sent|\bdid (?:both|they|those|all|them|everything|all of them) (?:go|get)"
+    r" (?:in|through|sent)|\b(?:is|will) (?:a |the )?(?:manager|human|person|someone|anyone|staff)(?: actually| really|"
+    r" ever)? (?:going to |gonna )?(?:see|read|look at|get) (?:it|this|that|my)|\bis (?:the|my) [\w ]{1,30} "
+    r"(?:fixed|done|repaired|scheduled|sorted) (?:yet|now)?\b", re.I)
 
 
 _LOCKOUT = re.compile(r"locked out|lock(?:ed)? (?:my ?self|me) out|can'?t get (?:in|into|back in(?:to)?) (?:my |the )?"
@@ -889,7 +902,7 @@ _POLICY_TOPICS = [
     ("parking", r"\bpark(ing)?\b|garage spot|guest spot|tow\w*"),
     ("pets", r"\bpets?\b|\bdogs?\b|\bcats?\b|pet (fee|rent|deposit)"),
     ("amenities", r"\bpool\b|\bgym\b|fitness|clubhouse|amenit\w*"),
-    ("smoking", r"\bsmok(e|ing)\b|\bvap(e|ing)\b"),
+    ("smoking", r"\bsmok(e|ing)\b(?! (?:detector|alarm))|\bvap(e|ing)\b"),
     ("grills", r"\bgrills?\b|\bbbq\b|barbecue"),
     ("subletting", r"sublet|sub-?lease|airbnb|roommate (add|change)|add (a )?roommate"),
     ("rent payment", r"rent (is )?due|pay (my )?rent|late fee|payment portal|when is rent"),

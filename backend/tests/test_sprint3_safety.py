@@ -254,3 +254,10 @@ def test_distress_care_line_recommends_a_human_check(client):
     r = _chat(client, "honestly what's the point of anything anymore", "dist1")
     assert r["care_kind"] == "distress" and r["recommended_handoff"] and r["handoff"]["category"] == "safety_emergency"
     assert r["handoff"]["status"] == "recommended_not_sent"
+
+
+def test_new_danger_words_after_a_person_danger_alert_alert_again():
+    d = decide(DeterministicRisk(care="danger"), FAILED, prior_hazards=["personal_safety"])
+    assert d.response == "full_alert" and d.kind == "personal_safety" and d.rule == "R9e"
+    d = decide(DeterministicRisk(care="danger"), FAILED, prior_hazards=["self_harm"])
+    assert d.response == "care_line" and d.care == "distress"  # self-harm keeps the 988 line instead

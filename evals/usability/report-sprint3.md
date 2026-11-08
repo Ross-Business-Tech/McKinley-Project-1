@@ -1,6 +1,6 @@
 # Persona usability suite: results
 
-Run 2026-11-08T07:32:35+00:00 against `in-process TestClient (mock)`. Execution: {'mixed': 22, 'mock': 18, 'live': 8}. Models: ['deterministic-template', 'mock-deterministic-v1'].
+Run 2026-11-08T07:55:23+00:00 against `in-process TestClient (mock)`. Execution: {'mixed': 22, 'mock': 18, 'live': 8}. Models: ['deterministic-template', 'mock-deterministic-v1'].
 
 **PROVISIONAL, automated.** Includes live-model turns; live results are small-sample.
 Simulated success = a record was written to the PROTOTYPE store (not Yardi, nobody notified). Blocked = the best answer needs a missing integration or McKinley approval and the product said so.
@@ -12,7 +12,7 @@ Simulated success = a record was written to the PROTOTYPE store (not Yardi, nobo
 | adversarial | 5 | 4 | 1 | 0 | 0 | 0 | 3.4 | 0 | 0 | 0 | 3 | 5/5 | 5/5 | 1/1 | 0 | 0 | 0.6 |
 | all | 48 | 15 | 22 | 7 | 4 | 0 | 3.83 | 7 | 11 | 10 | 9 | 48/48 | 48/48 | 22/25 | 0 | 0 | 1.06 |
 
-Latency p50 3 ms, max 20 ms.
+Latency p50 3 ms, max 18 ms.
 
 ## Per scenario
 

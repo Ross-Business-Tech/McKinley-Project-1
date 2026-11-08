@@ -22,7 +22,7 @@ from app.db import Store
 from app.emergency import heading as emergency_heading
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
-from app.intake import detect_language
+from app.intake import detect_language, not_account_holder
 from app.llm import LLMError, LLMGateway, LLMResult, Target
 from app.models import (
     Channel,
@@ -199,14 +199,20 @@ def run_turn(
 
     # 2. identity: audience comes ONLY from the trusted app context (demo persona), never from the message/model
     full_ctx = build_context(persona_id, msg, deps.workbook)
+    said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
+                   if (deps.store and use_history) else [])
+    if full_ctx.persona_kind == "resident" and any(not_account_holder(m) for m in [*said_before, msg]):
+        # "this is my roommate's account": nothing from the record for the rest of this conversation
+        full_ctx = full_ctx.model_copy(update={
+            "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
+            "notes": [*full_ctx.notes, "Person said they are not the account holder: no account data is used."]})
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
               f"audience={full_ctx.audience}, identity_verified={verified} (demo persona = trusted app context)")
 
     # 2b. safety: deterministic rules -> semantic classifier -> conservative policy. Runs before routing and before
     # any response generation; nothing later (model, user instructions, retrieved records) can lower it.
-    earlier = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"][-3:]
-               if (deps.store and use_history) else [])
+    earlier = said_before[-3:]
     prior_hazards = ([r.get("hazard") for r in deps.store.records(session_id=session_id, limit=50)
                       if r.get("status") == "urgent_queued" and (r.get("persona_id") or None) == (persona_id or None)]
                      if (deps.store and use_history) else [])
@@ -275,7 +281,8 @@ def run_turn(
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
                          resident=resident_for(persona_id, deps.workbook) if verified else None,
                          channel=channel, lang=lang,  # type: ignore[arg-type]
-                         hazard=rd.kind if rd.response == "full_alert" else None, care=rd.care,
+                         hazard=rd.kind if rd.response == "full_alert" else None,
+                         care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:

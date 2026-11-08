@@ -186,8 +186,8 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
                  "inodoro", "tubería", "agua caliente"],
     "appliance": ["dishwasher", "fridge", "refrigerator", "oven", "stove", "washer", "dryer", "microwave",
                   "disposal", "horno", "estufa", "lavadora", "secadora", "refrigerador", "lavaplatos"],
-    "pest": ["roach", "bug", "pest", "mice", "mouse", "ants", "rodent", "cucaracha", "hormiga", "ratón", "raton",
-             "ratones", "chinche", "plaga"],
+    "pest": ["roach", "cockroach", "bug", "pest", "mice", "mouse", "ants", "rodent", "cucaracha", "hormiga", "ratón",
+             "raton", "ratones", "chinche", "plaga"],
     "renewal": ["renew", "renewal", "lease", "offer", "move out", "move-out", "notice", "renovar", "renovación",
                 "month to month", "month-to-month", "lease term", "lease length", "break my lease", "break the lease",
                 "renovacion", "contrato"],
@@ -224,7 +224,10 @@ def detect_topics(text: str) -> list[str]:
                               r"not working|isn'?t working|stopped working|garbage disposal|ice maker|"
                               r"freezer|gotera|se descompuso|atascad[oa]|trabad[oa]|no (?:cierra|abre|sirve|prende|"
                               r"enciende|funciona)|da[ñn]ad[oa]|descompuest[oa]|reparaci[oó]n|arregl\w+|"
-                              r"\bpuerta\b|\bventana\b|cerradura|\bla luz\b|enchufe|se rompi[oó]|gotea\w*", t)
+                              r"\bpuerta\b|\bventana\b|cerradura|\bla luz\b|enchufe|se rompi[oó]|gotea\w*|"
+                              r"tapad[oa]|lavabo|lights? (?:\w+ ){0,5}(?:is|are) out|bulbs? (?:is |are )?(?:out|burnt?"
+                              r")|"
+                              r"burn(?:ed|t) out", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics
