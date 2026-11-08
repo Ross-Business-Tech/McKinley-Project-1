@@ -336,7 +336,9 @@ def test_every_backend_template_passes_output_checks():  # F N8
         failed = [c.code for c in output_checks(text.format(id="DEMO-WO-1001", ref="DEMO-WO-1001", topics="x",
                                                             contact="", title="note", pref="", area="X",
                                                             what="Request", team="the maintenance team",
-                                                            issue="Fan", loc="Kitchen", topic="parking"),
+                                                            issue="Fan", loc="Kitchen", topic="parking",
+                                                            sent="repair request DEMO-WO-1001 saved", pending="",
+                                                            n=2, first="the fan", next="the window"),
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 

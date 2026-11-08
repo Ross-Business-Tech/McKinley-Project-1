@@ -222,7 +222,9 @@ def detect_topics(text: str) -> list[str]:
                               r"noise in the wall|won'?t (turn on|close|open|lock|flush|drain|start|latch)|"
                               r"doesn'?t (work|close|open|lock|flush|drain|turn on)|not (draining|flushing|closing)|"
                               r"not working|isn'?t working|stopped working|garbage disposal|ice maker|"
-                              r"freezer|gotera|se descompuso", t)
+                              r"freezer|gotera|se descompuso|atascad[oa]|trabad[oa]|no (?:cierra|abre|sirve|prende|"
+                              r"enciende|funciona)|da[ñn]ad[oa]|descompuest[oa]|reparaci[oó]n|arregl\w+|"
+                              r"\bpuerta\b|\bventana\b|cerradura|\bla luz\b|enchufe|se rompi[oó]|gotea\w*", t)
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics

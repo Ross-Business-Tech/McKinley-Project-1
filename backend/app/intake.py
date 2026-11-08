@@ -65,7 +65,8 @@ def is_sms_opt_out(message: str) -> bool:
 
 
 _STATUS = re.compile(
-    r"\bstatus\b|(any )?(update|news) (on|about|with) (my|the)|where (is|are) (my|the) (request|repair|"
+    r"\bstatus\b|estado de (?:mi|mis|la)|ver mis (?:solicitudes|reparaciones|pedidos)|mis solicitudes|"
+    r"(any )?(update|news) (on|about|with) (my|the)|where (is|are) (my|the) (request|repair|"
     r"work order|ticket)|(check|see|look up) (on )?(my )?(open )?(requests?|work orders?|tickets?|repairs?)|"
     r"\bmy (open )?(requests?|work orders?|tickets?|repairs?)\b|when (is|will|are) (maintenance|someone|anyone|"
     r"they|a tech\w*|the tech\w*|somebody) (coming|come|going to come|gonna come|be here|fix)|"
@@ -195,6 +196,10 @@ _STAFF = re.compile(
     r"(talk|speak|chat) (to|with) (the |a |an |someone (at|in) the )?(office|leasing( team)?|staff|someone|somebody|"
     r"person|human|manager|agent|representative|rep|operator|salesperson|sales|leasing agent)|"
     r"send (a |the )?note to the office|contact (the )?(office|staff|leasing)|"
+    r"(?:want|need|like|have|get) (?:someone|somebody|a person|an agent|a human|a real person|leasing|the office|"
+    r"the manager|a manager|staff) to (?:call|text|email|contact|reach|phone) me|\bcall me back\b|"
+    r"have (?:someone|somebody) (?:call|text|email|contact) me|quiero que (?:alguien|una persona) me (?:llame|"
+    r"contacte)|"
     r"^\W*(agent|representative|rep|operator|human|a human|person|real person|manager|supervisor)\W*(please|now|pls)?"
     r"\W*$|\b(get|give) me (a |an |the )?(human|person|manager|agent|representative)\b|(want|need) (a |an |to talk to "
     r"a |to speak to a )?(human|real person|manager|supervisor)\b|someone (can|could) (just )?(talk|call|explain)|"
@@ -232,7 +237,31 @@ _TOUR = re.compile(r"\btours?\b|\bvisit\b|see (it|one|a place|an apartment|a uni
                    r"walk ?through|in person|visitar|recorrido|ver el apartamento", re.IGNORECASE)
 
 
+_NO_TOUR = re.compile(r"\bno tours?\b|(?:don'?t|do not|dont|doesn'?t) (?:want|need)(?: \w+)? (?:a |to )?(?:tour|visit)|"
+                      r"\bnot (?:ready )?(?:for |to )?(?:a |do a |book a )?(?:tour|visit)|without (?:a )?tour|(?:skip|"
+                      r"forget) the tour|no (?:quiero|necesito) (?:una )?visita|sin visita", re.I)
+
+
+def refuses_tour(message: str) -> bool:
+    return bool(_NO_TOUR.search(message))
+
+
+# Claims that something was already decided ("the manager said the fee is waived", "you approved my reduction").
+_PREMISE = re.compile(
+    r"\b(?:you|the (?:manager|office|leasing (?:office|agent)|landlord|staff)|someone|they|he|she|management)\b"
+    r"(?:\W+\w+){0,3}\W+(?:already )?(?:said|told me|agreed|approved|promised|confirmed|waived|okayed|ok'?d|"
+    r"authori[sz]ed|guaranteed)\b[^.?!]{0,80}\b(?:fee|fees|rent|reduction|credit|lease|penalty|waive\w*|refund|"
+    r"discount|deposit|scheduled|appointment|work order|free|break)|\b(?:confirm|verify) (?:that )?(?:it|this|my|the)"
+    r"\b[^.?!]{0,40}\b(?:waived|approved|scheduled|free|reduced|credited)", re.I)
+
+
+def claims_prior_decision(message: str) -> bool:
+    return bool(_PREMISE.search(message))
+
+
 def is_tour_request(message: str) -> bool:
+    if refuses_tour(message):
+        return False
     if wants_to_rent(message):
         return True
     return _is_tour_request(message)
@@ -360,7 +389,20 @@ _NOT_AREA = {"The", "My", "A", "Monday", "Tuesday", "Wednesday", "Thursday", "Fr
 _ES_MORNING = re.compile(r"\b(por|en|de) la ma[ñn]ana\b", re.I)
 
 
+_ES_DAYS = r"lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bados?|domingos?"
+_NEG_DAY = re.compile(rf"\b(?:not|no|except|but not|never|can'?t do|cannot do|can'?t make|can'?t on|not on|no el|no lo"
+                      rf"s|"
+                      rf"menos el|excepto el?)\s+(?:on\s+|the\s+|el\s+|los\s+)?(?:this |next )?(?P<d>(?:{_DAYS})s?|"
+                      rf"{_ES_DAYS})\b", re.I)
+
+
+def negated_days(message: str) -> list[str]:
+    """Days the person rules out ('not saturday', 'no el sábado')."""
+    return [m.group("d").rstrip("s").lower()[:3] for m in _NEG_DAY.finditer(message)]
+
+
 def extract_days(message: str) -> str | None:
+    message = _NEG_DAY.sub(" ", message)
     found = [m.group(0).strip() for m in _DAY_PHRASE.finditer(_ES_MORNING.sub(" ", message))]
     if not found:
         return None
@@ -611,6 +653,18 @@ def asks_for_spanish(message: str) -> bool:
     return bool(_SPANISH_HELP.search(message))
 
 
+_ENGLISH_HELP = re.compile(r"^\W*(?:(?:in |speak |use |reply in |answer in |respond in )?english,? ?(?:please|pls|plz)"
+                           r"?|"
+                           r"(?:can|could) (?:you|we) (?:speak|talk|write|continue|do this|switch to|go back to) "
+                           r"(?:in )?english\W*\w*|en ingl[eé]s(?:,? por favor)?|ingl[eé]s,? por favor|"
+                           r"(?:switch|go back|change) to english\W*\w*|no spanish\W*\w*|i don'?t (?:speak|understand) "
+                           r"spanish\W*\w*)\W*$", re.I)
+
+
+def asks_for_english(message: str) -> bool:
+    return bool(_ENGLISH_HELP.search(message.strip()))
+
+
 _PROMISE = re.compile(r"\bpromise\b|guarantee|\bby (mon|tues|wednes|thurs|fri|satur|sun)day\b|in writing|\b(rent"
                       r" )?credit\b|"
                       r"compensat|reimburs|refund|money back|discount on (my )?rent|prom[eé]tame|garant", re.I)
@@ -655,6 +709,32 @@ def is_issue_description(message: str) -> bool:
     return bool(_ISSUE_HINT.search(message))
 
 
+_ISSUE_JOIN = re.compile(r"\s*(?:,?\s*\band also\b|,?\s*\balso\b|\bplus\b|\band then\b|\banother thing(?: is)?\b|"
+                         r"\bon top of that\b|;|\.\s+|,?\s*\band\s+(?=(?:the|my|our|a)\b)|\by tambi[eé]n\b|"
+                         r"\badem[aá]s\b|,?\s*\by\s+(?=(?:el|la|los|las|mi)\b))\s*", re.I)
+
+
+def split_issues(message: str) -> list[str]:
+    """'the dishwasher won't drain and also the bedroom window lock is broken' -> two separate problems.
+    Only splits when each part names its own thing (appliance or room + a problem); otherwise one issue."""
+    from app.context import detect_topics
+
+    parts = [p.strip(" ,.;") for p in _ISSUE_JOIN.split(message) if p and p.strip(" ,.;")]
+    out: list[tuple[str, str]] = []
+    for p in parts:
+        if len(p.split()) < 2:
+            continue
+        thing = appliance_in(p) or extract_location(p) or next(
+            (tp for tp in detect_topics(p) if tp not in ("contact_preference", "billing", "renewal")), None)
+        if thing and (is_issue_description(p) or re.search(r"broke|broken|out\b|off\b|loose|fell|missing|torn|jammed|"
+                                                           r"rattl|squeak|smell|won'?t|doesn'?t|not|leak|drip|stuck|"
+                                                           r"loud|noise|clog|crack|mold|roto|no funciona|gotea", p,
+                                                           re.I)):
+            if all(thing != t for _, t in out):
+                out.append((p, thing))
+    return [p for p, _ in out] if len(out) >= 2 else [message]
+
+
 def frustration_only(message: str) -> bool:
     """Venting with no new repair detail ('are you even listening', 'why do i have to keep telling you')."""
     return bool(re.search(r"are you (even )?listening|keep telling|why do i (have|need) to|ugh+|seriously\??$|"
@@ -690,10 +770,26 @@ _LOC_CHANGE = re.compile(r"\bchange (?:the )?(?:location|room|place|where it is|
                          r"\b(?:it'?s|its|it is) (?:actually )?in (?:the |my )(?P<loc2>[^.?!,]{3,30})", re.I)
 
 
-def extract_location_change(message: str) -> str | None:
+_QUAL = (r"hall|hallway|main|master|guest|second|2nd|upstairs|downstairs|other|front|back|kids'?|primary|half|small|"
+         r"big|spare|kid'?s|first|1st")
+_LOC_DETAIL = re.compile(rf"\b(?<!not )(?<!not the )(?:the |my )?(?P<q>{_QUAL})\s+(?P<room>bath ?rooms?|bath|bedroom|"
+                         rf"closet|kitchen|room|one)\b", re.I)
+
+
+def extract_location_change(message: str, current: str | None = None) -> str | None:
+    """'change the location to the bedroom', "it's in the hall bathroom", 'the hall one, not the main one'."""
     m = _LOC_CHANGE.search(message)
     if not m:
-        return None
+        d = _LOC_DETAIL.search(re.sub(rf"\b(?:not|isn'?t|no) (?:the |my )?(?:{_QUAL})\s+\w+", " ", message, flags=re.I))
+        if not d or len(message.split()) > 12:
+            return None
+        room = d.group("room").lower()
+        if room == "one":
+            if not current:
+                return None
+            room = current.lower()
+        q = d.group("q").lower().replace("hallway", "hall")
+        return f"{q[0].upper() + q[1:]} {room}"
     loc = (m.group("loc") or m.group("loc2") or "").strip()
     return loc[0].upper() + loc[1:] if loc else None
 
@@ -714,6 +810,58 @@ def extract_contact_pref(message: str) -> str | None:
         return None
     v = m.group(0).strip(" ,.;")
     return v[0].upper() + v[1:]
+
+
+_META_Q = re.compile(
+    r"\bdid (?:that|it|this|they|my (?:\w+ ){0,2}(?:request|note|repair|order)) (?:actually )?(?:go|get) "
+    r"(?:in|through|thru|sent|submitted)|\b(?:is|was|are|were) (?:the |my |that |it |this )?(?:actual |real )?(?:repai"
+    r"r "
+    r"|maintenance |work )?(?:request|order|ticket|note|it|that|anything|one)s? (?:actually |really )?(?:in|sent|"
+    r"submitted|saved|through|filed)\b|\bjust (?:a |some )?notes?\b|\bdid you (?:actually |really )?(?:send|submit|"
+    r"notify|tell|pass|forward|file|save|put)|\bwill (?:a |any )?(?:human|person|real person|someone|anyone|staff)"
+    r" (?:actually |ever )?(?:read|see|get|look at)|\bwhen (?:will|do|would) i hear back|\bwhat did you (?:send|"
+    r"submit|save|do)|\bwhat (?:have|has) (?:you |been )?(?:sent|submitted|saved)|\bse envi[oó]|\blo envi[oó]|"
+    r"\bya se mand[oó]|\bwhat (?:got|was) sent", re.I)
+
+
+_LOCKOUT = re.compile(r"locked out|lock(?:ed)? (?:my ?self|me) out|can'?t get (?:in|into|back in(?:to)?) (?:my |the )?"
+                      r"(?:apartment|unit|place|home|house)|lost (?:my |the )?keys?|keys? (?:are |is )?(?:locked )?"
+                      r"inside|lockout|me qued[eé] (?:afuera|fuera)|no puedo entrar (?:a|en) (?:mi|el)|perd[ií] (?:mis|"
+                      r"las) llaves", re.I)
+
+
+_WITHHOLD = re.compile(r"withh[oe]ld(?:ing)? (?:my |the )?rent|(?:not|won'?t|stop|refuse to) (?:going to |gonna )?pay("
+                       r"?:ing)? "
+                       r"(?:my |the |any )?rent|rent strike|no (?:voy a )?pagar (?:la )?renta", re.I)
+_ACCOMMODATION = re.compile(r"accommodat|disab|wheelchair|service (?:animal|dog)|support animal|\besa\b|ramp|grab bar|"
+                            r"hearing|deaf|blind\b|mobility|discapacidad|silla de ruedas", re.I)
+_OTHER_PERSON = re.compile(
+    r"\b(?:this is (?:actually |not )?(?:\w+ )?(?:from|in) (?:unit|apt|apartment) \w+|(?:using|on|borrowed) (?:my "
+    r"|her |his |their )?(?:\w+'s )?(?:phone|account|login)|let me use (?:her|his|their|my \w+'s) (?:phone|"
+    r"account|login)|this isn'?t my account|not (?:my|the) account holder|i'?m not (?:the person|the resident|the "
+    r"account holder)|(?:her|his|their|my \w+'s) (?:account|phone|login),? (?:not mine|but))", re.I)
+
+
+def is_rent_withholding(message: str) -> bool:
+    return bool(_WITHHOLD.search(message))
+
+
+def is_accommodation(message: str) -> bool:
+    return bool(_ACCOMMODATION.search(message))
+
+
+def not_account_holder(message: str) -> bool:
+    """'This is actually Jordan from unit 2C, Casey let me use her phone.'"""
+    return bool(_OTHER_PERSON.search(message))
+
+
+def is_lockout(message: str) -> bool:
+    return bool(_LOCKOUT.search(message))
+
+
+def is_meta_question(message: str) -> bool:
+    """'did that go in?', 'is the actual repair request in or just notes', 'will a human read it?'"""
+    return bool(_META_Q.search(message))
 
 
 _AFTER_SEND_Q = re.compile(

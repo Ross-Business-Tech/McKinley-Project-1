@@ -184,7 +184,7 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Actualizado a {area}. Revísela antes de enviarla.",
     },
     "leasing_capture": {
-        "en": "Thanks, I've noted that. I can pass your details to the leasing team as a tour request.",
+        "en": "Thanks. I can pass what you've told me to the leasing team as a tour request.",
         "es": "Gracias, lo anoté. Puedo pasar sus datos al equipo de arrendamiento como solicitud de visita.",
     },
     # ---- emergency (I-17/I-18 conservative placeholder) ----
@@ -290,6 +290,14 @@ T: dict[str, dict[Lang, str]] = {
         "es": "No puedo describir qué tan segura es una zona. El mapa público de delitos de la policía local es una "
               "buena fuente, y puede visitar la comunidad para verla usted mismo.",
     },
+    "english_switch": {
+        "en": "Sure, I'll continue in English. What can I help you with?",
+        "es": "Sure, I'll continue in English. What can I help you with?",
+    },
+    "spanish_switch_resident": {
+        "en": "Of course! I can continue in Spanish.",
+        "es": "¡Claro! Con gusto le ayudo en español. ¿En qué le puedo ayudar?",
+    },
     "spanish_switch": {
         "en": "Of course! I can continue in Spanish.",
         "es": "¡Claro! Con gusto le ayudo en español. ¿Busca un hogar o ya vive en una comunidad de McKinley?",
@@ -309,10 +317,10 @@ T: dict[str, dict[Lang, str]] = {
     },
     # ---- F9 handoff (I-27) ----
     "handoff_offer": {
-        "en": "Of course. A team member should handle this. I've written a short note so you won't have to repeat "
-              "yourself. Send it to the office when you're ready.",
-        "es": "Por supuesto. Un miembro del equipo debe atender esto. Escribí una nota corta para que no tenga que "
-              "repetirlo. Envíela a la oficina cuando quiera.",
+        "en": "A team member should handle this. I've written a short note so you won't have to repeat yourself. "
+              "Send it to the office when you're ready.",
+        "es": "Un miembro del equipo debe atender esto. Escribí una nota corta para que no tenga que repetirlo. "
+              "Envíela a la oficina cuando quiera.",
     },
     "sensitive": {
         "en": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what "
@@ -397,6 +405,63 @@ T: dict[str, dict[Lang, str]] = {
               "notified, so please also contact the office if it's urgent. Want to send another note?",
         "es": "Su nota {ref} ya está guardada para la oficina con lo que me dijo. En este prototipo no se avisa a "
               "nadie; si es urgente, comuníquese también con la oficina. ¿Quiere enviar otra nota?",
+    },
+    "premise_check": {
+        "en": "I can't see anything like that on your account, and I can't confirm, waive or change fees, rent, "
+              "lease terms or appointments from here. I've written a note so a person can check what was agreed. "
+              "Send it to the office when you're ready.",
+        "es": "No veo nada así en su cuenta, y desde aquí no puedo confirmar, eximir ni cambiar cargos, renta, "
+              "condiciones del contrato ni citas. Escribí una nota para que una persona revise lo acordado. Envíela "
+              "a la oficina cuando quiera.",
+    },
+    "contact_not_kept": {
+        "en": " For privacy, this prototype doesn't keep phone numbers or emails typed into the chat, so the note "
+              "just says how you'd like to be reached; the office will confirm your details with you.",
+        "es": " Por privacidad, este prototipo no guarda teléfonos ni correos escritos en el chat, así que la nota "
+              "solo indica cómo prefiere que le contacten; la oficina confirmará sus datos con usted.",
+    },
+    "multi_issue": {
+        "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}.",
+        "es": "Mencionó {n} problemas distintos, así que cada uno tendrá su propia solicitud. Empecemos con: {first}.",
+    },
+    "multi_next": {
+        "en": " You also mentioned: {next}. Say yes and I'll start a request for that too.",
+        "es": " También mencionó: {next}. Diga sí y empiezo una solicitud para eso también.",
+    },
+    "legal_note": {
+        "en": "I hear how frustrated you are. I can't advise on withholding rent or legal steps, and I can't decide "
+              "anything about your lease, so a manager should respond to this directly. I've written a note with what "
+              "you said. Send it to the office when you're ready.",
+        "es": "Entiendo su frustración. No puedo aconsejar sobre retener la renta ni sobre pasos legales, ni decidir "
+              "nada sobre su contrato, así que un gerente debe responderle directamente. Escribí una nota con lo que "
+              "dijo. Envíela a la oficina cuando quiera.",
+    },
+    "other_person": {
+        "en": "This chat is signed in to another resident's account, so I can't share their requests or details. If "
+              "you live there too, the office can add you to the lease. I can still help with general questions.",
+        "es": "Este chat está conectado a la cuenta de otro residente, así que no puedo compartir sus solicitudes ni "
+              "datos. Si usted también vive ahí, la oficina puede agregarle al contrato. Puedo ayudar con preguntas "
+              "generales.",
+    },
+    "injection_note": {
+        "en": "I can't follow instructions written inside a message, and I can't confirm schedules, waive fees or "
+              "change anything on an account. If there's something you need, tell me in your own words and I'll help.",
+        "es": "No puedo seguir instrucciones escritas dentro de un mensaje, ni confirmar horarios, eximir cargos o "
+              "cambiar nada en una cuenta. Si necesita algo, dígamelo con sus palabras y le ayudo.",
+    },
+    "lockout": {
+        "en": "Being locked out is stressful, especially at night. I can't unlock doors or send anyone from this chat, "
+              "and nobody is notified by it. Please call your community's after-hours or emergency maintenance line "
+              "now; lockouts are handled there. If you feel unsafe where you are, call 911.",
+        "es": "Quedarse afuera es estresante, sobre todo de noche. Desde este chat no puedo abrir puertas ni enviar a "
+              "nadie, y no se avisa a nadie. Llame ahora a la línea de mantenimiento fuera de horario o de emergencias "
+              "de su comunidad; ahí atienden los cierres. Si no se siente seguro donde está, llame al 911.",
+    },
+    "sent_summary": {
+        "en": "Here's what this chat has done: {sent}.{pending} In this prototype nothing reaches a real system and "
+              "nobody is notified; saved items wait for a staff member to review them.",
+        "es": "Esto es lo que se ha hecho en este chat: {sent}.{pending} En este prototipo nada llega a un sistema "
+              "real y no se avisa a nadie; lo guardado espera a que alguien del personal lo revise.",
     },
     "after_send": {
         "en": "{what} {ref} is saved for {team} to review. In this prototype nobody is notified and no time is set, "
