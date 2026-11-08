@@ -95,7 +95,8 @@ describe("CustomerApp", () => {
     await screen.findByLabelText("Demo sign-in");
     await user.type(screen.getByLabelText("Message the assistant"), "I smell gas{Enter}");
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByRole("link", { name: /Call 911/ })).toHaveAttribute("href", "tel:911");
+    // gas: the button says to get outside first (the notice says not to use phones inside)
+    expect(within(alert).getByRole("link", { name: /Get outside, then call 911/ })).toHaveAttribute("href", "tel:911");
   });
 
   it("marks a failed message and keeps focus in the composer", async () => {
@@ -135,6 +136,25 @@ describe("CustomerApp", () => {
     expect(within(note).getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
     expect(within(note).getByRole("link", { name: /Text 988/ })).toHaveAttribute("href", "sms:988");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows hypothetical safety info calmly, with no call buttons and no alert", async () => {
+    live(() => resp({ reply: "Is anything like that happening right now?", care_kind: "info", care_note: "If that happens: Leave now." }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "what if I smell gas?{Enter}");
+    const note = await screen.findByTestId("care-note");
+    expect(within(note).getByText("If that happens")).toBeInTheDocument();
+    expect(within(note).queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("always offers a way to talk to a person", async () => {
+    live(() => resp({ reply: "A team member should handle this." }));
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    expect(screen.getByRole("button", { name: /Talk to a person/ })).toBeInTheDocument();
   });
 
   it("lists urgent and overdue requests first and hides the rest behind Show all", async () => {

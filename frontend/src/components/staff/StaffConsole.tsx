@@ -61,6 +61,20 @@ const TONE_CLASS: Record<StateTone, string> = {
   emergency: "border-mk-danger bg-mk-danger-soft text-mk-danger",
 };
 
+/** "Needs action" markers on live conversations (from the safety/gate log; never from message text). */
+const NEEDS_TEXT: Record<string, string> = {
+  urgent: "Urgent: safety alert shown",
+  wellbeing: "Check in: wellbeing line shown",
+  asked_for_person: "Asked for a person",
+  safety_check_failed: "Safety classifier failed",
+};
+const NEEDS_TONE: Record<string, string> = {
+  urgent: "bg-mk-danger-soft text-mk-danger",
+  wellbeing: "bg-mk-sent-soft text-mk-sent",
+  asked_for_person: "bg-mk-attention-soft text-mk-attention",
+  safety_check_failed: "bg-mk-draft-soft text-mk-draft",
+};
+
 export function StateTag({ tone, children }: { tone: StateTone; children: React.ReactNode }) {
   return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-sm font-medium", TONE_CLASS[tone])}>{children}</span>;
 }
@@ -133,9 +147,9 @@ export function StaffConsole() {
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
           <Tabs defaultValue={state.live ? "records" : "inspector"}>
-            {/* One scrolling row (never wraps onto the panel); selected tab = 2px underline; 3px focus ring. */}
-            <div className="-mx-4 overflow-x-auto border-b border-mk-line px-4 py-1 [mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:px-1 md:[mask-image:none]">
-              <TabsList variant="line" className="h-auto! w-max justify-start gap-0 p-0">
+            {/* Phones: tabs wrap (nothing hidden off-screen); wider screens: one row. Selected = 2px underline. */}
+            <div className="-mx-4 border-b border-mk-line px-4 py-1 sm:overflow-x-auto md:mx-0 md:px-1">
+              <TabsList variant="line" className="h-auto! w-full flex-wrap justify-start gap-0 p-0 sm:w-max sm:flex-nowrap">
                 {[
                   ["records", "Saved requests"],
                   ["live", "Live conversations"],
@@ -644,6 +658,15 @@ function LiveConversations({ live }: { live: boolean }) {
                     <span className="font-semibold">{c.persona_id ?? "Not signed in"}</span>
                     <span className="text-sm text-mk-muted">{ageLabel(c.last)}</span>
                   </span>
+                  {!!c.needs_action?.length && (
+                    <span className="mt-1 flex flex-wrap gap-1.5">
+                      {c.needs_action.map((f) => (
+                        <span key={f} className={cn("rounded-full px-2 py-0.5 text-sm font-medium", NEEDS_TONE[f])}>
+                          {NEEDS_TEXT[f]}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                   <span className="block text-sm text-mk-muted">
                     {c.messages} message{c.messages === 1 ? "" : "s"}
                     {c.records.length ? `, saved ${c.records.map((r) => r.id).join(", ")}` : ", nothing saved"}

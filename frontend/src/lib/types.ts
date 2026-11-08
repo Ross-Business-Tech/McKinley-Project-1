@@ -188,7 +188,8 @@ export interface ChatResponse {
   emergency_kind?: string | null;
   safety_heading?: string | null;
   /** Not an emergency but a possible risk signal: a calm line shown above the reply (never the red alert). */
-  care_kind?: "distress" | "unwell" | "danger" | null;
+  care_kind?: "distress" | "unwell" | "danger" | "info" | null;
+  risk?: RiskAssessment | null;
   care_note?: string | null;
 }
 
@@ -481,10 +482,19 @@ export interface StaffConversation {
   started: string;
   last: string;
   records: { id: string; kind: ActionKind; status_label: string | null; priority: string | null }[];
+  needs_action?: ("urgent" | "wellbeing" | "asked_for_person" | "safety_check_failed")[];
 }
 
 export interface StaffConversationDetail {
   session_hash: string;
   turns: { role: "user" | "assistant"; content: string; persona_id: string; created_at: string }[];
   records: PrototypeRecord[];
+}
+
+/** Layered safety result (staff/demo console only; the customer sees the approved text, never this). */
+export interface RiskAssessment {
+  deterministic: { kind: string | null; framing: string; mentioned_kind: string | null; care: string | null; via_window: boolean; self_harm_intent: boolean };
+  semantic: { status: string; target?: string | null; model?: string | null; latency_ms?: number | null; detail?: string | null;
+    risk?: { risk_level: string; risk_categories: string[]; immediate_danger: boolean; needs_human: boolean; confidence: number | null; framing: string; reason: string } | null };
+  decision: { response: string; kind: string | null; care: string | null; also_988: boolean; needs_human: boolean; rule: string; conflict: string | null; degraded: boolean; sources: string[] };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, RotateCcw, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -91,6 +91,11 @@ export function CustomerApp() {
   const [journey, setJourney] = useState<Journey | null>(null);
   const [step, setStep] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (!announcement) return;
+    const id = window.setTimeout(() => setAnnouncement(""), 6000); // read once, then gone from the page
+    return () => window.clearTimeout(id);
+  }, [announcement]);
   const lastAssistantRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -189,9 +194,15 @@ export function CustomerApp() {
     }
   } else if (messages.length <= 1) {
     tasks = starters(identity).map((s) => ({ label: s, send: s }));
-  } else if (lastResponse?.suggested_replies?.length && !busy) {
+  } else if (!busy) {
     const last = messages[messages.length - 1];
-    if (last.response) chips = lastResponse.suggested_replies.map((s) => ({ label: s, send: s }));
+    if (last.response && lastResponse?.suggested_replies?.length) {
+      chips = lastResponse.suggested_replies.map((s) => ({ label: s, send: s }));
+    } else if (last.result?.ok) {
+      chips = t.afterSend.map((s) => ({ label: s, send: s })); // next steps after Send
+    } else if (last.cleared) {
+      chips = t.afterDecline.map((s) => ({ label: s, send: s })); // and after Don't send
+    }
   }
   const journeyDone = !!journey && step >= journey.steps.length;
 
@@ -495,6 +506,10 @@ export function CustomerApp() {
               lang={lang}
               aria-describedby={preview ? `${bannerId} ${statusId}` : statusId}
               onChange={(e) => setDraft(e.target.value)}
+              onFocus={() => {
+                // short screens (landscape, on-screen keyboard, high zoom): the composer is not sticky there
+                if (window.innerHeight < 480) composerRef.current?.scrollIntoView({ block: "end" });
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -516,7 +531,18 @@ export function CustomerApp() {
               </span>
             </button>
           </form>
-          <p id={statusId} className="mt-2 text-sm text-mk-muted" lang={lang}>
+          {!preview && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => send(t.talkToPerson)}
+              className="mk-focus mt-1 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-base font-medium text-mk-brand underline underline-offset-2 disabled:opacity-60"
+              lang={lang}
+            >
+              <UserRound aria-hidden className="size-4" /> {t.talkToPerson}
+            </button>
+          )}
+          <p id={statusId} className="mt-1 text-sm text-mk-muted" lang={lang}>
             {t.footer}{" "}
             <Link href="/staff" prefetch={false} className="mk-focus underline underline-offset-2">
               {t.staffLink}
@@ -678,9 +704,16 @@ function Message({
                   </a>
                 </>
               ) : (
-                <a href="tel:911" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
-                  <Phone aria-hidden className="size-5" /> {t.call911}
-                </a>
+                <>
+                  <a href="tel:911" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
+                    <Phone aria-hidden className="size-5" /> {kind === "gas" || kind === "co" ? t.gasCall : t.call911}
+                  </a>
+                  {/988/.test(r?.safety_notice ?? "") && (
+                    <a href="tel:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-mk-danger bg-mk-surface px-5 text-lg font-bold text-mk-danger">
+                      <Phone aria-hidden className="size-5" /> {t.call988}
+                    </a>
+                  )}
+                </>
               )}
             </div>
             {kind && !CALL_KINDS_WITHOUT_MAINTENANCE.has(kind) && <p className="mt-2 text-sm text-mk-muted">{t.noEmergencyLine}</p>}
@@ -710,7 +743,19 @@ function Message({
 }
 
 /** Calm, non-alarming line for possible distress or feeling unwell. Never the red emergency alert. */
-function CareNote({ kind, note, t }: { kind: "distress" | "unwell" | "danger"; note: string; t: UIStrings }) {
+function CareNote({ kind, note, t }: { kind: "distress" | "unwell" | "danger" | "info"; note: string; t: UIStrings }) {
+  if (kind === "info") {
+    // A hazard asked about hypothetically or in the past: the approved steps, calmly, no call buttons.
+    return (
+      <div className="mb-2 rounded-lg border border-mk-line-strong bg-mk-surface p-3" data-testid="care-note">
+        <p className="text-sm font-semibold text-mk-muted">{t.safetyInfo}</p>
+        <p className="mt-1 flex items-start gap-2 text-base text-mk-ink">
+          <Info aria-hidden className="mt-1 size-4 shrink-0 text-mk-muted" />
+          <span>{note.replace(/^(If that happens|Si eso pasa): /, "")}</span>
+        </p>
+      </div>
+    );
+  }
   const link = "mk-focus inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-sent/40 bg-mk-surface px-3 font-semibold text-mk-sent";
   return (
     <div className="mb-2 rounded-lg border border-mk-sent/30 bg-mk-sent-soft p-3" data-testid="care-note">

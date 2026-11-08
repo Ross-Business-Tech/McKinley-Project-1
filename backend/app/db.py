@@ -117,9 +117,26 @@ class Store:
                 "FROM chat_turns WHERE mode LIKE 'aware|%' GROUP BY session_id, persona_id "
                 "ORDER BY MAX(id) DESC LIMIT ?",
                 (limit,)).fetchall()
+            flags: dict[str, list[str]] = {}
+            for r in rows:  # what needs a person, from the gate log (no message text)
+                got: list[str] = []
+                for g in self._conn.execute("SELECT data FROM gate_decisions WHERE session_id=? AND mode LIKE "
+                                            "'aware|%'", (r["session_id"],)).fetchall():
+                    d = json.loads(g["data"])
+                    if d.get("safety_response") == "full_alert" or d.get("urgency") == "emergency":
+                        got.append("urgent")
+                    elif d.get("safety_rule") in ("R3", "R4", "R6", "R9") or d.get("safety_response") == "care_line":
+                        got.append("wellbeing")
+                    if d.get("workflow") == "human_handoff" or "human_requested" in d.get("risk_flags", []):
+                        got.append("asked_for_person")
+                    if d.get("safety_semantic") in ("timeout", "error", "bad_output", "rate_limited"):
+                        got.append("safety_check_failed")
+                flags[r["session_id"]] = list(dict.fromkeys(got))
+        order = {"urgent": 0, "wellbeing": 1, "asked_for_person": 2, "safety_check_failed": 3}
         return [{"session_hash": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
                  "persona_id": r["persona_id"] if r["persona_id"] not in ("", "none") else None,
-                 "messages": r["n"] // 2, "started": r["started"], "last": r["last"]} for r in rows]
+                 "messages": r["n"] // 2, "started": r["started"], "last": r["last"],
+                 "needs_action": sorted(flags.get(r["session_id"], []), key=lambda f: order.get(f, 9))} for r in rows]
 
     def conversation(self, session_hash: str, limit: int = 200) -> list[dict[str, str]]:
         with self._lock:
