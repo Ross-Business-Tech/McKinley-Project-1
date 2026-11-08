@@ -12,7 +12,6 @@ from app.gates.rules import classify_rules
 from app.llm import LLMGateway, Target
 from app.models import GateDecision
 
-GATE_PROVIDERS = ["rules", "llm", "jev"]
 log = logging.getLogger("mckinley.gates")
 
 

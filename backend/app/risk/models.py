@@ -45,6 +45,7 @@ class SemanticResult(BaseModel):
     status: ClassifierStatus
     risk: SemanticRisk | None = None
     target: str | None = None
+    prompt_version: str | None = None  # classifier prompt that produced this result (None if it did not run)
     model: str | None = None
     latency_ms: int | None = None
     detail: str | None = None  # error code / why it did not run (no message content)

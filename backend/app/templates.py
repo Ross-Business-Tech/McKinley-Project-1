@@ -31,12 +31,6 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I want to make sure I get this right. Could you tell me a little more about what you need?",
         "es": "Quiero entenderle bien. ¿Me puede contar un poco más sobre lo que necesita?",
     },
-    "unclear_twice": {
-        "en": "I'm sorry I'm not getting this right. A person on our team can sort it out with you. "
-              "I've prepared a note for the office below; send it when you're ready.",
-        "es": "Disculpe, no le estoy entendiendo bien. Una persona de nuestro equipo puede ayudarle. "
-              "Preparé una nota para la oficina abajo; envíela cuando quiera.",
-    },
     # ---- F6 maintenance intake (I-19 draft) ----
     "maint_ask_what": {
         "en": "Sorry it's not working. What is it that isn't working? For example, the dishwasher or the bathroom "

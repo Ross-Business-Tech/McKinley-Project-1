@@ -10,7 +10,6 @@ Rules enforced here, in code rather than in the prompt:
 - Records live in SQLite tables labelled prototype. Nothing is sent to Yardi, a CRM, a pager or a person.
 """
 
-import hashlib
 import logging
 import re
 from dataclasses import dataclass, field
@@ -208,10 +207,6 @@ def _prefers(channel: str | None, lang: Lang) -> str | None:
     if not channel:
         return None
     return f"Prefiere {_ES_CHANNEL.get(channel.lower(), channel)}" if lang == "es" else f"Prefers {channel}"
-
-
-def _field(key: str, value: str | None, source: str, lang: Lang) -> ActionField:
-    return ActionField(key=key, label=LABEL[key][lang], value=value, source=source if value else "missing")  # type: ignore[arg-type]
 
 
 def _draft_fields(draft: dict[str, Any], lang: Lang) -> list[ActionField]:
@@ -438,7 +433,6 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     from app.emergency import LABEL as LABEL_EMERGENCY
     from app.emergency import QUEUE_NOTE, emergency_kind
     from app.emergency import notice as emergency_notice
-    from app.templates import NO_CONTACT_SUFFIX  # noqa: F401  (used by confirm)
 
     persona_id = persona_id or None  # "" from the API means not signed in
     pkey = persona_id or "none"
@@ -1279,10 +1273,6 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
         store.save_draft(session_id, pkey, kind, nxt)
         message += tmpl("multi_next", lang, next=queued[0][0].lower() + queued[0][1:])
     return ActionResult(ok=True, message=message, action=action, record=rec)
-
-
-def session_hash(session_id: str) -> str:
-    return hashlib.sha256(session_id.encode()).hexdigest()[:10]
 
 
 def resident_for(persona_id: str | None, wb: Workbook | None) -> Resident | None:

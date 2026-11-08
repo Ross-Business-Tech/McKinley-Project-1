@@ -6,7 +6,7 @@ the community's emergency maintenance line for property hazards; ordinary mainte
 
 from dataclasses import dataclass
 
-from app.emergency import ALSO_988, CARE_NOTE, INFO_LEAD, heading, notice
+from app.emergency import ALSO_988, CARE_NOTE, INFO_LEAD, notice
 from app.risk.models import RiskDecision
 from app.templates import t
 from app.workflows import EMERGENCY_NOTICE
@@ -15,7 +15,6 @@ from app.workflows import EMERGENCY_NOTICE
 @dataclass
 class SafetyText:
     safety_notice: str | None = None  # the full alert (urgent banner)
-    safety_heading: str | None = None
     care_kind: str | None = None
     care_note: str | None = None  # calm line above the reply
 
@@ -32,7 +31,7 @@ def select(decision: RiskDecision, lang: str) -> SafetyText:
         text = notice(decision.kind, lang) if known else generic_steps(lang)  # type: ignore[arg-type]
         if decision.also_988:
             text += ALSO_988[lang]
-        return SafetyText(safety_notice=text, safety_heading=heading(decision.kind, lang))
+        return SafetyText(safety_notice=text)
     if decision.response == "safety_info" and decision.kind:
         return SafetyText(care_kind="info", care_note=INFO_LEAD[lang] + notice(decision.kind, lang))
     if decision.response == "care_line" and decision.care in CARE_NOTE:

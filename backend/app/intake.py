@@ -384,10 +384,6 @@ _TIME_OF_DAY = re.compile(r"\b(morning|mornings|afternoon|afternoons|evening|eve
 _BEDS = re.compile(r"\b(\d|one|two|three|four|dos|tres|una?)\s?-?\s?(?:bed|br|bedroom|rec[aá]mara|habitaci[oó]n|"
                    r"habitaciones|cuarto|dormitorio)s?\b|\bstudio\b", re.IGNORECASE)
 _WORDNUM = {"one": "1", "two": "2", "three": "3", "four": "4", "un": "1", "una": "1", "dos": "2", "tres": "3"}
-_AREA = re.compile(r"\b(?:in|near|around|at) ((?:[A-Z][a-z]+)(?: [A-Z][a-z]+){0,2})")
-_NOT_AREA = {"The", "My", "A", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-             "January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-             "November", "December", "I"}
 
 
 _ES_MORNING = re.compile(r"\b(por|en|de) la ma[ñn]ana\b", re.I)
@@ -435,14 +431,6 @@ def extract_beds(message: str) -> str | None:
         return "Studio"
     n = _WORDNUM.get(m.group(1).lower(), m.group(1))
     return f"{n} bed" + ("s" if n != "1" else "")
-
-
-def extract_area(message: str) -> str | None:
-    for m in _AREA.finditer(message):
-        name = m.group(1)
-        if name.split()[0] not in _NOT_AREA:
-            return name
-    return None
 
 
 # ---- knowledge base (D-07 / I-12) ------------------------------------------------------------------------

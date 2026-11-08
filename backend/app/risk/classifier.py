@@ -126,4 +126,5 @@ class SemanticRiskClassifier:
         except (ValueError, ValidationError) as e:
             return SemanticResult(status="bad_output", target=t.key, model=r.model, latency_ms=r.latency_ms,
                                   detail=type(e).__name__)
-        return SemanticResult(status="ok", risk=risk, target=t.key, model=r.model, latency_ms=r.latency_ms)
+        return SemanticResult(status="ok", risk=risk, target=t.key, model=r.model, latency_ms=r.latency_ms,
+                              prompt_version=PROMPT_VERSION)

@@ -750,8 +750,6 @@ LABEL = {"poison": "Possible poisoning", "trapped": "Trapped (elevator)",
          "electrical": "Electrical hazard", "flood": "Flooding or burst pipe", "structural": "Structural danger",
          "personal_safety": "Personal safety", "medical": "Medical emergency", "self_harm": "Self-harm risk"}
 
-# For messages in languages the prototype has no templates for: always lead with the universal emergency line.
-MULTILINGUAL_LINE = "If this is an emergency, call 911. Si es una emergencia, llame al 911."
 
 
 def notice(kind: str, lang: str = "en") -> str:
