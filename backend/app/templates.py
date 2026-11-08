@@ -371,6 +371,12 @@ T: dict[str, dict[Lang, str]] = {
               "Fernhill Apartments. No tengo información aprobada sobre precios ni disponibilidad, pero puedo enviar "
               "una solicitud de visita al equipo de arrendamiento.",
     },
+    "safety_info_ack": {
+        "en": "Those are the steps to follow if it happens. Is anything like that happening right now? If it is, "
+              "follow them now and call 911.",
+        "es": "Esos son los pasos a seguir si pasa. ¿Está pasando algo así ahora mismo? Si es así, sígalos ya y llame "
+              "al 911.",
+    },
     "distress_ack": {
         "en": "That sounds like a lot to carry right now. There's no rush here. If you'd like help with anything at "
               "home, just tell me what's going on.",
@@ -514,6 +520,7 @@ CHIPS: dict[str, dict[Lang, list[str]]] = {
     "unclear": {"en": ["Send a note to the office", "Report a repair", "Check my requests"],
                 "es": ["Enviar nota a la oficina", "Reportar una reparación", "Ver mis solicitudes"]},
     "ask_office": {"en": ["Ask the office"], "es": ["Preguntar a la oficina"]},
+    "safety_info": {"en": ["It's happening now", "No, just asking"], "es": ["Está pasando ahora", "No, solo pregunto"]},
     "resident_next": {"en": ["Report a repair", "Check my requests", "Talk to the office"],
                       "es": ["Reportar una reparación", "Ver mis solicitudes", "Hablar con la oficina"]},
 }

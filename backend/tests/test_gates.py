@@ -259,7 +259,9 @@ def test_pipeline_aware_response_shape(client):
     assert r["safety_notice"] and "911" in r["safety_notice"]
     assert r["handoff"]["status"] == "recommended_not_sent" and r["handoff"]["completed"] is False
     assert r["maintenance"]["work_order_created"] is False
-    assert [s["step"] for s in r["pipeline"]][0] == "1_receive" and len(r["pipeline"]) == 10
+    steps = [s["step"] for s in r["pipeline"]]
+    assert steps[:3] == ["1_receive", "2_identity", "2b_safety"] and len(steps) == 11
+    assert r["risk"]["decision"]["rule"] == "R1" and r["risk"]["semantic"]["status"] == "mock"
 
 
 def test_three_modes_differ_in_layers(client):

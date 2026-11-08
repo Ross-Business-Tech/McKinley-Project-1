@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     # Staff/eval/diagnostics routes: loopback-only unless this token is set (then the X-Staff-Token header).
     staff_api_token: SecretStr | None = None
     typesafe_base_url: str = "https://api.typesafe.ai"
+    # ---- semantic safety classifier (layer 2, see docs/SAFETY_EVALUATION.md) ----
+    # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
+    # per non-baseline turn. It can only ADD caution; deterministic alerts never depend on it.
+    safety_classifier: Literal["auto", "off"] = "auto"
+    safety_classifier_target: str | None = None  # provider:model; defaults to the chat default target
+    safety_classifier_timeout_seconds: float = Field(default=6, gt=0, le=60)
     jev_model: str = "jev-latest"
 
     # ---- local paths ----

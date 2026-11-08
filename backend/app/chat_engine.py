@@ -1,6 +1,7 @@
 """Orchestrates one chat turn as a deterministic pipeline with at most one response-generation LLM call.
 
-  1 receive -> 2 identity -> 3 privacy -> 4 retrieve authorized context -> 5 decision gate -> 6 workflow + action
+  1 receive -> 2 identity -> 2b SAFETY (rules -> semantic classifier -> policy; app/risk) -> 3 privacy
+  -> 4 retrieve authorized context -> 5 decision gate (safety decision can only raise it) -> 6 workflow + action
   plan (app/actions.py) -> 7 generate (LLM, skipped for fully deterministic replies) -> 8 validate (critical
   failures are replaced by the backend template) -> 9 handoff recommendation -> 10 persist safe metadata
 
@@ -18,9 +19,7 @@ from app.actions import TurnPlan, identity_note, plan_turn, resident_for
 from app.config import Settings
 from app.context import Workbook
 from app.db import Store
-from app.emergency import CARE_NOTE, emergency_kind, possible_risk
 from app.emergency import heading as emergency_heading
-from app.emergency import notice as emergency_notice
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
 from app.intake import detect_language
@@ -39,6 +38,10 @@ from app.models import (
 )
 from app.personas import build_context
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
+from app.risk import escalation as risk_escalation
+from app.risk import responses as risk_responses
+from app.risk.classifier import SemanticRiskClassifier
+from app.risk.pipeline import assess
 from app.safety import (
     CRITICAL_CHECKS,
     contains_pii,
@@ -69,10 +72,13 @@ class EngineDeps:
     store: Store | None
     workbook: Workbook | None
     gates: DecisionGateService | None = None
+    risk: SemanticRiskClassifier | None = None
 
     def __post_init__(self) -> None:
         if self.gates is None:
             self.gates = DecisionGateService(self.settings, self.llm)
+        if self.risk is None:
+            self.risk = SemanticRiskClassifier(self.settings, self.llm)
 
 
 def clean_message(message: str) -> str:
@@ -197,6 +203,19 @@ def run_turn(
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
               f"audience={full_ctx.audience}, identity_verified={verified} (demo persona = trusted app context)")
 
+    # 2b. safety: deterministic rules -> semantic classifier -> conservative policy. Runs before routing and before
+    # any response generation; nothing later (model, user instructions, retrieved records) can lower it.
+    earlier = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"][-3:]
+               if (deps.store and use_history) else [])
+    prior_hazards = ([r.get("hazard") for r in deps.store.records(session_id=session_id, limit=50)
+                      if r.get("status") == "urgent_queued" and (r.get("persona_id") or None) == (persona_id or None)]
+                     if (deps.store and use_history) else [])
+    risk = assess(msg, earlier, deps.risk if mode != "baseline" else None, prior_hazards)  # type: ignore[arg-type]
+    rd = risk.decision
+    trace.add("2b_safety", "warn" if rd.response != "none" or rd.degraded else "ok",
+              f"{rd.rule}: {rd.response}" + (f" ({rd.kind or rd.care})" if (rd.kind or rd.care) else "")
+              + f"; semantic={risk.semantic.status}" + (f"; {rd.conflict}" if rd.conflict else ""))
+
     # 3. privacy
     trace.add("3_privacy", "warn" if pii_found else "ok",
               f"redacted from message: {pii_found}" if pii_found else "no PII patterns in message")
@@ -225,6 +244,11 @@ def run_turn(
         assert deps.gates is not None
         override = gate_provider if settings.gate_override_enabled else None
         gate = deps.gates.classify(msg, gctx, override)
+        if rd.response == "full_alert" and gate.urgency != "emergency":  # safety policy may only RAISE the gate
+            gate = gate.model_copy(update={
+                "urgency": "emergency", "intent": "maintenance", "requires_human": True,
+                "risk_flags": list(dict.fromkeys([*gate.risk_flags, "emergency_hazard"])),
+                "overrides": [*gate.overrides, f"urgency -> emergency by safety policy {rd.rule} ({rd.kind})"]})
         trace.add("5_gate", "fallback" if gate.fallback_used else "ok",
                   f"{gate.decision_source}: intent={gate.intent}, urgency={gate.urgency}, "
                   f"human={gate.requires_human}" + (f" (fallback: {gate.fallback_reason})" if gate.fallback_used
@@ -251,6 +275,7 @@ def run_turn(
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
                          resident=resident_for(persona_id, deps.workbook) if verified else None,
                          channel=channel, lang=lang,  # type: ignore[arg-type]
+                         hazard=rd.kind if rd.response == "full_alert" else None, care=rd.care,
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:
@@ -307,15 +332,15 @@ def run_turn(
         checks = [c.model_copy(update={"passed": True, "detail": f"Completion backed by prototype record {ids}"})
                   if c.code == "no_false_action_claim" and not c.passed else c for c in checks]
     reply = redact(raw_reply)
-    ekind = emergency_kind(msg) if gate and gate.urgency == "emergency" else None
-    if gate and gate.urgency == "emergency":
-        safety_notice = emergency_notice(ekind, lang) if ekind else EMERGENCY_NOTICE
-    else:
-        safety_notice = None
-    care_kind = possible_risk(msg) if not safety_notice else None
-    care_note = CARE_NOTE[care_kind][lang] if care_kind else None
+    st = risk_responses.select(rd, lang)
+    ekind = rd.kind if (gate and rd.response == "full_alert") else None
+    safety_notice = st.safety_notice if ekind else None
+    if gate and gate.urgency == "emergency" and not safety_notice:  # e.g. an LLM gate said emergency: generic text
+        safety_notice = EMERGENCY_NOTICE
+    care_kind = st.care_kind if not safety_notice else None
+    care_note = st.care_note if care_kind else None
     if care_kind:
-        trace.add("8_validate", "warn", f"possible risk signal ({care_kind}): calm safety line added")
+        trace.add("8_validate", "warn", f"safety policy {rd.rule}: calm {care_kind} line added")
     failed = [c.code for c in checks if not c.passed]
     unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
@@ -338,6 +363,8 @@ def run_turn(
         if handoff and staff_recs:
             handoff = handoff.model_copy(update={"delivery_note": (
                 f"Saved to the PROTOTYPE staff queue as {staff_recs[0].id}. No one is paged, called or notified.")})
+        if handoff is None and rd.needs_human:  # possible distress etc.: a person should look (recommendation only)
+            handoff = risk_escalation.recommend(rd, sorted({f.name for f in ctx.fields}))
         recommended = handoff is not None
         category: HandoffCategory = handoff.category if handoff else "none"
         reason = " | ".join(handoff.reasons) if handoff else None
@@ -351,9 +378,11 @@ def run_turn(
 
     # 10. persist safe metadata (turn text for session memory; gate log has no message text)
     if deps.store and use_history:
-        shown = ("emergency safety steps" + (" and 988 crisis line" if ekind == "self_harm" else " and 911")
+        shown = ("emergency safety steps" + (" and 988 crisis line" if ekind == "self_harm" or rd.also_988
+                                             else " and 911")
                  if safety_notice else {"distress": "988 care line", "danger": "911 safety line",
-                                        "unwell": "911-if-worse line"}.get(care_kind or "", ""))
+                                        "unwell": "911-if-worse line", "info": "safety info (no alert)"}
+                 .get(care_kind or "", ""))
         # staff see what the person was shown, not just the text
         deps.store.append_turns(session_id, mode_key, hist_key, msg, (f"[Shown: {shown}] " if shown else "") + reply)
         if gate:
@@ -365,6 +394,7 @@ def run_turn(
                 "functions": plan.functions if plan else [], "channel": channel,
                 "action": f"{plan.action.kind}:{plan.action.stage}" if plan and plan.action else None,
                 "records": [r.id for r in plan.records] if plan else [], "reply_source": reply_source,
+                "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
             })
     trace.add("10_persist", "ok" if (deps.store and use_history) else "skipped",
               "gate metadata logged (no message text)" if (deps.store and use_history and gate) else
@@ -377,8 +407,9 @@ def run_turn(
         reply=reply,
         safety_notice=safety_notice,
         emergency_kind=ekind,
-        care_kind=care_kind,
+        care_kind=care_kind,  # type: ignore[arg-type]
         care_note=care_note,
+        risk=risk,
         safety_heading=emergency_heading(ekind, lang) if safety_notice else None,
         mode=mode,
         audience=audience,  # type: ignore[arg-type]

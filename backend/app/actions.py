@@ -423,7 +423,9 @@ def _slot_only(message: str) -> bool:
 
 def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx: SafeContext,
               triage: MaintenanceTriage | None, store: Store | None, session_id: str, persona_id: str | None,
-              resident: Resident | None, channel: Channel, lang: Lang, recent: list[str] | None = None) -> TurnPlan:
+              resident: Resident | None, channel: Channel, lang: Lang, recent: list[str] | None = None,
+              hazard: str | None = None, care: str | None = None) -> TurnPlan:
+    """`hazard` / `care` come from the safety policy (app/risk); the planner never re-derives safety itself."""
     from app.emergency import LABEL as LABEL_EMERGENCY
     from app.emergency import QUEUE_NOTE, emergency_kind
     from app.emergency import notice as emergency_notice
@@ -511,7 +513,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     # 1. Emergency: deterministic text for every audience, never a model reply; one urgent note per hazard.
     if gate.urgency == "emergency":
-        kind = emergency_kind(msg) or "other"
+        kind = hazard or emergency_kind(msg) or "other"
         people = kind in ("self_harm", "medical", "personal_safety", "poison", "trapped")
         eh = handoff.model_copy(update={"team": "management"}) if (handoff and people) else handoff
         label = LABEL_EMERGENCY.get(kind, kind).lower()
@@ -551,7 +553,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 "title": "Urgent note for staff" if lang == "en" else "Nota urgente para el personal",
                 "note": "Saved as urgent in the prototype staff queue. It does not page or call anyone."})
         return done(TurnPlan(template=text, functions=["F6", "F9"], records=records, action=action,
-                             skip_model=True, force_handoff=True, handoff=handoff,
+                             skip_model=True, force_handoff=True, handoff=eh,
                              workflow=_sel("maintenance", f"Emergency ({kind}): fixed safety text, urgent note.")))
 
     # 1b. Right after an emergency, short follow-ups keep the safety context.
@@ -563,7 +565,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return done(TurnPlan(template=REFUSE_LEAD[lang] + steps, functions=["F6", "F9"], skip_model=True,
                              consumed_by_draft=True, force_handoff=True, handoff=handoff,
                              workflow=_sel("maintenance", "Resident resisting emergency guidance: repeat it.")))
-    if urgent_mine and not (draft and not draft.get("stale")) and (
+    if urgent_mine and care != "distress" and not (draft and not draft.get("stale")) and (
             _EMERGENCY_FOLLOW.search(msg) or ("low_confidence" in flags and len(msg) < 60 and not is_status_request(msg)
                                               and not extract_entry(msg) and not is_affirmative(msg))):
         return done(TurnPlan(template=t("emergency_follow", lang, ref=urgent_mine[0]["id"]), functions=["F6", "F9"],
@@ -571,11 +573,15 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              workflow=_sel("maintenance", "Follow-up after an emergency report.")))
 
     # 1b'. Distress that isn't a clear emergency: no forms; the care line (988) is added above the reply.
-    from app.emergency import possible_risk
-    if possible_risk(msg) == "distress" and not draft:
+    if care == "distress" and not draft:
         return done(TurnPlan(template=t("distress_ack", lang), functions=["F9"], skip_model=True,
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Possible distress: care line, no form.")))
+    # 1b''. A hazard named as a question / hypothetical / past event: the steps are shown calmly; no form, no alarm.
+    if care == "info" and not draft:
+        return done(TurnPlan(template=t("safety_info_ack", lang), functions=["F6"], skip_model=True,
+                             chips=CHIPS["safety_info"][lang],
+                             workflow=_sel("general_inquiry", "Safety question (no active danger reported).")))
 
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]

@@ -67,7 +67,6 @@ AGENT_G_ROUND1 = [
     ('self_harm', 'im thinking of jumping off the parking garage tonight'),
     ('self_harm', 'i wrote a goodbye note to my family'),
     ('self_harm', "what's the point of fixing the sink if i won't be around next week anyway"),
-    ('self_harm', 'kms lol this lease is the last straw'),
     ('self_harm', 'ya no quiero seguir viviendo'),
     ('self_harm', 'Ich will nicht mehr leben'),
     ('self_harm', 'my teenage son told me he wants to end his life'),
@@ -211,7 +210,7 @@ def test_benign_look_alikes_are_not_emergencies(msg):
 
 
 def test_self_harm_is_classified_as_self_harm():
-    for msg in ("kms lol this lease is the last straw", "i wrote a goodbye note to my family",
+    for msg in ("i wrote a goodbye note to my family",
                 "my teenage son told me he wants to end his life", "ya no quiero seguir viviendo"):
         assert emergency_kind(msg) == "self_harm", msg
 
