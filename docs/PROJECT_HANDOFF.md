@@ -1,0 +1,52 @@
+# Project handoff (2026-11-08)
+
+For the next developer or Claude Code session. Read with [`../README.md`](../README.md) and
+[`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md); old chat history is not needed.
+
+## Where things are
+- **Branch:** all work is on `feat/workflow-customer-experience` (pull request into `development`). `development` and
+  `main` are still the original template (`fb710d7`). Older branches `feat/context-aware-ai-assistant`,
+  `feat/agentic-workflow-gates` and `sprint3/live-eval` are fully contained in this branch (nothing unique) and can be
+  deleted by the owner after the PR merges.
+- **Verdict:** a working **prototype on synthetic data; NOT production ready.**
+
+## What works (tested, mock model)
+- Customer chat: maintenance intake with read-back and confirm, tour requests, status, FAQ, office notes, renewal
+  questions, English/Spanish, corrections, several problems per message, lockout, false-premise and
+  not-the-account-holder handling; static replay on here.now.
+- Safety pipeline (`backend/app/risk/`): rules, optional semantic classifier, policy R1–R9e, approved text,
+  escalation; persistent care line after a disclosure.
+- Staff console: saved requests, live conversations with needs-action markers, inspector, coverage, usability,
+  A/B/C comparison, five-case evaluation.
+- Evaluation tooling: five cases, gate scenarios, 17 journeys, 48-scenario persona suite, live A/B/C runner.
+- Tests: 655 backend, 38 frontend; build and smoke pass. See [`evaluation/README.md`](evaluation/README.md).
+
+## Known P0 / P1 (do not hide these)
+| | Issue | Where documented |
+| --- | --- | --- |
+| P0 | Missed emergencies: fresh independent holdout 64.5% full alert / 78.5% any guidance; 14 immediate-danger misses listed verbatim for human review | [safety/safety-evaluation.md](safety/safety-evaluation.md) §6 |
+| P0 | Semantic safety classifier never run on a real model (no key) | [evaluation/live-llm.md](evaluation/live-llm.md) |
+| P0 | Identity is client-asserted (`persona_id`); no real sign-in; staff boundary is loopback / token only | [architecture/overview.md](architecture/overview.md) |
+| P0 | Emergency and safety scripts (I-17/I-18) are team drafts, not McKinley-approved; nobody is paged | [workflows/traceability.md](workflows/traceability.md) |
+| P1 | No Yardi / CRM / work-order / messaging integration (prototype store only) | README |
+| P1 | No live-model evaluation since one sprint-1 run; all later results are mock | [evaluation/README.md](evaluation/README.md) |
+| P1 | One open card per conversation; Spanish multi-issue merge; Spanish wording unreviewed; ~10% false safety alerts | [evaluation/ux-review.md](evaluation/ux-review.md) |
+| P1 | `/api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`) to the browser; decide whether to strip them for non-staff callers | [architecture/overview.md](architecture/overview.md) |
+
+## Recommended next priorities
+1. Add `OPENROUTER_API_KEY` (locally) → `uv run python -m app.live_eval.preflight` → live A/B/C
+   (`app.live_eval.abc --target recommended`) and a run with `--with-safety-classifier`; human review of the records.
+2. Have a separate person write a **fresh** safety holdout and measure the semantic classifier on the real target;
+   McKinley risk/legal reviews every failure and the safety scripts.
+3. Decide production identity (server-side session binding) and whether diagnostics leave the API for customers.
+4. Lower-risk refactors still open (from the consolidation audit, not done to avoid behaviour risk):
+   split `actions.plan_turn` (~780 lines) into its three largest leaf blocks without reordering, with a
+   characterization snapshot first; split `CustomerApp.tsx` / `StaffConsole.tsx` (add StaffConsole tab tests
+   first); unify status-colour maps; move inline `lang == "en"` strings in `actions.py` into `templates.py`;
+   consolidate sprint-named test files by behaviour area (mapping in the consolidation PR description).
+
+## How to verify quickly
+```bash
+cd backend && uv sync && uv run pytest && uv run ruff check .
+cd .. && npm install && npm run lint && npm run typecheck && npm test && npm run build
+```

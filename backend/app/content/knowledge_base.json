@@ -1,0 +1,225 @@
+{
+  "_about": "D-07 approved knowledge base + I-12 FAQ topic list (TEAM DRAFT). Only entries with status 'approved' may be stated to customers. Every other entry is a placeholder that McKinley must fill in and approve; until then the assistant says it does not have approved details and offers the leasing team. Never add facts here that McKinley has not supplied.",
+  "version": "kb-draft-1",
+  "topics": [
+    {
+      "id": "vouchers",
+      "label": "housing vouchers",
+      "keywords": [
+        "voucher",
+        "section 8",
+        "housing choice",
+        "subsid"
+      ],
+      "status": "approved",
+      "answer": "Every McKinley community accepts housing vouchers. A leasing team member confirms the details for your voucher and the community you're interested in.",
+      "answer_es": "Todas las comunidades de McKinley aceptan vales de vivienda (vouchers). Un miembro del equipo de arrendamiento confirma los detalles de su vale y de la comunidad que le interesa.",
+      "source": "McKinley sprint brief, recorded in prompts/mckinley_system_prompt.md and docs/workflows/source-review.md (finding 15)",
+      "handoff": true
+    },
+    {
+      "id": "pricing",
+      "label": "rent prices",
+      "keywords": [
+        "price",
+        "pricing",
+        "how much",
+        "cheapest",
+        "rent is",
+        "cost per month",
+        "monthly rent",
+        "specials",
+        "deals",
+        "beat",
+        "price match",
+        "match their",
+        "cheaper than",
+        "ballpark",
+        "afford",
+        "realistic",
+        "budget",
+        "discount",
+        "specials",
+        "month lease",
+        "lease term",
+        "the rent",
+        "rent for",
+        "rents",
+        "rent on"
+      ],
+      "status": "live_data_unavailable",
+      "source": "D-08 (Yardi live pricing) is not connected",
+      "handoff": true
+    },
+    {
+      "id": "availability",
+      "label": "availability",
+      "keywords": [
+        "available",
+        "availability",
+        "vacanc",
+        "open units",
+        "move in now"
+      ],
+      "status": "live_data_unavailable",
+      "source": "D-08 (Yardi live availability) is not connected",
+      "handoff": true
+    },
+    {
+      "id": "floor_plans",
+      "label": "floor plans",
+      "keywords": [
+        "floor plan",
+        "floorplan",
+        "layout",
+        "square feet",
+        "sq ft"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "pets",
+      "label": "the pet policy",
+      "keywords": [
+        "pet",
+        "dog",
+        "cat",
+        "pet rent",
+        "breed"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "parking",
+      "label": "parking",
+      "keywords": [
+        "parking",
+        "park my car",
+        "garage",
+        "permit"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "amenities",
+      "label": "amenities",
+      "keywords": [
+        "amenit",
+        "pool",
+        "gym",
+        "fitness",
+        "clubhouse",
+        "dog park",
+        "playground"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "laundry",
+      "label": "laundry",
+      "keywords": [
+        "laundry",
+        "washer and dryer",
+        "w/d",
+        "washer hookup"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "utilities",
+      "label": "utilities",
+      "keywords": [
+        "utilities",
+        "utility",
+        "internet",
+        "wifi",
+        "electric bill",
+        "water bill"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "application",
+      "label": "how to apply",
+      "keywords": [
+        "apply",
+        "application",
+        "credit check",
+        "background check",
+        "income requirement",
+        "qualify"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 / I-14 application rules not supplied",
+      "handoff": true
+    },
+    {
+      "id": "office_hours",
+      "label": "office hours",
+      "keywords": [
+        "office hours",
+        "office open",
+        "when is the office",
+        "leasing office hours"
+      ],
+      "status": "pending_approval",
+      "source": "D-01 office hours not supplied",
+      "handoff": true
+    },
+    {
+      "id": "neighborhood",
+      "label": "the neighborhood",
+      "keywords": [
+        "neighborhood",
+        "area like",
+        "nearby",
+        "close to",
+        "commute",
+        "schools",
+        "bus line",
+        "public transit"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property documents not supplied",
+      "handoff": true
+    },
+    {
+      "id": "fees",
+      "label": "fees and deposits",
+      "keywords": [
+        "application fee",
+        "admin fee",
+        "fees",
+        "move-in cost",
+        "move in cost"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 / I-14 not supplied",
+      "handoff": true
+    },
+    {
+      "id": "waitlist",
+      "label": "waitlists",
+      "keywords": [
+        "waitlist",
+        "wait list",
+        "waiting list"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 / D-08 not supplied",
+      "handoff": true
+    }
+  ]
+}
