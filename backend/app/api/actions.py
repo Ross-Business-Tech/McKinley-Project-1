@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from app.actions import confirm
 from app.api.staff_guard import require_staff
 from app.models import ActionConfirmRequest, ActionResult, PrototypeRecord
-from app.personas import build_context
+from app.personas import apply_account_holder_rule, build_context
 from app.safety import redact
 from app.state import AppState, get_state
 
@@ -16,8 +16,10 @@ router = APIRouter(prefix="/api")
 def confirm_action(req: ActionConfirmRequest, state: AppState = Depends(get_state)) -> ActionResult:
     """Write the server-side draft for this session. The body names the session and kind only: the saved fields
     always come from the draft the backend built, never from the browser. Identity is re-checked here."""
-    ctx = build_context(req.persona_id, "", state.deps.workbook)
-    draft = state.store.get_draft(req.session_id, req.persona_id or "none")
+    pkey = req.persona_id or "none"
+    ctx = apply_account_holder_rule(build_context(req.persona_id, "", state.deps.workbook),
+                                    state.store.user_messages(req.session_id, pkey))
+    draft = state.store.get_draft(req.session_id, pkey)
     lang = draft.get("lang", "en") if draft else "en"
     return confirm(state.store, req.session_id, req.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
 

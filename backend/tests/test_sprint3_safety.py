@@ -261,3 +261,14 @@ def test_new_danger_words_after_a_person_danger_alert_alert_again():
     assert d.response == "full_alert" and d.kind == "personal_safety" and d.rule == "R9e"
     d = decide(DeterministicRisk(care="danger"), FAILED, prior_hazards=["self_harm"])
     assert d.response == "care_line" and d.care == "distress"  # self-harm keeps the 988 line instead
+
+
+def test_generic_emergency_text_never_claims_a_note_in_any_language():
+    """Consolidation audit B2: unknown-kind alerts use steps-only text; the note sentence is added only when saved."""
+    from app.risk.models import RiskDecision
+    from app.templates import t
+    for lang in ("en", "es"):
+        steps = t("emergency_steps", lang)
+        assert "911" in steps and "nota" not in steps.lower() and "note" not in steps.lower()
+        txt = select(RiskDecision(response="full_alert", kind="other", rule="R2"), lang).safety_notice or ""
+        assert "911" in txt and "nota urgente" not in txt and "urgent note" not in txt

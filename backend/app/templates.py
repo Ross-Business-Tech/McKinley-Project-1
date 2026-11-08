@@ -188,6 +188,15 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Gracias, lo anoté. Puedo pasar sus datos al equipo de arrendamiento como solicitud de visita.",
     },
     # ---- emergency (I-17/I-18 conservative placeholder) ----
+    # Generic safety steps when the hazard kind is unknown ("other"). No claim about a saved note: the planner adds
+    # QUEUE_NOTE only when a note really was written.
+    "emergency_steps": {
+        "en": "Your safety comes first. Leave the area now and call 911. If you smell gas, don't use switches or "
+              "flames and call from outside. Then call your community's emergency maintenance line.",
+        "es": "Su seguridad es lo primero. Salga del área ahora y llame al 911. Si huele a gas, no use "
+              "interruptores ni llamas y llame desde afuera. Después llame a la línea de emergencias de "
+              "mantenimiento.",
+    },
     "emergency": {
         "en": "Your safety comes first. Leave the area now and call 911. If you smell gas, don't use switches or "
               "flames and call from outside. Then call your community's emergency maintenance line. An urgent "

@@ -22,7 +22,7 @@ from app.db import Store
 from app.emergency import heading as emergency_heading
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
-from app.intake import detect_language, not_account_holder
+from app.intake import detect_language
 from app.llm import LLMError, LLMGateway, LLMResult, Target
 from app.models import (
     Channel,
@@ -36,7 +36,7 @@ from app.models import (
     SafeContext,
     Usage,
 )
-from app.personas import build_context
+from app.personas import apply_account_holder_rule, build_context
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
@@ -51,7 +51,6 @@ from app.safety import (
     redact,
 )
 from app.workflows import (
-    EMERGENCY_NOTICE,
     WORKFLOW_VERSION,
     lead_profile,
     maintenance_triage,
@@ -201,11 +200,8 @@ def run_turn(
     full_ctx = build_context(persona_id, msg, deps.workbook)
     said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
                    if (deps.store and use_history) else [])
-    if full_ctx.persona_kind == "resident" and any(not_account_holder(m) for m in [*said_before, msg]):
-        # "this is my roommate's account": nothing from the record for the rest of this conversation
-        full_ctx = full_ctx.model_copy(update={
-            "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
-            "notes": [*full_ctx.notes, "Person said they are not the account holder: no account data is used."]})
+    said_ever = deps.store.user_messages(session_id, hist_key) if (deps.store and use_history) else []
+    full_ctx = apply_account_holder_rule(full_ctx, [*said_ever, msg])
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
               f"audience={full_ctx.audience}, identity_verified={verified} (demo persona = trusted app context)")
@@ -343,7 +339,7 @@ def run_turn(
     ekind = rd.kind if (gate and rd.response == "full_alert") else None
     safety_notice = st.safety_notice if ekind else None
     if gate and gate.urgency == "emergency" and not safety_notice:  # e.g. an LLM gate said emergency: generic text
-        safety_notice = EMERGENCY_NOTICE
+        safety_notice = risk_responses.generic_steps(lang)
     care_kind = st.care_kind if not safety_notice else None
     care_note = st.care_note if care_kind else None
     if care_kind:

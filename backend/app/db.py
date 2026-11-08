@@ -87,6 +87,15 @@ class Store:
             self._conn.executescript(SCHEMA)
 
     # ---- chat sessions ----
+    def user_messages(self, session_id: str, persona_id: str) -> list[str]:
+        """Everything this person typed in this session (any mode, no cap): for session-wide rules such as
+        'I'm not the account holder', which must not expire when the chat history window moves on."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT content FROM chat_turns WHERE session_id=? AND persona_id=? AND role='user' ORDER BY id",
+                (session_id, persona_id)).fetchall()
+        return [r["content"] for r in rows]
+
     def history(self, session_id: str, mode: str, persona_id: str) -> list[dict[str, str]]:
         with self._lock:
             rows = self._conn.execute(

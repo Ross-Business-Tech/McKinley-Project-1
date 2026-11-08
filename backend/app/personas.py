@@ -94,6 +94,18 @@ def list_personas(wb: Workbook | None) -> list[Persona]:
     return out
 
 
+def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
+    """If the person said this is someone else's account ('my roommate let me use her phone'), nothing from the
+    record is used for the rest of the session: chat turns AND the confirm/cancel buttons (single rule, one place)."""
+    from app.intake import not_account_holder
+
+    if ctx.persona_kind != "resident" or not any(not_account_holder(m) for m in said):
+        return ctx
+    return ctx.model_copy(update={
+        "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
+        "notes": [*ctx.notes, "Person said they are not the account holder: no account data is used."]})
+
+
 def build_context(persona_id: str | None, message: str, wb: Workbook | None) -> SafeContext:
     topics = detect_topics(message)
     if persona_id in FICTIONAL_PROSPECTS:

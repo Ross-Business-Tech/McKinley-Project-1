@@ -176,3 +176,13 @@ def test_asking_for_a_manager_mid_repair_says_the_repair_details_are_kept(client
     r = chat(client, "and I want a manager to call me", "mg1")
     assert r["action"]["kind"] == "staff_handoff" and "nothing is lost" in r["reply"]
     assert "leaking" in fields(r)["earlier"]
+
+
+def test_send_button_cannot_submit_after_not_account_holder(client):
+    """Consolidation audit B1: the confirm endpoint applies the same account-holder rule as the chat."""
+    chat(client, "the kitchen faucet is dripping", "b1")
+    r = chat(client, "yes you can come in", "b1")
+    assert r["action"]["stage"] == "ready"
+    chat(client, "this is my roommate's account, she let me use her phone", "b1")
+    res = confirm(client, "b1", "maintenance_request")
+    assert not res["ok"] and not res.get("record")

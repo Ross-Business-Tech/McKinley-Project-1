@@ -559,7 +559,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         if store:
             store.clear_draft(session_id, pkey)
         touched["draft"] = True
-        text = emergency_notice(kind, lang) if kind != "other" else t("emergency", lang).split(" An urgent note")[0]
+        text = emergency_notice(kind, lang) if kind != "other" else t("emergency_steps", lang)
         action = None
         if rec:
             text += QUEUE_NOTE[lang]
@@ -576,7 +576,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if urgent_mine and _EMERGENCY_REFUSE.search(msg):
         from app.emergency import REFUSE_LEAD
         hz = (urgent_mine[-1].get("hazard") or "other")
-        steps = emergency_notice(hz, lang) if hz != "other" else t("emergency", lang).split(" An urgent note")[0]
+        steps = emergency_notice(hz, lang) if hz != "other" else t("emergency_steps", lang)
         return done(TurnPlan(template=REFUSE_LEAD[lang] + steps, functions=["F6", "F9"], skip_model=True,
                              consumed_by_draft=True, force_handoff=True, handoff=handoff,
                              workflow=_sel("maintenance", "Resident resisting emergency guidance: repeat it.")))
@@ -601,6 +601,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]
     if is_resident and not_account_holder(msg) and gate.urgency != "emergency":
+        if draft and store:  # an open card built on that account is parked, never sent from here
+            store.save_draft(session_id, pkey, draft["kind"], {**draft, "declined": True})
+            touched["draft"] = True
         return done(TurnPlan(template=t("other_person", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Person says they are not the account holder.")))
