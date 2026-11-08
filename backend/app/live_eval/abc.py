@@ -190,7 +190,7 @@ def run_live_eval(
     case_ids: list[str] | None = None, scenario_ids: list[str] | None = None, modes: list[str] | None = None,
     out_dir: Path = OUT_DIR, providers: dict[str, LLMProvider] | None = None,
     models_client: httpx.Client | None = None, sleeper: Callable[[float], None] = time.sleep,
-    log: Callable[[str], None] = print,
+    log: Callable[[str], None] = print, with_safety_classifier: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     """Returns (exit_code, document). Writes status.json always; results/report only when the run started."""
     modes = list(modes or MODES)
@@ -227,6 +227,9 @@ def run_live_eval(
     run_settings = settings.model_copy(update={
         "llm_provider": target.provider, "llm_model": target.model,
         "decision_gate_provider": "rules", "gate_override_enabled": False,
+        # The semantic safety classifier is an extra model call per turn: off unless asked for, and then on the SAME
+        # fixed target. Deterministic safety (rules + policy) is recorded on every turn either way.
+        "safety_classifier": "auto" if with_safety_classifier else "off", "safety_classifier_target": None,
         "db_path": Path(tempfile.mkdtemp(prefix="live-eval-")) / "live_eval.sqlite3",
     })
     gw = RecordingGateway(run_settings, providers, max_calls=max_calls, sleep_seconds=0 if is_mock else sleep_seconds,
@@ -543,11 +546,14 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"usability scenario ids, 'all', or nothing to skip (default: {' '.join(DEFAULT_SCENARIOS)})")
     ap.add_argument("--modes", nargs="*", default=None, choices=MODES)
     ap.add_argument("--out-dir", type=Path, default=OUT_DIR)
+    ap.add_argument("--with-safety-classifier", action="store_true",
+                    help="also run the semantic safety classifier (one extra call per turn, same fixed model)")
     a = ap.parse_args(argv)
     code, _ = run_live_eval(get_settings(), a.target, allow_mock=a.allow_mock, allow_paid=a.allow_paid,
                             label=a.label, max_calls=a.max_calls, sleep_seconds=a.sleep,
                             max_rate_limit_errors=a.max_rate_limit_errors, case_ids=a.cases,
-                            scenario_ids=a.scenarios, modes=a.modes, out_dir=a.out_dir)
+                            scenario_ids=a.scenarios, modes=a.modes, out_dir=a.out_dir,
+                            with_safety_classifier=a.with_safety_classifier)
     return code
 
 
