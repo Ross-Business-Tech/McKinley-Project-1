@@ -497,6 +497,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         template = t(template_key, lang, **kw) + extra
         if "[phone redacted]" in msg or "[email redacted]" in msg:  # never imply a typed number was stored
             template += t("contact_not_kept", lang)
+        if card and draft and draft["kind"] in ("maintenance_request", "tour_request") and not draft.get("declined"):
+            what_txt = WHAT[draft["kind"]][lang]
+            template += (f" The details of your unsent {what_txt} are included in this note, so nothing is lost."
+                         if lang == "en" else f" Los datos de su {what_txt} no enviada van incluidos en esta nota.")
         notes = [r for r in mine if r["kind"] == "staff_handoff" and r.get("status") != "urgent_queued"]
         another = bool(re.search(r"\banother note\b|\bnew note\b|otra nota", msg, re.I))
         if card and notes and not draft and not another and template_key in (

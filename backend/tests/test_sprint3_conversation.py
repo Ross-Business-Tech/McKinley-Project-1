@@ -162,3 +162,17 @@ def test_assistants_own_ask_the_office_chip_is_understood(client):
 
 def test_staff_routes_refuse_foreign_host_header(client):
     assert client.get("/api/prototype/records", headers={"Host": "example.com"}).status_code == 403
+
+
+def test_issue_correction_at_read_back_replaces_the_issue(client):
+    chat(client, "the oven light is out", "sw1")
+    chat(client, "yes you can come in", "sw1")
+    r = chat(client, "actually it's the microwave light, not the oven", "sw1")
+    assert fields(r)["issue"] == "Microwave light" and "changed" in r["reply"]
+
+
+def test_asking_for_a_manager_mid_repair_says_the_repair_details_are_kept(client):
+    chat(client, "the sink is leaking for the 4th time", "mg1")
+    r = chat(client, "and I want a manager to call me", "mg1")
+    assert r["action"]["kind"] == "staff_handoff" and "nothing is lost" in r["reply"]
+    assert "leaking" in fields(r)["earlier"]

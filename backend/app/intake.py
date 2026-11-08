@@ -751,7 +751,10 @@ _ISSUE_SWAP = re.compile(
     r"(?:^|\b)(?:it'?s|its|it is|that'?s) not (?:the |my |a )?(?P<old>[\w /-]{2,30}?)[,.;!-]+\s*(?:it'?s|its|it is|"
     r"it'?s actually|the problem is)?\s*(?:the |my |a )?(?P<new>[^.?!]{3,})|"
     r"^\W*(?:wait|no|actually|sorry|oops)\W+(?:it'?s|its|it is) not (?:the |my )?(?P<old2>[\w /-]{2,30}?)\W+"
-    r"(?:it'?s |its |it is )?(?:the |my )?(?P<new2>[^.?!]{3,})", re.I)
+    r"(?:it'?s |its |it is )?(?:the |my )?(?P<new2>[^.?!]{3,})|"
+    r"^\W*(?:(?:wait|no|actually|sorry|oops)\W+)*(?:it'?s|its|it is) (?:actually )?(?:the |my |a )?(?P<new3>[\w /-]{3,"
+    r"40}?)"
+    r",? (?:and )?not (?:the |my |a )?(?P<old3>[\w /-]{2,30}?)\W*$", re.I)
 
 
 def extract_issue_swap(message: str) -> str | None:
@@ -759,8 +762,8 @@ def extract_issue_swap(message: str) -> str | None:
     m = _ISSUE_SWAP.search(message)
     if not m:
         return None
-    new = (m.group("new") or m.group("new2") or "").strip(" ,.;")
-    old = (m.group("old") or m.group("old2") or "").strip()
+    new = (m.group("new") or m.group("new2") or m.group("new3") or "").strip(" ,.;")
+    old = (m.group("old") or m.group("old2") or m.group("old3") or "").strip()
     rooms = r"(kitchen|bath ?room|bedroom|living room|hallway|hall|closet|laundry|garage|balcony|dining room)"
     if re.fullmatch(rooms, old, re.I) or re.fullmatch(rooms, new, re.I):
         return None  # "not the kitchen, it's the bedroom ceiling" is a location correction
