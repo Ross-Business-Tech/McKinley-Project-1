@@ -47,7 +47,7 @@ sequenceDiagram
       L-->>E: JSON {reply, handoff, ...}
     end
   end
-  E->>E: 8 output_checks, a critical failure means the template replaces the reply;<br/>approved safety text selected from the policy decision (risk.responses)
+  E->>E: 8 output_checks, a critical failure means the template replaces the reply,<br/>approved safety text selected from the policy decision (risk.responses)
   E->>E: 9 handoff recommendation (gate flags or plan), delivery note
   E->>S: 10 session turns + gate metadata incl. safety rule / semantic status (no message text in gate log)
   E-->>U: ChatResponse (reply, action, status_items, suggested_replies, diagnostics)
