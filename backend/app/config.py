@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     # ---- local paths ----
     data_path: Path = Path("data/um_ai_sprint_sample_residents.xlsx")
     db_path: Path = Path("data/mckinley_demo.sqlite3")
+    # Optional Postgres connection string (for example Supabase). When set it replaces the SQLite file above.
+    database_url: SecretStr | None = None
     prompt_path: Path = REPO_DIR / "prompts" / "mckinley_system_prompt.md"
     eval_results_path: Path = REPO_DIR / "evals" / "actual_results.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"

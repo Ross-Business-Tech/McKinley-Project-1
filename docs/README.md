@@ -36,6 +36,7 @@ to work here). The project is a **prototype, not production ready**.
 - [development/CLAUDE_PROJECT_GUIDE.md](development/CLAUDE_PROJECT_GUIDE.md) — conventions, tests, Definition of Done
 - [development/engineering-rules.md](development/engineering-rules.md) — rules imported by `backend/` and `frontend/` CLAUDE.md
 - [development/CLAUDE_MD_PROPOSED_PATCH.md](development/CLAUDE_MD_PROPOSED_PATCH.md) — proposed addition to the Ross IT root `CLAUDE.md` (not applied)
+- [development/deploy-vercel-render-supabase.md](development/deploy-vercel-render-supabase.md) — put the typeable version online (Vercel + Render + Supabase)
 - [development/codegraph.md](development/codegraph.md) — optional local code index
 
 ## Archive

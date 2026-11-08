@@ -49,7 +49,7 @@ Details per instruction and data input: [docs/workflows/traceability.md](docs/wo
 ## Stack and architecture
 
 - **Frontend:** Next.js 16 (static export), React 19, TypeScript, Tailwind 4, Base UI / shadcn, Vitest.
-- **Backend:** Python ≥ 3.12, FastAPI, Pydantic v2, httpx, SQLite, uv, pytest, ruff.
+- **Backend:** Python ≥ 3.12, FastAPI, Pydantic v2, httpx, SQLite (local) or Postgres/Supabase (`DATABASE_URL`), uv, pytest, ruff.
 
 ```
 frontend/src/components/customer   customer chat (CustomerApp, ActionCard, StatusPill)
@@ -102,6 +102,9 @@ npm run dev            # Next.js on http://localhost:3000  (customer /, staff /s
 ```
 
 **Interactive mode** = both running locally; the page origin must be listed in `CORS_ORIGINS`.
+
+**Deployed interactive mode** = website on Vercel, backend on Render, database on Supabase:
+[docs/development/deploy-vercel-render-supabase.md](docs/development/deploy-vercel-render-supabase.md).
 
 **Static replay mode** = the here.now build (`npm run build` → `dist/`) with no backend. The customer view replays
 17 recorded journeys from `frontend/public/demo/snapshot.json` (mock model, rules gate) with typing turned off; the
