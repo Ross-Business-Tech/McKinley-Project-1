@@ -119,7 +119,7 @@ demo boundary, not sign-in.
 ## Test
 
 ```bash
-cd backend && uv run pytest && uv run ruff check .          # ~670 tests, offline, mock / fake providers only
+cd backend && uv run pytest && uv run ruff check .          # ~655 tests, offline, mock / fake providers only
 npm run lint && npm run typecheck && npm test && npm run build   # from the repo root (frontend)
 npm run smoke                                                # headless browser check of dist/ (needs Playwright)
 ```
