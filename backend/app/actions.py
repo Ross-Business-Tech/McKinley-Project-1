@@ -93,6 +93,7 @@ from app.models import (
     WorkflowId,
     WorkflowSelection,
 )
+from app.risk.policy import is_people_hazard
 from app.safety import looks_like_injection, redact, sanitize_field
 from app.templates import CHIPS, CONFIRM, CONFIRM_LABEL, DIY_ADVICE, PROTOTYPE_NOTE, Lang, t
 from app.workflows import LABELS, WORKFLOW_VERSION
@@ -523,7 +524,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     # 1. Emergency: deterministic text for every audience, never a model reply; one urgent note per hazard.
     if gate.urgency == "emergency":
         kind = hazard or emergency_kind(msg) or "other"
-        people = kind in ("self_harm", "medical", "personal_safety", "poison", "trapped")
+        people = is_people_hazard(kind)  # one definition, shared with the safety policy
         eh = handoff.model_copy(update={"team": "management"}) if (handoff and people) else handoff
         label = LABEL_EMERGENCY.get(kind, kind).lower()
         topic = f"Possible emergency: {label}" if lang == "en" else "Posible emergencia"

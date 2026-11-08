@@ -77,6 +77,11 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def session_hash(session_id: str) -> str:
+    """One-way short id shown to staff and stored on records; the raw session id is never exposed."""
+    return hashlib.sha256(session_id.encode()).hexdigest()[:10]
+
+
 class Store:
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,16 +147,17 @@ class Store:
                         got.append("safety_check_failed")
                 flags[r["session_id"]] = list(dict.fromkeys(got))
         order = {"urgent": 0, "wellbeing": 1, "asked_for_person": 2, "safety_check_failed": 3}
-        return [{"session_hash": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
+        return [{"session_hash": session_hash(r["session_id"]),
                  "persona_id": r["persona_id"] if r["persona_id"] not in ("", "none") else None,
                  "messages": r["n"] // 2, "started": r["started"], "last": r["last"],
                  "needs_action": sorted(flags.get(r["session_id"], []), key=lambda f: order.get(f, 9))} for r in rows]
 
-    def conversation(self, session_hash: str, limit: int = 200) -> list[dict[str, str]]:
+    def conversation(self, wanted: str, limit: int = 200) -> list[dict[str, str]]:
+        """Turns of the conversation whose session_hash is `wanted`."""
         with self._lock:
             ids = [r["session_id"] for r in self._conn.execute(
                 "SELECT DISTINCT session_id FROM chat_turns WHERE mode LIKE 'aware|%'").fetchall()]
-            sid = next((i for i in ids if hashlib.sha256(i.encode()).hexdigest()[:10] == session_hash), None)
+            sid = next((i for i in ids if session_hash(i) == wanted), None)
             if sid is None:
                 return []
             rows = self._conn.execute(
@@ -181,7 +187,7 @@ class Store:
             rows = self._conn.execute(
                 "SELECT * FROM gate_decisions ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         # Session ids are bearer-like (they key chat history), so only a short one-way hash is exposed.
-        return [{"id": r["id"], "session": hashlib.sha256(r["session_id"].encode()).hexdigest()[:10],
+        return [{"id": r["id"], "session": session_hash(r["session_id"]),
                  "mode": r["mode"], "persona_id": r["persona_id"],
                  "created_at": r["created_at"], **json.loads(r["data"])} for r in rows]
 
@@ -225,7 +231,7 @@ class Store:
     def add_record(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                    data: dict[str, Any]) -> dict[str, Any]:
         """Write a prototype record and return it with its generated id. Raises on any DB error."""
-        session_hash = hashlib.sha256(session_id.encode()).hexdigest()[:10]
+        shash = session_hash(session_id)
         created = now_iso()
         with self._lock, self._conn:
             seq = (self._conn.execute("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"]
@@ -233,17 +239,17 @@ class Store:
             rid = f"{prefix}-{1000 + seq}"
             self._conn.execute(
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
-                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, session_hash, persona_id, created, json.dumps(data)))
-        return {**data, "id": rid, "kind": kind, "session_hash": session_hash, "persona_id": persona_id,
+                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, shash, persona_id, created, json.dumps(data)))
+        return {**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
                 "created_at": created}
 
     def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                         data: dict[str, Any], once_key: str) -> dict[str, Any]:
         """Insert unless a record with the same (session, persona, once_key) exists; check and insert under one lock."""
-        session_hash = hashlib.sha256(session_id.encode()).hexdigest()[:10]
+        shash = session_hash(session_id)
         with self._lock, self._conn:
             for r in self._conn.execute("SELECT * FROM prototype_records WHERE session_hash=? AND kind=? AND "
-                                        "persona_id IS ?", (session_hash, kind, persona_id)).fetchall():
+                                        "persona_id IS ?", (shash, kind, persona_id)).fetchall():
                 d = json.loads(r["data"])
                 if d.get("once_key") == once_key:
                     return {**d, "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
@@ -253,8 +259,8 @@ class Store:
             payload = {**data, "once_key": once_key}
             self._conn.execute(
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
-                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, session_hash, persona_id, created, json.dumps(payload)))
-        return {**payload, "id": rid, "kind": kind, "session_hash": session_hash, "persona_id": persona_id,
+                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, shash, persona_id, created, json.dumps(payload)))
+        return {**payload, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
                 "created_at": created}
 
     def records(self, persona_id: str | None = None, kind: str | None = None,
@@ -268,7 +274,7 @@ class Store:
             args.append(kind)
         if session_id is not None:
             sql += " AND session_hash=?"
-            args.append(hashlib.sha256(session_id.encode()).hexdigest()[:10])
+            args.append(session_hash(session_id))
         sql += " ORDER BY seq DESC LIMIT ?"
         args.append(limit)
         with self._lock:
