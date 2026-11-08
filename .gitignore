@@ -59,3 +59,6 @@ next-env.d.ts
 
 # CodeGraph local index (developer tool; never commit)
 .codegraph/
+
+# Team reference material (local only; not authorised for the public repo)
+docs/references/

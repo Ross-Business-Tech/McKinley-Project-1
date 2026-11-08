@@ -1,6 +1,6 @@
 # Workflow traceability: McKinley AI Agent Flow → prototype
 
-Source: [`docs/references/McKinley AI Agent Flow.md`](references/McKinley%20AI%20Agent%20Flow.md) (nine function modules, 27 instruction inputs I-01…I-27, 14 data inputs D-01…D-14). Earlier analysis and the team's MVP recommendations: [`WORKFLOW_REVIEW.md`](WORKFLOW_REVIEW.md). Branch: `feat/workflow-customer-experience`.
+Source: the team's "McKinley AI Agent Flow" checklist (kept locally in `docs/references/`, not in the public repository; ask the project owner for a copy) (nine function modules, 27 instruction inputs I-01…I-27, 14 data inputs D-01…D-14). Earlier analysis and the team's MVP recommendations: [`WORKFLOW_REVIEW.md`](WORKFLOW_REVIEW.md). Branch: `feat/workflow-customer-experience`.
 
 **Status words used below**
 
