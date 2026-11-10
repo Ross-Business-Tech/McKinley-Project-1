@@ -79,7 +79,8 @@ _PET = r"dog|puppy|cat|kitten|pet|perr[oa]|perrit[oa]|gat[oa]|gatit[oa]|mascota"
 _PRONOUN = r"he|she|hes|shes|him|her|they|theyre|them|his|ella|el (?=esta|no|se)"
 _GENERIC = (r"someone|somebody|anyone|anybody|a person|people|a (?:kid|child|baby|toddler)|kids|children|alguien|"
             r"una persona|la gente|un nino|una nina|un bebe|cualquiera")
-_SELF = r"i|im|ive|id|ill|me|myself|yo|estoy|me siento|tengo"
+_SELF = r"i|im|ive|id|ill|me|myself|we|were|us|our|both of us|all of us|everyone|everybody|yo|estoy|me siento|tengo|"
+_SELF += r"estamos|nosotros|todos"
 WHO = {
     "child": re.compile(rf"\b(?:{_CHILD})\b"),
     "elder": re.compile(rf"\b(?:{_ELDER})\b"),
@@ -186,7 +187,7 @@ _HEIGHT_ACT = (r"climb\w*|hanging|hangs|dangling|leaning (?:out|over)|lean\w* ou
 _WATER = r"pool|piscina|alberca|bath|bathtub|tub|tina|banera|lake|pond|lago|estanque|hot tub|jacuzzi|river|rio"
 _WATER_ACT = (r"no sale|resbal\w*|slipped (?:in|into|under)|fell in|fell into|went in|in the water|under ?water|under t"
               r"he water|face ?down|boca abajo|"
-              r"went under|not coming up|cant swim|sinking|se cayo (?:a|en)|se esta ahogando|bajo el agua|"
+              r"went under|not coming up|sinking|se cayo (?:a|en)|se esta ahogando|bajo el agua|"
               r"en el agua|drown\w*|ahog\w*|floating|flotando")
 _UNWATCHED = (r"nobody (?:is )?(?:watching|with)|no one (?:is )?(?:watching|with)|alone|by (?:him|her|them)self|"
               r"unattended|unsupervised|nadie (?:lo|la|los)? ?(?:esta )?(?:cuidando|mirando|viendo)|sol[oa]")
@@ -258,7 +259,8 @@ _STRUCT = (r"boards|deck boards|ceiling|roof|floor|floors|deck|balcony|stairs|st
 _STRUCT_FAIL = (r"snapp\w*|snapped|sway\w*|groan\w*|dipping|dipped|pulled loose|pulling loose|came loose|coming loose|"
                 r"ripped (?:off|away)|despegand\w*|desprend\w*|sank|sinking|sunk|leaning|tilting|tilted|buckl\w*|crumb"
                 r"l\w*|giving way|gave way|pulling away|"
-                r"separat\w*|caving|caved|sagging|sags|bulg\w*|dropped|dropping|collaps\w*|coming down|came down|"
+                r"separat(?:ing|ed|es) (?:from|away)|caving|caved|sagging|sags|bulg\w*|dropped|dropping|collaps\w*|com"
+                r"ing down|came down|"
                 r"falling (?:apart|down|off|in)|cracking (?:loud|and|sound)|hundi\w*|inclinad\w*|derrumb\w*|"
                 r"separand\w*|cayendo|se (?:cae|cayo|vino abajo)|vencid\w*|abombad\w*")
 _ACTOR = (r"someone|somebody|a (?:man|guy|woman|person|stranger|dude)|(?:the|that|this|some) (?:man|guy|woman|"
@@ -286,8 +288,34 @@ STRUCT_FRAME = [_near_re(_STRUCT, _STRUCT_FAIL, 6)]
 ENTRY_FRAME = [_near_re(_ACTOR, _FORCE, 5), _near_re(_FORCE, _ENTRY_OBJ, 4)]
 
 
+_FABRIC = (r"shirt|sleeve|sleeves|hair|clothes|clothing|dress|pants|robe|apron|skirt|jacket|blanket|towel|curtains?|"
+           r"oven mitt|camisa|manga|pelo|cabello|ropa|vestido|toalla|cortinas?")
+_IGNITE = r"caught|catching|went up|lit up|se prendi\w*|se encendi\w*|agarro fuego"
+_HEAT_SRC = (r"stove|burner|candle|fireplace|heater|grill|gas range|cooktop|lighter|estufa|vela|chimenea|calentador|"
+             r"parrilla")
+FABRIC_FIRE = [_near_re(_FABRIC, _IGNITE, 3), _near_re(_IGNITE, _HEAT_SRC, 5)]
+
+
+WATER_ELEC = [_near_re(r"water|agua|leak\w*|puddle|drip\w*|gotea\w*", r"reaching|touching|getting (?:close )?to|"
+                       r"close to|"
+                        r"next to|near|around|onto|into|under|behind|llegando a|llega a|cerca de|en", 4),
+              re.compile(r"\b(?:outlets?|plugs?|power ?strips?|cords?|extension cords?|wires?|wiring|electrical panel|"
+                         r"panel|breaker\w*|fuse ?box|enchufes?|tomacorrientes?|cables?|regletas?)\b")]
+
+
 def _hazard(s: str) -> tuple[str, str] | None:
     """Property / intruder hazards composed from a source, a sign and an extent."""
+    if all(p.search(s) for p in WATER_ELEC) and re.search(r"\b(?:water|agua|leak\w*|puddle|drip\w*|"
+                                                          r"gotea\w*)\b(?:\W+\w+)"
+                                                          r"{0,6}?\W+(?:reaching|touching|getting|close|next|near|"
+                                                          r"around|onto|into|under|behind|llegando|llega|cerca|en)\b"
+                                                          r"(?:\W+\w+){0,3}?\W+(?:outlets?|plugs?|power ?strips?|cords"
+                                                          r"?|"
+                                                          r"wires?|wiring|panel|breaker\w*|fuse ?box|enchufes?|"
+                                                          r"tomacorrientes?|cables?|regletas?)\b", s):
+        return "electrical", "water reaching something electrical"
+    if all(p.search(s) for p in FABRIC_FIRE):
+        return "fire_smoke", "clothing or fabric caught on a heat source"
     if all(p.search(s) for p in ENTRY_FRAME):
         return "personal_safety", "someone forcing an entry point"
     if CO_FRAME[0].search(s):
@@ -318,7 +346,8 @@ _SH_FINAL = re.compile(
     r"\bno (?:volver a )?despertar\w*|\bdormirme y no despertar\b|\bya tengo todo listo\b|\bya no quiero seguir\b|"
     r"\bdisappear (?:tonight|forever)\b|"
     r"\bits (?:all )?over for me\b|\bthe end for me\b|\bmade my (?:plans|decision|peace)\b|\bnunca mas\b|"
-    r"\bafter (?:this|the) (?:weekend|week|month)\b|\bby (?:tomorrow|morning|monday)\b|\bya no voy a estar\b|"
+    r"\bno quiero (?:volver a )?despertar\w*|\bdont want to wake up\b|\bafter (?:this|the) (?:weekend|week|month)\b|\b"
+    r"by (?:tomorrow|morning|monday)\b|\bya no voy a estar\b|"
     r"\bno voy a estar (?:aqui|mas|manana)\b|\b(?:wont|will not|not going to) be (?:here|around|alive) (?:tomorrow|any"
     r"more|"
     r"much longer|for (?:it|that|long)|by)\b|\b(?:dont think|not sure|doubt) i(?:ll| will)? be (?:around|here|alive)\b|"
@@ -327,7 +356,7 @@ _SH_FINAL = re.compile(
     r"\btheres no point\b|\bya no tiene sentido\b|\b(?:dont|cant|do not) see (?:a|any) way out\b|\bno (?:veo|hay|tengo"
     r") "
     r"salida\b|\btonight (?:i(?:m| am| will|ll)? )?(?:going to |gonna )?(?:fix\w*|end\w*|do\w*|finish\w*|take care of|"
-    r"taking care of) (?:that|it|this)\b|"
+    r"taking care of) (?:that|it|this|thats|its)\b|"
     r"\bno (?:pienso|voy a) bajar\b|\bnot (?:going|planning) to come down\b")
 _SH_METHOD = re.compile(
     r"\b(?:pills|meds|pastillas|tablets) (?:\w+ ){0,3}(?:counted|lined up|ready|on the table|in front of me|aqui|"
@@ -399,7 +428,8 @@ _DRILL = re.compile(r"\b(?:drill|drills|simulacro|simulacros|practice evacuation
                     r"detectors?|sprinklers?)|alarm test|(?:alarm|detector|sprinkler)s? (?:test|testing|inspection)|"
                     r"prueba de (?:alarma|incendio)s?|cpr class|first aid class|safety class|training)\b")
 _POLICY_Q = re.compile(
-    r"\b(?:does|do|is|are|will|can|could)\b(?:\W+\w+){0,6}\W+(?:come with|have|has|include\w*|provide\w*|equipped|"
+    r"(?:^|[.?!]\s*)\s*(?:does|do|is|are|will|can|could)\b(?:\W+\w+){0,6}\W+(?:come with|have|has|include\w*|provide\w"
+    r"*|equipped|"
     r"allowed|permitted|installed|up to code|fenced|code|required|available|safe for|childproof\w*|policy|gated|"
     r"locked|secured?|supervised|lifeguards?|covered|accessible|safe)\b|"
     r"\b(?:what(?:s| is)|whats) the (?:policy|rule|procedure|protocol|plan)\b|\b(?:policy|rules?) (?:on|about|for)\b|"
@@ -416,7 +446,8 @@ _HABITUAL_NOT_NOW = re.compile(r"\b(?:sometimes|every (?:now and then|once in a 
                                r"the moment|not happening now|ahora no|no ahorita)\b)")
 _DEVICE = re.compile(
     r"\b(?:fire|smoke|co|carbon monoxide|gas|heat) (?:alarms?|detectors?|extinguishers?|sprinklers?|doors?|exits?|"
-    r"escapes?|lanes?|drills?|stick|tv|bill|company|meter|line hookup|stove|range|grill)\b|\b(?:detector|alarma|"
+    r"escapes?|lanes?|drills?|stick|tv|bill|company|meter|line hookup|stove|range|grill|hazards?|risks?|safety|"
+    r"codes?|inspections?|insurance|marshal)\b|\b(?:detector|alarma|simulacro|salida|puerta|"
     r"extintor)\w* de (?:humo|incendio|gas|monoxido(?: de carbono)?)\b")
 _LIVE_DEVICE = re.compile(r"\b(?:going off|went off|goes off|sounding|beeping|blaring|screeching|screaming|shrieking|"
                           r"wailing|ringing|alarming|red light|flashing red|wont stop|keeps "
@@ -468,8 +499,27 @@ def _who(s: str) -> list[str]:
     return roles
 
 
+_FCLAUSE = re.compile(r"[,;:]+|\s+-+\s+|\b(?:but|because|although|though|pero|porque|aunque)\b|"
+                      r"\s+(?=(?:and\s+)?(?:we|i|there|it|they|he|she)\s+(?:had|was|were|used to|did|got|once)\b)")
+_ANY_SIGN = [CRITICAL, WEAK, BODY]
+
+
 def _framing(s: str, whole: str, has_stative: bool) -> str:
-    """now | past | hypothetical | media | drill | policy | joking for the sentence that holds the signs."""
+    """Clause-local framing (fix round): if any clause that holds a sign reads as now, the sentence is now, so an
+    added past clause or "not sure if this is an emergency, but" never re-frames a live sign."""
+    clauses = [c for c in _FCLAUSE.split(s) if c and c.strip()]
+    # a signs question or a media frame scopes its whole sentence ("what are the signs of a stroke, like face
+    # drooping?"); past and "if" clauses are local
+    if len(clauses) > 1 and not _SIGNS_Q.search(s) and not (_MEDIA.search(s) and not _NOWISH.search(s)):
+        signed = [c for c in clauses if any(p.search(c) for p in _ANY_SIGN) or _hazard(c) or CHILD_HEIGHT.search(c)
+                  or CHILD_WATER.search(c) or CHILD_EDGE.search(c)]
+        if any(_framing_one(c, whole, bool(_STATIVE.search(c)) or has_stative) == "now" for c in signed):
+            return "now"
+    return _framing_one(s, whole, has_stative)
+
+
+def _framing_one(s: str, whole: str, has_stative: bool) -> str:
+    """now | past | hypothetical | media for one clause or sentence."""
     if _MEDIA.search(s) and not _NOWISH.search(s):
         return "media"
     if _PAST.search(s) and not _NOWISH.search(s):
@@ -481,9 +531,7 @@ def _framing(s: str, whole: str, has_stative: bool) -> str:
         if specific and has_stative and not _EVENT_HYPO.search(s):
             return "now"  # "if my dad can't breathe what do I do": a live report inside a conditional
         return "hypothetical"
-    if _LAUGH.search(whole) and not re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})\b", s):
-        return "joking"
-    return "now"
+    return "now"  # sprint 7 fix round: a laugh marker never changes the framing of a live sign
 
 
 def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
@@ -511,9 +559,6 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         f.look_alike = "past"  # "the fan sparks sometimes, not right now, it's off": a repair, not a live hazard
     elif _PAST.search(t) and (_AFTERMATH.search(t) or "?" in t) and not (CRITICAL.search(t) or _LIVE_HAZARD.search(t)):
         f.look_alike = "past"  # "there was a kitchen fire last month and the cabinets still smell, can you repaint?"
-    elif _LAUGH.search(t) and not re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})\b", t) and not \
-            _LIVE_HAZARD.search(t):
-        f.look_alike = "joking"  # "i can't breathe lol that video" (self only; never a third person)
     elif _DEVICE.search(t) and not _LIVE_DEVICE.search(t) and not re.search(
             r"\b(?:smok\w*|flames?|burn\w*|smell\w*|huele|humo|llamas|fuego|spark\w*|chispa\w*|hiss\w*)\b",
             _DEVICE.sub(" ", t)):
@@ -555,7 +600,7 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         if INGEST.search(s) and SUBSTANCE.search(s) and (_INGEST_CHILD.search(s) or "self" in roles or person):
             cand.append((2, "poison", "a person swallowed a product or medicine"))
             f.hazards.append("ingestion")
-        if roles and set(roles) <= {"pet", "self"} and "pet" in roles and INGEST.search(s) and (
+        if "pet" in roles and INGEST.search(s) and (
                 SUBSTANCE.search(s) or _PET_TOXIC.search(s)):
             cand.append((1, "poison", "a pet swallowed something harmful (calm line; the notices are for people)"))
         hz = _hazard(s)
@@ -579,8 +624,8 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
             best = (rank, cat, framing, why, live_cond)
     if exposure:
         f.hazards.append("exposure")
-        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER})\b|\b(?:pregnant|embarazada|sick|enferm[oa]|oxygen|"
-                                      rf"oxigeno|disabled|wheelchair)\b", t):
+        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT})\b|\b(?:pregnant|embarazada|sick|enferm[oa]|"
+                                      rf"oxygen|oxigeno|disabled|wheelchair)\b", t):
             # Lead class 2: no heat / no AC with a vulnerable person and NO symptom: urgent repair + the calm
             # "unwell" line (911 if anyone feels very unwell), not the medical person-in-danger alert.
             f.category, f.urgency, f.ongoing, f.care_hint = "medical", "possible", "now", "unwell"
@@ -605,6 +650,24 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
     f.live_conditional = live_cond
     f.reason = why
     return f
+
+
+_SPAN_SENTENCE = {"drill": _DRILL, "media": _MEDIA, "policy": _POLICY_Q, "signs": _SIGNS_Q, "past": re.compile(
+    rf"(?:{_PAST.pattern})|(?:{_HISTORY_Q.pattern})|\b(?:sometimes|occasionally|once in a while|a veces|"
+    rf"de vez en cuando|"
+    rf"not (?:right )?now|its off)\b")}
+
+
+def without_lookalike(message: str, look_alike: str | None) -> str:
+    """The message with the look-alike phrase removed: the sentences that carry the drill / media / policy / signs /
+    past framing, and every device noun ("smoke detector", "fire alarm"). Lowering a rule match is allowed only when
+    THIS remainder has no hazard of its own (sprint 7 fix round: lowering must be monotone-safe)."""
+    t = normalize(message)
+    pat = _SPAN_SENTENCE.get(look_alike or "")
+    if pat is not None and look_alike not in ("drill", "policy"):
+        t = " . ".join(x for x in _sentences(t) if not pat.search(x))
+    # drill / policy: only the drill words and device nouns go ("... ceiling light, is this a drill?" keeps the flood)
+    return _DRILL.sub(" ", _DEVICE.sub(" ", t))
 
 
 def _self_harm(t: str) -> tuple[str, str] | None:

@@ -79,6 +79,10 @@ class RiskDecision(BaseModel):
     detected_kind: str | None = None  # sprint 6: kind before approved-notice selection (app/risk/category.py)
     notice_reason: str | None = None  # why the notice category differs from the detected kind
     incident: str | None = None  # sprint 6: active incident this turn belongs to (app/risk/incident.py)
+    # Sprint 7 fix round: a person may be in danger this turn (any full alert, or a care line that came from a person /
+    # body state / self-harm sign). The planner must not open an ordinary repair intake while this is true. False for
+    # a no-heat / no-AC exposure with no symptom (that one SHOULD become an urgent repair).
+    person_danger: bool = False
 
 
 class RiskAssessment(BaseModel):

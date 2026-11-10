@@ -41,6 +41,9 @@ QUIET_TURNS_TO_RESOLVE = 3
 THIRD_PARTY_KINDS = {"medical", "poison", "trapped"}
 Turn = Literal["resolved", "ack", "topic", "follow", "retracted", "controlled"]
 RETRACT_WINDOW = 1  # a retraction closes an incident opened in this turn or the one before it
+# Sprint 7 fix round: a property-hazard false alarm WITH a harmless cause ("false alarm, it was a candle") may close the
+# incident a little later too (the hazard words it uses are already checked by is_retraction).
+RETRACT_WINDOW_HAZARD = 3
 # Kinds whose "it's under control now" closes the incident (the hazard is the building, and the resident stopped it).
 # Fire, smoke and CO stay open until responders clear them (the approved notice: don't go back in until they say so).
 CONTROLLABLE_KINDS = {"flood", "gas", "electrical", "structural"}
@@ -57,6 +60,7 @@ class Incident(BaseModel):
     resolved_reason: str | None = None
     resolved_at: str | None = None
     kinds: list[str] = []  # every alert kind raised during this incident, in order (no text)
+    safe: bool = False  # sprint 7: the resident said they are outside / safe (property hazards only)
 
 
 # ---- message classes -------------------------------------------------------------------------------------------
@@ -100,7 +104,8 @@ _TOPIC = re.compile(
 # Words that tie a message to the emergency (a person, the hazard, "still"): a message with these is never a topic
 # change, even if it also mentions rent or a repair.
 _CONTINUE_CUE = re.compile(
-    r"\b(?:still|again|worse|getting worse|spreading|help|he|she|they|him|her|them|his|kid|kids|baby|child|son|"
+    r"\b(?:still|again|worse|getting worse|spreading|help(?!\s+(?:me\s+)?(?:with|to|me (?:with|find|book|schedule|"
+    r"understand|figure|set)|you|finding|booking))|he|she|they|him|her|them|his|kid|kids|baby|child|son|"
     r"daughter|mom|dad|grand\w+|"
     r"wife|husband|partner|roommate|neighbou?r|dog|cat|smoke|fire|gas|smell\w*|spark\w*|alarm|breath\w*|wake|"
     r"bleed\w*|blood|hurt\w*|sick|dizzy|unconscious|todav[ií]a|sigue|ayuda|"
@@ -129,7 +134,8 @@ _RETRACT = re.compile(
     r"safe)\b|\b(?:he|she|they)(?:'s| is| are|'re) (?:totally |completely )?(?:fine|ok(?:ay)?)\b(?=.*\b(?:meant|"
     r"misunderst\w*|false alarm|nobody|no one|no emergency)\b)|\bfalsa alarma\b|\bnadie (?:est[aá] )?herido\b|"
     r"\bno es (?:una )?emergencia\b|\bme refer[ií]a\b", re.I)
-_RETRACT_DANGER = re.compile(r"\b(?:still|again|but (?:he|she|they|it|now)|now (?:he|she|they|it)|worse|can'?t "
+_RETRACT_DANGER = re.compile(r"\b(?:no wait|wait,? no|thick\w*|spread\w*|grow\w*|still|again|but (?:he|she|they|"
+                             r"it|now)|now (?:he|she|they|it)|worse|can'?t "
                              r"breathe|not breathing|bleeding|won'?t wake|"
                              # Sprint 6 final (verifier P0-B): a body state or a hazard that is still there
                              r"on the floor|gr[ae]y|sweat\w*|pale|turning blue|collaps\w*|fell|unconscious|"
@@ -195,6 +201,21 @@ _LOCATION = re.compile(r"^\W*(?:i'?m|im|i am|we'?re|we are|he'?s|she'?s|they'?re
                        r"(?:on|in|at|by|near|stuck|trapped|still|upstairs|downstairs|en)\b", re.I)
 
 
+# Sprint 7 fix round (UX judge): "I'm outside now" / "we got out" during a property-hazard incident acknowledges the
+# approved notice; it is an ack (calm line, no second alert or note), unless the turn still describes danger.
+_SAFE_UPDATE = re.compile(
+    r"\b(?:i|we)(?:'?m|'?re| am| are| got| made it| just got)? (?:all )?(?:out(?:side)?|out of (?:the )?(?:building|"
+    r"apartment|unit|house)|downstairs|in the (?:lobby|parking lot|street|car)|across the street|safe)\b|"
+    r"\b(?:we|i) (?:left|evacuated|got out)\b|\b(?:ya )?(?:salimos|sal[ií]|estamos afuera|estoy afuera|estamos bien)\b",
+    re.I)
+_STILL_DANGER = re.compile(r"\b(?:go(?:ing)? back|back in(?:side)?|re-?enter|get (?:my|the|our)|volver|regresar|entrar|"
+                           r"still (?:in|inside|in there)|inside|in there|trapped|stuck|can'?t get|"
+                           r"smell\w* (?:it )?"
+                           r"(?:out here|outside)|worse|dizz\w*|sick|headache|hurt|bleed\w*|breath\w*|my (?:\w+ )?(?:i"
+                           r"s|are)"
+                           r" (?:still )?(?:in|inside)|sigue adentro|todav[ií]a (?:est[aá]|adentro))\b", re.I)
+
+
 def is_retraction(message: str, kind: str | None = None) -> bool:
     """'false alarm', 'I meant my texts', 'you misunderstood' with nothing in the rest of the message still describing
     danger. 'Nobody is hurt' / 'not an emergency' alone are not retractions (Sprint 6 final, verifier P0-B)."""
@@ -222,6 +243,8 @@ def classify(message: str, inc: Incident) -> Turn:
     if (re.search(_RESPONDER, low, re.I) and re.search(_HANDLED, low, re.I) and not _NOT_YET.search(low)) or (
             _RESOLVED_ALONE.search(low) and not _NOT_YET.search(low)):
         return "resolved"
+    if inc.kind in HAZARD_KINDS and _SAFE_UPDATE.search(low) and not _STILL_DANGER.search(low):
+        return "ack"  # an ack; step() also records that the resident is out / safe
     if _PRIVACY_OR_STATUS.search(low):
         return "ack"  # the planner answers privacy / status questions after an alert; the calm line stays
     if _ACK.match(low):
@@ -235,7 +258,7 @@ def classify(message: str, inc: Incident) -> Turn:
     if possible_risk(text) or scan(text)[0]:
         return "follow"  # danger words, or the hazard named again (even negated / past / hypothetical)
     fr = frame_of(text)
-    if fr.states or fr.hazards or fr.urgency != "none" or any(r != "self" for r in fr.who):
+    if fr.states or fr.hazards or fr.urgency != "none" or (any(r != "self" for r in fr.who) and not _TOPIC.search(low)):
         return "follow"  # sprint 7: any body state, hazard or person in the frame ties the turn to the incident
     return "topic" if _TOPIC.search(low) else "ack"
 
@@ -276,7 +299,7 @@ _OTHER_PERSON = re.compile(
 
 
 def _call(decision: RiskDecision, inc: Incident, rule: str, conflict: str) -> RiskDecision:
-    return decision.model_copy(update={"rule": rule, "incident": inc.kind, "conflict": conflict,
+    return decision.model_copy(update={"rule": rule, "incident": inc.kind, "conflict": conflict, "person_danger": True,
                                        "sources": list(dict.fromkeys([*decision.sources, "incident"]))})
 
 
@@ -318,7 +341,8 @@ def step(store: Any, session_id: str, persona_key: str, message: str, risk: Risk
         _save(store, session_id, persona_key, inc)
         return risk.model_copy(update={"decision": d.model_copy(update={"incident": inc.kind})})
     kind = classify(message, inc)
-    if kind == "retracted" and (turn - inc.opened_turn > RETRACT_WINDOW or inc.kind == "personal_safety"
+    window = RETRACT_WINDOW_HAZARD if inc.kind in HAZARD_KINDS else RETRACT_WINDOW
+    if kind == "retracted" and (turn - inc.opened_turn > window or inc.kind == "personal_safety"
                                 or "self_harm" in inc.kinds):
         kind = "ack"  # an old incident, or a possible threat (a "never mind" may be coerced): a quiet turn only
     inc.last_seen_turn = turn
@@ -352,6 +376,14 @@ def step(store: Any, session_id: str, persona_key: str, message: str, risk: Risk
         nd = _call(nd, inc, "R10", f"follow-up during an active {inc.kind} incident: approved notice repeated"
                    + (f" (policy alone: {d.rule})" if d.rule else ""))
         return risk.model_copy(update={"decision": nd})
+    if (kind == "ack" and inc.kind in HAZARD_KINDS and _SAFE_UPDATE.search(message)
+            and not _STILL_DANGER.search(message)):
+        inc.safe = True
+    if kind == "topic" and inc.safe and inc.kind in HAZARD_KINDS:
+        # the resident is out / safe and has moved on to an unrelated request: the incident is over for this chat
+        inc.status, inc.resolved_reason, inc.resolved_at = "resolved", "safe and moved on", now
+        _save(store, session_id, persona_key, inc)
+        return risk.model_copy(update={"decision": d.model_copy(update={"incident": None})})
     inc.quiet += 1
     if inc.quiet >= QUIET_TURNS_TO_RESOLVE:
         inc.status, inc.resolved_reason, inc.resolved_at = "resolved", f"{inc.quiet} quiet turns", now
@@ -379,8 +411,12 @@ def prior_hazards(store: Any, session_id: str, persona_key: str, message: str, t
     inc = load(store, session_id, persona_key)
     if not inc or inc.kind == "self_harm" or "self_harm" in inc.kinds:
         return hazards
-    retracted = inc.status == "resolved" and inc.resolved_reason == "retracted"
-    retracting = (inc.status == "active" and inc.kind != "personal_safety" and turn - inc.opened_turn <= RETRACT_WINDOW
+    retracted = inc.status == "resolved" and (inc.resolved_reason == "retracted" or (
+        inc.kind != "personal_safety" and "personal_safety" not in inc.kinds))
+    if inc.status == "active" and inc.kind not in ("personal_safety",) and classify(message, inc) == "resolved":
+        retracted = True  # "the paramedics took him to the hospital": this turn closes it
+    window = RETRACT_WINDOW_HAZARD if inc.kind in HAZARD_KINDS else RETRACT_WINDOW
+    retracting = (inc.status == "active" and inc.kind != "personal_safety" and turn - inc.opened_turn <= window
                   and is_retraction(message, inc.kind))
     if not (retracted or retracting):
         return hazards

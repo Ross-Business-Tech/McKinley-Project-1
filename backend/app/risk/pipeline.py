@@ -7,7 +7,7 @@ See docs/safety/safety-evaluation.md and docs/diagrams/safety-architecture.md.""
 from app.risk.category import refine
 from app.risk.classifier import SemanticRiskClassifier
 from app.risk.detect import detect
-from app.risk.models import RiskAssessment
+from app.risk.models import DeterministicRisk, RiskAssessment, RiskDecision
 from app.risk.policy import decide
 
 
@@ -26,7 +26,24 @@ def assess(message: str, recent: list[str] | None, classifier: SemanticRiskClass
         kind, reason = refine(decision.kind, text)
         decision = decision.model_copy(update={"detected_kind": decision.kind, "kind": kind,
                                                "notice_reason": reason})
+    decision = decision.model_copy(update={"person_danger": person_danger(decision, det)})
     return RiskAssessment(deterministic=det, semantic=sem, decision=decision)
+
+
+def person_danger(decision: RiskDecision, det: DeterministicRisk | None = None) -> bool:
+    """Full alert, or a care line from a person sign (concern / frame person state / distress / R9 / R10q memory)."""
+    if decision.response == "full_alert":
+        return True
+    if decision.response != "care_line":
+        return False
+    if decision.care == "distress" or decision.rule in ("R9", "R9e", "R10", "R10q"):
+        return True
+    if det is None:
+        return False
+    fr = det.frame or {}
+    exposure_only = fr.get("care_hint") == "unwell" and not fr.get("states")
+    people = [w for w in fr.get("who") or [] if w != "self"]
+    return not exposure_only and (det.concern or bool(people and (fr.get("states") or fr.get("hazards"))))
 
 
 __all__ = ["RiskAssessment", "SemanticRiskClassifier", "assess"]

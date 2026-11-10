@@ -133,7 +133,7 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
     ("flood", re.compile(
         r"\bflood(ing|ed|s)?\b(?! ?(zone|insurance|plain|light))|water (is )?(pouring|everywhere|gushing|spraying|"
         r"coming in|pouring in|all over)|(pipe|line|hose) (has )?(burst|broke|exploded|split)|burst (pipe|line)|"
-        r"\bgushing\b|overflow\w*\W+(?:\w+\W+){0,8}(hallway|everywhere|floor|won'?t stop|another room|downstairs)|"
+        r"\bgushing\b|overflow\w*\W+(?:\w+\W+){0,8}(hallway|everywhere|won'?t stop|another room|downstairs)|"
         r"inund\w*|agua por todas partes|se rompi[oó] (una|la) (tuber[ií]a|ca[ñn]er[ií]a)|tuber[ií]a rota|ngập|"
         r"revent[oó] (?:una|la) (?:tuber[ií]a|ca[ñn]er[ií]a)|agua\W+(?:\w+\W+){0,2}(?:entrando|saliendo|cayendo) "
         r"(?:por|del) (?:el )?techo",
@@ -456,7 +456,14 @@ _DANGER = re.compile(
     r"trapped|stuck in|can'?t get out|won'?t open|locked in|"
     r"rope|goodbye|giving away|sleep forever|no way out|end it|despedí|lo hago|"
     r"humo|fuego|incendio|sangr\w*|herid\w*|inconsciente|atrapad\w*|miedo|pistola|cuchillo)\b", re.I)
-_DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
+# Sprint 7 fix round (UX judge): benign senses of danger words: an interjection ("oh shoot"), a consumable that
+# burned out (a bulb, the oven light), being burnt out (tired). A live sign elsewhere in the message still counts.
+_DANGER_NOT = re.compile(r"\b(?:oh|aw|ah|ahh|dang|well) shoot\b|^\W*shoot\b(?!\s+(?:me|him|her|them|us|at|someone))|"
+                         r"\bshoot[,!.]|\b(?:bulbs?|light ?bulbs?|lights?|lamps?|nightlight|oven light|fridge light|"
+                         r"fuses?|candles?)\W+(?:\w+\W+){0,4}burn(?:ed|t) out\b|\bburn(?:ed|t) out (?:bulbs?|lights?)"
+                         r"\b|"
+                         r"\b(?:i'?m|feel|feeling|so) (?:so |really |totally )?burn(?:ed|t) out\b|sparks? joy|gas (bil"
+                         r"l|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
                          r"test|extinguisher)|chest of drawers|burning question|smoke[- ]free|no smoking|"
                          r"bone dry|broke (?:the )?bank|smoke (?:detector|alarm)s? (?:repair|battery|batteries|replace"
                          r"ment|replaced|"
@@ -615,11 +622,16 @@ _FIGURATIVE = re.compile(
     r"break(?:ing)? the bank|(?:i'?m|im) (?:so )?dead\b(?! (?:serious))(?=.{0,20}(?:lol|lmao|haha|😂|🤣|💀))|"
     r"(?:heart|this) attack of (?:cuteness|nostalgia)|"
     # sprint 6: "the bill almost gave me a heart attack"
-    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b|"
-    # sprint 7: a stroke / heart attack in the future or a modal is hyperbole; a real one is "is having"
-    r"\b(?:about to|going to|gonna|could|might|will|i'?ll) have (?:a |an )?(?:stroke|heart attack|aneurysm|"
-    r"breakdown|meltdown)\b",
+    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b",
     re.I)
+# Sprint 7: "this paperwork is going to give me a stroke" / "i'm about to have a heart attack" is hyperbole, but only
+# when NO body symptom is described (fix round P0: "I think I might have a stroke, my face is numb on one side").
+_MODAL_HYPERBOLE = re.compile(r"\b(?:about to|going to|gonna|could|might|will|i'?ll) have (?:a |an )?(?:stroke|heart "
+                              r"attack|aneurysm|breakdown|meltdown)\b", re.I)
+_BODY_SYMPTOM = re.compile(r"\b(?:numb\w*|tingl\w*|droop\w*|slurr\w*|face|arm|chest|jaw|vision|blurr\w*|dizz\w*|"
+                           r"head ?ache|headache|pain|hurts?|weak\w*|can'?t (?:feel|move|speak|talk|see|breathe|lift)|"
+                           r"sweat\w*|short of breath|faint\w*|confus\w*|vomit\w*|nause\w*|pressure|tight\w*|"
+                           r"entumid\w*|dolor|mare\w*|pecho|brazo|cara)\b", re.I)
 # Negated hazards ("no smoke", "it's not sparking", "I don't smell gas"); only the negated phrase is removed.
 _NEGATED = re.compile(
     r"\bnothing (?:is |was |'s )?(?:sparking|smoking|burning|on fire|leaking gas)\b|"
@@ -699,7 +711,10 @@ def _prepare(message: str) -> str:
 
 
 def _strip_figurative(text: str) -> str:
-    return _FIGURATIVE.sub(" ", text)
+    text = _FIGURATIVE.sub(" ", text)
+    if not _BODY_SYMPTOM.search(text):
+        text = _MODAL_HYPERBOLE.sub(" ", text)
+    return text
 
 
 def _strip_negated(text: str) -> str:
@@ -707,10 +722,17 @@ def _strip_negated(text: str) -> str:
 
 
 # Sprint 7: body heat is not a fire ("burning up", "his skin is burning hot", "ardiendo en fiebre").
-_BODY_HEAT = re.compile(r"\bburning (?:up|hot)\b|\b(?:skin|forehead|body|head|he|she|baby|kid|chest)\W+(?:\w+\W+){0,2}"
-                        r"(?:is |feels |felt )?(?:burning|on fire)(?: up| hot| to the touch)?\b(?! (?:smell|down|in))|"
-                        r"\bon fire to the touch\b|\bardiendo(?: en fiebre| de fiebre)?\b|\bburning (?:with )?fever\b",
-                        re.I)
+# Fix round (P0): scoped to fever / temperature wording. "On fire" and "caught" are never removed ("he is on fire",
+# "her sleeve caught on the stove" are fires).
+_BODY_HEAT = re.compile(r"\bburning hot\b|\b(?:confused|hot|sick|sweaty|feverish|red|flushed|dizzy|clammy|weak)\s+"
+                        r"(?:and\s+)?burning up\b|\b(?:he|she|they|baby|kid|child|son|daughter|toddler|grandma|grandpa"
+                        r"|mom|dad|i)(?:'s| is| are|"
+                        r"'re|'m| am)? (?:really |so |just )?burning up\b(?! (?:in|inside))|\bburning up with (?:a )?f"
+                        r"ever\b|"
+                        r"\b(?:skin|forehead|body)\W+(?:\w+\W+){0,2}(?:is |feels |felt )(?:so |really |very )?burning("
+                        r"?: hot)?"
+                        r"\b(?! (?:smell|down|in))|\bburning (?:with )?fever\b|\bardiendo (?:en|de) fiebre\b|"
+                        r"\bfever\W+(?:\w+\W+){0,3}burning\b", re.I)
 # Sprint 7 (lead class 1): smoke from OTHER people's habits (a neighbour smoking cigarettes or weed, smoke drifting in
 # from the hallway) is a nuisance for the office, not a fire. Removed only when nothing in the message describes a
 # fire: flames, "fire", black / thick smoke pouring or filling, an alarm going off, a burning smell, sparks.
@@ -721,7 +743,17 @@ _HABIT_SMOKE = re.compile(
     r"vecin\w*|alguien|la gente)\b\W+(?:(?!unit|apartment|door|vent|kitchen|building|house|place|oven|dryer|stove|"
     r"room|hallway|wall|outlet|panel|car|attic|roof)\w+\W+){0,3}(?:smok(?:e|es|ing)|chain ?smok\w*|light(?:s|ing)? up|"
     r"fuma\w*)\b", re.I)
-_REAL_FIRE_SIGN = re.compile(r"\bfire\b(?! (?:alarm|exit|door|lane|code|hazard|department|dept))|\bflames?\b|"
+_REAL_FIRE_SIGN = re.compile(r"\b(?:fill(?:ed|ing|s)? (?:up )?with|full of|thick with|lleno de|llena de)"
+                             r"\W+(?:\w+\W+){0,1}"
+                             r"(?:smoke|humo)\b|\b(?:smoke|humo)\W+(?:\w+\W+){0,3}(?:pour\w*|billow\w*|fill\w*|"
+                             r"everywhere|coming (?:out|from|under|in)|out of|getting (?:thick|worse|bigger)|thick|bla"
+                             r"ck|negro|sale|"
+                             r"saliendo|por todas partes)|\borange (?:light|glow)\b|"
+                             r"\b(?:sale|saliendo|hay)\W+(?:\w+\W+){0,1}(?:humo|smoke)\b|\bsmoke\W+(?:\w+\W+){0,6}gett"
+                             r"ing (?:thick|worse)|\b(?:the|my|our|his|her|a) (?!neighbou?r|"
+                             r"guy|man|woman|roommate|tenant)\w+ (?:is|are|'s) (?:now )?smoking\b|\bsmoking now\b|"
+                             r"\b(?:fell|falls|fallen) asleep (?:while )?smoking\b|\bcaught\b|"
+                             r"\bfire\b(?! (?:alarm|exit|door|lane|code|hazard|department|dept))|\bflames?\b|"
                              r"\bon fire\b|\b(?:black|thick|heavy|gr[ae]y) smoke\b|smoke (?:is )?(?:pouring|billowing|"
                              r"filling|everywhere|coming out of (?:the|my|our) (?:vent|outlet|wall|ceiling|oven|dryer)"
                              r")|"
@@ -731,8 +763,16 @@ _REAL_FIRE_SIGN = re.compile(r"\bfire\b(?! (?:alarm|exit|door|lane|code|hazard|d
 _SMOKE_WORD = re.compile(r"\b(?:smok(?:e|ing|y|es)|humo|fumes?)\b", re.I)
 
 
+_ATTRIBUTED_SMOKE = re.compile(r"\b(?:cigarette|cig|cigar|weed|pot|marijuana|vape|vaping|tobacco|hookah|"
+                               r"second[- ]?hand|"
+                               r"their|his|her)\s+(?:smoke|smoking)\b|\bhumo (?:de|del) (?:cigarr\w*|tabaco|marihuana|"
+                               r"vecino)\b", re.I)
+
+
 def _strip_habit_smoke(text: str) -> str:
-    if _HABIT_SMOKE.search(text) and not _REAL_FIRE_SIGN.search(text):
+    """Only when no present smoke / fire sign remains once the smoke attributed to the habit ("cigarette smoke
+    coming under my door") is set aside: "my neighbor smokes and now the hallway is full of smoke" stays a fire."""
+    if _HABIT_SMOKE.search(text) and not _REAL_FIRE_SIGN.search(_ATTRIBUTED_SMOKE.sub(" ", text)):
         return _SMOKE_WORD.sub(" ", text)
     return text
 
@@ -743,9 +783,18 @@ def clean_for_frame(message: str) -> str:
     return _clean(_prepare(message))
 
 
+# Fix round (P0 false alarm): "balcony door", "deck light", "porch gate" name hardware, not the structure: a door that
+# won't latch is a repair. The compound becomes the hardware noun alone before any rule runs.
+_HARDWARE_COMPOUND = re.compile(r"\b(?:balcony|patio|deck|porch|closet|stair(?:well|case)?|roof|ceiling|wall|floor|"
+                                r"balc[oó]n|techo|pared)\s+(door|doors|window|windows|light|lights|lamp|fan|gate|"
+                                r"screen|lock|slider|latch|handle|knob|hinge|vent|outlet|tile|tiles|puerta|ventana|"
+                                r"luz|l[aá]mpara|ventilador|cerradura)\b", re.I)
+
+
 def _clean(text: str) -> str:
     """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
     replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
+    text = _HARDWARE_COMPOUND.sub(lambda m: m.group(1), text)
     return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
 
 
@@ -845,12 +894,14 @@ def _kind_of(text: str) -> str | None:
 
 _SENTENCE = re.compile(r"(?<=[.!?;])\s+|\n+")
 # Fix round (P0): clause boundaries used to find what the message says OUTSIDE its question / past-event part.
-_CLAUSE = re.compile(r"[.!?;,:\n]+|\s+[-\u2013\u2014]+\s+|\b(?:but|because|cause|cuz|since|although|though|so|"
+_CLAUSE = re.compile(r"[.!?;,:\n]+|\s+(?=(?:we|i|there|it|they|he|she)\s+(?:had|was|were|used to|did|got|once)\b)|"
+                     r"\s+[-\u2013\u2014]+\s+|\b(?:but|because|cause|cuz|since|although|though|so|"
                      r"y|pero|porque)\b|\band\b(?=\s+(?:now|right now|then|the|he|she|they|it|it'?s|there|someone|"
                      r"somebody|that|this)\b)", re.I)
 _IF_CLAUSE = re.compile(r"^\s*(?:and\s+)?(?:what if|if|in case|si|en caso)\b", re.I)
 _PAST_CLAUSE = re.compile(_PAST.pattern + r"|\b(?:last (?:night|week|weekend)|yesterday|the other (?:day|night)|"
-                          r"over the weekend|earlier (?:this|today)|ago|anoche|ayer)\b", re.I)
+                          r"over the weekend|earlier (?:this|today)|(?:years?|months?|weeks?|days?) ago|anoche|ayer)\b"
+                          r"", re.I)
 
 
 def _present_now(text: str) -> bool:
@@ -864,7 +915,9 @@ def _present_now(text: str) -> bool:
     if not residual.strip():
         return False
     clean = _clean(residual)
-    return _present_signs(clean) or bool(_kind_of(residual) and re.search(
+    # Fix round: the hazard named in a clause that is not a question / "if" / past clause is a current report on its
+    # own ("the outlet is sparking, we had a leak last year"); no subject word is needed.
+    return _present_signs(clean) or bool(_kind_of(residual)) or bool(_kind_of(residual) and re.search(
         r"\b(?:i|we|my|our|his|her|he|she|they|it|it'?s|there'?s|everyone|everybody|someone|somebody|the (?:guy|man|"
         r"baby|kids?))\b", clean, re.I))
 

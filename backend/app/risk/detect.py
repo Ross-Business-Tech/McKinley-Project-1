@@ -13,7 +13,7 @@ Sprint 7: the compositional frame (app/risk/frame.py) is combined with the phras
 import re
 
 from app.emergency import intent_to_self_harm, person_concern, possible_risk, scan
-from app.risk.frame import RiskFrame, analyse
+from app.risk.frame import RiskFrame, analyse, without_lookalike
 from app.risk.models import DeterministicRisk
 
 WINDOW_TURNS = 3  # earlier user messages combined with this one
@@ -21,7 +21,7 @@ WINDOW_TURNS = 3  # earlier user messages combined with this one
 _HAPPENING_NOW = re.compile(r"\b(?:it'?s|it is|this is|that'?s) (?:happening|going on) (?:now|right now)\b|"
                             r"\b(?:yes|yeah|yep)\W+(?:\w+\W+){0,2}(?:right )?now\b|\bhappening now\b|"
                             r"est[aá] pasando (?:ahora)?|s[ií],? ahora", re.I)
-_NEVER_LOWERED = {"self_harm", "personal_safety"}
+_NEVER_LOWERED = {"self_harm", "personal_safety", "poison"}
 _OTHER_ACTOR = re.compile(r"\b(?:he|she|they|him|them|someone|somebody|stranger|intruder|my (?:ex|partner|husband|wife|"
                           r"boyfriend|girlfriend|roommate|neighbou?r)|a (?:man|guy|woman)|threat\w*|alguien|[eé]l|ella"
                           r")\b",
@@ -31,12 +31,16 @@ _OBJECT = re.compile(r"\b(ceiling|roof|wall|floor|stairs|staircase|balcony|deck|
                      r"stove|oven|dryer|heater|furnace|water heater|pipe|toilet|elevator|door|window|techo|pared|piso|"
                      r"escalera|balc[oó]n|enchufe|estufa|tuber[ií]a)\b", re.I)
 _LOOKALIKE_FRAMING = {"media": "quoted", "drill": "hypothetical", "policy": "hypothetical", "device": "hypothetical",
-                      "past": "past", "joking": "joking", "signs": "hypothetical"}
+                      "past": "past", "signs": "hypothetical"}
 
 
 def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     """`recent` = earlier user messages in this conversation (oldest first, current message excluded)."""
     kind, framing = scan(message)
+    if kind == "self_harm" and framing == "joking":
+        # sprint 7 fix round: a laugh marker never lowers a disclosure ("i want to die lol" is a full self-harm alert;
+        # the alert includes 988). Stricter than sprint 6 (R3 care line).
+        framing = "report"
     out = DeterministicRisk(care=possible_risk(message), concern=person_concern(message))  # type: ignore[arg-type]
     prev = [m for m in (recent or []) if m][-WINDOW_TURNS:]
     fr = analyse(message, prev)
@@ -79,13 +83,25 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     return out
 
 
+def _may_lower(out: DeterministicRisk, fr: RiskFrame, message: str) -> bool:
+    """Monotone-safe lowering (sprint 7 fix round). A rule match is lowered to a mention ONLY when all hold:
+    a look-alike framing; a kind that is not self-harm, personal safety or poison; not via the window; no person /
+    body state and no frame alert anywhere in the message; and the message WITHOUT the look-alike phrase has no
+    hazard of its own (rules and frame). So adding "the smoke detector is old" or "is this a drill?" to a real
+    report never lowers it."""
+    if out.kind in _NEVER_LOWERED or out.via_window or fr.alert:
+        return False
+    if fr.states and any(w in fr.who for w in ("self", "child", "elder", "adult", "pronoun")):
+        return False  # a body state of a real person anywhere in the message (generic "signs of a stroke" is not)
+    rest = without_lookalike(message, fr.look_alike)
+    if scan(rest)[0] or analyse(rest).urgency != "none" or possible_risk(rest) in ("distress", "unwell"):
+        return False
+    return True
+
+
 def _combine(out: DeterministicRisk, fr: RiskFrame, message: str) -> None:
     """Frame + phrase rules, conservatively (see the module docstring)."""
-    # media / past / joking frame the whole message; a device, drill or policy question only when no body state at all
-    # is described ("our CO detector is screaming and my daughter threw up" is a report)
-    live_sign = (fr.alert and fr.look_alike != "joking") or (
-        bool(fr.states) and fr.look_alike in ("device", "drill", "policy"))
-    if out.kind and fr.look_alike and out.kind not in _NEVER_LOWERED and not live_sign and not out.via_window:
+    if out.kind and fr.look_alike and _may_lower(out, fr, message):
         out.mentioned_kind, out.kind = out.kind, None
         out.framing = _LOOKALIKE_FRAMING[fr.look_alike]  # type: ignore[assignment]
         return

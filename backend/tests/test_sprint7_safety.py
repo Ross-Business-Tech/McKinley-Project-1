@@ -260,7 +260,6 @@ def test_property_near_misses_do_not_alert(msg):
     "the news said a gas line exploded in another city",
     "watching a movie where the house burns down",
     "the bathroom fan sparks sometimes, not right now though, it's off",
-    "i can't breathe lol that meme",
     "this paperwork is going to give me a stroke",
     "a question about the fire alarm in my unit",
 ])
@@ -276,6 +275,16 @@ def test_look_alikes_get_no_full_alert(msg):
     "has the fire spread? flames are coming out of the window right now",
 ])
 def test_live_signs_beat_look_alike_framings(msg):
+    assert full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    # fix round: moved from the look-alikes above. A laugh marker never lowers a live sign (monotone-safe lowering);
+    # "i can't breathe lol" gets the alert, as the decoration invariant below requires.
+    "i can't breathe lol that meme", "i took a bunch of pills lol", "haha i'm not joking, my ceiling just collapsed",
+    "jk but my kitchen is actually on fire", "lol my dad passed out and won't wake up",
+])
+def test_a_laugh_never_lowers_a_live_sign(msg):
     assert full(msg), msg
 
 
@@ -436,3 +445,204 @@ def test_api_frame_alert_opens_no_repair_form(client):
         r = client.post("/api/chat", json={"message": msg, "persona_id": "R001", "mode": "aware"}).json()
         assert r["safety_notice"], msg
         assert (r.get("action") or {}).get("kind") != "maintenance_request", msg
+
+
+# ---- 15. fix round P0s: filters never strip a live danger ----------------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "he is on fire", "the baby is on fire", "she caught on fire at the stove", "his shirt caught on the stove",
+    "her hair caught on a candle", "my robe caught on the burner and it's burning", "la manga se prendió en la estufa",
+    "my son's pajamas caught fire from the heater",
+])
+def test_a_person_or_clothing_on_fire_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "fire_smoke", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my son is burning up with a fever", "her forehead feels burning hot", "the baby is burning up",
+    "my shirt caught on the door handle and ripped",
+])
+def test_fever_and_snags_are_not_fires(msg):
+    assert d(msg).kind != "fire_smoke", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my neighbor smokes and now the hallway is filled with smoke",
+    "the guy upstairs smokes, now the ceiling is smoking",
+    "el vecino fuma y ahora sale humo negro del techo", "he fell asleep smoking and now the couch is smoking",
+    "someone smokes in 4B and their apartment is full of smoke and the alarm is going off",
+    "my roommate smokes weed, but now there's thick smoke coming out of his room",
+    "la gente fuma en la escalera y ahora está llena de humo", "neighbor was smoking, now flames on his balcony",
+])
+def test_real_smoke_with_a_smoker_alerts(msg):
+    assert full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "I think I might have a stroke, my face is numb on one side",
+    "i might be having a heart attack, my chest is so tight and my arm hurts",
+    "i feel like i'm going to have a stroke, i can't feel my arm",
+    "creo que me va a dar un infarto, me duele el pecho y el brazo",
+])
+def test_a_hedged_stroke_with_symptoms_alerts(msg):
+    assert full(msg), msg
+
+
+@pytest.mark.parametrize("msg", ["no quiero despertar mañana", "ya no quiero despertar", "i don't want to wake up "
+                                 "tomorrow", "ojalá no despertar nunca"])
+def test_spanish_and_english_not_waking_up_is_self_harm(msg):
+    r = d(msg)
+    assert r.response in ("full_alert", "care_line") and (r.kind == "self_harm" or r.care == "distress"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "and separately my balcony door wont latch at all, thats a new problem", "my balcony door is off its track",
+    "the patio door lock broke", "the deck light fell off", "la puerta del balcón no cierra",
+    "the porch gate hinge snapped", "the closet door collapsed off its hinges",
+])
+def test_hardware_on_a_structure_is_not_structural_danger(msg):
+    r = d(msg)
+    assert not (r.response == "full_alert" and r.kind == "structural"), msg
+
+
+@pytest.mark.parametrize("msg", ["the balcony is pulling away from the wall", "the deck collapsed",
+                                 "el balcón se está cayendo"])
+def test_the_structure_itself_still_alerts(msg):
+    assert full(msg), msg
+
+
+# ---- 16. person_danger: no ordinary repair intake while a person may be in danger ---------------------------------
+@pytest.mark.parametrize("msg,expect", [
+    ("my kid is locked in the bathroom and the tub is running", True),
+    ("my grandma slipped in the kitchen", True),
+    ("someone smashed my window and i heard a noise", True),
+    ("i've been saving up my pills", True),
+    ("our heat is out and it's 15 degrees, i have a 2 month old", False),
+    ("the ac broke and it's 98 degrees, my 85 year old mother lives here", False),
+    ("my faucet drips", False),
+])
+def test_person_danger_flag(msg, expect):
+    r = d(msg)
+    assert r.person_danger is expect, (msg, r.response, r.care)
+
+
+def test_api_person_danger_care_line_opens_no_repair_form(client):
+    # needs the planner guard (Agent B): no maintenance_request card while risk.decision.person_danger is true
+    r = client.post("/api/chat", json={"message": "my grandma slipped in the kitchen", "persona_id": "R001",
+                                       "mode": "aware"}).json()
+    assert r["risk"]["decision"]["person_danger"] is True
+
+
+# ---- 17. UX judge classes (fix round) ------------------------------------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "oh shoot, I meant the hall closet", "shoot, wrong unit, it's 4B", "aw shoot i forgot my key code",
+    "my oven light burned out", "the bulb in the hallway burned out", "two of the bathroom lights are burnt out",
+    "the fridge light burned out again", "i'm so burnt out from work, can we do the tour saturday?",
+])
+def test_benign_senses_get_no_safety_line(msg):
+    assert d(msg).response == "none", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "shoot, the outlet is sparking", "the light burned out and now the fixture is smoking",
+    "someone threatened to shoot me", "the bulb burned out with a pop and there are flames in the lamp",
+])
+def test_live_signs_next_to_benign_words_still_count(msg):
+    assert d(msg).response in ("full_alert", "care_line"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "the dishwasher is leaking onto the floor", "my dishwasher overflowed onto the kitchen floor",
+    "the washing machine is leaking a puddle", "water is leaking from under the fridge onto the floor",
+    "the toilet overflowed onto the bathroom floor, it stopped now", "my sink is leaking under the cabinet",
+    "el lavaplatos está goteando en el piso", "a slow leak from the water heater onto the floor",
+])
+def test_contained_leaks_are_repairs_not_emergencies(msg):
+    assert d(msg).response != "full_alert", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "the dishwasher is leaking and the water is reaching the outlet",
+    "water is gushing everywhere from the dishwasher and won't stop",
+    "the washer overflowed and it's flooding into the hallway",
+    "water from upstairs is pouring through my ceiling light",
+])
+def test_leaks_with_a_hazard_sign_alert(msg):
+    assert full(msg), msg
+
+
+def _conv(turns):
+    from tests.test_sprint7_safety_invariants import run_turns
+    return run_turns(turns)
+
+
+@pytest.mark.parametrize("turns", [
+    ["i smell gas in my kitchen", "we're outside now", "can you help me with my blinds"],
+    ["the outlet is sparking", "i'm outside", "what's the rent due date?"],
+    ["there's smoke in the hallway", "we got out", "thanks", "can i book a tour for my friend?"],
+    ["water is gushing through the ceiling", "we left the unit", "how do i pay rent online?"],
+    ["huele a gas en la cocina", "ya salimos", "¿cuándo vence la renta?"],
+    ["my dad collapsed and isn't breathing", "the paramedics took him to the hospital", "when can i call about "
+                                                                                         "my lease?"],
+    ["my son swallowed a battery", "the ambulance took him", "can maintenance fix my dishwasher next week?"],
+    ["the CO alarm is going off and we feel dizzy", "we're all outside", "ok", "is the gym open late?"],
+])
+def test_no_safety_line_on_unrelated_turns_after_safe_or_resolved(turns):
+    assert _conv(turns)[-1].response == "none", turns
+
+
+@pytest.mark.parametrize("turns", [
+    ["i smell gas in my kitchen", "we're outside but my grandma is still inside"],
+    ["i smell gas in my kitchen", "im outside now", "my head hurts and i feel dizzy"],
+    ["the outlet is sparking", "im outside", "it's still sparking and now there's smoke"],
+    ["i want to die", "can you help me with my lease?"],
+    ["my ex is banging on my door", "ok", "what's the rent due date?"],
+])
+def test_danger_or_reviewed_flows_keep_guidance(turns):
+    assert _conv(turns)[-1].response in ("full_alert", "care_line"), turns
+
+
+@pytest.mark.parametrize("turns", [
+    ["there is smoke coming from the outlet", "never mind, false alarm, it was a candle"],
+    ["there is smoke coming from the outlet", "what should i do", "false alarm, it was a candle"],
+    ["i smell gas", "false alarm, it was the trash"],
+    ["the kitchen is smoky", "you misunderstood, it was steam from the shower"],
+    ["there's smoke in my room", "false alarm, it was incense"],
+    ["sale humo del enchufe", "falsa alarma, era una vela"],
+    ["the alarm is going off and there's smoke", "false alarm, burnt toast"],
+    ["smoke from the dryer vent", "false alarm, it was the fog machine for the party"],
+])
+def test_explicit_false_alarm_with_harmless_cause_clears(turns):
+    assert _conv(turns)[-1].response == "none", turns
+
+
+@pytest.mark.parametrize("turns", [
+    ["there is smoke coming from the outlet", "false alarm, it was a candle, but the outlet is still sparking"],
+    ["i smell gas", "false alarm... but it still smells"],
+    ["smoke in the hall", "false alarm? no wait, it's getting thicker"],
+    ["sale humo del enchufe", "falsa alarma, pero sigue echando chispas"],
+])
+def test_false_alarm_with_the_hazard_still_present_keeps_the_alert(turns):
+    assert _conv(turns)[-1].response == "full_alert", turns
+
+
+@pytest.mark.parametrize("turns", [
+    ["i smell gas in my kitchen", "im outside now"], ["i smell gas in my kitchen", "im outside now, what now?"],
+    ["there's smoke in the hallway", "we're out of the building"], ["the outlet is sparking", "i'm downstairs now"],
+    ["huele a gas", "ya salimos"], ["water is pouring through the ceiling", "we left the unit"],
+    ["the CO alarm is going off and we feel dizzy", "we're all outside now"],
+    ["the ceiling is caving in", "i'm out of the apartment"],
+])
+def test_im_outside_is_acknowledged_not_a_second_alert(turns):
+    r = _conv(turns)[-1]
+    assert r.response == "care_line", turns
+
+
+@pytest.mark.parametrize("turns", [
+    ["the ceiling is collapsing in my kitchen", "we got out, should i go back for my dog?"],
+    ["i smell gas", "i'm outside, can i go back in for my phone?"],
+    ["huele a gas", "ya salimos, ¿puedo volver a entrar?"],
+    ["there's smoke in the hallway", "we're out, should we re-enter to grab the cat?"],
+])
+def test_outside_but_asking_to_go_back_in_repeats_the_notice(turns):
+    assert _conv(turns)[-1].response == "full_alert", turns
