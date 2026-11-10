@@ -1,6 +1,6 @@
 """Typed results of each safety stage. Detection, classification, policy and response selection are separate."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -9,6 +9,8 @@ RiskCategory = Literal["fire_smoke", "gas", "co", "electrical", "flood", "struct
 RISK_CATEGORIES: list[str] = list(RiskCategory.__args__)  # type: ignore[attr-defined]
 RiskLevel = Literal["none", "uncertain", "urgent", "emergency"]
 Framing = Literal["report", "hypothetical", "past", "joking", "quoted", "figurative", "none"]
+Ongoing = Literal["now", "past", "hypothetical", "negated", "unknown"]
+Subject = Literal["self", "adult", "child", "infant", "elder", "pet", "unknown", "none"]
 CareKind = Literal["distress", "unwell", "danger", "info"]
 ClassifierStatus = Literal["ok", "disabled", "unavailable", "timeout", "rate_limited", "error", "bad_output", "mock"]
 
@@ -21,7 +23,12 @@ class DeterministicRisk(BaseModel):
     mentioned_kind: str | None = None  # hazard named but framed as hypothetical/past/joking (not an alert by itself)
     care: Literal["distress", "unwell", "danger"] | None = None  # lower tier: calm safety line
     via_window: bool = False  # only the combination of recent turns + this message matched
+    concern: bool = False  # the care line comes from a person-in-danger sign (sprint 7: no line is ever suppressed)
     self_harm_intent: bool = False  # poisoning/overdose that may be deliberate (adds the 988 line)
+    # sprint 7: the compositional frame (app/risk/frame.py): who / states / hazards / category / urgency / ongoing /
+    # template, kept separate so staff can see why; `frame_rule` = the alert came from the frame, not a phrase rule
+    frame: dict[str, Any] | None = None
+    frame_rule: bool = False
 
 
 class SemanticRisk(BaseModel):
@@ -34,6 +41,11 @@ class SemanticRisk(BaseModel):
     confidence: float | None = Field(default=None, ge=0, le=1)
     framing: Framing = "none"
     reason: str = Field(default="", max_length=300)
+    # sprint 7 (risk-classifier-v2): separate fields instead of one label. The model never chooses safety wording:
+    # the approved notice (template) is selected by the app from the category (app/risk/category.py).
+    incident_category: RiskCategory | None = None
+    ongoing: Ongoing = "unknown"
+    subject: Subject = "unknown"
 
     @field_validator("reason", mode="before")
     @classmethod
@@ -64,6 +76,9 @@ class RiskDecision(BaseModel):
     rule: str  # which policy rule decided (see docs/safety/safety-evaluation.md)
     conflict: str | None = None  # how a disagreement between layers was resolved
     degraded: bool = False  # semantic layer did not produce a usable answer this turn
+    detected_kind: str | None = None  # sprint 6: kind before approved-notice selection (app/risk/category.py)
+    notice_reason: str | None = None  # why the notice category differs from the detected kind
+    incident: str | None = None  # sprint 6: active incident this turn belongs to (app/risk/incident.py)
 
 
 class RiskAssessment(BaseModel):

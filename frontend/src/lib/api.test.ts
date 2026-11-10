@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, api, loadDemoSnapshot, parseError } from "./api";
+import { ApiError, api, demoSignInAvailable, loadDemoSnapshot, parseError } from "./api";
+import type { Health, Persona } from "./types";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -69,5 +70,24 @@ describe("api client", () => {
 
   it("ApiError is an Error", () => {
     expect(new ApiError("X", "y")).toBeInstanceOf(Error);
+  });
+});
+
+describe("demo sign-in availability (backend decides)", () => {
+  const persona: Persona = { id: "R001", label: "R001 · Marisol (synthetic resident)", kind: "resident", description: "d", synthetic: true };
+  const health = (demo?: boolean) => ({ status: "ok", provider: "mock", model: "m", provider_ready: true, provider_status: "ok",
+    prompt_version: "v", data_loaded: true, data_error: null, resident_count: 1, interaction_count: 1, demo_personas_enabled: demo }) as Health;
+
+  it("is off when the backend says demo personas are disabled, even if personas were returned", () => {
+    expect(demoSignInAvailable([persona], health(false))).toBe(false);
+  });
+  it("is off when there are no personas (hosted backend)", () => {
+    expect(demoSignInAvailable([], health(undefined))).toBe(false);
+    expect(demoSignInAvailable([], null)).toBe(false);
+  });
+  it("is on for a local backend with personas (older backends omit the field)", () => {
+    expect(demoSignInAvailable([persona], health(true))).toBe(true);
+    expect(demoSignInAvailable([persona], health(undefined))).toBe(true);
+    expect(demoSignInAvailable([persona], null)).toBe(true);
   });
 });

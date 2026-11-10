@@ -331,6 +331,11 @@ class HealthResponse(BaseModel):
     data_error: str | None
     resident_count: int
     interaction_count: int
+    # deployment facts (no secrets): where it runs, which database kind, where residents came from
+    app_env: str = "local"
+    database: str = "sqlite"
+    resident_source: str | None = None
+    is_mock: bool = False  # the default responder is the deterministic mock, not a language model
 
 
 # ---- evals -----------------------------------------------------------------

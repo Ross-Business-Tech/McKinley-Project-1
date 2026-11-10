@@ -24,7 +24,14 @@ import type {
 } from "./types";
 
 // Public backend URL only. LLM provider keys live exclusively on the Python server.
-export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
+// A production build without NEXT_PUBLIC_API_BASE_URL (the here.now replay) never calls localhost: it goes straight to
+// the recorded snapshot. Local development and tests default to the local backend.
+export const LIVE_BACKEND_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_API_BASE_URL);
+export const API_BASE = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:8000")
+).replace(/\/$/, "");
+// Render's free plan can take about a minute to wake up; give up after this instead of waiting forever.
+const REQUEST_TIMEOUT_MS = 90_000;
 
 export class ApiError extends Error {
   constructor(
@@ -62,14 +69,20 @@ export async function parseError(res: Response): Promise<ApiError> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_BASE) throw new ApiError("BACKEND_UNREACHABLE", "No backend is configured for this site.", false);
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
+      signal: init?.signal ?? controller.signal,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch {
-    throw new ApiError("BACKEND_UNREACHABLE", `Cannot reach the backend at ${API_BASE}. Is uvicorn running?`, true);
+    throw new ApiError("BACKEND_UNREACHABLE", `Cannot reach the backend at ${API_BASE}.`, true);
+  } finally {
+    clearTimeout(timer);
   }
   if (!res.ok) throw await parseError(res);
   return (await res.json()) as T;
@@ -105,6 +118,14 @@ export const api = {
   staffConversations: (limit = 30) => request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`),
   staffConversation: (hash: string) => request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`),
 };
+
+/** Whether the customer page may offer the demo sign-in picker. The backend decides (app/auth.py): a hosted backend
+ * says demo_personas_enabled=false and returns no personas, so the page is guest-only. Picking a demo persona is
+ * NOT authentication; the backend re-derives and checks the principal on every request. */
+export function demoSignInAvailable(personas: Persona[], health: Health | null): boolean {
+  if (health?.demo_personas_enabled === false) return false;
+  return personas.length > 0;
+}
 
 /** Root-relative static snapshot served with the site (used when the backend is unreachable). */
 export const SNAPSHOT_PATH = "/demo/snapshot.json";

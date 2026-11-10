@@ -10,6 +10,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.auth import TOOLING
 from app.chat_engine import run_turn
 from app.config import REPO_DIR, Settings
 from app.db import Store
@@ -80,7 +81,7 @@ def record_journeys(deps) -> list[dict]:
             if step.startswith("!confirm:"):
                 kind = step.split(":", 1)[1]
                 draft = deps.store.get_draft(sid, pid or "none")
-                res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook),
+                res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook, principal=TOOLING),
                               (draft or {}).get("lang", "en"))
                 if not res.ok:
                     raise SystemExit(f"journey {j['id']}: confirm {kind} failed: {res.error_code}")
@@ -105,7 +106,7 @@ def build_snapshot(tmp_db: Path) -> dict:
         pid = c.persona_id or None
         responses[c.id] = {m: run_turn(deps, c.message, m, pid, None, use_history=False).model_dump(mode="json")
                            for m in MODES}
-        contexts[c.id] = build_context(pid, c.message, deps.workbook).model_dump(mode="json")
+        contexts[c.id] = build_context(pid, c.message, deps.workbook, principal=TOOLING).model_dump(mode="json")
     gate_eval = evaluate_gates(deps, ["rules", "llm"])
     journeys = record_journeys(deps)
     records = deps.store.records(limit=200)

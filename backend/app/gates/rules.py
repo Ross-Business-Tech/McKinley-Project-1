@@ -56,9 +56,18 @@ FLAG_REASONS = {
 }
 
 
+# j-res-heat-terse: terse fixture reports the topic list misses ("bedroom radiator cold"). Intent only; urgency and
+# safety floors are unchanged.
+_TERSE_MAINT = re.compile(r"\b(?:radiators?|baseboard heat\w*|furnace|boiler|thermostat|space heater)\b.{0,30}\b"
+                          r"(?:cold|"
+                          r"not (?:warm|hot|working)|off|dead|broken|won'?t|isn'?t|doesn'?t|leak\w*|bang\w*|nois\w*|"
+                          r"hiss\w*|out)\b|\b(?:cold|no heat|freezing)\b.{0,20}\b(?:radiators?|room|bedroom|apartment|"
+                          r"unit|in here)\b", re.I)
+
+
 def _intent(message: str, ctx: GateContext, topics: list[str]) -> tuple[Intent, list[str], float]:
     """Return (intent, matched categories, heuristic confidence)."""
-    maint = bool(set(topics) & (MAINTENANCE_TOPICS | {"maintenance_general"}))
+    maint = bool(set(topics) & (MAINTENANCE_TOPICS | {"maintenance_general"})) or bool(_TERSE_MAINT.search(message))
     renewal = bool(_RENEWAL.search(message)) or "renewal" in topics
     leasing = bool(_LEASING.search(message))
     matched = [n for n, hit in (("maintenance", maint), ("renewal", renewal), ("leasing", leasing)) if hit]

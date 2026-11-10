@@ -82,7 +82,7 @@ def test_preflight_parses_listing_and_recommends(tmp_path):
     assert rep["ollama_reachable"] is False and rows["ollama:llama3.2"]["provider_ready"] is False
     # gemma comes first in EVAL_TARGETS but lacks structured outputs, so nemotron is recommended
     assert rep["recommended_target"] == TARGET
-    assert rep["keys_present"] == {"openrouter": True, "anthropic": False}
+    assert rep["keys_present"] == {"gemini": False, "openrouter": True, "anthropic": False}
     assert rep["live_ready"] is True
     assert FAKE_KEY not in json.dumps(rep)
 

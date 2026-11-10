@@ -92,6 +92,7 @@ class RecordingGateway(LLMGateway):
         rec.update(
             served_model=result.model, is_mock=result.is_mock, parse_mode=result.parse_mode,
             stop_reason=result.stop_reason, input_tokens=result.input_tokens, output_tokens=result.output_tokens,
+            thinking_tokens=result.extra.get("thinking_tokens"),
             latency_ms=result.latency_ms, wall_ms=int((time.perf_counter() - t0) * 1000),
             estimated_cost_usd=cost, cost_source=cost_source,
             response_text=content if isinstance(content, str) else json.dumps(result.output.model_dump()),

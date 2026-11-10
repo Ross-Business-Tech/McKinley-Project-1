@@ -43,7 +43,7 @@ class DecisionGateService:
         target = self.gate_target()
         ready, status = self.gateway.provider_ready(target.provider)
         out["llm"] = f"{'ready' if ready else 'unavailable'}: {target.key} ({status})"
-        out["jev"] = ("configured (EXPERIMENTAL, response schema undocumented)" if s.typesafe_api_key
+        out["jev"] = ("configured (EXPERIMENTAL; contract checked against docs.typesafe.ai)" if s.typesafe_api_key
                       else "unavailable: TYPESAFE_API_KEY not set")
         return out
 

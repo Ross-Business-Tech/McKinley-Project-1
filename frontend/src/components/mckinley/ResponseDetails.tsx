@@ -75,7 +75,7 @@ function KV({ rows }: { rows: [string, ReactNode][] }) {
 }
 
 const STEP_STYLE: Record<PipelineStep["status"], string> = {
-  ok: "border-emerald-300 text-emerald-800 dark:border-emerald-700 dark:text-emerald-200",
+  ok: "border-mk-done/40 text-mk-done",
   skipped: "border-border text-muted-foreground",
   warn: "border-amber-400 text-amber-800 dark:border-amber-600 dark:text-amber-200",
   fallback: "border-orange-400 text-orange-800 dark:border-orange-600 dark:text-orange-200",
