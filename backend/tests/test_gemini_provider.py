@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 import httpx
+import httpx2
 import pytest
 from google.genai import errors
 
@@ -60,7 +61,8 @@ def test_request_shape_system_history_schema_and_limits():
     assert cfg.max_output_tokens == 800 and cfg.temperature == 0.2
     assert cfg.http_options.timeout == 12000 and cfg.http_options.retry_options.attempts == 3
     assert r.output.reply == "Got it." and r.parse_mode == "json" and r.provider == "gemini"
-    assert (r.input_tokens, r.output_tokens, r.extra["thinking_tokens"]) == (120, 30, 12)
+    assert (r.input_tokens, r.output_tokens, r.extra["thinking_tokens"], r.extra["answer_tokens"]) == (120, 42, 12, 30)
+    assert r.extra["thinking_level"] == "model default" and cfg.thinking_config is None
     assert r.estimated_cost_usd is None  # no invented prices
 
 
@@ -82,6 +84,9 @@ def test_custom_schema_for_gate_classification():
     (errors.ServerError(503, {"error": {"message": "overloaded"}}), "MODEL_API_ERROR"),
     (httpx.ReadTimeout("slow"), "MODEL_TIMEOUT"),
     (httpx.ConnectError("down"), "MODEL_CONNECTION_ERROR"),
+    (httpx2.ReadTimeout("slow"), "MODEL_TIMEOUT"),  # what google-genai 3.x actually raises (httpx2 backend)
+    (httpx2.ConnectError("down"), "MODEL_CONNECTION_ERROR"),
+    (RuntimeError("unexpected SDK failure"), "MODEL_API_ERROR"),
 ])
 def test_errors_map_to_gateway_codes(exc, code):
     p, _ = provider(exc)
@@ -166,3 +171,39 @@ def test_live_abc_requires_allow_paid_for_gemini(tmp_path):
     code, doc = run_live_eval(s, "gemini:gemini-3.6-flash", out_dir=tmp_path / "out", providers={"gemini": p},
                               log=lambda m: None)
     assert doc["status"] == "blocked" and doc["reason_code"] == "MAY_BE_BILLED" and not models.calls
+
+
+def test_thinking_level_is_pinned_when_configured():
+    models = FakeModels(response())
+    p = GeminiProvider(api_key=None, client=SimpleNamespace(models=models), thinking_level="low")
+    r = p.complete("s", [{"role": "user", "content": "x"}], TARGET, CFG)
+    assert models.calls[0]["config"].thinking_config.thinking_level.name == "LOW"
+    assert r.extra["thinking_level"] == "low"
+
+
+def test_gateway_does_not_send_temperature_to_gemini(tmp_path):
+    s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="test-not-a-real-key",
+                 db_path=tmp_path / "t.sqlite3")
+    p, models = provider(response())
+    LLMGateway(s, {"gemini": p}).complete("s", [{"role": "user", "content": "x"}])
+    assert models.calls[0]["config"].temperature is None  # Gemini 3.6 ignores it; future models reject it
+
+
+def test_a_non_gemini_model_with_the_gemini_provider_is_a_clear_config_error(tmp_path):
+    with pytest.raises(ValueError, match="not a Gemini model"):
+        Settings(_env_file=None, llm_provider="gemini", llm_model="mock-deterministic-v1",
+                 db_path=tmp_path / "v.sqlite3")
+
+
+def test_preflight_main_prints_a_listed_gemini_model_and_recommends_it(tmp_path, monkeypatch, capsys):
+    from app.live_eval import preflight
+
+    s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="test-not-a-real-key",
+                 eval_targets="mock:mock-deterministic-v1,gemini:gemini-3.6-flash", db_path=tmp_path / "m.db")
+    monkeypatch.setattr(preflight, "get_settings", lambda: s)
+    monkeypatch.setattr(preflight, "gemini_model_names", lambda key: ["gemini-3.6-flash"])
+    code = preflight.main(["--out-dir", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "listed for this key" in out and "Recommended fixed model: gemini:gemini-3.6-flash" in out
+    assert "OPENROUTER_API_KEY" not in out and code == preflight.EXIT_READY
+    assert "test-not-a-real-key" not in out

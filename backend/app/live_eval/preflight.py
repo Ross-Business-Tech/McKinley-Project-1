@@ -99,8 +99,12 @@ def _ollama_reachable(base_url: str, client: httpx.Client | None, timeout: float
 
 
 def recommend(targets: list[dict[str, Any]]) -> tuple[str | None, str]:
-    """First configured OpenRouter target (EVAL_TARGETS order) that is listed, free and supports structured
-    outputs; then listed+free; never a model that is not in the listing."""
+    """The default target if it is a Gemini model confirmed by models.list for this key; otherwise the first
+    configured OpenRouter target (EVAL_TARGETS order) that is listed, free and supports structured outputs; then
+    listed+free; never a model that is not in a listing."""
+    gem = [t for t in targets if t["provider"] == "gemini" and t["info"].get("listed")]
+    for t in sorted(gem, key=lambda t: not t.get("is_default")):
+        return t["target"], "Gemini model listed for this key (may be billed: live runs need --allow-paid)"
     orr = [t for t in targets if t["provider"] == "openrouter" and t["info"].get("listed")]
     for want, why in ((lambda i: i.get("free") and i.get("supports_structured_outputs"),
                        "listed, free, supports structured outputs (strict JSON schema)"),
@@ -117,8 +121,10 @@ def recommend(targets: list[dict[str, Any]]) -> tuple[str | None, str]:
 def gemini_model_names(api_key: str) -> list[str]:
     """Model names visible to this Gemini key (a list call: no generation, no tokens spent)."""
     from google import genai
+    from google.genai import types
 
-    return [str(m.name).removeprefix("models/") for m in genai.Client(api_key=api_key).models.list()]
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=15_000))
+    return [str(m.name).removeprefix("models/") for m in client.models.list()]
 
 
 def gemini_info(model_id: str, names: list[str] | None, error: str | None) -> dict[str, Any]:
@@ -164,7 +170,8 @@ def run_preflight(settings: Settings, client: httpx.Client | None = None, timeou
         blocked.append(f"NO_RECOMMENDED_MODEL: {why}")
     if gw.default_target.provider == "gemini" and not keys["gemini"]:
         blocked.append("NEEDS_API_KEY: GEMINI_API_KEY is not set (default provider is gemini; presence checked only)")
-    if not keys["openrouter"]:
+    uses_openrouter = gw.default_target.provider == "openrouter" or (rec or "").startswith("openrouter:")
+    if uses_openrouter and not keys["openrouter"]:
         blocked.append("NEEDS_API_KEY: OPENROUTER_API_KEY is not set in backend/.env (presence checked only)")
     cfg = gw.generation_config(Target.parse(rec)) if rec else gw.generation_config(gw.default_target)
     return {
@@ -204,8 +211,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Public model list: {'ok, ' + str(ml['models_listed']) + ' models' if ml['fetched'] else ml['error']}")
     for t in report["targets"]:
         i = t["info"]
-        facts = ("not listed" if i.get("listed") is False else "unverified" if i.get("listed") is None else
-                 f"free={i['free']} structured={i['supports_structured_outputs']} ctx={i['context_length']}")
+        if i.get("listed") is False:
+            facts = "not listed"
+        elif i.get("listed") is None:
+            facts = "unverified"
+        elif t["provider"] == "gemini":
+            facts = "listed for this key (pricing/quota: check the Google project)"
+        else:
+            facts = f"free={i['free']} structured={i['supports_structured_outputs']} ctx={i['context_length']}"
         print(f"  {t['target']:<55} ready={t['provider_ready']!s:<5} {facts}")
     print(f"Recommended fixed model: {report['recommended_target']} ({report['recommendation_reason']})")
     if report["blocked_reasons"]:

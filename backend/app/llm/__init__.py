@@ -38,7 +38,7 @@ def _mock(s: Settings) -> LLMProvider:
 
 def _gemini(s: Settings) -> LLMProvider:
     from app.llm.gemini_provider import GeminiProvider
-    return GeminiProvider(s.api_key_for("gemini"))
+    return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None)
 
 
 def _anthropic(s: Settings) -> LLMProvider:
@@ -110,7 +110,9 @@ class LLMGateway:
         s = self.settings
         return GenerationConfig(
             max_tokens=s.llm_max_tokens,
-            temperature=None if target.provider == "anthropic" else s.llm_temperature,
+            # Current Claude models reject temperature; Gemini 3.6 ignores it (Google: deprecated, future models 400).
+            # None = not sent, and recorded as not set.
+            temperature=None if target.provider in ("anthropic", "gemini") else s.llm_temperature,
             timeout_seconds=s.llm_timeout_seconds,
             max_retries=s.llm_max_retries,
         )

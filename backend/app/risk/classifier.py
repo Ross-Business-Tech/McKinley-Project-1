@@ -1,7 +1,8 @@
 """Layer 2: semantic risk classifier through the provider-agnostic gateway (structured output, strict validation).
 
 It reads meaning (indirect wording, framing, multi-turn context). It is NOT a guaranteed safety system: its result
-can only ADD caution in app.risk.policy, never remove a deterministic alert. Failures are reported, never treated as
+never removes a deterministic alert in app.risk.policy; the one thing it may remove is the broad 911 care line
+(rule R7, semantic 'none' at confidence >= 0.8). Failures are reported, never treated as
 "safe". The mock provider is not a classifier, so with mock the status is "mock" and nothing is inferred.
 """
 

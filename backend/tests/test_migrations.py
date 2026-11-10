@@ -3,7 +3,6 @@
 SQLite always runs. Postgres runs only with TEST_DATABASE_URL pointing at a THROWAWAY database (the tests drop and
 recreate every table there)."""
 
-import os
 from pathlib import Path
 
 import openpyxl
@@ -17,10 +16,10 @@ from app.context import load_workbook
 from app.db import Store
 from app.personas import build_context
 from app.state import load_residents
-from tests.conftest import REAL_WORKBOOK
+from tests.conftest import REAL_WORKBOOK, throwaway_pg_url
 
 BACKEND = Path(__file__).resolve().parents[1]
-PG_URL = os.environ.get("TEST_DATABASE_URL", "").strip()
+PG_URL = throwaway_pg_url()
 
 
 def alembic_cfg(url: str) -> Config:
@@ -50,7 +49,7 @@ def test_upgrade_creates_tables_and_downgrade_round_trips(db):
     target, cfg, store = db
     assert store.has_reference_tables()
     command.downgrade(cfg, "0001")
-    assert not Store(target, None).has_reference_tables() if isinstance(target, Path) else True
+    assert not store.has_reference_tables()
     command.upgrade(cfg, "head")
     assert store.has_reference_tables()
 
@@ -107,3 +106,27 @@ def test_without_file_or_seed_the_error_says_what_to_run(tmp_path):
     s = Settings(_env_file=None, data_path=Path("/nonexistent.xlsx"))
     wb, err = load_residents(s, Store(tmp_path / "e.sqlite3"))
     assert wb is None and "seed_synthetic" in err
+
+
+def test_startup_schema_and_baseline_migration_never_drift():
+    """app/db.py creates the core tables at startup; 0001 must stay identical (normalized) for both dialects."""
+    import importlib.util
+    import re
+
+    from app import db
+
+    spec = importlib.util.spec_from_file_location("m0001", BACKEND / "migrations" / "versions" / "0001_baseline.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    def norm(sql: str) -> list[str]:
+        sql = re.sub(r"--[^\n]*", "", sql)
+        return [re.sub(r"\s+", " ", x).strip() for x in sql.split(";") if x.strip()]
+    assert norm(db.SCHEMA) == norm(";".join(m._statements(False)))
+    assert norm(db._postgres_schema()) == norm(";".join(m._statements(True)))
+
+
+def test_nul_characters_are_stripped_before_writing(tmp_path):
+    s = Store(tmp_path / "nul.sqlite3")
+    s.append_turns("s", "aware|x", "p", "a\x00b", "ok\x00")
+    assert s.user_messages("s", "p") == ["ab"]

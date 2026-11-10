@@ -16,7 +16,9 @@ Postgres was available). SQLite paths are tested.
 ## Set up
 1. Create a project (ask Ross IT / the project owner first). Keep the database password private.
 2. **Connect → Session pooler** connection string (`postgresql://…`); URL-encode symbols in the password.
-3. Run the migrations and the synthetic seed **from your machine** (or a Render shell):
+3. Check `SHOW server_version` is **15 or later** (the read-only views use `security_invoker`).
+4. Run the migrations and the synthetic seed **from your machine** (or a Render shell). Put the connection string in
+   `backend/.env` as `DATABASE_URL=` rather than typing it on the command line (shell history):
    ```bash
    cd backend
    DATABASE_URL='postgresql://…' uv run alembic upgrade head          # creates/updates tables (idempotent)
@@ -24,7 +26,11 @@ Postgres was available). SQLite paths are tested.
    ```
    The seed refuses any workbook whose README does not say every value is synthetic, and replaces earlier
    reference rows in one transaction. **Never load real McKinley data** without written approval.
-4. Put the same string in Render's `DATABASE_URL` secret. Render runs `alembic upgrade head` before every start.
+5. Put the same string in Render's `DATABASE_URL` secret. Render runs `alembic upgrade head` before every start.
+   Residents are read at startup: **restart the Render service after seeding**.
+6. Confirm the lock-down as the `postgres` user: every table has `relrowsecurity = true`, and
+   `information_schema.role_table_grants` shows nothing for `anon` / `authenticated` (migration 0002 revokes their
+   table and sequence privileges, including defaults for future tables, and locks `alembic_version`).
 
 ## Migrations
 - `backend/migrations/versions/0001_baseline.py` — the six application tables (idempotent: adopts a database the
@@ -32,10 +38,13 @@ Postgres was available). SQLite paths are tested.
 - New schema change: `uv run alembic revision -m "describe it"`, write raw SQL for both dialects (see 0002), test with
   `uv run pytest tests/test_migrations.py`, and with Postgres:
   `TEST_DATABASE_URL=postgresql://…/throwaway uv run pytest tests/test_migrations.py tests/test_store_backends.py`
-  (**throwaway database only** — those tests drop tables).
+  (**throwaway database only** — those tests drop tables; they refuse a URL that equals `DATABASE_URL` or points at a
+  Supabase host unless `ALLOW_DESTRUCTIVE_DB_TESTS=1` is set for a throwaway Supabase project).
 - `alembic downgrade` deletes data; never run it on a shared database.
 
 ## Least privilege (before real users)
-The prototype connects as the Supabase `postgres` owner role because the app creates tables at startup. For anything
+The synthetic-only rule is procedural (the seed checks the workbook's README marker; rows carry `synthetic=true`), not
+a technical guarantee: never point the seed at another file. The prototype connects as the Supabase `postgres`
+owner role because the app creates tables at startup. For anything
 beyond a demo: create a dedicated role that owns no tables and has only `SELECT/INSERT/UPDATE/DELETE` on the app
 tables, run migrations with a separate migration role, and turn off startup DDL.

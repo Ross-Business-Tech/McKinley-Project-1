@@ -69,12 +69,22 @@ def main(argv: list[str] | None = None) -> int:
     if a.dry_run:
         return 0
     db_url = s.database_url.get_secret_value().strip() if s.database_url else ""
-    store = Store(s.resolve(s.db_path), database_url=db_url or None)
-    if not store.has_reference_tables():
+    try:
+        store = Store(s.resolve(s.db_path), database_url=db_url or None)
+        ready = store.has_reference_tables()
+    except Exception as e:
+        safe = str(e) if isinstance(e, ConnectionError | ValueError) else ""  # our scrubbed messages only
+        print(f"Cannot use the database ({type(e).__name__}) {safe}")
+        return 4
+    if not ready:
         print("The reference tables do not exist yet. Run `uv run alembic upgrade head` first.")
         return 4
-    store.replace_reference(communities, residents, interactions, {
-        "source": path.name, "synthetic": "true", "loaded_at": datetime.now(UTC).isoformat(timespec="seconds")})
+    try:
+        store.replace_reference(communities, residents, interactions, {
+            "source": path.name, "synthetic": "true", "loaded_at": datetime.now(UTC).isoformat(timespec="seconds")})
+    except Exception as e:  # database messages can quote row content: report the type only
+        print(f"Load failed ({type(e).__name__}); nothing was changed (one transaction).")
+        return 5
     print(f"Loaded into the {store.dialect} database (previous reference rows replaced).")
     return 0
 

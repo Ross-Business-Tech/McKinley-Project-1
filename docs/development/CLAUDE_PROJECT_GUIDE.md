@@ -52,7 +52,7 @@ Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.m
   real personal data, `.env` files or databases. The repository is public.
 
 ## Safety-critical changes (`app/risk`, `emergency.py`, safety templates, staff guard, identity rules)
-- The semantic layer may only add caution; a failed classifier is never "safe"; safety text is fixed and approved
+- The semantic layer never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8); a failed classifier is never "safe"; safety text is fixed and approved
   wording, never model-written; never claim anyone was dispatched or notified.
 - Every change: unit tests for the rule plus the policy table (`tests/test_risk_policy_table.py`), run the full
   suite, and ask for an **independent** review (a reviewer or subagent that did not write the change).

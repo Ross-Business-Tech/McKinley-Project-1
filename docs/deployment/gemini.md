@@ -12,11 +12,14 @@ pipeline, the decision gate (`DECISION_GATE_PROVIDER=llm`) and the semantic safe
 | --- | --- |
 | System prompt + history | `system_instruction` + user/model turns; resident context arrives only as the allowlisted SAFE_CONTEXT block |
 | Structured output | `response_mime_type="application/json"` + `response_json_schema` (reply schema, gate schema, safety schema) |
-| Limits | `LLM_MAX_TOKENS` → `max_output_tokens`; `LLM_TIMEOUT_SECONDS` → request timeout; `LLM_TEMPERATURE` shared with every mode |
+| Limits | `LLM_MAX_TOKENS` → `max_output_tokens` (thinking tokens count against it); `LLM_TIMEOUT_SECONDS` → request timeout |
+| Temperature | **not sent** to Gemini: Google's "What's new in Gemini 3.6" says temperature/top_p/top_k are ignored and future models return 400; recorded as `null` |
+| Thinking | `GEMINI_THINKING_LEVEL` = minimal / low / medium / high pins the level (empty = model default, recorded as such) so a server default change can't alter an evaluation |
 | Retries | SDK retries 429/500/502/503/504 on the **same** model (`LLM_MAX_RETRIES`) |
 | No silent switching | served `model_version` is compared with the requested model; a different model raises `MODEL_SWITCHED` |
 | Errors | auth (401/403), not found (404), rate limit (429), bad request, server, timeout, connection, truncated, blocked/refused, empty → the gateway's standard codes |
-| Usage | prompt / output / thinking tokens recorded; cost left unknown (no invented prices) |
+| Usage | prompt tokens; output = visible answer + thinking (billed), both also recorded separately; cost left unknown (no invented prices) |
+| Network errors | the SDK uses `httpx2`; timeouts and connection errors from either httpx family map to `MODEL_TIMEOUT` / `MODEL_CONNECTION_ERROR`; anything else to `MODEL_API_ERROR` (never a raw 500) |
 
 ## Configure
 ```dotenv
@@ -32,11 +35,18 @@ LLM_MODEL=                 # empty = use GEMINI_MODEL
 model exists for your key **without generating anything**: `uv run python -m app.live_eval.preflight`.
 
 ## Open questions to settle with a key
-- Google's Gemini 3 pages give no temperature guidance; the project uses 0.2 for every mode. Re-check the current
-  docs and keep one value for all A/B/C modes.
-- Thinking is on by default for Gemini 3.x Flash; check whether thinking tokens consume `max_output_tokens` (4000)
-  and the latency/cost impact.
-- Free-tier limits and data use: free tiers may use prompts to improve products. Synthetic data only.
+- Which thinking levels `gemini-3.6-flash` accepts (Google's pages disagree); pin one with `GEMINI_THINKING_LEVEL` for
+  evaluations, and check that the safety classifier (800 tokens, 6 s) and gate (2000 tokens, 8 s) don't time out or
+  truncate with thinking on — otherwise the semantic layer is mostly `degraded`.
+- The served `modelVersion` format (the gateway accepts `gemini-3.6-flash` and numbered snapshots like `-001`).
+- SDK retries (429/5xx) happen inside one call: latency includes them and quota is per project. For live
+  evaluations consider `LLM_MAX_RETRIES=0` and let the runner stop on the first 429.
+- **Data use:** on the free tier Google may use content to improve products and humans may review it ("do not
+  submit sensitive, confidential, or personal information"). Synthetic data is fine, but a public hosted demo sends
+  whatever visitors type: use a billed key for public hosting, or say so on the site. Free tier is not offered in
+  the EEA, Switzerland or the UK.
+- The semantic safety classifier's `confidence` is model-written: it can drop the broad 911 care line (policy R7)
+  at ≥ 0.8. Review how often that happens in the first live run.
 - Billing: the live A/B/C runner refuses Gemini without `--allow-paid`.
 
 ## First live test (after the key is set)

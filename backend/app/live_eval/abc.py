@@ -245,8 +245,11 @@ def run_live_eval(
         ready, status = (True, status) if _ollama_up(settings) else (False, "OLLAMA_NOT_REACHABLE")
     if not ready:
         return blocked(status if status.isupper() else "PROVIDER_NOT_READY",
-                       f"{target.provider} is not ready ({status}). Add OPENROUTER_API_KEY to backend/.env (or "
-                       "start Ollama) and re-run preflight." if target.provider != "mock" else status,
+                       f"{target.provider} is not ready ({status}). "
+                       + {"gemini": "Add GEMINI_API_KEY to backend/.env", "anthropic": "Add ANTHROPIC_API_KEY to "
+                          "backend/.env", "ollama": "Start Ollama"}.get(target.provider,
+                                                                        "Add OPENROUTER_API_KEY to backend/.env")
+                       + " and re-run preflight." if target.provider != "mock" else status,
                        resolved_target=target.key)
 
     listing_info: dict[str, Any] | None = None

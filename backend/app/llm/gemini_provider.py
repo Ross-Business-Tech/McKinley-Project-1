@@ -15,6 +15,21 @@ _REFUSAL_REASONS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITA
 _RETRY_STATUS = [429, 500, 502, 503, 504]
 
 
+def _exc_family(name: str) -> tuple[type[BaseException], ...]:
+    """google-genai 3.x sends requests with httpx2 by default (httpx optional): catch the class from both."""
+    out = []
+    for mod in ("httpx2", "httpx"):
+        try:
+            out.append(getattr(__import__(mod), name))
+        except (ImportError, AttributeError):
+            continue
+    return tuple(out)
+
+
+_TIMEOUT = _exc_family("TimeoutException")
+_TRANSPORT = _exc_family("TransportError")
+
+
 def _to_contents(messages: list[dict[str, str]]) -> list[dict[str, Any]]:
     """Chat history in Gemini's shape: roles 'user' / 'model'. Any system text is passed separately."""
     out: list[dict[str, Any]] = []
@@ -35,9 +50,10 @@ def _enum_name(v: Any) -> str | None:
 class GeminiProvider:
     name = "gemini"
 
-    def __init__(self, api_key: str | None, client: Any = None):
+    def __init__(self, api_key: str | None, client: Any = None, thinking_level: str | None = None):
         self._api_key = api_key
         self._client = client  # injected in tests; real client created lazily
+        self._thinking_level = thinking_level
 
     def _get_client(self) -> Any:
         if self._client is not None:
@@ -55,7 +71,6 @@ class GeminiProvider:
                  schema_name: str = "mckinley_reply") -> LLMResult:
         schema = schema or OUTPUT_SCHEMA
         client = self._get_client()
-        import httpx
         from google.genai import errors, types
 
         config = types.GenerateContentConfig(
@@ -68,6 +83,8 @@ class GeminiProvider:
                 retry_options=types.HttpRetryOptions(attempts=cfg.max_retries + 1, http_status_codes=_RETRY_STATUS),
             ),
             **({"temperature": cfg.temperature} if cfg.temperature is not None else {}),
+            **({"thinking_config": types.ThinkingConfig(thinking_level=self._thinking_level.upper())}
+               if self._thinking_level else {}),
         )
         start = time.perf_counter()
         try:
@@ -87,10 +104,12 @@ class GeminiProvider:
                            retryable=True) from e
         except errors.APIError as e:
             raise LLMError("MODEL_API_ERROR", f"Gemini API error ({getattr(e, 'code', '?')}).") from e
-        except httpx.TimeoutException as e:
+        except _TIMEOUT as e:
             raise LLMError("MODEL_TIMEOUT", "Gemini request timed out.", retryable=True, http_status=504) from e
-        except httpx.TransportError as e:
+        except _TRANSPORT as e:
             raise LLMError("MODEL_CONNECTION_ERROR", "Could not reach the Gemini API.", retryable=True) from e
+        except Exception as e:  # anything else from the SDK must still become a gateway error, never a raw 500
+            raise LLMError("MODEL_API_ERROR", f"Gemini call failed ({type(e).__name__}).") from e
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         feedback = getattr(resp, "prompt_feedback", None)
@@ -111,11 +130,15 @@ class GeminiProvider:
         output, mode = parse_output(text)
         usage = getattr(resp, "usage_metadata", None)
         thoughts = getattr(usage, "thoughts_token_count", None) if usage else None
+        visible = getattr(usage, "candidates_token_count", None) if usage else None
+        # Billed output = visible answer + thinking; both are recorded separately as well.
+        output_tokens = (visible or 0) + (thoughts or 0) if (visible is not None or thoughts is not None) else None
         return LLMResult(
             output=output, provider=self.name, requested_model=target.model,
             model=getattr(resp, "model_version", None) or target.model,
             stop_reason=finish, input_tokens=getattr(usage, "prompt_token_count", None) if usage else None,
-            output_tokens=getattr(usage, "candidates_token_count", None) if usage else None,
+            output_tokens=output_tokens,
             latency_ms=latency_ms, parse_mode=mode, estimated_cost_usd=None,
-            extra={"content": text, "thinking_tokens": thoughts, "schema_name": schema_name},
+            extra={"content": text, "thinking_tokens": thoughts, "answer_tokens": visible,
+                   "thinking_level": self._thinking_level or "model default", "schema_name": schema_name},
         )

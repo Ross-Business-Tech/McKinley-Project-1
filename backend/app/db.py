@@ -142,7 +142,21 @@ class Store:
     def _ensure(self) -> None:
         """Reconnect if the Postgres connection was dropped (idle timeout, pooler restart, free-tier sleep)."""
         if self._pg_url and (self._conn.closed or self._conn.broken):
-            self._conn = self._connect_pg()
+            self._reconnect()
+
+    def _reconnect(self) -> None:
+        try:
+            self._conn.close()  # never leak the old connection
+        except Exception:
+            pass
+        self._conn = self._connect_pg()
+
+    @staticmethod
+    def _clean(args: Any) -> Any:
+        """Postgres text cannot hold NUL (0x00); SQLite can. Strip it so both behave the same."""
+        if isinstance(args, (tuple, list)):
+            return type(args)(a.replace("\x00", "") if isinstance(a, str) else a for a in args)
+        return args
 
     def _sql(self, query: str) -> str:
         return query.replace("%", "%%").replace("?", "%s") if self._pg_url else query
@@ -151,6 +165,7 @@ class Store:
         """Run one statement and return the cursor. Reads retry once on a dropped Postgres connection."""
         self._ensure()
         sql = self._sql(query)
+        args = self._clean(args)
         if not self._pg_url:
             return self._conn.execute(sql, args)
         import psycopg
@@ -159,13 +174,13 @@ class Store:
         except (psycopg.OperationalError, psycopg.InterfaceError):
             if self._in_tx:
                 raise
-            self._conn = self._connect_pg()
+            self._reconnect()
             return self._conn.execute(sql, args)
 
     def _qmany(self, query: str, rows: list[tuple[Any, ...]]) -> None:
         self._ensure()
         cur = self._conn.cursor()
-        cur.executemany(self._sql(query), rows)
+        cur.executemany(self._sql(query), [self._clean(r) for r in rows])
 
     @contextmanager
     def _tx(self) -> Iterator[None]:
@@ -174,8 +189,21 @@ class Store:
         self._in_tx = True
         try:
             if self._pg_url:
-                with self._conn.transaction():
+                import psycopg
+                try:
+                    tx = self._conn.transaction()
+                    tx.__enter__()  # BEGIN: if a silently-dropped connection fails here, nothing ran yet: retry once
+                except (psycopg.OperationalError, psycopg.InterfaceError):
+                    self._reconnect()
+                    tx = self._conn.transaction()
+                    tx.__enter__()
+                try:
                     yield
+                except BaseException as e:
+                    tx.__exit__(type(e), e, e.__traceback__)
+                    raise
+                else:
+                    tx.__exit__(None, None, None)
             else:
                 with self._conn:
                     yield
@@ -318,17 +346,22 @@ class Store:
             self._q("DELETE FROM action_drafts WHERE session_id=? AND persona_id=?",
                                (session_id, persona_id))
 
+    def _serialize_writes(self) -> None:
+        """Record ids come from MAX(seq)+1: two backend instances (e.g. during a deploy) must not interleave.
+        Postgres: a transaction-scoped advisory lock; SQLite: one process, the in-process lock is enough."""
+        if self._pg_url:
+            self._q("SELECT pg_advisory_xact_lock(424242)")
+
     # ---- synthetic reference data (tables from migration 0002; see app/seed_synthetic.py) ----
     def has_reference_tables(self) -> bool:
         """True when migration 0002 has been applied (the app never creates these tables itself)."""
-        try:
-            with self._lock:
-                self._q("SELECT COUNT(*) AS n FROM residents").fetchone()
-            return True
-        except Exception:
-            if self._pg_url:  # a failed statement must not leave the connection unusable
-                self._conn = self._connect_pg()
-            return False
+        with self._lock:
+            if self._pg_url:
+                row = self._q("SELECT to_regclass('public.residents') IS NOT NULL AS ok").fetchone()
+            else:
+                row = self._q("SELECT COUNT(*) AS ok FROM sqlite_master WHERE type='table' AND name='residents'"
+                              ).fetchone()
+        return bool(row["ok"])  # any other database error propagates (never a silent "no residents")
 
     def replace_reference(self, communities: list[tuple[str, str]], residents: list[dict[str, Any]],
                           interactions: list[dict[str, Any]], meta: dict[str, str]) -> None:
@@ -374,6 +407,7 @@ class Store:
         shash = session_hash(session_id)
         created = now_iso()
         with self._lock, self._tx():
+            self._serialize_writes()
             seq = (self._q("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"]
                    + 1)
             rid = f"{prefix}-{1000 + seq}"
@@ -388,6 +422,7 @@ class Store:
         """Insert unless a record with the same (session, persona, once_key) exists; check and insert under one lock."""
         shash = session_hash(session_id)
         with self._lock, self._tx():
+            self._serialize_writes()
             for r in self._q(f"SELECT * FROM prototype_records WHERE session_hash=? AND kind=? AND "
                                         f"persona_id {self._same} ?", (shash, kind, persona_id)).fetchall():
                 d = json.loads(r["data"])

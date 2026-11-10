@@ -4,13 +4,13 @@ SQLite always runs. Postgres runs only when TEST_DATABASE_URL points at a throwa
 its tables:  TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/test uv run pytest tests/test_store_backends.py
 """
 
-import os
 
 import pytest
 
 from app.db import _TABLES, Store, session_hash
+from tests.conftest import throwaway_pg_url
 
-PG_URL = os.environ.get("TEST_DATABASE_URL", "").strip()
+PG_URL = throwaway_pg_url()
 
 
 NEEDS_PG = pytest.mark.skipif(not PG_URL, reason="no TEST_DATABASE_URL")

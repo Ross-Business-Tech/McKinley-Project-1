@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # `uv run python -m app.live_eval.preflight` once a key exists. Change it deliberately, never silently.
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
+    # Thinking depth, pinned so a server-side default change can't silently alter evaluations. Empty = the model's
+    # default (recorded as such). Levels per Google's thinking guide; verify which ones the model accepts.
+    gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 
     # ---- evaluation targets offered in the dashboard: "provider:model" comma-separated ----
@@ -73,7 +76,7 @@ class Settings(BaseSettings):
     typesafe_base_url: str = "https://api.typesafe.ai"
     # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
-    # per non-baseline turn. It can only ADD caution; deterministic alerts never depend on it.
+    # per non-baseline turn. It never removes a rules alert; it may only drop the broad 911 care line (policy R7).
     safety_classifier: Literal["auto", "off"] = "auto"
     safety_classifier_target: str | None = None  # provider:model; defaults to the chat default target
     safety_classifier_timeout_seconds: float = Field(default=6, gt=0, le=60)
@@ -96,6 +99,9 @@ class Settings(BaseSettings):
         """LLM_PROVIDER=gemini without an explicit LLM_MODEL uses GEMINI_MODEL (one model per run, chosen up front)."""
         if self.llm_provider == "gemini" and ("llm_model" not in self.model_fields_set or not self.llm_model.strip()):
             self.llm_model = self.gemini_model
+        if self.llm_provider == "gemini" and not self.llm_model.startswith("gemini"):
+            raise ValueError(f"LLM_PROVIDER=gemini but LLM_MODEL={self.llm_model!r} is not a Gemini model; leave "
+                             "LLM_MODEL empty to use GEMINI_MODEL")
         return self
 
     def resolve(self, p: Path) -> Path:

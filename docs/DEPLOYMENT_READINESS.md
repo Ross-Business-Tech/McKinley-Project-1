@@ -56,10 +56,12 @@ website, the repository, a pull request or a chat.
 ## Blockers before any real resident uses it (unchanged by this work)
 - **Missed emergencies:** independent fresh holdout 64.5% full alert / 78.5% any guidance; 14 immediate-danger
   messages got nothing ([safety evaluation](safety/safety-evaluation.md)). Gemini may run as the semantic safety
-  classifier but can only add caution; it has not been evaluated.
+  classifier; it never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8), and it has not been evaluated.
 - **No authentication:** the demo sign-in (`persona_id`) is chosen by the browser; staff tools are protected only by a
   loopback/token boundary. Real resident and staff sign-in, enforced on the backend, is required.
 - **Unapproved scripts:** emergency and escalation wording (I-17/I-18) are team drafts; McKinley must approve them.
+- **No live-model evaluation:** Gemini has never been called; the model ID is unverified on a real key; the Gemini
+  semantic safety classifier and reply quality are unevaluated. All results so far are mock.
 - **No integrations:** no Yardi, work orders, CRM, paging or messaging. Nobody is notified.
 - **Diagnostics in API responses:** `/api/chat` returns staff diagnostics to every caller; strip for non-staff callers.
 - **Data:** synthetic only. No real McKinley data may be loaded without approval.

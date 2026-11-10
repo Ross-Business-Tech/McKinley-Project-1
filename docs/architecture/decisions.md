@@ -20,7 +20,7 @@ unless `STAFF_API_TOKEN` is set. **Limit:** a demo boundary, not authentication;
 person must confirm; only then is a `DEMO-WO/TOUR/TASK` record written to SQLite. Urgent safety notes are the one
 exception (saved immediately, once per hazard). **Why:** no false completion claims, no real integration exists.
 
-## ADR-008: Layered safety, rules first; the semantic classifier may only add caution
+## ADR-008: Layered safety, rules first; the semantic classifier never removes a rules alert
 **Status:** accepted (sprint 3). **Decision:** `app/risk/` separates detection, semantic classification, policy,
 approved responses and escalation; policy rules R1–R9e are explicit and tested
 (`tests/test_risk_policy_table.py`). The semantic layer never removes a rules alert; a failed classifier marks the

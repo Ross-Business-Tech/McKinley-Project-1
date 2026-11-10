@@ -117,3 +117,20 @@ def client(settings, workbook):
     with TestClient(app) as c:
         yield c
     set_state(None)  # type: ignore[arg-type]
+
+
+def throwaway_pg_url() -> str:
+    """TEST_DATABASE_URL for the destructive Postgres tests (they TRUNCATE / drop every table). Refuses anything that
+    looks like a real project unless ALLOW_DESTRUCTIVE_DB_TESTS=1 is set deliberately."""
+    import os
+
+    url = os.environ.get("TEST_DATABASE_URL", "").strip()
+    if not url:
+        return ""
+    real = os.environ.get("DATABASE_URL", "").strip()
+    looks_real = url == real or "supabase" in url.split("@")[-1]
+    if looks_real and os.environ.get("ALLOW_DESTRUCTIVE_DB_TESTS") != "1":
+        raise pytest.UsageError("TEST_DATABASE_URL looks like a real database (equals DATABASE_URL or is a Supabase "
+                                "host). These tests delete data: use a throwaway database, or set "
+                                "ALLOW_DESTRUCTIVE_DB_TESTS=1 for a throwaway Supabase project.")
+    return url
