@@ -1,0 +1,72 @@
+1
+00:00:00,000 --> 00:00:01,707
+Meet the McKinley assistant,
+
+2
+00:00:01,707 --> 00:00:06,464
+a prototype that helps residents and future
+residents get answers at any hour.
+
+3
+00:00:06,911 --> 00:00:10,964
+Now let's sign in as Marisol, a
+resident at Heron Lake Apartments.
+
+4
+00:00:11,415 --> 00:00:14,828
+Her air conditioning has stopped
+cooling again, and she's upset.
+
+5
+00:00:15,279 --> 00:00:18,097
+The assistant can see her
+earlier repair visits,
+
+6
+00:00:18,097 --> 00:00:22,852
+so it doesn't make her troubleshoot again. It
+flags a repeat issue for a manager.
+
+7
+00:00:23,302 --> 00:00:26,928
+It asks one question: may maintenance
+come in if she's not home?
+
+8
+00:00:27,379 --> 00:00:30,323
+She sends it, and gets a
+reference number right away.
+
+9
+00:00:30,774 --> 00:00:34,763
+When Theo writes that he smells gas, the
+assistant skips everything else.
+
+10
+00:00:35,213 --> 00:00:37,570
+It tells him to get outside and call 911,
+
+11
+00:00:37,570 --> 00:00:40,674
+and puts an urgent note at the
+top of the staff queue.
+
+12
+00:00:41,124 --> 00:00:43,662
+Behind the scenes, staff have
+their own console.
+
+13
+00:00:44,112 --> 00:00:48,890
+Saved requests lists everything the assistant
+prepared, with urgent items first.
+
+14
+00:00:49,341 --> 00:00:54,359
+The McKinley assistant: quicker answers for
+residents, clearer handoffs for staff,
+
+15
+00:00:54,359 --> 00:00:55,399
+and safety first.
+
