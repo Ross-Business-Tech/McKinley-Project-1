@@ -83,6 +83,10 @@ describe("CustomerApp", () => {
     await screen.findByText(/Submitted, waiting for staff review/);
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
+    // the press is shown as the person's own turn, so the saved message reads as the reply to it
+    expect(screen.getByTestId("choice")).toHaveTextContent("Send repair request");
+    // a resident who sent a repair is offered its status and another repair
+    expect(screen.getByRole("button", { name: "Check its status" })).toBeInTheDocument();
   });
 
   it("announces the outcome of Send once, with its reference", async () => {

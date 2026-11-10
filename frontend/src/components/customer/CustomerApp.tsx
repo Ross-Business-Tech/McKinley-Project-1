@@ -46,6 +46,7 @@ interface Msg {
   failed?: boolean; // user message that never reached the assistant
   cleared?: string; // assistant message confirming a card of this kind was not sent
   restored?: boolean; // brought back after a reload: never re-announced as a new alert
+  choice?: boolean; // a button the person pressed (Send / Don't send), shown on their side
 }
 
 interface SavedSession {
@@ -261,9 +262,13 @@ export function CustomerApp() {
     if (last.response && lastResponse?.suggested_replies?.length) {
       chips = lastResponse.suggested_replies.map((s) => ({ label: s, send: s }));
     } else if (last.result?.ok) {
-      chips = t.afterSend.map((s) => ({ label: s, send: s })); // next steps after Send
+      // next steps after Send: residents can check status; "Report a repair" only follows a repair
+      const k = last.result.action?.kind;
+      const next = identity.kind !== "resident" ? [] : k === "maintenance_request" ? t.afterSend : t.afterSend.slice(0, 1);
+      chips = next.map((s) => ({ label: s, send: s }));
     } else if (last.cleared) {
-      chips = t.afterDecline.map((s) => ({ label: s, send: s })); // and after Don't send
+      const next = identity.kind === "resident" && last.cleared === "maintenance_request" ? t.afterDecline : t.afterDecline.slice(0, 1);
+      chips = next.map((s) => ({ label: s, send: s })); // and after Don't send
     }
   }
   // the "Talk to a person" button is always under the composer, so it is never repeated as a chip
@@ -332,18 +337,29 @@ export function CustomerApp() {
     setAnnouncement(`${s.assistantSaid} ${r.care_note ? `${r.care_note} ` : ""}${r.reply}${card}`);
   }
 
+  /** The button the person pressed, shown as their own turn, so the outcome reads as a reply to it. */
+  function confirmLabel(kind: ActionKind): string {
+    const a = [...messages].reverse().map((m) => m.result?.action ?? m.response?.action).find((x) => x?.kind === kind);
+    return a?.confirm_label ?? t.send;
+  }
+  function markChoice(text: string) {
+    setMessages((m) => [...m, { id: mid(), role: "user", text, lang, choice: true }]);
+  }
+
   async function confirmAction(kind: ActionKind) {
     if (busy) return;
     if (preview) {
       if (!journey || nextStep?.kind !== "confirm" || nextStep.action_kind !== kind) return;
       const result = nextStep.result;
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
+      setMessages((m) => [...m, { id: mid(), role: "user", text: confirmLabel(kind), lang, choice: true },
+        { id: mid(), role: "assistant", text: result.message, result, lang }]);
       setAnnouncement(`${t.assistantSaid} ${result.message}`);
       setTurns((t) => [...t, { confirm: kind, result }]);
       setStep(step + 1);
       requestAnimationFrame(() => lastAssistantRef.current?.focus());
       return;
     }
+    markChoice(confirmLabel(kind));
     setBusy(true);
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
@@ -362,6 +378,7 @@ export function CustomerApp() {
 
   async function cancelAction(kind: ActionKind) {
     if (busy || preview) return;
+    markChoice(t.dontSend);
     setBusy(true);
     try {
       const result = await api.cancelAction(sessionId, identity.id || null, kind);
@@ -798,8 +815,10 @@ function Message({
     return (
       <div className="flex flex-col items-end" lang={msg.lang}>
         <p className={cn("max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 break-words whitespace-pre-wrap",
-          msg.failed ? "border border-dashed border-mk-attention bg-mk-surface" : "bg-mk-brand-soft")}>
-          <span className="sr-only">{t.youSaid} </span>
+          msg.failed ? "border border-dashed border-mk-attention bg-mk-surface"
+            : msg.choice ? "border border-mk-brand/40 bg-mk-surface font-medium text-mk-brand-strong" : "bg-mk-brand-soft")}
+          data-testid={msg.choice ? "choice" : undefined}>
+          <span className="sr-only">{msg.choice ? t.youChose : t.youSaid} </span>
           {msg.text}
         </p>
         {msg.failed && (

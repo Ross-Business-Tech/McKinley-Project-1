@@ -117,6 +117,7 @@ export const UI = {
     reference: "Reference",
     assistantSaid: "Assistant said:",
     youSaid: "You said:",
+    youChose: "You pressed:",
     placeholder: "Type your message",
     previewPlaceholder: "Typing is off in this preview",
     replying: "The assistant is replying…",
@@ -179,6 +180,7 @@ export const UI = {
     reference: "Referencia",
     assistantSaid: "El asistente dijo:",
     youSaid: "Usted dijo:",
+    youChose: "Usted pulsó:",
     placeholder: "Escriba su mensaje",
     previewPlaceholder: "En esta vista previa no se puede escribir",
     replying: "El asistente está respondiendo…",
@@ -237,7 +239,7 @@ export function formatDate(iso: string, lang: Lang): string {
   const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+    : d.toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ---- customer session restore (live mode only; same tab, sessionStorage) ----

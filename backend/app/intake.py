@@ -596,9 +596,17 @@ def community_in(message: str) -> str | None:
     return None
 
 
+# A message giving contact details ('Alex Rivera, alex@example.com', 'my name is…', a redacted email/phone) is never
+# an answer to "which city or community?": a capitalised name before a comma must not become the tour area.
+_CONTACT_DETAILS = re.compile(r"@|\[(?:email|phone)|\b(?:my name is|me llamo|call me|text me at|email me)\b|"
+                              r"\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}", re.I)
+
+
 def extract_area_correction(message: str) -> str | None:
     """Capitalised place names only: 'actually Orlando not Tampa', 'Orlando instead', 'Orlando, FL', 'Ann Arbor, 2
     bed', 'the Ann Arbor community', 'in Lansing', 'en Orlando'. Months, languages and common nouns never count."""
+    if _CONTACT_DETAILS.search(message):
+        return None
     cap = r"([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})"
     pats = [rf"(?i:actually|instead|rather|make it|change (?:it )?to|switch (?:it )?to|how about|what about)\s+"
             rf"(?:the\s+)?{cap}\b",
@@ -617,6 +625,8 @@ def extract_area_correction(message: str) -> str | None:
 
 def bare_area_answer(message: str) -> str | None:
     """A short answer to 'which city or community?' ('tampa please', 'ann arbor'). Filler never becomes a place."""
+    if _CONTACT_DETAILS.search(message):
+        return None
     if is_affirmative(message) or is_bare_no(message) or _DAYWORDS.search(message) or re.search(r"\d", message):
         return None
     if re.search(r"\b(need|want|something|soon|not sure|idk|dunno|anywhere|somewhere|help|speak|looking|guess)\b",
