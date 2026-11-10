@@ -75,6 +75,9 @@ class Turn:
     is_mock: bool | None = None
     reply_source: str | None = None
     error: str | None = None
+    status_refs: list[str] = field(default_factory=list)  # references of the status items shown (own history)
+    care_kind: str | None = None
+    action_cleared: str | None = None
 
 
 def _slot_for(label: str) -> str | None:
@@ -100,6 +103,8 @@ def _chat_turn(t: Transport, sid: str, pid: str | None, message: str, kind: str,
         records=d.get("records_created") or [], status_items=len(d.get("status_items") or []),
         suggested_replies=d.get("suggested_replies") or [], model=d.get("model"), is_mock=d.get("is_mock"),
         reply_source=d.get("reply_source"),
+        status_refs=[str(i.get("reference")) for i in d.get("status_items") or []], care_kind=d.get("care_kind"),
+        action_cleared=d.get("action_cleared"),
     )
 
 
