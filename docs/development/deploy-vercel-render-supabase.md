@@ -79,11 +79,13 @@ Open the Vercel address on a phone, type "Can I tour this week?" and confirm a t
 - **Resident sign-in needs the synthetic seed.** The resident spreadsheet is git-ignored and is not on Render, so the
   backend reads residents from the database (`RESIDENT_DATA_SOURCE=database`) after `app.seed_synthetic` has loaded
   them (step 1.3). Without the seed, prospects and guests work but residents find no record.
-- **The staff console tabs won't work online.** By design the staff, evaluation and records routes only answer
-  requests from the same machine and refuse anything arriving through a proxy such as Render. The page itself loads.
+- **The staff console tabs are locked online.** The staff, evaluation and records routes answer only the same
+  machine or a request carrying `STAFF_API_TOKEN` (Render generates one). The browser never holds that token, so on a
+  hosted site the console shows the recorded demo and says staff tools are locked until real staff sign-in exists.
 - **Anyone with the link can use the chat.** It is a demo with made-up data only.
-- **AI model.** To use a real model later, add `LLM_PROVIDER=openrouter`, `LLM_MODEL=...` and `OPENROUTER_API_KEY` in
-  Render (see the README). Free hosted models may log prompts; synthetic data only.
+- **AI model.** The Blueprint uses Gemini (`LLM_PROVIDER=gemini`, `GEMINI_MODEL`, `GEMINI_API_KEY`). Until a key
+  exists, set `LLM_PROVIDER=mock` and `LLM_MODEL=mock-deterministic-v1`. OpenRouter stays available as an
+  alternative. Free tiers may use prompts to improve products; synthetic data only ([gemini guide](../deployment/gemini.md)).
 
 ## Running locally against Supabase (optional)
 
@@ -96,5 +98,5 @@ its tables, so never use the real one):
 
 ```bash
 cd backend
-TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/scratch uv run pytest tests/test_store_backends.py
+TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/scratch uv run pytest tests/test_store_backends.py tests/test_migrations.py
 ```

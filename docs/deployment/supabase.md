@@ -17,12 +17,13 @@ Postgres was available). SQLite paths are tested.
 1. Create a project (ask Ross IT / the project owner first). Keep the database password private.
 2. **Connect → Session pooler** connection string (`postgresql://…`); URL-encode symbols in the password.
 3. Check `SHOW server_version` is **15 or later** (the read-only views use `security_invoker`).
-4. Run the migrations and the synthetic seed **from your machine** (or a Render shell). Put the connection string in
-   `backend/.env` as `DATABASE_URL=` rather than typing it on the command line (shell history):
+4. Run the migrations and the synthetic seed **from your machine** (the synthetic workbook is git-ignored, so it is
+   not on Render). Put the connection string in `backend/.env` as `DATABASE_URL=` rather than typing it on the
+   command line (shell history), then:
    ```bash
    cd backend
-   DATABASE_URL='postgresql://…' uv run alembic upgrade head          # creates/updates tables (idempotent)
-   DATABASE_URL='postgresql://…' uv run python -m app.seed_synthetic  # loads ONLY the synthetic workbook
+   uv run alembic upgrade head          # creates/updates tables (idempotent)
+   uv run python -m app.seed_synthetic  # loads ONLY the synthetic workbook
    ```
    The seed refuses any workbook whose README does not say every value is synthetic, and replaces earlier
    reference rows in one transaction. **Never load real McKinley data** without written approval.

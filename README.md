@@ -31,7 +31,10 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
 - **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
   ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
-- **Static preview:** the here.now link has no backend; it replays recorded conversations (see below).
+- **Static preview:** the here.now link has no backend; it replays recorded conversations (see below). It is not
+  interactive.
+- **Phones:** the redesigned chat passes a Chromium/WebKit phone test at 7 sizes against a local **mock** backend;
+  no real-device or real screen-reader test yet ([interactive demo readiness](docs/INTERACTIVE_DEMO_READINESS.md)).
 
 ## Workflows (F1–F9)
 
@@ -90,7 +93,7 @@ owner for it. Without it, resident sign-ins find no record (prospects and guests
   `GEMINI_MODEL=gemini-3.6-flash`, `LLM_MODEL=` empty. See [docs/deployment/gemini.md](docs/deployment/gemini.md).
 - **OpenRouter (free models, evaluations):** `LLM_PROVIDER=openrouter`, `LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`,
   `OPENROUTER_API_KEY=` (<https://openrouter.ai/keys>).
-- Shared settings: temperature 0.2, 4000 max tokens, 60 s timeout, 2 same-model retries. A different served model is
+- Shared settings: temperature 0.2 (not sent to Gemini or Anthropic, which ignore or reject it), 4000 max tokens, 60 s timeout, 2 same-model retries. A different served model is
   rejected (`MODEL_SWITCHED`), never used. Check without generating anything:
   `cd backend && uv run python -m app.live_eval.preflight` (exit code 3 = blocked).
 - Without a key: `LLM_PROVIDER=mock`, `LLM_MODEL=mock-deterministic-v1` (the `.env.example` default). With a provider

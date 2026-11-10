@@ -1,8 +1,8 @@
 # Deployment readiness: Vercel + Render + Supabase + Gemini
 
 Target agreed with Arihan: **Vercel** hosts the website, **Render** the Python backend, **Supabase** the database,
-**Gemini** writes the replies. As of 2026-11-10 the code and configuration are prepared on
-`feat/gemini-supabase-deployment`, but **nothing has been deployed and no live Gemini or Supabase call has been
+**Gemini** writes the replies. As of 2026-11-10 the code and configuration are prepared in the
+repository (Sprint 3 deployment work, merged with the Sprint 4 mobile redesign), but **nothing has been deployed and no live Gemini or Supabase call has been
 made** (no credentials yet). The product remains a **prototype on synthetic data, NOT production ready**.
 
 Guides: [Gemini](deployment/gemini.md) · [Supabase + migrations](deployment/supabase.md) ·
@@ -63,5 +63,8 @@ website, the repository, a pull request or a chat.
 - **No live-model evaluation:** Gemini has never been called; the model ID is unverified on a real key; the Gemini
   semantic safety classifier and reply quality are unevaluated. All results so far are mock.
 - **No integrations:** no Yardi, work orders, CRM, paging or messaging. Nobody is notified.
+- **No real-device testing:** the phone checks ran in Playwright Chromium/WebKit against a local mock backend; no
+  real iPhone/Android, no real screen reader, no public URL ([INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md)).
+- **Public preview is not interactive:** the here.now link replays recorded conversations; typing is off.
 - **Diagnostics in API responses:** `/api/chat` returns staff diagnostics to every caller; strip for non-staff callers.
 - **Data:** synthetic only. No real McKinley data may be loaded without approval.
