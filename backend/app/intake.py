@@ -656,10 +656,10 @@ _COMMUNITIES = [("Heron Lake Apartments", r"heron ?lake"), ("Birchwood Commons",
 
 
 def community_in(message: str) -> str | None:
-    for name, pat in _COMMUNITIES:
-        if re.search(rf"\b{pat}\b", message, re.I):
-            return name
-    return None
+    """The community named (first in the message), skipping one named as the OLD value ('Fernhill not Birchwood')."""
+    hits = sorted((m.start(), name) for name, pat in _COMMUNITIES for m in re.finditer(rf"\b{pat}\b", message, re.I)
+                  if not _OLD_VALUE.search(message[:m.start()]))
+    return hits[0][1] if hits else None
 
 
 # A message giving contact details ('Alex Rivera, alex@example.com', 'my name is…', a redacted email/phone) is never
@@ -1374,6 +1374,8 @@ _OTHER_RESIDENT = re.compile(
     r"\b(?-i:[A-Z][a-z]+)'s (?:unit|apartment|phone|number|rent|ac|a/c|repairs?|requests?|account|balance|email|"
     r"lease)\b|"
     r"\bwhat unit (?:does )?(?-i:[A-Z][a-z]+) (?:lives?|is)\b|\bwhere (?:does )?(?-i:[A-Z][a-z]+) live\b|"
+    r"\b(?:his|her) (?:open |old |current |other )?(?:maintenance |repair )?(?:requests?|repairs?|work orders?|"
+    r"tickets?)\b|"  # c01: "what about his open maintenance requests?"
     r"\bmy (?:roommate|neighbou?r|friend|boyfriend|girlfriend)'?s (?:phone|number|rent|account|requests?|repairs?|"
     r"balance|unit)\b", re.I)
 
@@ -1500,6 +1502,15 @@ def is_meta_complaint(message: str) -> bool:
 
 # Honest answers to questions asked while a card is open (A-4, A-5, A-12, B-7, D-8). Kinds, in priority order.
 _QUESTION_KINDS: list[tuple[str, re.Pattern[str]]] = [
+    # N-5: "so the technician is coming today right? just confirm" -> an explicit no, never the card text
+    ("confirm_visit", re.compile(
+        r"\b(?:tech\w*|someone|somebody|maintenance|they|a person|the plumber|the electrician)\b(?: is| are|'s)? "
+        r"(?:coming|going to come|gonna come|showing up|on (?:the|their) way)\b[^.!]{0,30}(?:\?|\bright\b|"
+        r"\bconfirm\w*)|\bjust confirm (?:the|that|it|a) "
+        r"(?:visit|time|appointment)\b", re.I)),
+    # N-3: "how many tour requests do i have now?"
+    ("count", re.compile(r"\bhow many (?:tour |repair |maintenance )?(?:requests?|tours?|notes?|tickets?|work orders?)"
+                         r"\b|\bcu[aá]ntas solicitudes\b", re.I)),
     ("who_sees", re.compile(
         r"\bwho (?:actually |else |all )?(?:sees|reads|gets|looks at|will see|can see|would see|is going to see)\b|"
         r"\bwill (?:my |the )?neighbou?rs? (?:find out|know|see|hear|be told)|\b(?:find out|know) (?:it was me|"
@@ -1544,6 +1555,13 @@ _QUESTION_KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"^\W*(?:so\W+)?(?:is|was|has) (?:it|this|that) (?:been )?(?:sent|saved|submitted|in)(?: yet)?\W*$|"
         r"\bdid (?:my|the) (?:\w+ ){0,2}(?:request|note) (?:send|go (?:in|through)|get sent)\b", re.I)),
 ]
+
+
+_NEIGHBOR_WORD = re.compile(r"\bneighbou?rs?\b|\bvecin", re.I)
+
+
+def mentions_neighbor(message: str) -> bool:
+    return bool(_NEIGHBOR_WORD.search(message))
 
 
 def question_kinds(message: str) -> list[str]:

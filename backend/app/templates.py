@@ -737,6 +737,40 @@ T: dict[str, dict[Lang, str]] = {
               "aquí se envía a sus vecinos. No puedo prometer cómo lo manejará la oficina; si quiere que no se "
               "mencione su nombre, agréguelo a la nota.",
     },
+    "q_who_sees_plain": {
+        "en": "In this prototype, only McKinley staff who review the office queue can see it. Nobody is notified "
+              "automatically.",
+        "es": "En este prototipo solo el personal de McKinley que revisa la cola de la oficina puede verlo. No se "
+              "avisa a nadie automáticamente.",
+    },
+    "q_no_visit": {
+        "en": "No. Nothing is scheduled: the team reviews the request first, and in this prototype nobody is "
+              "notified automatically, so I can't confirm a visit or a time.",
+        "es": "No. No hay nada programado: el equipo revisa la solicitud primero y en este prototipo no se avisa a "
+              "nadie, así que no puedo confirmar una visita ni una hora.",
+    },
+    "q_count": {
+        "en": "In this chat you've sent {n}: {items}.",
+        "es": "En este chat ha enviado {n}: {items}.",
+    },
+    "q_count_none": {
+        "en": "Nothing has been sent from this chat yet.",
+        "es": "Todavía no se ha enviado nada desde este chat.",
+    },
+    "q_count_open": {
+        "en": " The card below isn't sent.",
+        "es": " La tarjeta de abajo no está enviada.",
+    },
+    "ref_not_found": {
+        "en": "I can't find {ref} among the requests sent in this chat or open on your record, so I can't tell you "
+              "its status. Here's what is open.",
+        "es": "No encuentro {ref} entre las solicitudes de este chat ni en su registro, así que no puedo darle su "
+              "estado. Esto es lo que está abierto.",
+    },
+    "meta_sorry_nochange": {
+        "en": "Sorry about that.",
+        "es": "Perdone.",
+    },
     "q_what_send": {
         "en": "Pressing Send saves this {what} in the prototype for staff to review. Nothing else happens: nobody "
               "is notified automatically, nothing is scheduled and nothing is charged.",

@@ -144,7 +144,23 @@ CHANNEL_RULES = {
 
 
 # Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
-PLAN_SECTION_VERSION = "plan-s51"
+PLAN_SECTION_VERSION = "plan-s51b"
+
+# Allowlisted, synthetic facts the model may state: community -> region, read from the demo workbook only.
+FACT_RULES = ("Only state a community's location, size, features, availability or price if that fact is in the "
+              "approved facts or context given here; otherwise say you don't know and offer the leasing team. "
+              "Never offer to send a note, request or anything else unless the action card shown says so.")
+
+
+def community_facts(workbook: Workbook | None) -> str:
+    """'Community regions (synthetic demo data): Birchwood Commons: Michigan; ...' from the workbook, or ''."""
+    if not workbook:
+        return ""
+    pairs = sorted({(r.row.get("community"), r.row.get("region")) for r in workbook.residents.values()
+                    if r.row.get("community") and r.row.get("region")})
+    if not pairs:
+        return ""
+    return "Approved facts, community regions (synthetic demo data): " + "; ".join(f"{c}: {g}" for c, g in pairs) + "."
 
 
 def card_instructions(plan: TurnPlan) -> list[str]:
@@ -166,7 +182,7 @@ def card_instructions(plan: TurnPlan) -> list[str]:
     return out
 
 
-def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
+def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str = "") -> str:
     """Trusted backend facts for the response model: the next step, and a draft reply it must stay faithful to."""
     lines = [
         "## Backend next step (authoritative)",
@@ -180,6 +196,7 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")
     lines += card_instructions(plan)
+    lines += [x for x in (facts, FACT_RULES) if x]
     # F-4: repeat / history claims only as the planner established them
     lines += plan.facts or ["Do not say a problem is a repeat or mention earlier requests unless the draft reply "
                             "says so."]
@@ -321,7 +338,7 @@ def run_turn(
             })
         workflow = plan.workflow if plan.workflow.id != workflow.id else workflow
         system = (f"{system}\n\n{workflow_prompt_section(workflow, gate, triage, lead, renewal)}\n\n"
-                  f"{plan_prompt_section(plan, channel, lang)}")
+                  f"{plan_prompt_section(plan, channel, lang, community_facts(deps.workbook))}")
         trace.add("6_workflow", "ok", f"{workflow.id}: {workflow.reason} | functions={plan.functions}"
                   + (f" | action={plan.action.kind}:{plan.action.stage}" if plan.action else ""))
     else:

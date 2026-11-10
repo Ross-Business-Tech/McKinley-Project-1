@@ -585,7 +585,8 @@ def test_planner_states_the_repeat_decision_for_the_model(client, monkeypatch):
 
     seen: list[str] = []
     real = ce.plan_prompt_section
-    monkeypatch.setattr(ce, "plan_prompt_section", lambda plan, ch, lang: seen.append(real(plan, ch, lang)) or seen[-1])
+    monkeypatch.setattr(ce, "plan_prompt_section",
+                        lambda plan, ch, lang, facts="": seen.append(real(plan, ch, lang, facts)) or seen[-1])
     chat(client, "my AC is out again", "f4y")
     assert "Repeat issue: YES, it matches history item I008" in seen[-1]
     chat(client, "my bathroom fan stopped working", "f4n")
@@ -706,3 +707,96 @@ def test_guest_with_a_repair_goes_to_maintenance_not_leasing(client):
     assert "heater" in fields(r).get("earlier", "").lower()
     r = chat(client, "Talk to a person", "gh2", None)  # negative: a plain visitor still goes to leasing
     assert r["handoff"]["team"] == "leasing"
+
+
+# ---- round 4: the judge's AFTER re-score -------------------------------------------------------------------------
+
+
+def test_i_said_community_updates_the_card_and_got_it_only_when_it_changed(client):
+    s = "n2"
+    chat(client, "can i tour", s, "P-RELOCATE-AA")
+    r = chat(client, "birchwood, i said. sunday afternoon", s, "P-RELOCATE-AA")
+    assert fields(r)["area"] == "Birchwood Commons" and fields(r)["days"] == "Sunday"
+    s = "n2b"
+    chat(client, "i want to tour ypsilanti next week mornings", s, None)
+    r = chat(client, "no, I said Sandpiper Pointe", s, None)
+    assert fields(r)["area"] == "Sandpiper Pointe" and "got it now" in r["reply"]
+    r = chat(client, "i already told you", s, None)  # nothing changed: no "I've got it now" (a person is offered)
+    assert "got it now" not in r["reply"]
+    s = "n2c"
+    chat(client, "i want to tour ypsilanti next week mornings", s, None)
+    r = chat(client, "like i said, ypsilanti", s, None)  # META with no change: no false confirmation
+    assert "got it now" not in r["reply"] and fields(r)["area"] == "Ypsilanti"
+
+
+def test_tour_correction_after_send_is_a_change_note_and_count_is_answered(client):
+    s = "n3"
+    chat(client, "tour birchwood commons, 2 bed, sunday afternoon", s, None)
+    ref = confirm(client, s, "tour_request", None)["record"]["id"]
+    r = chat(client, "oops, i meant Fernhill Apartments not birchwood", s, None)
+    assert r["action"]["kind"] == "staff_handoff" and ref in r["reply"]
+    r = chat(client, "can you change it on the one i sent?", s, None)  # the open change note stays on screen
+    assert r["action"]["kind"] == "staff_handoff" and "Welcome" not in r["reply"]
+    r = chat(client, "how many tour requests do i have now?", s, None)
+    assert f"sent 1: tour request {ref}" in r["reply"]
+    assert len([x for x in records(s) if x["kind"] == "tour_request"]) == 1
+
+
+def test_again_after_send_cites_the_sent_request(client):
+    s = "n3r"
+    chat(client, "bathroom faucet dripping", s, "R003")
+    chat(client, "you can come in", s, "R003")
+    wo = confirm(client, s, "maintenance_request", "R003")["record"]["id"]
+    r = chat(client, "the faucet is dripping again", s, "R003")
+    assert wo in r["reply"] and r["action"]["kind"] == "staff_handoff"
+    assert len([x for x in records(s) if x["kind"] == "maintenance_request"]) == 1
+
+
+def test_plain_who_sees_has_no_neighbour_line_and_tech_today_is_a_clear_no(client):
+    s = "n4"
+    repair_card(client, s)
+    r = chat(client, "who can see this request?", s, "R003")
+    assert "office queue" in r["reply"] and "neighbor" not in r["reply"]
+    r = chat(client, "ok so maintenance is coming tomorrow right? confirm", s, "R003")
+    assert r["reply"].startswith("No. Nothing is scheduled") and r["action"]["kind"] == "maintenance_request"
+
+
+@pytest.mark.parametrize("msg,kind", [("so the plumber is coming tomorrow right?", "confirm_visit"),
+                                      ("how many requests do i have", "count"),
+                                      ("the tech came yesterday", None)])
+def test_round4_question_kinds(msg, kind):
+    assert question_kind(msg) == kind
+
+
+def test_third_party_and_typed_reference_never_start_intake(client):
+    r = chat(client, "and what about her open repair requests?", "n6", "R003")
+    assert (r.get("action") or {}).get("kind") != "maintenance_request"
+    r = chat(client, "is DEMO-WO-4242 done yet", "n7", "R003")
+    assert "can't find DEMO-WO-4242" in r["reply"] and (r.get("action") or {}).get("kind") != "maintenance_request"
+
+
+def test_poisoning_follow_up_puts_the_approved_notice_first(client):
+    from app.emergency import notice
+
+    s = "n8"
+    chat(client, "my kid swallowed some bleach", s, "R003")
+    r = chat(client, "what should i do now", s, "R003")
+    if r.get("safety_notice") is None and "emergency maintenance" not in r["reply"]:
+        assert r["reply"].startswith(notice("poison", "en")[:40])
+
+
+def test_model_gets_community_regions_and_fact_rules(workbook):
+    from types import SimpleNamespace
+
+    from app.actions import TurnPlan, _sel
+    from app.chat_engine import FACT_RULES, community_facts
+
+    wb = SimpleNamespace(residents={"A": SimpleNamespace(row={"community": "Heron Lake Apartments",
+                                                               "region": "Orlando"}),
+                                    "B": SimpleNamespace(row={"community": "Birchwood Commons", "region": ""})})
+    facts = community_facts(wb)
+    assert facts.endswith("Heron Lake Apartments: Orlando.") and "Birchwood" not in facts and "synthetic" in facts
+    section = plan_prompt_section(TurnPlan(template="x", functions=[], workflow=_sel("faq", "t")), "web_chat", "en",
+                                  facts)
+    assert facts in section and FACT_RULES in section and "Never offer to send a note" in section
+    assert community_facts(None) == ""

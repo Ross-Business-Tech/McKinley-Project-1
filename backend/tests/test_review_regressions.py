@@ -346,7 +346,8 @@ def test_every_backend_template_passes_output_checks():  # F N8
                                                                 missing="entry permission", saved="Where: Kitchen",
                                                                 route="through your profile", value="Saturday",
                                                                 status="Open", detail="the fan", flag="",
-                                                                note="High priority", ask="Which room is it in?"),
+                                                                note="High priority", ask="Which room is it in?",
+                                                                items="tour request DEMO-TOUR-1001"),
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 
