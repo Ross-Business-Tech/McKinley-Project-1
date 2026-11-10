@@ -546,6 +546,7 @@ export function CustomerApp() {
           )}
           <p id={statusId} className="mt-1 text-sm text-mk-muted" lang={lang}>
             {t.footer}{" "}
+            {lastResponse?.is_mock ? `${t.replyMock} ` : lastResponse?.reply_source === "model" ? `${t.replyAi} ` : ""}
             <Link href="/staff" prefetch={false} className="mk-focus underline underline-offset-2">
               {t.staffLink}
             </Link>

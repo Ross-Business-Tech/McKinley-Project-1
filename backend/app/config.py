@@ -16,6 +16,11 @@ ProviderName = Literal["gemini", "openrouter", "ollama", "mock", "anthropic"]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
+    # ---- where this runs ----
+    # local = a developer machine (defaults stay convenient). hosted = ANY shared deployment (Render, a team demo):
+    # startup refuses unsafe settings (see hosted_problems). "hosted" does not mean production ready.
+    app_env: Literal["local", "hosted"] = "local"
+
     # ---- default target used by /api/chat ----
     llm_provider: ProviderName = "openrouter"
     llm_model: str = "nvidia/nemotron-3.5-super-vl:free"
@@ -88,12 +93,32 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _provider_default_model(self) -> "Settings":
         """LLM_PROVIDER=gemini without an explicit LLM_MODEL uses GEMINI_MODEL (one model per run, chosen up front)."""
-        if self.llm_provider == "gemini" and "llm_model" not in self.model_fields_set:
+        if self.llm_provider == "gemini" and ("llm_model" not in self.model_fields_set or not self.llm_model.strip()):
             self.llm_model = self.gemini_model
         return self
 
     def resolve(self, p: Path) -> Path:
         return p if p.is_absolute() else BACKEND_DIR / p
+
+    def hosted_problems(self) -> list[str]:
+        """Settings that are unsafe on a shared deployment. Messages never contain secret values."""
+        if self.app_env != "hosted":
+            return []
+        out = []
+        origins = self.cors_origin_list
+        if not origins or any(o == "*" or "*" in o for o in origins):
+            out.append("CORS_ORIGINS must list the exact website address(es); wildcards are not allowed")
+        if any(o.startswith(("http://localhost", "http://127.0.0.1")) for o in origins):
+            out.append("CORS_ORIGINS must not include localhost addresses on a hosted backend")
+        if any(o.startswith("http://") for o in origins if not o.startswith(("http://localhost", "http://127."))):
+            out.append("CORS_ORIGINS must use https:// addresses")
+        if not (self.staff_api_token and len(self.staff_api_token.get_secret_value()) >= 24):
+            out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
+        if self.gate_override_enabled:
+            out.append("GATE_OVERRIDE_ENABLED must be false")
+        if not (self.database_url and self.database_url.get_secret_value().strip()):
+            out.append("DATABASE_URL must be set (a hosted backend's local SQLite file is lost on every restart)")
+        return out
 
     @property
     def cors_origin_list(self) -> list[str]:

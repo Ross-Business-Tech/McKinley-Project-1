@@ -305,6 +305,11 @@ export interface Health {
   data_error: string | null;
   resident_count: number;
   interaction_count: number;
+  // deployment facts (optional: older backends and the static snapshot don't send them)
+  app_env?: "local" | "hosted";
+  database?: "sqlite" | "postgres";
+  resident_source?: string | null;
+  is_mock?: boolean;
 }
 
 export interface EvalCase {

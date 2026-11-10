@@ -150,6 +150,24 @@ describe("CustomerApp", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("says plainly whether replies come from fixed rules or an AI model", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: true }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    expect(await screen.findByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
+  });
+
+  it("labels live model replies as AI-written", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: false, provider: "gemini", reply_source: "model" }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    expect(await screen.findByText(/written by an AI model/)).toBeInTheDocument();
+  });
+
   it("always offers a way to talk to a person", async () => {
     live(() => resp({ reply: "A team member should handle this." }));
     render(<CustomerApp />);

@@ -146,6 +146,16 @@ export function StaffConsole() {
             </span>
           </p>
         )}
+        {state?.live && state.health && (
+          <p role="note" data-testid="backend-status" className="rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
+            Backend: {state.health.is_mock || state.health.provider === "mock"
+              ? "mock responder (fixed templates, not an AI model)"
+              : `${state.health.provider} · ${state.health.model} (live AI model${state.health.provider_ready ? "" : ", NOT configured: missing key"})`}
+            {" · "}database {state.health.database ?? "sqlite"}
+            {" · "}residents from {state.health.resident_source ?? "nowhere (none loaded)"}
+            {state.health.app_env === "hosted" ? " · hosted deployment" : " · local"}
+          </p>
+        )}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
           <Tabs defaultValue={state.live ? "records" : "inspector"}>

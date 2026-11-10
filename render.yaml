@@ -1,5 +1,6 @@
-# Render Blueprint: the Python backend (FastAPI). See docs/development/deploy-vercel-render-supabase.md.
+# Render Blueprint: the Python backend (FastAPI). Guide: docs/deployment/render.md (and docs/DEPLOYMENT_READINESS.md).
 # Secrets are never stored here: Render asks for the "sync: false" values when the Blueprint is first applied.
+# This is a PROTOTYPE on synthetic data, not a production service (see README "Status").
 services:
   - type: web
     name: mckinley-backend
@@ -7,20 +8,30 @@ services:
     plan: free              # the free plan sleeps when idle; the first request after a pause can take about a minute
     rootDir: backend
     buildCommand: pip install uv && uv sync --frozen --no-dev
-    startCommand: uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Migrations run before every start (idempotent); then the API. No --reload, one worker (the Store holds one
+    # connection and an in-process lock).
+    startCommand: uv run --no-sync alembic upgrade head && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.11
-      - key: LLM_PROVIDER      # the built-in rules responder, not a language model; no AI key needed
-        value: mock
-      - key: LLM_MODEL
-        value: mock-deterministic-v1
-      - key: GATE_OVERRIDE_ENABLED   # staff-only override stays off on any shared deployment
+      - key: APP_ENV               # hosted: startup refuses wildcard/localhost CORS, a missing staff token, etc.
+        value: hosted
+      - key: LLM_PROVIDER          # Gemini writes replies; set to "mock" (and LLM_MODEL=mock-deterministic-v1)
+        value: gemini              # until a key exists, otherwise model turns answer NEEDS_API_KEY
+      - key: GEMINI_MODEL          # stable model in Google's list (checked 2026-11-10); verify with preflight
+        value: gemini-3.6-flash
+      - key: GEMINI_API_KEY        # from Google AI Studio; backend only, never in the website
+        sync: false
+      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs on Gemini (one extra call per turn)
+        value: auto
+      - key: GATE_OVERRIDE_ENABLED # staff-only override stays off on any shared deployment
         value: "false"
-      - key: DATABASE_URL      # Supabase connection string (Session pooler URI); set in Render, never commit it
+      - key: RESIDENT_DATA_SOURCE  # residents come from the synthetic seed in the database (no XLSX on Render)
+        value: database
+      - key: DATABASE_URL          # Supabase Session pooler URI; set in Render, never commit it
         sync: false
-      - key: CORS_ORIGINS      # the Vercel website address, e.g. https://your-project.vercel.app
+      - key: CORS_ORIGINS          # the exact Vercel website address, e.g. https://your-project.vercel.app
         sync: false
-      - key: STAFF_API_TOKEN   # Render makes up a long random value
+      - key: STAFF_API_TOKEN       # Render makes up a long random value
         generateValue: true
