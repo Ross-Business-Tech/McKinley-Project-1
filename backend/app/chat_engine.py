@@ -284,6 +284,7 @@ def run_turn(
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
+        lang = plan.lang or lang  # R-9: a conversation the planner kept in Spanish is reported as Spanish
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:
             gate = gate.model_copy(update={
                 "risk_flags": [f for f in gate.risk_flags if f not in ("low_confidence", "repeated_low_confidence")],

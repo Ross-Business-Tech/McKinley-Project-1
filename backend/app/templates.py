@@ -579,10 +579,10 @@ T: dict[str, dict[Lang, str]] = {
         "es": "usaría el contacto de su perfil",
     },
     "route_none": {
-        "en": "this prototype doesn't collect a phone number or email in chat, so please also contact the leasing "
-              "office directly",
-        "es": "este prototipo no recoge teléfono ni correo en el chat, así que comuníquese también con la oficina de "
-              "arrendamiento",
+        "en": "this prototype doesn't collect a phone number or email in chat, and the office's real contact details "
+              "aren't connected here",
+        "es": "este prototipo no recoge teléfono ni correo en el chat, y los datos reales de la oficina no están "
+              "conectados aquí",
     },
     "contact_route_profile": {
         "en": "In this prototype the leasing team follows up through the contact on your profile. I don't collect "
@@ -592,9 +592,11 @@ T: dict[str, dict[Lang, str]] = {
     },
     "contact_route_none": {
         "en": "I don't collect phone numbers or emails in chat yet, and there's no contact on a profile here, so "
-              "nothing you type is saved. Please also contact the leasing office directly so they can reach you.",
+              "nothing you type is saved. The leasing office's real contact details aren't connected to this "
+              "prototype either, so for now the request can't reach you on its own.",
         "es": "Todavía no recojo teléfonos ni correos en el chat y aquí no hay un contacto en un perfil, así que lo "
-              "que escriba no se guarda. Comuníquese también con la oficina de arrendamiento para que le contacten.",
+              "que escriba no se guarda. Los datos de contacto reales de la oficina tampoco están conectados a este "
+              "prototipo, así que por ahora la solicitud no puede llegarle por sí sola.",
     },
     "lease_break": {
         "en": "Moving out early is handled by the leasing office directly: the options and any costs depend on your "
@@ -615,6 +617,101 @@ T: dict[str, dict[Lang, str]] = {
               "I can send a note to the office about {ref}.",
         "es": "Esa es {ref}: {title}. Estado: {status}. Aquí no puedo dar horarios de reparación. Si necesita "
               "atención, puedo enviar una nota a la oficina sobre {ref}.",
+    },
+    # ---- sprint 5 round 2 (TEAM DRAFTS) ----
+    # J-1. NEEDS McKINLEY REVIEW: shown after a self-harm / personal-safety / medical alert. The crisis line itself is
+    # never written here: the planner puts the approved CARE_NOTE / NOTICE text from app/emergency.py in front of it.
+    "crisis_privacy": {
+        "en": "About privacy: the urgent note saved in this prototype's staff queue doesn't include what you wrote. It "
+              "only says a resident may need a check-in. Staff who review that queue can see the note, and I can't "
+              "remove it, but nobody is notified automatically.",
+        "es": "Sobre su privacidad: la nota urgente guardada en la cola del personal de este prototipo no incluye lo "
+              "que escribió. Solo dice que un residente podría necesitar que lo contacten. El personal que revisa esa "
+              "cola puede ver la nota y yo no puedo borrarla, pero no se avisa a nadie automáticamente.",
+    },
+    "crisis_follow": {
+        "en": "Your urgent note {ref} is saved without your words, and nobody is notified automatically. I'm here if "
+              "you want help with anything at home.",
+        "es": "Su nota urgente {ref} está guardada sin sus palabras, y no se avisa a nadie automáticamente. Aquí estoy "
+              "si quiere ayuda con algo de su casa.",
+    },
+    "maint_add_detail": {
+        "en": "Request {ref} is already sent, so I can't change it here. I've prepared a note for the office to add "
+              "\"{detail}\" to {ref}. Send it when you're ready.",
+        "es": "La solicitud {ref} ya se envió, así que no puedo cambiarla aquí. Preparé una nota para que la oficina "
+              "agregue \"{detail}\" a {ref}. Envíela cuando quiera.",
+    },
+    "still_stands": {
+        "en": " Your {what} {ref} was already sent and still stands until the office acts on this note.",
+        "es": " Su {what} {ref} ya se envió y sigue en pie hasta que la oficina atienda esta nota.",
+    },
+    "declined_sent_stands": {
+        "en": "Okay, I haven't sent this one. Your {what} {ref} was already sent and still stands. To cancel it too, "
+              "say \"cancel {ref}\" and I'll prepare a note for the office with its ID.",
+        "es": "De acuerdo, esta no la envié. Su {what} {ref} ya se envió y sigue en pie. Para cancelarla también, "
+              "diga \"cancelar {ref}\" y prepararé una nota para la oficina con su número.",
+    },
+    "priority_offer": {
+        "en": "Staff set the priority when they review {ref}; I can't change it from here. I've prepared a note asking "
+              "them to treat it as a priority. Send it when you're ready. In this prototype nobody is notified "
+              "automatically.",
+        "es": "El personal fija la prioridad cuando revisa {ref}; yo no puedo cambiarla. Preparé una nota pidiendo "
+              "que la traten como prioridad. Envíela cuando quiera. En este prototipo no se avisa a nadie "
+              "automáticamente.",
+    },
+    "contact_not_saved": {
+        "en": "No, I can't save phone numbers or emails here, so I haven't kept it.",
+        "es": "No, aquí no puedo guardar teléfonos ni correos, así que no lo guardé.",
+    },
+    "contact_route_account": {
+        "en": "In this prototype the office follows up through the contact preference on your account.",
+        "es": "En este prototipo la oficina le contacta según la preferencia de contacto de su cuenta.",
+    },
+    "contact_followup_none": {
+        "en": "The leasing team's follow-up isn't connected to this prototype, so nothing reaches you automatically "
+              "yet.",
+        "es": "El seguimiento del equipo de arrendamiento no está conectado a este prototipo, así que por ahora no le "
+              "llega nada automáticamente.",
+    },
+    "status_none_history": {
+        "en": "I don't see any open requests on your record right now. The related requests I mentioned are earlier "
+              "ones that are closed.",
+        "es": "No veo solicitudes abiertas en su historial ahora. Las solicitudes relacionadas que mencioné son "
+              "anteriores y están cerradas.",
+    },
+    "status_draft_open": {
+        "en": " Your {what} in this chat isn't sent yet, so it isn't on your record.",
+        "es": " Su {what} de este chat todavía no se envió, así que no aparece en su historial.",
+    },
+    "maint_repeat_stated": {
+        "en": "I'm sorry this keeps happening. I've marked it as a repeat problem for a manager to review, not just "
+              "another routine repair.",
+        "es": "Lamento que siga pasando. La marqué como problema repetido para que la revise un gerente, no como una "
+              "reparación de rutina.",
+    },
+    "other_resident": {
+        "en": "I can't share another resident's information or act on their account, even for a roommate, friend or "
+              "family member. They can sign in or contact the office themselves. I can send a note to the office "
+              "about your own question.",
+        "es": "No puedo compartir información de otro residente ni actuar en su cuenta, aunque sea su compañero de "
+              "casa, amigo o familiar. Esa persona puede iniciar sesión o comunicarse con la oficina. Puedo enviar una "
+              "nota a la oficina sobre su propia pregunta.",
+    },
+    "spanish_card": {
+        "en": "Of course! I can continue in Spanish.",
+        "es": "¡Claro! Seguimos en español; su solicitud sigue abajo.",
+    },
+    "maint_ask_entry_plain": {
+        "en": "If maintenance comes while you're out, may they enter, or should they contact you first?",
+        "es": "Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle primero?",
+    },
+    "questions_added": {
+        "en": "Your questions are now on the note: {value}. Send it when you're ready.",
+        "es": "Sus preguntas ya están en la nota: {value}. Envíela cuando quiera.",
+    },
+    "note_updated": {
+        "en": "That's now in the note for the office. Send it when you're ready.",
+        "es": "Eso ya está en la nota para la oficina. Envíela cuando quiera.",
     },
     "tour_already_sent": {
         "en": "Your tour request {ref} is already saved for the leasing team ({saved}). To add or change details, I "
@@ -698,14 +795,18 @@ CONFIRM: dict[str, dict[Lang, str]] = {
               "equipo elige una hora según sus preferencias.",
     },
     "staff_handoff": {
-        "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself.",
-        "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos.",
+        "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself. In this "
+              "prototype nobody is notified automatically.",
+        "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos. En "
+              "este prototipo no se avisa a nadie automáticamente.",
     },
 }
 
 NO_CONTACT_SUFFIX: dict[Lang, str] = {
-    "en": " This prototype doesn't collect a way to reach you, so please also contact the office directly.",
-    "es": " Este prototipo no recoge sus datos de contacto, así que por favor comuníquese también con la oficina.",
+    "en": " This prototype doesn't collect a way to reach you, and the office's real contact details aren't connected "
+          "here yet.",
+    "es": " Este prototipo no recoge sus datos de contacto, y los datos reales de la oficina todavía no están "
+          "conectados aquí.",
 }
 
 CONFIRM_LABEL: dict[str, dict[Lang, str]] = {

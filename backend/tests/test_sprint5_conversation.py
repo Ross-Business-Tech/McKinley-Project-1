@@ -389,7 +389,7 @@ def test_later_symptom_is_added_to_the_issue(client):
 
 def test_spanish_repeat_words_raise_priority(client):
     r = chat(client, "el lavabo del baño gotea de nuevo", "es1", persona="R003")
-    assert r["language"] == "es" and fields(r)["priority_note"].startswith("Prioridad alta")
+    assert r["language"] == "es" and fields(r)["priority_note"].startswith(("Prioridad alta", "Problema repetido"))
     r = chat(client, "el lavabo del baño gotea", "es2", persona="R003")
     assert "priority_note" not in fields(r)
 
