@@ -222,6 +222,13 @@ def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
     first = next((f.value for f in ctx.fields if f.name == "first_name"), None)
     if not any(not_account_holder(m) or states_not_account_holder(m, first) for m in said):
         return ctx
+    return _without_account(ctx)
+
+
+def _without_account(ctx: SafeContext) -> SafeContext:
+    """The resident context with every account field removed (the person said the account is not theirs)."""
+    if ctx.persona_kind != "resident":
+        return ctx
     return ctx.model_copy(update={
         "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
         "notes": [*ctx.notes, "Person said they are not the account holder: no account data is used."]})
@@ -252,7 +259,10 @@ def build_context(persona_id: str | None, message: str, wb: Workbook | None, *, 
     else gets the anonymous context: deny by default. Residents loaded from the database go through the same check."""
     if not may_access_persona(principal, persona_id):
         return anonymous_context(persona_id, message)
-    return _persona_context(persona_id, message, wb)
+    ctx = _persona_context(persona_id, message, wb)
+    if not principal.account_access and principal.kind != "staff":
+        return _without_account(ctx)  # sticky non-holder for this session (persisted, app/db.py)
+    return ctx
 
 
 def _persona_context(persona_id: str | None, message: str, wb: Workbook | None) -> SafeContext:

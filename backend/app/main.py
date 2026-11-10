@@ -8,6 +8,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import actions, chat, evals, gates
 from app.api.errors import http_error_response
+from app.api.staff_guard import request_is_local, staff_allowed
+from app.auth import demo_personas_enabled
 from app.chat_engine import prompt_for
 from app.config import get_settings
 from app.llm import LLMGateway
@@ -54,28 +56,37 @@ app.include_router(actions.router)
 
 
 @app.get("/api/health", response_model=HealthWithAuth)
-def health(state: AppState = Depends(get_state)) -> HealthWithAuth:
+def health(request: Request, state: AppState = Depends(get_state)) -> HealthWithAuth:
+    """Public: liveness, the default provider/model (as /api/models) and whether demo sign-in is offered. Staff
+    callers also get the data and database facts (counts, resident source, data error, prompt version)."""
     s = state.deps.settings
     gw = state.deps.llm
     ready, status = gw.provider_ready(gw.default_target.provider)
-    wb = state.deps.workbook
-    return HealthWithAuth(
+    public = HealthWithAuth(
         status="ok",
-        demo_personas_enabled=s.demo_personas_allowed,
+        demo_personas_enabled=demo_personas_enabled(s, request_is_local(request)),
         provider=gw.default_target.provider,
         model=gw.default_target.model,
         provider_ready=ready,
-        provider_status=status,
-        prompt_version=prompt_for("aware", s).version,
-        data_loaded=wb is not None,
-        data_error=state.data_error,
-        resident_count=len(wb.residents) if wb else 0,
-        interaction_count=wb.interaction_count if wb else 0,
+        provider_status="",
+        prompt_version="",
+        data_loaded=False,
+        data_error=None,
+        resident_count=0,
+        interaction_count=0,
         app_env=s.app_env,
-        database=state.store.dialect,
-        resident_source=wb.source if wb else None,
+        database="",
+        resident_source=None,
         is_mock=gw.default_target.provider == "mock",
     )
+    if not staff_allowed(request, state):
+        return public
+    wb = state.deps.workbook
+    return public.model_copy(update={
+        "provider_status": status, "prompt_version": prompt_for("aware", s).version, "data_loaded": wb is not None,
+        "data_error": state.data_error, "resident_count": len(wb.residents) if wb else 0,
+        "interaction_count": wb.interaction_count if wb else 0, "database": state.store.dialect,
+        "resident_source": wb.source if wb else None})
 
 
 @app.get("/api/models", response_model=list[ModelTarget])

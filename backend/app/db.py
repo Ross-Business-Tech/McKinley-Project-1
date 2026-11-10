@@ -86,6 +86,12 @@ CREATE TABLE IF NOT EXISTS session_bindings (
   persona_id TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS session_account_revocations (
+  session_id TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (session_id, persona_id)
+);
 """
 
 MAX_HISTORY_TURNS = 6
@@ -96,8 +102,19 @@ def now_iso() -> str:
 
 
 def session_hash(session_id: str) -> str:
-    """One-way short id shown to staff and stored on records; the raw session id is never exposed."""
+    """One-way short id SHOWN to staff (display only: 40 bits is not enough to scope data by)."""
     return hashlib.sha256(session_id.encode()).hexdigest()[:10]
+
+
+def session_key(session_id: str) -> str:
+    """Full 256-bit one-way key that SCOPES prototype records to a session (never shown; the raw id is not stored)."""
+    return hashlib.sha256(session_id.encode()).hexdigest()
+
+
+# Sprint 7 (migration 0004): records are scoped to a session by the full session_key, not the 10-hex display hash.
+# Rows written before it have no key: they are never matched by a session filter (fail closed); an authorised
+# persona still sees its own old records through the owner listing.
+_RECORD_KEY_INDEX = "CREATE INDEX IF NOT EXISTS ix_records_session_key ON prototype_records(session_key, kind, seq)"
 
 
 _TABLES = ("chat_turns", "gate_decisions", "action_drafts", "prototype_records", "eval_runs", "eval_results")
@@ -124,7 +141,10 @@ class Store:
             self._conn: Any = self._connect_pg()
             with self._lock:
                 self._conn.execute(_postgres_schema())
-                self._conn.execute(AUTH_SCHEMA + "ALTER TABLE session_bindings ENABLE ROW LEVEL SECURITY;\n")
+                self._conn.execute(AUTH_SCHEMA + "ALTER TABLE session_bindings ENABLE ROW LEVEL SECURITY;\n"
+                                   "ALTER TABLE session_account_revocations ENABLE ROW LEVEL SECURITY;\n")
+                self._conn.execute("ALTER TABLE prototype_records ADD COLUMN IF NOT EXISTS session_key TEXT")
+                self._conn.execute(_RECORD_KEY_INDEX)
         else:
             if path is None:
                 raise ValueError("Store needs a SQLite path or a database_url")
@@ -133,6 +153,11 @@ class Store:
             self._conn.row_factory = sqlite3.Row
             with self._lock:
                 self._conn.executescript(SCHEMA + AUTH_SCHEMA)
+                cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(prototype_records)").fetchall()}
+                if "session_key" not in cols:
+                    self._conn.execute("ALTER TABLE prototype_records ADD COLUMN session_key TEXT")
+                self._conn.execute(_RECORD_KEY_INDEX)
+                self._conn.commit()
 
     # ---- connection plumbing ----
     def _connect_pg(self) -> Any:
@@ -238,6 +263,19 @@ class Store:
             row = self._q("SELECT principal_kind, persona_id FROM session_bindings WHERE session_id=?",
                           (session_id,)).fetchone()
         return (row["principal_kind"], row["persona_id"]) if row else None
+
+    # ---- sticky "not the account holder" (authorization, see ScopedStore.without_account_access) ----
+    def revoke_account_access(self, session_id: str, persona_key: str) -> None:
+        """Record, once and for good, that this (session, persona) has no account access (idempotent)."""
+        with self._lock, self._tx():
+            self._q("INSERT INTO session_account_revocations(session_id, persona_id, created_at) VALUES (?,?,?) "
+                    "ON CONFLICT(session_id, persona_id) DO NOTHING", (session_id, persona_key or "none", now_iso()))
+
+    def account_access_revoked(self, session_id: str, persona_key: str) -> bool:
+        with self._lock:
+            row = self._q("SELECT 1 AS x FROM session_account_revocations WHERE session_id=? AND persona_id=?",
+                          (session_id, persona_key or "none")).fetchone()
+        return row is not None
 
     # ---- chat sessions ----
     def user_messages(self, session_id: str, persona_id: str) -> list[str]:
@@ -433,7 +471,7 @@ class Store:
     def add_record(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                    data: dict[str, Any]) -> dict[str, Any]:
         """Write a prototype record and return it with its generated id. Raises on any DB error."""
-        shash = session_hash(session_id)
+        shash, skey = session_hash(session_id), session_key(session_id)
         created = now_iso()
         with self._lock, self._tx():
             self._serialize_writes()
@@ -441,19 +479,19 @@ class Store:
                    + 1)
             rid = f"{prefix}-{1000 + seq}"
             self._q(
-                "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
-                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, shash, persona_id, created, json.dumps(data)))
+                "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
+                "data) VALUES (?,?,?,?,?,?,?,?)", (seq, rid, kind, shash, skey, persona_id, created, json.dumps(data)))
         return {**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
                 "created_at": created}
 
     def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                         data: dict[str, Any], once_key: str) -> dict[str, Any]:
         """Insert unless a record with the same (session, persona, once_key) exists; check and insert under one lock."""
-        shash = session_hash(session_id)
+        shash, skey = session_hash(session_id), session_key(session_id)
         with self._lock, self._tx():
             self._serialize_writes()
-            for r in self._q(f"SELECT * FROM prototype_records WHERE session_hash=? AND kind=? AND "
-                                        f"persona_id {self._same} ?", (shash, kind, persona_id)).fetchall():
+            for r in self._q(f"SELECT * FROM prototype_records WHERE session_key=? AND kind=? AND "
+                                        f"persona_id {self._same} ?", (skey, kind, persona_id)).fetchall():
                 d = json.loads(r["data"])
                 if d.get("once_key") == once_key:
                     return {**d, "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
@@ -462,8 +500,9 @@ class Store:
             rid, created = f"{prefix}-{1000 + seq}", now_iso()
             payload = {**data, "once_key": once_key}
             self._q(
-                "INSERT INTO prototype_records(seq, id, kind, session_hash, persona_id, created_at, data) "
-                "VALUES (?,?,?,?,?,?,?)", (seq, rid, kind, shash, persona_id, created, json.dumps(payload)))
+                "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
+                "data) VALUES (?,?,?,?,?,?,?,?)",
+                (seq, rid, kind, shash, skey, persona_id, created, json.dumps(payload)))
         return {**payload, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
                 "created_at": created}
 
@@ -477,8 +516,8 @@ class Store:
             sql += " AND kind=?"
             args.append(kind)
         if session_id is not None:
-            sql += " AND session_hash=?"
-            args.append(session_hash(session_id))
+            sql += " AND session_key=?"
+            args.append(session_key(session_id))
         sql += " ORDER BY seq DESC LIMIT ?"
         args.append(limit)
         with self._lock:
@@ -586,14 +625,22 @@ class ScopedStore:
         self.persona_key = persona_key or "none"
         self.persona_id = None if self.persona_key == "none" else self.persona_key
         self.principal_kind = principal_kind
-        self.account_access = account_access
+        # Sticky: a (session, persona) that ever said it is not the account holder stays without account access,
+        # whichever code path builds the scope (chat turn, confirm, cancel) and whatever the later wording.
+        revoked = getattr(store, "account_access_revoked", None)
+        self.account_access = account_access and not (revoked is not None and revoked(session_id, self.persona_key))
 
     @property
     def cross_session(self) -> bool:
         return self.account_access and self.persona_id is not None and self.principal_kind in _CROSS_SESSION_KINDS
 
     def without_account_access(self) -> "ScopedStore":
-        """The same scope with no account data (non-holder for the rest of the session)."""
+        """The same scope with no account data, for the REST OF THE SESSION: the revocation is persisted for
+        (session, persona), so every later ScopedStore for it starts without account access too (session-sticky at
+        the data layer, not dependent on re-detecting the wording)."""
+        revoke = getattr(self._store, "revoke_account_access", None)
+        if revoke is not None:
+            revoke(self.session_id, self.persona_key)
         return ScopedStore(self._store, self.session_id, self.persona_key, self.principal_kind, account_access=False)
 
     def __getattr__(self, name: str) -> Any:

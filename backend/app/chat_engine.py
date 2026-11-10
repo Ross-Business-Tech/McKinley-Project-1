@@ -266,6 +266,8 @@ def run_turn(
     if deps.store is not None and not isinstance(deps.store, ScopedStore):
         deps = replace(deps, store=ScopedStore(deps.store, session_id, hist_key,  # type: ignore[arg-type]
                                                principal_kind=principal.kind))
+    if isinstance(deps.store, ScopedStore) and not deps.store.account_access:
+        principal = replace(principal, account_access=False)  # sticky non-holder, persisted (app/db.py)
     full_ctx = build_context(persona_id, msg, deps.workbook, principal=principal)
     said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
                    if (deps.store and use_history) else [])

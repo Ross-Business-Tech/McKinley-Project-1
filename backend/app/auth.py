@@ -12,11 +12,20 @@ Rules (see docs/security/AUTHORIZATION_BOUNDARIES.md):
 - authenticated_resident is defined for the future and never produced (no real auth exists).
 - staff only via the existing staff guard (loopback / STAFF_API_TOKEN), see app/api/staff_guard.py.
 - data access (context, resident record, records, history, drafts) is allowed only by `may_access_persona`.
+- fail closed (Sprint 7): demo personas are honoured only for requests that reach the backend directly from this
+  machine (no proxy/tunnel headers, local Host), unless DEMO_PERSONAS_ENABLED=true is set explicitly on a local
+  deployment. A shared backend that forgot APP_ENV=hosted therefore still serves no persona data.
+- sessions: on a hosted backend, or for any non-local request, a session id the server has never bound is replaced
+  by a fresh server-issued id (the website adopts it). A client cannot choose, guess-in-advance or squat a session.
+- "not the account holder" is sticky at the DATA layer: the store persists the revocation for (session, persona)
+  (app/db.py), so later turns and confirm/cancel get no account data even if the wording is not re-detected.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+import uuid
+from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from app.config import Settings
@@ -32,6 +41,9 @@ class Principal:
     persona_id: str | None = None
     can_read_resident_data: bool = False  # a resident record (fixture / workbook / database) may be read
     is_authenticated: bool = False  # True only for authenticated_resident, which is never produced
+    # False once this (session, persona) said it is not the account holder (persisted, see app/db.py): the persona
+    # context is then built with no account data. Never True again for that session.
+    account_access: bool = True
 
     @property
     def key(self) -> str:
@@ -50,8 +62,40 @@ class AuthError(Exception):
         return {"code": self.code, "message": self.message, "retryable": False}
 
 
-def demo_personas_enabled(settings: Settings) -> bool:
-    return settings.demo_personas_allowed
+def demo_personas_enabled(settings: Settings, local_request: bool = True) -> bool:
+    """Demo personas for THIS request. Off on APP_ENV=hosted (always), off when switched off, and off for a request
+    that did not come straight from this machine unless DEMO_PERSONAS_ENABLED=true was set on purpose (fail closed:
+    a shared deployment that forgot APP_ENV=hosted is reached through a proxy, so it serves no persona data)."""
+    if not settings.demo_personas_allowed:
+        return False
+    return local_request or settings.demo_personas_enabled is True
+
+
+def server_issues_sessions(settings: Settings, local_request: bool) -> bool:
+    """Whether a client-supplied session id must already be bound (server-issued) to be continued."""
+    return settings.app_env == "hosted" or not local_request
+
+
+def new_session_id() -> str:
+    """122 random bits (uuid4), 32 lowercase hex characters. The session id is the bearer of a conversation."""
+    return uuid.uuid4().hex
+
+
+_ISSUED = re.compile(r"[0-9a-f]{32}")
+
+
+def looks_server_issued(session_id: str | None) -> bool:
+    """Shape of a server-issued id. A shorter / other-shaped id is never continued where sessions are server-issued
+    (hosted, remote), even if some older row bound it."""
+    return bool(session_id) and _ISSUED.fullmatch(session_id) is not None
+
+
+def continues_session(store: Any, settings: Settings, local_request: bool, session_id: str | None) -> bool:
+    """Whether a client-sent session id may be continued. Local direct requests: any id (developer machine).
+    Hosted / remote: only an id the server issued and already bound (a guessed, chosen or squatted id is not)."""
+    if not server_issues_sessions(settings, local_request):
+        return True
+    return looks_server_issued(session_id) and store is not None and store.session_binding(session_id) is not None
 
 
 def anonymous(session_id: str | None, source: str = "default") -> Principal:
@@ -72,7 +116,7 @@ def _persona_kind(persona_id: str, workbook: Any) -> str | None:
 
 
 def derive_principal(settings: Settings, persona_id: str | None, session_id: str | None, workbook: Any, *,
-                     strict: bool = True) -> Principal:
+                     strict: bool = True, local_request: bool = True) -> Principal:
     """The customer principal for one request. `persona_id` is the demo selector value the browser sent; it is
     honoured only when the deployment allows demo personas and the id is a known demo persona.
 
@@ -81,7 +125,7 @@ def derive_principal(settings: Settings, persona_id: str | None, session_id: str
     pid = (persona_id or "").strip() or None
     if pid is None:
         return anonymous(session_id)
-    if not demo_personas_enabled(settings):
+    if not demo_personas_enabled(settings, local_request):
         if strict:
             raise AuthError("DEMO_PERSONAS_DISABLED", "Demo accounts are not available on this site. You can still "
                                                       "ask general questions or leave a note for the office.")
@@ -120,11 +164,25 @@ def session_bound_to(store: Any, principal: Principal) -> bool:
 
 def check_session_binding(store: Any, principal: Principal) -> None:
     """For confirm/cancel: refuse a session that belongs to someone else (AuthError 403 SESSION_PERSONA_MISMATCH).
-    Chat turns never get a 403 for this (an emergency message must always be answered): run_turn starts a new
-    conversation with a fresh server-issued session id instead."""
-    if not session_bound_to(store, principal):
+    Read-only: confirm/cancel never CREATE a binding (only a chat turn does), so they cannot be used to squat a
+    session id. An unbound session simply has no draft. Chat turns never get a 403 for this (an emergency message
+    must always be answered): run_turn starts a new conversation with a fresh server-issued session id instead."""
+    if store is None or not principal.session_id or principal.kind == "staff":
+        return
+    bound = store.session_binding(principal.session_id)
+    if bound is not None and bound != (principal.kind, principal.key):
         raise AuthError("SESSION_PERSONA_MISMATCH", "This conversation belongs to a different sign-in. Please start "
                                                     "a new conversation.")
+
+
+def with_session_state(store: Any, principal: Principal) -> Principal:
+    """The principal with the persisted per-session facts applied (today: a revoked account access)."""
+    if store is None or not principal.session_id or principal.kind == "staff":
+        return principal
+    revoked = getattr(store, "account_access_revoked", None)
+    if revoked is not None and revoked(principal.session_id, principal.key):
+        return replace(principal, account_access=False)
+    return principal
 
 
 # Offline / staff tooling (eval runs behind require_staff, gate evals, journey evals, the demo exporter, tests): a

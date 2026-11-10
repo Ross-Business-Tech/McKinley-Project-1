@@ -124,3 +124,43 @@ Not protected (known gaps):
 8. Owner-scoped records mean anyone who picks a demo persona on a demo-enabled (local) deployment sees that
    persona's prototype records from all sessions. Same reason as gap 1: personas are synthetic and anyone can pick
    any of them there; hosted has no personas.
+
+## 6. Sprint 7 changes (authorization is a backend property)
+
+Tests: `backend/tests/test_sprint7_auth.py` (targeted), `backend/tests/test_sprint7_auth_properties.py` (generated
+principals x sessions x endpoints x references; Hypothesis variant when installed).
+
+- **Customer vs staff view of `/api/chat`** (`app/api/views.py`). Only a staff caller (`staff_allowed`: the token,
+  or loopback on a *local* backend without a token) gets the full `ChatResponse`. Everyone else gets
+  `customer_view`: an allowlist of what the customer website reads (reply, safety/care notices, action card, own
+  status items and records, suggestions, language, session id, provider/model label). Risk layers, gate, pipeline,
+  context-field provenance, policy and output checks, handoff reason, workflow internals, usage, prompt version are
+  removed. Deny by default: a new field is hidden until added to `CUSTOMER_FIELDS`. Same JSON shape, so the website
+  needs no change. `target`, `gate_provider` and any mode other than `aware` are staff-only (403 `STAFF_ONLY`).
+- **Public `/api/health`** shows status, provider/model, demo sign-in availability and `app_env` only; counts,
+  resident source, data error, database kind and prompt version are staff-only.
+- **Fail closed on misconfiguration.** Demo personas are honoured only for requests made straight from this machine
+  (`staff_guard.request_is_local`: no proxy/tunnel header, local Host, loopback peer) unless
+  `DEMO_PERSONAS_ENABLED=true` is set on a local backend. A shared backend that forgot `APP_ENV=hosted` therefore
+  serves no persona data (personas list empty, persona requests 403). Hosted never allows them, whatever the flags,
+  and a hosted backend never treats loopback as staff.
+- **Server-issued sessions on hosted / remote requests.** A session id is continued only if it has the server's
+  shape (32 hex, uuid4) and the server already bound it; anything else (chosen, guessed, legacy) starts a new
+  conversation under a fresh id that the website adopts. Confirm/cancel never create a binding and find nothing for
+  an unissued id. On a local direct request any id is still accepted (developer machine).
+- **Session-scoped records use the full sha256 key** (`prototype_records.session_key`, migration 0004), not the
+  40-bit display hash. Rows written before have no key and are never matched by a session filter.
+- **"Not the account holder" is sticky at the data layer.** `ScopedStore.without_account_access()` persists a
+  revocation for (session, persona) (`session_account_revocations`, migration 0004). Every later `ScopedStore` for
+  it starts without account access, and the API marks the principal `account_access=False`, so `build_context`
+  returns no account fields, even if the wording is not detected again.
+
+Endpoint x principal (as implemented):
+
+| Endpoint | Anonymous (any) | Demo persona (local direct) | Persona id, remote / hosted | Staff (token / local loopback) |
+|---|---|---|---|---|
+| `GET /api/personas` | list (local direct) / `[]` | list | `[]` | list (local) |
+| `GET /api/health` | public subset | public subset (full if loopback = staff) | public subset | full |
+| `POST /api/chat` | customer view; own session records only; hosted/remote: server-issued session | customer view (full on loopback without token); own context, own records any session | 403 `DEMO_PERSONAS_DISABLED` | full diagnostics; overrides allowed |
+| `POST /api/actions/confirm`, `cancel` | own session draft; hosted/remote: issued id only | own draft; 403 on another binding | 403 `DEMO_PERSONAS_DISABLED` | as customer (no staff path) |
+| `/api/context/preview`, `/api/prototype/records`, `/api/staff/*`, `/api/evals/*`, `/api/gates/*` (not config) | 403 | 403 unless loopback on local without token | 403 | allowed |
