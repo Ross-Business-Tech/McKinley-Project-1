@@ -6,6 +6,8 @@ import { type UIStrings, actionTone } from "@/lib/customer";
 import { cn } from "@/lib/utils";
 import type { ProposedAction } from "@/lib/types";
 
+import { ListChecks } from "lucide-react";
+
 import { StatusPill, type StatusTone } from "./StatusPill";
 
 /** current = the card to act on (or a saved record); declined = the person chose not to send it. */
@@ -51,15 +53,15 @@ export function ActionCard({
       role="group"
       aria-labelledby={headingId}
       className={cn(
-        "mt-3 rounded-lg border bg-mk-surface px-4 py-3 sm:px-5",
-        urgent ? "border-mk-danger/60" : declined ? "border-mk-line" : "border-mk-line-strong/60",
+        "mt-3 rounded-xl border bg-mk-surface px-4 py-3.5 shadow-[0_1px_2px_rgb(28_37_48/0.06)] sm:px-5",
+        urgent ? "border-mk-danger/60" : declined ? "border-mk-line shadow-none" : submitted ? "border-mk-done/40" : "border-mk-line-strong/60",
       )}
       data-testid="action-card"
       data-stage={action.stage}
       data-state={state}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <h3 id={headingId} className={cn("text-base font-semibold", declined && "text-mk-muted")}>
+        <h3 id={headingId} className={cn("font-heading text-[1.05rem] font-semibold", declined && "text-mk-muted")}>
           {action.title}
         </h3>
         <StatusPill tone={tone}>{stageText}</StatusPill>
@@ -74,7 +76,7 @@ export function ActionCard({
       {open && shownFields.length > 0 && <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />}
       {(submitted || declined) && shownFields.length > 0 && (
         <details className="mt-1">
-          <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center text-mk-brand underline underline-offset-2">
+          <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center text-mk-brand-hover underline underline-offset-2">
             {submitted ? t.whatWasSent : t.whatItSaid}
           </summary>
           <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />
@@ -96,7 +98,7 @@ export function ActionCard({
               type="button"
               onClick={onConfirm}
               disabled={busy}
-              className="mk-focus inline-flex min-h-11 items-center justify-center rounded-md bg-mk-brand px-4 text-base font-semibold text-white hover:bg-mk-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="mk-focus inline-flex min-h-12 items-center justify-center rounded-lg bg-mk-brand px-5 font-heading text-[1.05rem] font-semibold text-white hover:bg-mk-brand-hover active:bg-mk-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? t.sending : action.confirm_label}
             </button>
@@ -106,7 +108,7 @@ export function ActionCard({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="mk-focus inline-flex min-h-11 items-center justify-center rounded-md border border-mk-line-strong bg-mk-surface px-4 text-base font-medium hover:bg-mk-paper disabled:opacity-60"
+              className="mk-focus inline-flex min-h-12 items-center justify-center rounded-lg border border-mk-line-strong bg-mk-surface px-5 text-base font-medium hover:bg-mk-paper disabled:opacity-60"
             >
               {t.dontSend}
             </button>
@@ -151,9 +153,10 @@ function sentenceCase(v: string): string {
 /** One-line progress note shown instead of a full card while details are still being collected. */
 export function ProgressHint({ action, t }: { action: ProposedAction; t: UIStrings }) {
   return (
-    <p className="mt-2 flex max-w-full flex-wrap items-start gap-1.5 text-sm text-mk-muted" data-testid="progress-hint">
-      <StatusPill tone="draft">{action.title}</StatusPill>
-      <span className="pt-0.5">
+    <p className="mt-2 flex max-w-full items-start gap-2 text-sm text-mk-muted" data-testid="progress-hint">
+      <ListChecks aria-hidden className="mt-0.5 size-4 shrink-0 text-mk-brand" />
+      <span>
+        <span className="font-semibold text-mk-ink">{action.title}.</span>{" "}
         {action.missing.length ? `${t.stillNeeded} ${action.missing.join(", ")}` : t.stage.collecting}
       </span>
     </p>

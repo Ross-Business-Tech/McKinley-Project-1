@@ -54,8 +54,8 @@ const OUTCOME_TEXT: Record<keyof Outcomes, string> = {
   failure: "Failure",
 };
 const OUTCOME_TONE: Record<keyof Outcomes, string> = {
-  success: "bg-mk-brand-soft text-mk-brand",
-  simulated_success: "bg-mk-brand-soft text-mk-brand",
+  success: "bg-mk-done-soft text-mk-done",
+  simulated_success: "bg-mk-brand-soft text-mk-brand-strong",
   blocked: "bg-mk-draft-soft text-mk-draft",
   partial: "bg-mk-attention-soft text-mk-attention",
   failure: "bg-mk-danger-soft text-mk-danger",

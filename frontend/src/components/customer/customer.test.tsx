@@ -156,7 +156,9 @@ describe("CustomerApp", () => {
     render(<CustomerApp />);
     await screen.findByLabelText("Demo sign-in");
     await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
-    expect(await screen.findByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
   });
 
   it("labels live model replies as AI-written", async () => {
@@ -165,7 +167,9 @@ describe("CustomerApp", () => {
     render(<CustomerApp />);
     await screen.findByLabelText("Demo sign-in");
     await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
-    expect(await screen.findByText(/written by an AI model/)).toBeInTheDocument();
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model/)).toBeInTheDocument();
   });
 
   it("always offers a way to talk to a person", async () => {

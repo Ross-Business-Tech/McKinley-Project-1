@@ -57,7 +57,7 @@ export type StateTone = "normal" | "pending" | "completed" | "unavailable" | "es
 const TONE_CLASS: Record<StateTone, string> = {
   normal: "border-mk-line bg-mk-surface text-mk-ink",
   pending: "border-mk-line-strong bg-mk-draft-soft text-mk-draft",
-  completed: "border-mk-brand/40 bg-mk-brand-soft text-mk-brand",
+  completed: "border-mk-done/40 bg-mk-done-soft text-mk-done",
   unavailable: "border-dashed border-mk-line-strong bg-mk-surface text-mk-muted",
   escalation: "border-mk-attention/40 bg-mk-attention-soft text-mk-attention",
   emergency: "border-mk-danger bg-mk-danger-soft text-mk-danger",
@@ -120,18 +120,19 @@ export function StaffConsole() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-mk-line bg-mk-surface">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-end justify-between gap-3 px-4 py-3 md:px-6">
-          <div>
-            <p className="text-xl font-bold tracking-tight text-mk-brand">McKinley</p>
-            <h1 className="text-base font-semibold">Staff and demo console</h1>
-          </div>
-          <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-mk-line-strong px-4">
+      <header className="mk-band bg-mk-brand-strong text-white">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 md:px-6">
+          <h1 className="flex min-w-0 flex-wrap items-center gap-x-3 leading-tight">
+            <span className="font-heading text-[1.4rem] font-semibold tracking-[-0.01em]">McKinley</span>
+            <span className="rounded-md bg-white px-2 py-0.5 font-heading text-sm font-semibold text-mk-brand-strong">Staff</span>
+            <span className="font-heading text-base font-medium">Demo console</span>
+          </h1>
+          <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
             Open the customer view
           </Link>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-4 py-4 md:px-6">
+      <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-[max(1rem,env(safe-area-inset-left))] py-4 md:px-6">
         <p className="text-mk-muted">What the assistant decided behind each reply, what it saved, and what is still simulated. Made-up data only.</p>
         {error && (
           <p role="alert" className="rounded-md border border-mk-danger bg-mk-danger-soft p-3 text-mk-danger">
@@ -149,14 +150,24 @@ export function StaffConsole() {
           </p>
         )}
         {state?.live && state.health && (
-          <p role="note" data-testid="backend-status" className="rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
-            Backend: {state.health.is_mock || state.health.provider === "mock"
-              ? "mock responder (fixed templates, not an AI model)"
-              : `${state.health.provider} · ${state.health.model} (live AI model${state.health.provider_ready ? "" : ", NOT configured: missing key"})`}
-            {" · "}database {state.health.database ?? "sqlite"}
-            {" · "}residents from {state.health.resident_source ?? "nowhere (none loaded)"}
-            {state.health.app_env === "hosted" ? " · hosted deployment" : " · local"}
-          </p>
+          <div role="note" data-testid="backend-status" className="rounded-lg border border-mk-line bg-mk-surface px-4 py-3">
+            <p className="sr-only">Backend status</p>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm lg:grid-cols-4">
+              {[
+                ["Replies", state.health.is_mock || state.health.provider === "mock"
+                  ? "mock responder (fixed templates, not an AI model)"
+                  : `${state.health.provider} · ${state.health.model} (live AI model${state.health.provider_ready ? "" : ", NOT configured: missing key"})`],
+                ["Database", state.health.database ?? "sqlite"],
+                ["Residents from", state.health.resident_source ?? "nowhere (none loaded)"],
+                ["Environment", state.health.app_env === "hosted" ? "hosted deployment" : "local"],
+              ].map(([k, v]) => (
+                <div key={k} className="min-w-0">
+                  <dt className="font-medium text-mk-muted">{k}</dt>
+                  <dd className="break-words text-mk-ink">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         )}
         {state?.live && !staffTools && (
           <p role="note" data-testid="staff-locked" className="flex gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
@@ -170,9 +181,9 @@ export function StaffConsole() {
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
           <Tabs defaultValue={staffTools ? "records" : "inspector"}>
-            {/* Phones: tabs wrap (nothing hidden off-screen); wider screens: one row. Selected = 2px underline. */}
-            <div className="-mx-4 border-b border-mk-line px-4 py-1 sm:overflow-x-auto md:mx-0 md:px-1">
-              <TabsList variant="line" className="h-auto! w-full flex-wrap justify-start gap-0 p-0 sm:w-max sm:flex-nowrap">
+            {/* One row on every width; on phones it scrolls sideways (the next tab peeks in). Selected = 3px blue bar. */}
+            <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] md:mx-0 md:px-1">
+              <TabsList variant="line" className="h-auto! w-max flex-nowrap justify-start gap-0 p-0">
                 {[
                   ["records", "Saved requests"],
                   ["live", "Live conversations"],
@@ -185,7 +196,7 @@ export function StaffConsole() {
                   <TabsTrigger
                     key={v}
                     value={v}
-                    className="mk-focus min-h-11 flex-none px-3 text-base text-mk-muted after:bg-mk-brand focus-visible:border-transparent focus-visible:ring-0 data-active:font-semibold data-active:text-mk-ink"
+                    className="mk-focus min-h-12 flex-none px-3 font-heading text-base font-medium text-mk-muted after:h-[3px]! after:bg-mk-brand hover:text-mk-ink focus-visible:border-transparent focus-visible:ring-0 data-active:font-semibold data-active:text-mk-ink"
                   >
                     {label}
                   </TabsTrigger>
@@ -411,7 +422,7 @@ export function TurnView({ n, message, r }: { n: number; message: string; r: Cha
         </Fact>
       </dl>
       <details className="mt-3">
-        <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center rounded text-mk-brand underline underline-offset-2">Full pipeline trace</summary>
+        <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center rounded text-mk-brand-hover underline underline-offset-2">Full pipeline trace</summary>
         <div className="mt-2">
           <Diagnostics r={r} />
         </div>

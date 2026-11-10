@@ -250,7 +250,7 @@ describe("Staff console on a hosted backend", () => {
     render(<StaffConsole />);
     expect(await screen.findByTestId("staff-locked")).toBeInTheDocument();
     expect(screen.getByTestId("backend-status")).toHaveTextContent(/gemini · gemini-3.6-flash \(live AI model\)/);
-    expect(screen.getByTestId("backend-status")).toHaveTextContent(/database postgres/);
+    expect(screen.getByTestId("backend-status")).toHaveTextContent(/Database\s*postgres/);
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/prototype/records"))).toBe(false);
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/staff/conversations"))).toBe(false);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, RotateCcw, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, RotateCcw, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -31,7 +31,7 @@ import { StatusPill, statusTone } from "./StatusPill";
 
 type Boot =
   | { mode: "loading" }
-  | { mode: "live"; identities: Identity[] }
+  | { mode: "live"; identities: Identity[]; mock: boolean | null }
   | { mode: "preview"; identities: Identity[]; journeys: Journey[] }
   | { mode: "error"; message: string };
 
@@ -62,7 +62,8 @@ const mid = () => `m${++counter}`;
 async function boot(): Promise<Boot> {
   try {
     const personas = await api.personas();
-    return { mode: "live", identities: toIdentities(personas) };
+    const health = await api.health().catch(() => null); // only for the "About this demo" line
+    return { mode: "live", identities: toIdentities(personas), mock: health ? health.is_mock ?? health.provider === "mock" : null };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE") {
       return { mode: "error", message: e instanceof ApiError ? e.message : "The assistant could not start." };
@@ -97,6 +98,8 @@ export function CustomerApp() {
   const [journey, setJourney] = useState<Journey | null>(null);
   const [step, setStep] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const aboutBtnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!announcement) return;
     const id = window.setTimeout(() => setAnnouncement(""), 6000); // read once, then gone from the page
@@ -109,6 +112,7 @@ export function CustomerApp() {
   const statusId = useId();
   const bannerId = useId();
   const whoHintId = useId();
+  const aboutId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -144,11 +148,50 @@ export function CustomerApp() {
     setDraft("");
   }, []);
 
-  // Keep the newest message (and its buttons) fully above the sticky composer: scroll the page to its end.
+  // Scrolling after each message. First screen: stay at the top (brand, sign-in, the "I'm an AI" greeting).
+  // A new assistant message taller than the space above the composer (a long reply, a card to check before
+  // sending) is shown from its first line; anything else scrolls to the end so it sits just above the composer.
+  const prevCount = useRef(0);
   useEffect(() => {
+    const n = messages.length;
+    const grew = n > prevCount.current;
+    prevCount.current = n;
+    if (n <= 1 && !busy) return;
     const el = document.scrollingElement ?? document.documentElement;
-    requestAnimationFrame(() => el.scrollTo?.({ top: el.scrollHeight }));
+    requestAnimationFrame(() => {
+      const nodes = document.querySelectorAll<HTMLElement>("[data-msg]");
+      const last = nodes[nodes.length - 1];
+      const room = (window.visualViewport?.height ?? window.innerHeight) - (composerRef.current?.offsetHeight ?? 0) - 24;
+      if (!busy && grew && last?.dataset.msg === "assistant" && last.offsetHeight > room && last.scrollIntoView) {
+        last.scrollIntoView({ block: "start" });
+      } else {
+        el.scrollTo?.({ top: el.scrollHeight });
+      }
+    });
   }, [messages, busy]);
+
+  // iOS Safari (and any browser that only shrinks the visual viewport) covers the bottom of the page with the
+  // keyboard: lift the sticky composer by the keyboard's height, and mark short screens so it shows only the input.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const apply = () => {
+      const zoomed = Math.abs(vv.scale - 1) > 0.01; // pinch-zoom also shrinks the visual viewport: not a keyboard
+      const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--mk-kb", `${kb}px`);
+      root.toggleAttribute("data-mk-short", vv.height < 480);
+    };
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    apply();
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+      root.style.removeProperty("--mk-kb");
+      root.removeAttribute("data-mk-short");
+    };
+  }, []);
 
   // Focused controls must never hide under the sticky composer (WCAG 2.4.11): pad scrolling by its real height.
   useEffect(() => {
@@ -322,8 +365,8 @@ export function CustomerApp() {
     if (state.mode !== "live" && state.mode !== "preview") return;
     const next = state.identities.find((i) => i.id === id) ?? GUEST;
     if (next.id === identity.id) return;
-    const talked = messages.some((m) => m.role === "user");
-    if (talked && !window.confirm(t.signInConfirm)) return; // the select is controlled, so it snaps back
+    const hasTalked = messages.some((m) => m.role === "user");
+    if (hasTalked && !window.confirm(t.signInConfirm)) return; // the select is controlled, so it snaps back
     reset(next);
   }
 
@@ -359,41 +402,97 @@ export function CustomerApp() {
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const onFileLabel = identity.kind === "resident" ? undefined : t.fromProfile;
 
+  const talked = messages.some((m) => m.role === "user");
+  // Plain reply-source line for "About this demo": from the last reply if there is one, else from the backend.
+  const replySource = !lastResponse
+    ? state.mode === "live" && state.mock !== null ? (state.mock ? t.replyMock : t.replyAi) : preview ? t.replyMock : ""
+    : lastResponse.is_mock ? t.replyMock : lastResponse.reply_source === "model" ? t.replyAi : "";
+
   return (
     <Frame
-      identityControl={
-        <div className="flex min-w-0 flex-col gap-0.5 sm:items-end">
-          <label htmlFor={`${inputId}-who`} className="text-sm text-mk-muted">
-            Demo sign-in
-          </label>
-          <select
-            id={`${inputId}-who`}
-            value={identity.id}
-            aria-describedby={whoHintId}
-            onChange={(e) => changeIdentity(e.target.value)}
-            className="mk-focus h-11 w-full min-w-0 rounded-md border border-mk-line-strong bg-mk-surface px-3 text-base sm:w-72"
-          >
-            {groups.map((g) => {
-              const opts = state.identities.filter((i) => i.group === g);
-              return opts.length ? (
-                <optgroup key={g} label={g}>
-                  {opts.map((i) => (
-                    <option key={i.id || "guest"} value={i.id}>
-                      {i.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null;
-            })}
-          </select>
-          <span id={whoHintId} className="text-xs text-mk-muted" lang={lang}>
-            {t.signInHint}
-          </span>
+      demoStrip={
+        <div className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-0">
+            <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
+              {t.demoSignIn}
+            </label>
+            <select
+              id={`${inputId}-who`}
+              value={identity.id}
+              aria-describedby={whoHintId}
+              onChange={(e) => changeIdentity(e.target.value)}
+              className="mk-focus h-11 min-w-0 flex-1 rounded-md border border-mk-line-strong bg-mk-surface px-2.5 text-base sm:max-w-80"
+            >
+              {groups.map((g) => {
+                const opts = state.identities.filter((i) => i.group === g);
+                return opts.length ? (
+                  <optgroup key={g} label={g}>
+                    {opts.map((i) => (
+                      <option key={i.id || "guest"} value={i.id}>
+                        {i.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null;
+              })}
+            </select>
+            <span id={whoHintId} className="sr-only" lang={lang}>
+              {t.signInHint}
+            </span>
+            <button
+              ref={aboutBtnRef}
+              type="button"
+              aria-expanded={aboutOpen}
+              aria-controls={aboutId}
+              onClick={() => setAboutOpen((v) => !v)}
+              className="mk-focus ml-auto inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md text-mk-brand-hover hover:bg-mk-brand-soft aria-expanded:bg-mk-brand-soft sm:px-3"
+            >
+              <Info aria-hidden className="size-5" />
+              <span className="sr-only sm:not-sr-only sm:font-medium" lang={lang}>{t.demoTitle}</span>
+            </button>
+          </div>
+          {aboutOpen && (
+            <section
+              id={aboutId}
+              aria-label={t.demoTitle}
+              lang={lang}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setAboutOpen(false);
+                  aboutBtnRef.current?.focus();
+                }
+              }}
+              className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pb-3 sm:px-0"
+              data-testid="about-demo"
+            >
+              <div className="rounded-lg bg-mk-paper p-4">
+                <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
+                <p className="mt-1 text-sm text-mk-muted">
+                  {t.prototype} {replySource} {t.signInHint}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4">
+                  <Link href="/staff" prefetch={false} className="mk-focus inline-flex min-h-11 items-center font-medium text-mk-brand-hover underline underline-offset-2">
+                    {t.staffLink}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAboutOpen(false);
+                      aboutBtnRef.current?.focus();
+                    }}
+                    className="mk-focus inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-mk-muted hover:text-mk-ink"
+                  >
+                    <X aria-hidden className="size-4" /> {t.demoClose}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       }
     >
       {preview && (
-        <p id={bannerId} className="mx-4 mt-3 flex max-w-2xl gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-2.5 text-sm text-mk-muted sm:mx-auto sm:w-full">
+        <p id={bannerId} className="mx-4 mt-3 flex max-w-2xl gap-2 rounded-lg border border-mk-line bg-mk-surface px-4 py-2.5 text-sm text-mk-muted sm:mx-auto sm:w-full">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
             {LIVE_BACKEND_CONFIGURED ? (
@@ -414,14 +513,14 @@ export function CustomerApp() {
         </p>
       )}
 
-      <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-4 py-4 sm:px-0">
+      <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-[max(1rem,env(safe-area-inset-left))] py-5 sm:px-0">
         <h2 id={`${inputId}-conv`} className="sr-only" lang={lang}>
           {t.conversation}
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-5">
           {messages.map((m, i) => (
+            <div key={m.id} data-msg={m.role} className="scroll-mt-3 sm:scroll-mt-36">
             <Message
-              key={m.id}
               msg={m}
               t={UI[m.lang ?? lang]}
               speaker={m.role === "assistant" && (i === 0 || messages[i - 1].role === "user")}
@@ -435,17 +534,18 @@ export function CustomerApp() {
               onCancel={cancelAction}
               onRetry={send}
             />
+            </div>
           ))}
           {tasks.length > 0 && (
-            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-8">
-              <ul className="overflow-hidden rounded-lg border border-mk-line bg-mk-surface">
+            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-10 sm:max-w-md">
+              <ul className="overflow-hidden rounded-xl border border-mk-line bg-mk-surface shadow-[0_1px_2px_rgb(28_37_48/0.06)]">
                 {tasks.map((c) => (
                   <li key={c.label} className="border-b border-mk-line last:border-b-0">
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => send(c.send)}
-                      className="mk-focus flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-base text-mk-ink hover:bg-mk-brand-soft disabled:opacity-60"
+                      className="mk-focus flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-base text-mk-ink hover:bg-mk-brand-soft active:bg-mk-brand-soft disabled:opacity-60"
                     >
                       <span>{c.label}</span>
                       <ChevronRight aria-hidden className="size-5 shrink-0 text-mk-brand" />
@@ -456,7 +556,7 @@ export function CustomerApp() {
             </nav>
           )}
           {busy && (
-            <p className="pl-8 text-mk-muted" aria-hidden>
+            <p className="pl-10 text-mk-muted" aria-hidden>
               <span className="inline-flex gap-1 align-middle">
                 <span className="size-1.5 animate-pulse rounded-full bg-mk-muted" />
                 <span className="size-1.5 animate-pulse rounded-full bg-mk-muted [animation-delay:150ms]" />
@@ -475,15 +575,16 @@ export function CustomerApp() {
       {/* Sticky composer; on short screens (landscape phone, high zoom) it scrolls with the page instead. */}
       <div
         ref={composerRef}
-        className="sticky bottom-0 border-t border-mk-line bg-mk-paper/95 backdrop-blur supports-[backdrop-filter]:bg-mk-paper/85 [@media(max-height:480px)]:static"
+        style={{ bottom: "var(--mk-kb, 0px)" }}
+        className="sticky bottom-0 z-10 border-t border-mk-line bg-mk-paper/95 backdrop-blur supports-[backdrop-filter]:bg-mk-paper/90"
       >
-        <div className="mx-auto w-full max-w-2xl px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-0">
+        <div className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-0 [@media(max-height:480px)]:pt-1.5 [html[data-mk-short]_&]:pt-1.5">
           {chips.length > 0 && (
             <div
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="mb-2 flex flex-wrap gap-2 py-1.5 sm:px-1"
+              className="mb-2 flex flex-wrap gap-2 py-1 sm:px-1 [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
             >
               {chips.map((c) => (
                 <button
@@ -491,21 +592,12 @@ export function CustomerApp() {
                   type="button"
                   disabled={busy}
                   onClick={() => send(c.send)}
-                  className="mk-focus min-h-11 rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base text-mk-brand hover:bg-mk-brand-soft disabled:opacity-60"
+                  className="mk-focus min-h-11 shrink-0 rounded-full border border-mk-brand bg-mk-surface px-4 py-2 text-left text-base font-medium text-mk-brand-hover hover:bg-mk-brand-soft active:bg-mk-brand-soft disabled:opacity-60"
                 >
                   {c.label}
                 </button>
               ))}
             </div>
-          )}
-          {journeyDone && (
-            <button
-              type="button"
-              onClick={() => reset(identity)}
-              className="mk-focus mb-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-line-strong bg-mk-surface px-4"
-            >
-              <RotateCcw aria-hidden className="size-4" /> Start another conversation
-            </button>
           )}
           <form
             onSubmit={(e) => {
@@ -526,10 +618,6 @@ export function CustomerApp() {
               lang={lang}
               aria-describedby={preview ? `${bannerId} ${statusId}` : statusId}
               onChange={(e) => setDraft(e.target.value)}
-              onFocus={() => {
-                // short screens (landscape, on-screen keyboard, high zoom): the composer is not sticky there
-                if (window.innerHeight < 480) composerRef.current?.scrollIntoView({ block: "end" });
-              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -538,12 +626,12 @@ export function CustomerApp() {
               }}
               placeholder={preview ? t.previewPlaceholder : t.placeholder}
               maxLength={4000}
-              className="max-h-40 min-h-11 flex-1 resize-none rounded-md border border-mk-line-strong bg-mk-surface px-3 py-2.5 text-base [field-sizing:content] placeholder:text-mk-muted focus-visible:border-mk-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-mk-brand disabled:bg-mk-draft-soft"
+              className="max-h-40 min-h-12 flex-1 resize-none rounded-xl border border-mk-line-strong bg-mk-surface px-4 py-3 text-base [field-sizing:content] placeholder:text-mk-muted focus-visible:border-mk-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-mk-focus disabled:bg-mk-draft-soft [@media(max-height:480px)]:max-h-24"
             />
             <button
               type="submit"
               disabled={!!preview || busy || !draft.trim()}
-              className="mk-focus inline-flex size-11 shrink-0 items-center justify-center rounded-md bg-mk-brand text-white hover:bg-mk-brand-hover disabled:bg-mk-line-strong disabled:text-mk-surface"
+              className="mk-focus inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-mk-brand text-white hover:bg-mk-brand-hover active:bg-mk-brand-strong disabled:border disabled:border-mk-line disabled:bg-mk-draft-soft disabled:text-mk-line-strong"
             >
               <ArrowUp aria-hidden className="size-5" />
               <span className="sr-only" lang={lang}>
@@ -551,23 +639,37 @@ export function CustomerApp() {
               </span>
             </button>
           </form>
-          {!preview && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => send(t.talkToPerson)}
-              className="mk-focus mt-1 inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-base font-medium text-mk-brand underline underline-offset-2 disabled:opacity-60"
-              lang={lang}
-            >
-              <UserRound aria-hidden className="size-4" /> {t.talkToPerson}
-            </button>
-          )}
-          <p id={statusId} className="mt-1 text-sm text-mk-muted" lang={lang}>
-            {t.footer}{" "}
-            {lastResponse?.is_mock ? `${t.replyMock} ` : lastResponse?.reply_source === "model" ? `${t.replyAi} ` : ""}
-            <Link href="/staff" prefetch={false} className="mk-focus underline underline-offset-2">
-              {t.staffLink}
-            </Link>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3">
+            {!preview && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => send(t.talkToPerson)}
+                className="mk-focus inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-base font-medium text-mk-brand-hover underline underline-offset-2 disabled:opacity-60"
+                lang={lang}
+              >
+                <UserRound aria-hidden className="size-4" /> {t.talkToPerson}
+              </button>
+            )}
+            {(talked || journeyDone) && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (journeyDone || window.confirm(t.newChatConfirm)) reset(identity);
+                }}
+                className="mk-focus inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-base text-mk-muted hover:text-mk-ink disabled:opacity-60"
+                lang={lang}
+              >
+                <RotateCcw aria-hidden className="size-4" /> {t.newChat}
+              </button>
+            )}
+          </div>
+          <p id={statusId} className="pb-0.5 text-sm text-mk-muted [@media(max-height:480px)]:sr-only [html[data-mk-short]_&]:sr-only" lang={lang}>
+            {t.prototype} {t.emergencyLead}{" "}
+            <a href="tel:911" className="mk-focus font-semibold text-mk-danger underline underline-offset-2">
+              {t.call911}
+            </a>
           </p>
         </div>
       </div>
@@ -607,18 +709,20 @@ function cardStatesFor(messages: Msg[]): (CardState | null)[] {
   return out;
 }
 
-function Frame({ children, identityControl }: { children: React.ReactNode; identityControl?: React.ReactNode }) {
+function Frame({ children, demoStrip }: { children: React.ReactNode; demoStrip?: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-mk-line bg-mk-surface sm:sticky sm:top-0 sm:z-10 [@media(max-height:480px)]:static">
-        <div className="mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 sm:px-0">
-          <div className="flex items-baseline gap-2">
-            <p className="text-lg font-bold tracking-tight text-mk-brand">McKinley</p>
-            <h1 className="text-base font-semibold">Resident and leasing help</h1>
+      <div className="sm:sticky sm:top-0 sm:z-20 [@media(max-height:480px)]:static">
+        <header className="mk-band bg-mk-brand text-white">
+          <div className="mx-auto flex w-full max-w-2xl items-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 sm:px-0">
+            <h1 className="flex min-w-0 flex-wrap items-baseline gap-x-3 leading-tight">
+              <span className="font-heading text-[1.4rem] font-semibold tracking-[-0.01em]">McKinley</span>
+              <span className="font-heading text-base font-medium">Resident and leasing help</span>
+            </h1>
           </div>
-          {identityControl}
-        </div>
-      </header>
+        </header>
+        {demoStrip}
+      </div>
       <main className="flex flex-1 flex-col">{children}</main>
     </div>
   );
@@ -628,8 +732,8 @@ const CALL_KINDS_WITHOUT_MAINTENANCE = new Set(["self_harm", "medical", "persona
 
 function Speaker({ t }: { t: UIStrings }) {
   return (
-    <p aria-hidden className="mb-1 flex items-center gap-2 text-sm font-semibold text-mk-muted">
-      <span className="inline-flex size-6 items-center justify-center rounded-full bg-mk-brand text-xs font-bold text-white">M</span>
+    <p aria-hidden className="mb-1 flex items-center gap-3 font-heading text-[0.95rem] font-semibold text-mk-ink">
+      <span className="inline-flex size-7 items-center justify-center rounded-full bg-mk-brand font-heading text-sm font-semibold text-white">M</span>
       {t.assistantName}
     </p>
   );
@@ -665,7 +769,7 @@ function Message({
   if (msg.role === "user") {
     return (
       <div className="flex flex-col items-end" lang={msg.lang}>
-        <p className={cn("max-w-[85%] rounded-lg rounded-br-sm px-4 py-2.5 break-words whitespace-pre-wrap",
+        <p className={cn("max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 break-words whitespace-pre-wrap",
           msg.failed ? "border border-dashed border-mk-attention bg-mk-surface" : "bg-mk-brand-soft")}>
           <span className="sr-only">{t.youSaid} </span>
           {msg.text}
@@ -705,7 +809,7 @@ function Message({
   return (
     <div ref={focusRef} tabIndex={-1} lang={msg.lang} role="article" aria-label={t.assistantMessage} className="mk-focus max-w-[95%] rounded-md outline-none">
       {speaker && <Speaker t={t} />}
-      <div className="pl-8">
+      <div className="pl-10">
         <span className="sr-only">{t.assistantSaid} </span>
         {emergency && (
           <div role={msg.restored ? undefined : "alert"} className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
@@ -821,7 +925,7 @@ function StatusList({ items, t }: { items: StatusItem[]; t: UIStrings }) {
   const shown = all ? sorted : sorted.slice(0, limit);
   return (
     <div className="mt-3">
-      <ul id={listId} aria-label={t.openRequests} className="divide-y divide-mk-line rounded-lg border border-mk-line bg-mk-surface">
+      <ul id={listId} aria-label={t.openRequests} className="divide-y divide-mk-line rounded-xl border border-mk-line bg-mk-surface">
         {shown.map((s) => {
           const tone = statusTone(s.status);
           return (
@@ -846,7 +950,7 @@ function StatusList({ items, t }: { items: StatusItem[]; t: UIStrings }) {
           aria-expanded={all}
           aria-controls={listId}
           onClick={() => setAll((v) => !v)}
-          className="mk-focus mt-2 inline-flex min-h-11 items-center rounded-md px-2 text-mk-brand underline underline-offset-2"
+          className="mk-focus mt-2 inline-flex min-h-11 items-center rounded-md px-2 text-mk-brand-hover underline underline-offset-2"
         >
           {all ? t.showFewer : t.showAll(sorted.length)}
         </button>
