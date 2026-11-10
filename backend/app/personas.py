@@ -3,6 +3,7 @@
 Only safe labels are exposed by the API. Workbook-backed context is produced by `app.context`.
 """
 
+import re
 from datetime import datetime
 
 from app.context import NEVER_FORWARDED, Interaction, Resident, Workbook, build_resident_context, detect_topics
@@ -94,12 +95,56 @@ def list_personas(wb: Workbook | None) -> list[Persona]:
     return out
 
 
+# A stated identity that is not the account holder, as a standalone message ("I'm Jordan's roommate", "im jordans
+# roomate", "this is her roommate", "I'm not the tenant"). Extends app.intake.not_account_holder (which needs a phone /
+# account word). Relations in the "his/her" form are limited to people who share a home, so "my son is sick, I'm his
+# mom" on the holder's own account is not read as a disclaimer; the "<name>'s" form allows family too.
+_REL_HOME = (r"(?:room ?mates?|roomm?ates?|roomies?|flat ?mates?|house ?mates?|partner|husband|wife|spouse|"
+             r"boyfriend|girlfriend|bf|gf|fianc[eé]e?|friend|guest|caregiver|carer|subtenant|sublet\w*)")
+_REL_ANY = _REL_HOME[:-1] + r"|mom|mum|mother|dad|father|son|daughter|kid|brother|sister|cousin|aunt|uncle|niece|" \
+    r"nephew|grand\w+|sibling|parent|relative)"
+_SUBJ = r"\b(?:i'?m|im|i am|this is|it'?s|its)\s+(?:actually\s+|just\s+|only\s+)?"
+_NOT_HOLDER = re.compile(
+    rf"{_SUBJ}(?:his|her|their)\s+{_REL_HOME}\b|"
+    r"\b(?:i'?m|im|i am)\s+not\s+(?:actually\s+)?(?:the\s+|a\s+)?(?:\w+\s+)?(?:account ?holder|tenant|leaseholder|"
+    r"lease ?holder|resident on (?:this|the) account|person on (?:this|the) (?:account|lease)|one on the lease)\b|"
+    r"\bnot\s+my\s+(?:account|apartment|unit|lease)\b|\b(?:i'?m|im|i am)\s+not\s+on\s+(?:the|this)\s+lease\b", re.I)
+# "<name>'s roommate"; "im jordans roomate" (no apostrophe) only after "I'm", and never after these words.
+_POSSESSIVE = re.compile(rf"{_SUBJ}([a-z]+)'s\s+{_REL_ANY}\b|\b(?:i'?m|im|i am)\s+(?:actually\s+|just\s+)?"
+                         rf"([a-z]+)s\s+{_REL_ANY}\b", re.I)
+_NOT_A_NAME = {"it", "that", "this", "there", "what", "he", "she", "who", "let", "here", "where", "always", "sometimes",
+               "perhaps", "thi", "ha", "wa", "resident", "tenant", "guest", "visitor", "one", "everyone",
+               "everybody", "nobody", "someone", "somebody", "anyone", "today", "mother", "father", "kid",
+               "parent", "friend", "neighbor", "neighbour", "the", "a", "an", "so", "also", "just", "hi", "her",
+               "their", "our", "your", "my", "ye", "u"}
+
+
+def states_not_account_holder(message: str, first_name: str | None = None) -> bool:
+    """Standalone non-holder identity: "I'm not Jordan", "I'm Jordan's roommate", "this is her roommate"."""
+    text = message.replace("\u2019", "'")
+    if _NOT_HOLDER.search(text):
+        return True
+    for m in _POSSESSIVE.finditer(text):
+        word = (m.group(1) or m.group(2) or "").lower()
+        if word not in _NOT_A_NAME:
+            return True
+    name = (first_name or "").strip()
+    if len(name) >= 2 and re.search(rf"\b(?:i'?m|im|i am|this is|it'?s|its)\s+not\s+{re.escape(name)}\b(?!')|"
+                                    rf"\b(?:this isn'?t|it isn'?t)\s+{re.escape(name)}\b(?!')", text, re.I):
+        return True
+    return False
+
+
 def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
-    """If the person said this is someone else's account ('my roommate let me use her phone'), nothing from the
-    record is used for the rest of the session: chat turns AND the confirm/cancel buttons (single rule, one place)."""
+    """If the person said this is someone else's account ('my roommate let me use her phone', 'I'm Jordan's
+    roommate'), nothing from the record is used for the rest of the session: chat turns AND the confirm/cancel
+    buttons (single rule, one place)."""
     from app.intake import not_account_holder
 
-    if ctx.persona_kind != "resident" or not any(not_account_holder(m) for m in said):
+    if ctx.persona_kind != "resident":
+        return ctx
+    first = next((f.value for f in ctx.fields if f.name == "first_name"), None)
+    if not any(not_account_holder(m) or states_not_account_holder(m, first) for m in said):
         return ctx
     return ctx.model_copy(update={
         "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
