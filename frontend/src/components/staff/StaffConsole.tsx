@@ -127,9 +127,14 @@ export function StaffConsole() {
             <span className="rounded-md bg-white px-2 py-0.5 font-heading text-sm font-semibold text-mk-brand-strong">Staff</span>
             <span className="font-heading text-base font-medium">Demo console</span>
           </h1>
-          <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
-            Open the customer view
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/guide/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
+              Maintainer guide
+            </Link>
+            <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
+              Open the customer view
+            </Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-[max(1rem,env(safe-area-inset-left))] py-4 md:px-6">
