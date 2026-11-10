@@ -1,4 +1,4 @@
-// Mobile acceptance test: real typing and sending, on phone/tablet/desktop sizes, in Chromium and WebKit.
+// Mobile acceptance test: typing (fill) and sending with taps, on phone/tablet/desktop sizes, in Chromium and WebKit.
 //   node e2e/mobile-acceptance.mjs <built site dir | https://url> <screenshot dir> [engines] [sizes]
 // A site dir is served on http://127.0.0.1:${PORT:-3000} (add that origin to the backend's CORS_ORIGINS).
 // Needs Playwright (npx playwright install chromium webkit; set NODE_PATH to where it is installed).
@@ -75,6 +75,7 @@ for (const eng of engArg.split(",")) {
       await page.reload({ waitUntil: "networkidle" }); await page.waitForTimeout(500);
       const kept = await page.locator('[role="article"]').count();
       r.notes.push(`after refresh: ${kept} assistant messages restored`);
+      if (kept < Q.length + 1) fail(`refresh restored ${kept} assistant messages, expected ${Q.length + 1}`);
       await page.screenshot({ path: `${out}/${tag}-4-refresh.png` });
       // tap target audit (outside running text)
       const small = await page.evaluate(() => [...document.querySelectorAll("button, a, select, textarea, input")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.height < 44 || b.width < 24) && !e.closest("p"); }).map(e => (e.textContent || e.tagName).trim().slice(0, 30) + ` ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
