@@ -4,6 +4,11 @@ Start here: [`../README.md`](../README.md) (what it is, status, setup) → [`PRO
 (current state and next steps) → [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md) (how
 to work here). The project is a **prototype, not production ready**.
 
+## Deployment (Vercel + Render + Supabase + Gemini; prepared, not deployed)
+- [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) — status, missing access, checklist, blockers
+- [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
+  [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
+
 ## Architecture
 - [architecture/overview.md](architecture/overview.md) — components, endpoints, providers, context, safety, security
 - [architecture/decisions.md](architecture/decisions.md) — ADR-001…011 (modes, gate, pipeline, static demo, safety, store)

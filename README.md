@@ -26,8 +26,11 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 - **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication.
 - **No integrations:** no Yardi, CRM, work orders, paging, SMS/email or calendar. Nobody is ever notified.
 - **Models:** exactly one historical run used a real model (2026-11-01, sprint-1 pipeline). Everything since is the
-  deterministic **mock**. The live A/B/C comparison and the semantic safety classifier are built but **blocked** until
-  an OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+  deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
+  only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
+  Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
+  ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
 - **Static preview:** the here.now link has no backend; it replays recorded conversations (see below).
 
 ## Workflows (F1–F9)
@@ -61,7 +64,8 @@ backend/app/gates/                 decision gate (rules always; optional LLM / J
 backend/app/actions.py             planner: questions, read-back cards, notes, status (F2–F9)
 backend/app/intake.py, templates.py, content/knowledge_base.json   detectors, wording, FAQ content
 backend/app/context.py, personas.py  workbook adapter, allowlisted context, demo identity
-backend/app/llm/                   OpenRouter | Ollama | Anthropic (optional) | Mock, one gateway
+backend/app/llm/                   Gemini | OpenRouter | Ollama | Anthropic (optional) | Mock, one gateway
+backend/migrations/, app/seed_synthetic.py   Alembic migrations (SQLite + Postgres) and the synthetic seed
 backend/app/evals.py, gate_evals.py, journey_evals.py, usability/, live_eval/   evaluation tooling
 ```
 
@@ -80,14 +84,17 @@ cp .env.example .env             # backend/.env is git-ignored; never commit it
 The synthetic resident workbook `backend/data/um_ai_sprint_sample_residents.xlsx` is git-ignored; ask the project
 owner for it. Without it, resident sign-ins find no record (prospects and guests still work).
 
-### Configure OpenRouter (optional; the app runs on the mock without it)
+### Configure a model (optional; the app runs on the mock without one)
 
-1. Get a free key at <https://openrouter.ai/keys> and set `OPENROUTER_API_KEY=` in `backend/.env`.
-2. Defaults: `LLM_PROVIDER=openrouter`, `LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`, temperature 0.2, 4000 max
-   tokens, 60 s timeout, 2 same-model retries. A different served model is rejected (`MODEL_SWITCHED`), never used.
-3. Check without spending: `cd backend && uv run python -m app.live_eval.preflight` (exit code 3 = blocked).
-4. To develop without a key: `LLM_PROVIDER=mock` and `LLM_MODEL=mock-deterministic-v1`. Without a key and without the
-   mock, chat answers `NEEDS_API_KEY`; nothing silently falls back to the mock.
+- **Gemini (intended for deployments):** `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=` (Google AI Studio),
+  `GEMINI_MODEL=gemini-3.6-flash`, `LLM_MODEL=` empty. See [docs/deployment/gemini.md](docs/deployment/gemini.md).
+- **OpenRouter (free models, evaluations):** `LLM_PROVIDER=openrouter`, `LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`,
+  `OPENROUTER_API_KEY=` (<https://openrouter.ai/keys>).
+- Shared settings: temperature 0.2, 4000 max tokens, 60 s timeout, 2 same-model retries. A different served model is
+  rejected (`MODEL_SWITCHED`), never used. Check without generating anything:
+  `cd backend && uv run python -m app.live_eval.preflight` (exit code 3 = blocked).
+- Without a key: `LLM_PROVIDER=mock`, `LLM_MODEL=mock-deterministic-v1` (the `.env.example` default). With a provider
+  but no key, chat answers `NEEDS_API_KEY`; nothing silently falls back to the mock.
 
 Free hosted models may log prompts: send synthetic data only. All settings, with comments:
 [`backend/.env.example`](backend/.env.example) (gate provider, `GATE_OVERRIDE_ENABLED` — set `false` on any shared
@@ -103,8 +110,11 @@ npm run dev            # Next.js on http://localhost:3000  (customer /, staff /s
 
 **Interactive mode** = both running locally; the page origin must be listed in `CORS_ORIGINS`.
 
-**Deployed interactive mode** = website on Vercel, backend on Render, database on Supabase:
+**Deployed interactive mode** (prepared, not deployed) = website on Vercel, backend on Render, database on
+Supabase, replies from Gemini: [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md) and the walkthrough
 [docs/development/deploy-vercel-render-supabase.md](docs/development/deploy-vercel-render-supabase.md).
+Database tables come from migrations (`cd backend && uv run alembic upgrade head`); a hosted backend reads the
+synthetic residents from the database after `uv run python -m app.seed_synthetic`.
 
 **Static replay mode** = the here.now build (`npm run build` → `dist/`) with no backend. The customer view replays
 17 recorded journeys from `frontend/public/demo/snapshot.json` (mock model, rules gate) with typing turned off; the
@@ -122,7 +132,7 @@ demo boundary, not sign-in.
 ## Test
 
 ```bash
-cd backend && uv run pytest && uv run ruff check .          # ~655 tests, offline, mock / fake providers only
+cd backend && uv run pytest && uv run ruff check .          # ~705 tests, offline, mock / fake providers only (Postgres tests need TEST_DATABASE_URL)
 npm run lint && npm run typecheck && npm test && npm run build   # from the repo root (frontend)
 npm run smoke                                                # headless browser check of dist/ (needs Playwright)
 ```

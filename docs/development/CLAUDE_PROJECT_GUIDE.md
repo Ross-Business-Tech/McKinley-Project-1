@@ -17,6 +17,12 @@ Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`
 (`actions.plan_turn`) → generate (one model call, often skipped) → validate → handoff → persist. Details:
 [`architecture/overview.md`](../architecture/overview.md), [`diagrams/`](../diagrams/).
 
+## Deployment stack (prepared, not deployed)
+Website on **Vercel** (static export of `frontend/`), backend on **Render** (`render.yaml`, `APP_ENV=hosted`),
+database on **Supabase** Postgres (`DATABASE_URL`; SQLite locally), replies from **Gemini** (`LLM_PROVIDER=gemini`).
+Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.md). The here.now preview
+(`npm run publish:preview`) stays the team's default until Vercel is validated.
+
 ## Conventions
 - **Python:** `uv` only (`uv sync`, `uv add`, `uv run …`); Pydantic models for every request/response; one error
   envelope `{"error": {code, message, retryable}}` (raise `HTTPException(detail={"code": …, "message": …})`);
@@ -27,12 +33,19 @@ Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`
   place, never reorder silently; add a test that pins the new behaviour.
 - **Detectors and safety regexes** (`emergency.py`, `intake.py`): extend, don't merge similar-looking patterns; each
   change needs positive and negative tests.
+- **Database:** schema changes only through a new Alembic migration in `backend/migrations/versions/` with raw SQL
+  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_migrations.py` (and
+  `TEST_DATABASE_URL` on a throwaway Postgres). Only the synthetic workbook may be seeded (`app.seed_synthetic`).
 - **Wording:** customer-facing text lives in `templates.py` / `customer.ts`; never split template strings to reuse
   part of them — add a key.
 
 ## LLM providers and secrets
-- Provider-agnostic gateway (`app/llm/`); configure with `LLM_PROVIDER`, `LLM_MODEL`, `OPENROUTER_API_KEY` in
-  `backend/.env` (git-ignored). Never print, log, commit or copy keys; check presence as booleans only.
+- Provider-agnostic gateway (`app/llm/`): Gemini (deployments), OpenRouter, Ollama, Anthropic, Mock; configure with
+  `LLM_PROVIDER`, `LLM_MODEL` / `GEMINI_MODEL` and the provider key in `backend/.env` (git-ignored) or Render
+  secrets. Never print, log, commit or copy keys or `DATABASE_URL`; check presence as booleans only. Never put any
+  key, database URL or Supabase service-role key in the website (`NEXT_PUBLIC_*` values are public).
+- Do not change the model ID silently: one fixed `provider:model` per evaluation; verify with
+  `python -m app.live_eval.preflight`; live Gemini runs need `--allow-paid` and a small `--max-calls`.
 - Never silently switch models (`MODEL_SWITCHED`), never fall back to the mock without labelling it, never call the
   mock or a template "live".
 - Free hosted models may log prompts: synthetic data only. The resident workbook is git-ignored; never commit

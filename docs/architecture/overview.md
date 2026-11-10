@@ -22,8 +22,9 @@ work-order system; "submitted" means saved to the labelled prototype store in SQ
 | Planner | `backend/app/actions.py` (`plan_turn`, `confirm`) | F2–F9 behaviour: questions, read-back cards, notes, status; ordered checks (the order is the spec) |
 | Detectors and text | `intake.py`, `templates.py`, `content/knowledge_base.json`, `workflows.py`, `handoff.py` | Message detectors, approved/draft wording, FAQ content, workflow selection, handoff recommendations |
 | Context | `context.py`, `personas.py` | Workbook adapter, allowlisted SAFE_CONTEXT, demo identity; "not the account holder" rule |
-| Providers | `backend/app/llm/` | OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
-| Persistence | `db.py` (SQLite) | chat turns, gate log (no message text), drafts, prototype records, eval runs |
+| Providers | `backend/app/llm/` | Gemini (intended for deployments), OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
+| Persistence | `db.py`, `migrations/` (Alembic), `seed_synthetic.py` | SQLite locally or Postgres/Supabase (`DATABASE_URL`); chat turns, gate log (no message text), drafts, prototype records, eval runs, synthetic residents/communities/interactions; RLS on in Postgres |
+| Deployment | `render.yaml`, `frontend/vercel.json` | Render backend (`APP_ENV=hosted` refuses unsafe settings), Vercel static site; [DEPLOYMENT_READINESS](../DEPLOYMENT_READINESS.md) |
 | Evaluation | `evals.py`, `gate_evals.py`, `journey_evals.py`, `usability/`, `live_eval/` | Five cases, gate scenarios, journeys, persona suite, live A/B/C runner ([evaluation](../evaluation/README.md)) |
 
 ## Endpoints
