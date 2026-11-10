@@ -29,6 +29,11 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Sprint 5 (2026-11-10):**
+  - The conversation workflows were reworked from simulator findings, verified with the **mock** only.
+  - OpenRouter and Gemini share a tested provider contract.
+  - **No live model call was made**, because there is no key. See [Sprint 5 report](docs/evaluation/SPRINT5_LIVE_CONVERSATION.md).
+  - A new independent safety holdout found **10/63 immediate-danger messages with no guidance**, which is release-blocking.
 - **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
   ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
 - **Static preview:** the here.now link has no backend; it replays recorded conversations (see below). It is not

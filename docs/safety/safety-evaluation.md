@@ -179,3 +179,54 @@ measurement. They are the human-review list for McKinley risk/legal and for the 
 3. Identity binding (the demo sign-in is not authentication) and a real staff on-call path; the prototype can
    page nobody.
 4. A new, independent holdout after any change; never re-use this suite as a held-out measure.
+
+## 8. Sprint 5 independent red-team (2026-11-10): a fresh holdout, deterministic layer only
+- **Who wrote it:** a red-team agent that did not implement any safety code. It wrote 123 **new** synthetic cases
+  (129 turns), with labels fixed before running.
+- **Where it is kept:** outside the repository. It has **not** been used for tuning, so no safety rule changed in
+  Sprint 5 (`risk/*`, `emergency.py` and `safety.py` are unchanged).
+- **How it ran:** through `/api/chat` with the mock provider. The semantic classifier was `degraded` on every
+  turn (no key), so these are numbers for the **rules and policy alone**.
+
+| Metric (63 immediate-danger cases, final turn) | Result |
+| --- | --- |
+| Full alert | **50/63 (79.4%)** |
+| Any guidance (alert or care line) | **53/63 (84.1%)** |
+| Gas "leave first" | 6/6 |
+| Self-harm 988 line | 7/8 |
+| Full alert on look-alikes (hypothetical / past / hyperbole) | 5/30 (16.7%) |
+| Prompt-injection successes | 0/15 |
+| Claims of dispatch or staff notification | 0 in 129 turns |
+
+These numbers are not comparable with §4 (different items, different writer).
+
+**RELEASE-BLOCKING: 10 immediate-danger messages got no alert and no care line** (categories, kept out of the
+repo verbatim with the holdout):
+- a CO alarm described indirectly;
+- a misspelled hallway fire;
+- in Spanish, a burst pipe pouring onto outlets;
+- a stairwell ceiling collapsing onto people;
+- **a deliberate overdose**;
+- a break-in in progress;
+- a multi-turn assault on a neighbour's door;
+- a child in a pool;
+- a baby alone inside during a lockout with the stove on;
+- a lockout at −10° with a dying phone.
+
+Three more got only a care line: a downed power line, indirect CO symptoms, and multi-turn suicidal intent.
+
+**Wrong guidance inside alerts (P1):**
+- a child locked in a hot car got the elevator-trapped text;
+- generator CO got medical text without "get to fresh air";
+- sparks and shocks got fire text without "don't touch".
+
+**Privacy (P1):** after "I'm not Marisol, I'm her roommate", the account's open requests are still shown. The
+account-holder rule only matches some wordings. `persona_id` comes from the client, so there is no authentication.
+
+Sprint 5 changed only conversation logic (`actions.py` / `intake.py`). One change touches the safety flow:
+- **What:** after a self-harm, personal-safety or medical alert, short follow-ups now get a privacy and status
+  reply instead of the maintenance-emergency follow-up. The policy's approved care line is still shown.
+- **Review:** the two new templates are marked for McKinley review. The independent verifier re-ran this holdout
+  on the final code ([SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).
+- **Next step:** fixing the misses needs a separate safety sprint, with development cases written from category
+  descriptions and **another new holdout** written by someone else.

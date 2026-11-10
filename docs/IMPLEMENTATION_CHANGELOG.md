@@ -1,5 +1,23 @@
 # Implementation changelog
 
+## Sprint 5: conversation workflows, provider contracts, Gemini readiness (2026-11-10)
+Branch `feat/live-conversation-workflows`. Full report: [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md).
+
+- **No live model call.** There is no OpenRouter or Gemini key here, so the smoke and A/B/C runners are built,
+  tested offline and BLOCKED.
+- **Provider contract:** 102 tests show identical application behaviour on OpenRouter and Gemini. Error mapping
+  now matches across adapters. `app/llm/contracts.py` gives a named facade.
+- **Live scripts:** `app.live_eval.smoke` (8 calls at most) and `docs/development/GEMINI_ACCEPTANCE_CHECKLIST.md`.
+- **Conversation:** two rounds of deterministic planner fixes from the resident and prospect simulators and the UX
+  judge, re-verified by an independent replay. See [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md).
+- **UI:** "About this demo" names the reply source (OpenRouter, Gemini or Mock, plus the served model).
+- **Safety:** an independent red-team holdout gave full alert 50/63 and any guidance 53/63. 10 misses are
+  release-blocking. No safety rule changed, and the crisis follow-up wording needs McKinley review.
+- **Tests:**
+  - backend 1002 passed, 9 skipped; frontend 46;
+  - phone test 14/14 (mock);
+  - red-team holdout unchanged before and after the conversation changes.
+
 ## Sprint 4: McKinley brand redesign and mobile-first chat (2026-11-10)
 Branch `feat/mckinley-mobile-brand-redesign`. It is built on `feat/gemini-supabase-deployment`, which carries the
 Gemini, Supabase, Render and Vercel preparation, and `origin/development` had nothing newer. Prototype, made-up data.

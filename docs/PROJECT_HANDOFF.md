@@ -24,7 +24,7 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 - Deployment code (offline-tested): Gemini provider, Alembic migrations + synthetic seed, residents from the
   database, `APP_ENV=hosted` safety checks, Render Blueprint, Vercel config, live/mock labels in both views.
 - Evaluation tooling: five cases, gate scenarios, 17 journeys, 48-scenario persona suite, live A/B/C runner.
-- Tests: 728 backend (+9 skipped: Postgres-only, need TEST_DATABASE_URL; not a Supabase validation), 45 frontend;
+- Tests (Sprint 5 branch): 1002 backend (+9 skipped: Postgres-only, need TEST_DATABASE_URL; not a Supabase validation), 46 frontend;
   build, smoke and the Chromium/WebKit phone test (`frontend/e2e/mobile-acceptance.mjs`, 14/14, mock backend) pass.
 - Sprint 4: McKinley blue brand system and mobile-first chat ([design/](design/), [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md)). See [`evaluation/README.md`](evaluation/README.md).
 
@@ -39,7 +39,9 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 | P1 | No live-model evaluation since one sprint-1 run; all later results are mock | [evaluation/README.md](evaluation/README.md) |
 | P1 | One open card per conversation; Spanish multi-issue merge; Spanish wording unreviewed; ~10% false safety alerts | [evaluation/ux-review.md](evaluation/ux-review.md) |
 | P1 | No real-device test (iPhone/Android, screen reader) and no public URL: the phone requirement is unmet | [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) |
-| P1 | Conversation-logic findings from the Sprint 4 simulator (frustrated users not offered a person, floor plans, tour timing) | [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) |
+| P1 | No live model has been called this sprint (no OpenRouter/Gemini key); A/B/C and smoke runs are built but BLOCKED | [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md) |
+| P1 | Sprint 5 red-team holdout: 10/63 immediate-danger messages got no guidance (release-blocking); crisis follow-up wording needs McKinley review | [safety/safety-evaluation.md](safety/safety-evaluation.md) §8 |
+| P2 | Remaining conversation backlog after Sprint 5 (stitched wording, Spanish card values, a few partial fixes) | [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md) |
 | P1 | `/api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`) to the browser; decide whether to strip them for non-staff callers | [architecture/overview.md](architecture/overview.md) |
 
 ## Recommended next priorities
