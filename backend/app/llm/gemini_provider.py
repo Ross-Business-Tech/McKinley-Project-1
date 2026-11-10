@@ -91,8 +91,13 @@ class GeminiProvider:
             resp = client.models.generate_content(model=target.model, contents=_to_contents(messages), config=config)
         except errors.ClientError as e:
             code = getattr(e, "code", None)
-            if code in (401, 403):
-                raise LLMError("MODEL_AUTH_ERROR", f"Gemini rejected the API key or access ({code}).") from e
+            # Same codes as the OpenRouter/HTTP mapping (app.llm.http.map_status): 401 auth, 403 permission.
+            # Google answers an invalid key with 400 INVALID_ARGUMENT + reason API_KEY_INVALID: that is auth, not a
+            # malformed request, and it must stop a run like a 401 does.
+            if code == 401 or (code == 400 and "API_KEY_INVALID" in str(getattr(e, "details", ""))):
+                raise LLMError("MODEL_AUTH_ERROR", f"Gemini rejected the API key ({code}).") from e
+            if code == 403:
+                raise LLMError("MODEL_PERMISSION_DENIED", "Gemini denied access for this key/project (403).") from e
             if code == 404:
                 raise LLMError("MODEL_NOT_FOUND", f"Gemini model '{target.model}' not found (404).") from e
             if code == 429:
@@ -107,7 +112,8 @@ class GeminiProvider:
         except _TIMEOUT as e:
             raise LLMError("MODEL_TIMEOUT", "Gemini request timed out.", retryable=True, http_status=504) from e
         except _TRANSPORT as e:
-            raise LLMError("MODEL_CONNECTION_ERROR", "Could not reach the Gemini API.", retryable=True) from e
+            raise LLMError("MODEL_CONNECTION_ERROR", "Could not reach the Gemini API.", retryable=True,
+                           http_status=503) from e
         except Exception as e:  # anything else from the SDK must still become a gateway error, never a raw 500
             raise LLMError("MODEL_API_ERROR", f"Gemini call failed ({type(e).__name__}).") from e
         latency_ms = int((time.perf_counter() - start) * 1000)

@@ -77,7 +77,7 @@ def _turn_record(*, kind: str, item_id: str, mode: str, turn_index: int, user_me
     rec: dict[str, Any] = {
         "kind": kind, "item_id": item_id, "mode": mode, "mode_label": MODE_LABEL[mode], "turn_index": turn_index,
         "execution": execution, "user_message": user_message, "target": target.key,
-        "requested_model": target.model, "served_model": last.get("served_model"),
+        "provider": target.provider, "requested_model": target.model, "served_model": last.get("served_model"),
         "model_calls": calls, "human_review_status": "pending",
     }
     if resp is None:
@@ -196,8 +196,10 @@ def run_live_eval(
 ) -> tuple[int, dict[str, Any]]:
     """Returns (exit_code, document). Writes status.json always; results/report only when the run started."""
     modes = list(modes or MODES)
-    case_ids = CORE_CASE_IDS if case_ids is None else case_ids
-    scenario_ids = list(DEFAULT_SCENARIOS) if scenario_ids is None else scenario_ids
+    # "--cases none" / "--scenarios none" (as written in the docs) mean the same as passing the flag with no ids.
+    case_ids = CORE_CASE_IDS if case_ids is None else [] if case_ids == ["none"] else case_ids
+    scenario_ids = list(DEFAULT_SCENARIOS) if scenario_ids is None else [] if scenario_ids == ["none"] \
+        else scenario_ids
 
     def blocked(code: str, reason: str, **kw: Any) -> tuple[int, dict[str, Any]]:
         doc = {"status": "blocked", "reason_code": code, "reason": reason, "target": target_raw, **kw,
