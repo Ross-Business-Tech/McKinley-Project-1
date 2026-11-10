@@ -2,7 +2,7 @@
 
 import re
 
-from app.emergency import intent_to_self_harm, possible_risk, scan
+from app.emergency import intent_to_self_harm, person_concern, possible_risk, scan
 from app.risk.models import DeterministicRisk
 
 WINDOW_TURNS = 3  # earlier user messages combined with this one
@@ -15,7 +15,7 @@ _HAPPENING_NOW = re.compile(r"\b(?:it'?s|it is|this is|that'?s) (?:happening|goi
 def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     """`recent` = earlier user messages in this conversation (oldest first, current message excluded)."""
     kind, framing = scan(message)
-    out = DeterministicRisk(care=possible_risk(message))  # type: ignore[arg-type]
+    out = DeterministicRisk(care=possible_risk(message), concern=person_concern(message))  # type: ignore[arg-type]
     if kind and framing == "report":
         out.kind, out.framing = kind, "report"
     elif kind:

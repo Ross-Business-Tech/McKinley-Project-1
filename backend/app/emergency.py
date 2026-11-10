@@ -9,6 +9,10 @@ approve the list and the wording (docs/workflows/traceability.md, I-17/I-18).
 import re
 import unicodedata
 
+from app.risk.concepts import RULES as CONCEPT_RULES
+from app.risk.concepts import concern as _concern
+from app.risk.concepts import stockpile as _stockpile
+
 # Ordered: the first match wins, so the most life-critical kinds come first.
 _W = r"(?:\w+\W+){0,6}"  # up to six words in between
 KINDS: list[tuple[str, re.Pattern[str]]] = [
@@ -418,6 +422,8 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("flood", re.compile(_FLOOD2, re.I)),
     ("gas", re.compile(_GAS2, re.I)),
 ]
+# Sprint 6: concept-slot rules (app/risk/concepts.py) run after every explicit rule above, through the same framing.
+CONCEPTS.extend(CONCEPT_RULES)
 
 # Danger vocabulary: high recall, low severity. Not enough for the full alert or an urgent note, but enough that
 # the reply leads with "if anyone is hurt or in danger, call 911". Measured separately from full-alert recall.
@@ -525,6 +531,13 @@ REFUSE_LEAD = {
 }
 
 
+def person_concern(message: str) -> bool:
+    """Sprint 6: the care line came from a sign that a PERSON may be hurt or in danger (concept slots or the welfare /
+    break-in hints), not just from broad hazard vocabulary. Such a line is never removed by the semantic layer (R7)."""
+    text = _strip_negated(_strip_figurative(_prepare(message)))
+    return bool(_concern(text) or _DANGER_HINT.search(text))
+
+
 def possible_risk(message: str) -> str | None:
     """'distress' / 'danger' / 'unwell' / None for messages that are not a clear emergency."""
     raw = _prepare(message)
@@ -532,9 +545,9 @@ def possible_risk(message: str) -> str | None:
     if _NEGATED_SELF_HARM.search(raw) or (_LAUGH.search(raw) and _kind_of(raw) == "self_harm"):
         return "distress"
     text = _strip_negated(_strip_figurative(raw))
-    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text):
+    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text) or _stockpile(text):
         return "distress"
-    if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text):
+    if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text) or _concern(text):
         return "danger"
     if _UNWELL.search(text):
         return "unwell"
@@ -555,7 +568,14 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r"ammonia|vinegar)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot|"
-    r"smoke machine|fog machine|haze machine",
+    r"smoke machine|fog machine|haze machine|"
+    # sprint 6: asking for a detector (new, extra, replacement) is a maintenance request, not an alarm sounding
+    r"(?:get|install\w*|replac\w*|buy|add|put in|new|another|extra|spare|expired|old)\W+(?:\w+\W+){0,3}(?:co|"
+    r"carbon monoxide|smoke|fire) (?:detectors?|alarms?)(?!\W+(?:\w+\W+){0,4}(?:going off|beep\w*|sounding|"
+    r"won'?t stop|went off))|(?:co|carbon monoxide|smoke) (?:detectors?|alarms?) (?:installed|replaced|put in)|"
+    # sprint 6: a past break-in of a car / storage / mailbox is property crime, not a person in danger now
+    r"(?:car|truck|vehicle|bike|storage(?: unit)?|mailbox|locker|garage)\W+(?:\w+\W+){0,2}(?:got |was |been |were )?"
+    r"(?:broken into|broke into|stolen)\W+(?:\w+\W+){0,4}(?:last|ago|yesterday|over the weekend|the other)\w*",
     re.I)
 # Everyday idioms that use hazard words ("this rent is killing me", "the view is fire", "dying to see it").
 _FIGURATIVE = re.compile(
@@ -571,7 +591,10 @@ _FIGURATIVE = re.compile(
     r"\b(?:ceasefire|cease fire)\b|blow(?:ing)? up my phone|blew up my phone|out of gas|gas (?:money|prices|mileage)|"
     r"smoke break|drowning in (?:work|bills|paperwork|debt|emails)|bomb (?:deal|view|place|apartment)|"
     r"break(?:ing)? the bank|(?:i'?m|im) (?:so )?dead\b(?! (?:serious))(?=.{0,20}(?:lol|lmao|haha|😂|🤣|💀))|"
-    r"(?:heart|this) attack of (?:cuteness|nostalgia)", re.I)
+    r"(?:heart|this) attack of (?:cuteness|nostalgia)|"
+    # sprint 6: "the bill almost gave me a heart attack"
+    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b",
+    re.I)
 # Negated hazards ("no smoke", "it's not sparking", "I don't smell gas"); only the negated phrase is removed.
 _NEGATED = re.compile(
     r"\bnothing (?:is |was |'s )?(?:sparking|smoking|burning|on fire|leaking gas)\b|"
@@ -600,7 +623,10 @@ _HYPO = re.compile(
     r"(?:i|you|we) (?:know|tell) if|is it (?:dangerous|safe|normal|bad) (?:if|when|to)|should i (?:worry|be worried)"
     r" if|what happens (?:if|when)|what(?:'?s| is) the (?:procedure|protocol|plan|policy) (?:for|if|in case)|"
     r"(?:project|homework|essay|report|presentation|class|research|paper) (?:about|on)|for (?:a|my) (?:class|school|"
-    r"project)|(?:the |my )?lease (?:says|states)|qu[eé] (?:hago|debo hacer|hacer|pasa) si|en caso de)", re.I)
+    r"project)|(?:the |my )?lease (?:says|states)|qu[eé] (?:hago|debo hacer|hacer|pasa) si|en caso de|"
+    # sprint 6: asking how to recognise a hazard is a safety question, not a report
+    r"what are (?:the )?(?:signs|symptoms|warning signs) of|how (?:do|can|would) (?:i|you|we) (?:recogni[sz]e|spot"
+    r"|detect)|cu[aá]les son (?:los )?s[ií]ntomas de)", re.I)
 _PAST = re.compile(r"\b(?:last (?:year|month|summer|winter|spring|fall|time)|years? ago|months? ago|a while (?:ago|bac"
                    r"k)|"
                    r"back in (?:19|20)\d\d|in (?:19|20)\d\d|(?:the|that) (?:fire|flood|leak) (?:we|there) (?:had|was)|"

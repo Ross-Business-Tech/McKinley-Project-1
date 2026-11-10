@@ -10,6 +10,8 @@ Rules are applied in order; the first that fires decides. Each has an id recorde
   R6 deterministic care tier: distress / unwell                 -> that care line (semantic cannot remove it).
   R7 deterministic "danger" vocabulary line                     -> 911 care line, UNLESS the semantic layer ran ok and
      says none with confidence >= 0.8 (the only thing the semantic layer may remove: the broad, low-severity line).
+     Sprint 6: never removed when the line comes from a person-in-danger sign (`det.concern`: a person + injury
+     mechanism, a broken entry point, a welfare-check hint) or after a person-danger alert in this session.
   R9e after a person-danger alert, new danger words             -> full alert again (same kind)
   R9 earlier in this conversation: a person-danger alert       -> keep a calm line (988 for self-harm, else 911)
      on every later turn, even if the person says "I'm fine, stop" (applies wherever R7/R8 would show nothing).
@@ -81,7 +83,7 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
                             rule="R9e", sources=["session", "deterministic"], degraded=degraded,
                             conflict=f"danger words after an earlier {prior[-1]} alert: alert shown again")
     if det.care == "danger":  # R7
-        if s and s.risk_level == "none" and (s.confidence or 0) >= SUPPRESS_CONFIDENCE and not any(
+        if s and s.risk_level == "none" and (s.confidence or 0) >= SUPPRESS_CONFIDENCE and not det.concern and not any(
                 is_people_hazard(h) for h in (prior_hazards or [])):
             return RiskDecision(response="none", rule="R7-suppressed", sources=["deterministic", "semantic"],
                                 conflict=f"broad 911 line suppressed: semantic none ({s.confidence:.2f})")

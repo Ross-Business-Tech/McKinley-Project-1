@@ -21,6 +21,7 @@ class DeterministicRisk(BaseModel):
     mentioned_kind: str | None = None  # hazard named but framed as hypothetical/past/joking (not an alert by itself)
     care: Literal["distress", "unwell", "danger"] | None = None  # lower tier: calm safety line
     via_window: bool = False  # only the combination of recent turns + this message matched
+    concern: bool = False  # sprint 6: the care line comes from a person-in-danger sign; R7 may not suppress it
     self_harm_intent: bool = False  # poisoning/overdose that may be deliberate (adds the 988 line)
 
 
@@ -64,6 +65,9 @@ class RiskDecision(BaseModel):
     rule: str  # which policy rule decided (see docs/safety/safety-evaluation.md)
     conflict: str | None = None  # how a disagreement between layers was resolved
     degraded: bool = False  # semantic layer did not produce a usable answer this turn
+    detected_kind: str | None = None  # sprint 6: kind before approved-notice selection (app/risk/category.py)
+    notice_reason: str | None = None  # why the notice category differs from the detected kind
+    incident: str | None = None  # sprint 6: active incident this turn belongs to (app/risk/incident.py)
 
 
 class RiskAssessment(BaseModel):

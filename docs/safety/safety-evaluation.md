@@ -35,9 +35,11 @@ Evaluation order: R1, R2, R3, R4, R5, R6, R9e, R7, R9, R8. Tests: `backend/tests
 | R5 | Rules: hazard only as a hypothetical or past event | Calm safety info (same approved steps, no alarm, no note) |
 | R6 | Rules: distress or "unwell" wording | That care line; the semantic layer cannot remove it |
 | R9e | Danger words after an earlier threat / medical / poison / trapped alert in this session (checked before R7) | Full alert again, same kind ("he's outside my door right now") |
-| R7 | Rules: broad danger vocabulary | 911 care line (988 if self-harm was alerted earlier in the session), unless the semantic layer ran OK, says `none` with confidence ≥ 0.8 and there was no earlier person-danger alert (the only thing the semantic layer may remove; recorded as `R7-suppressed`) |
+| R7 | Rules: broad danger vocabulary | 911 care line (988 if self-harm was alerted earlier in the session), unless the semantic layer ran OK, says `none` with confidence ≥ 0.8, there was no earlier person-danger alert, **and (sprint 6) the line did not come from a person-in-danger sign** (`concern`: a person + injury mechanism, a broken entry point with someone there, a welfare-check hint). Only then may the semantic layer remove it (recorded as `R7-suppressed`) |
 | R9 | An urgent person-danger note exists in this session | Calm line kept (988 for self-harm, otherwise 911) |
 | R8 | Nothing | No safety text |
+| R10 | (sprint 6, after the policy) a follow-up during an active non-self-harm incident | Full alert again for the incident's kind; approved notice first, no new note |
+| R10q | (sprint 6, after the policy) a quiet turn during an active incident where the policy shows nothing | Calm line kept (988 after self-harm, else 911) |
 
 Classifier failure (timeout, rate limit, bad output, no key, mock) never makes a result less cautious than the
 rules alone; it is recorded as `decision.degraded = true`, shown in the pipeline trace and flagged in the staff
@@ -270,3 +272,11 @@ The verifier's paraphrases found more misses:
 - a new held-out set written by someone else.
 
 Do not re-use §8 for tuning.
+
+
+## 10. Sprint 6 (2026-11-10): layered detection, incident state, notice selection
+Concept-slot detection (`risk/concepts.py`), incident-specific notice selection (`risk/category.py`), persistent
+incident state with resolution rules (`risk/incident.py`, rules R10 / R10q), a narrowed R7 exception and a hardened
+semantic classifier contract. Design, state machine, development-set results and live classifier check:
+[SAFETY_STATE_AND_EVALUATION.md](SAFETY_STATE_AND_EVALUATION.md). Emergency recall on new wording is still
+**unmeasured on an independent holdout** and stays release-blocking until it is.

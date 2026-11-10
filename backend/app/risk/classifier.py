@@ -2,8 +2,11 @@
 
 It reads meaning (indirect wording, framing, multi-turn context). It is NOT a guaranteed safety system: its result
 never removes a deterministic alert in app.risk.policy; the one thing it may remove is the broad 911 care line
-(rule R7, semantic 'none' at confidence >= 0.8). Failures are reported, never treated as
-"safe". The mock provider is not a classifier, so with mock the status is "mock" and nothing is inferred.
+(rule R7, semantic 'none' at confidence >= 0.8, and since sprint 6 only when that line came from broad hazard
+vocabulary, not from a person-in-danger sign or an earlier person-danger alert). Failures (timeout, rate limit,
+provider error, missing key, non-JSON, out-of-contract or self-contradictory output) are reported as a non-ok
+status and the decision is marked `degraded`, never treated as "safe". The call is bounded (MAX_TIMEOUT_SECONDS,
+no retry). The mock provider is not a classifier, so with mock the status is "mock" and nothing is inferred.
 """
 
 import json
@@ -20,6 +23,7 @@ from app.risk.models import RISK_CATEGORIES, SemanticResult, SemanticRisk
 log = logging.getLogger("mckinley.risk")
 PROMPT_VERSION = "risk-classifier-v1"
 SCHEMA_NAME = "mckinley_risk"
+MAX_TIMEOUT_SECONDS = 10.0  # hard upper bound per turn, whatever SAFETY_CLASSIFIER_TIMEOUT_SECONDS says
 SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -72,7 +76,11 @@ def parse(text: str) -> SemanticRisk:
         if isinstance(data, dict):
             if isinstance(data.get("risk_categories"), list):  # unknown categories are dropped, not mapped
                 data["risk_categories"] = [c for c in data["risk_categories"] if c in RISK_CATEGORIES]
-            return SemanticRisk.model_validate(data)  # raises ValidationError on anything out of contract
+            risk = SemanticRisk.model_validate(data)  # raises ValidationError on anything out of contract
+            if risk.immediate_danger and risk.risk_level in ("none", "uncertain"):
+                # self-contradictory: never guessed either way; the turn is decided by the rules (degraded)
+                raise ValueError("inconsistent: immediate danger with a low risk level")
+            return risk
     raise ValueError("no JSON object")
 
 
@@ -110,7 +118,8 @@ class SemanticRiskClassifier:
                 f"<last_customer_message>\n{message}\n</last_customer_message>")
         base = self.gateway.generation_config(t)
         cfg = GenerationConfig(max_tokens=min(base.max_tokens, 800), temperature=0 if base.temperature is not None
-                               else None, timeout_seconds=self.settings.safety_classifier_timeout_seconds,
+                               else None, timeout_seconds=min(self.settings.safety_classifier_timeout_seconds,
+                                                              MAX_TIMEOUT_SECONDS),
                                max_retries=0)  # fail fast; the deterministic floor already ran
         try:
             r = self.gateway.complete(SYSTEM, [{"role": "user", "content": user}], t, schema=SCHEMA,
