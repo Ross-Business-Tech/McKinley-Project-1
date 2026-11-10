@@ -22,9 +22,11 @@ This describes what the code does today. Pipeline order and safety: [overview.md
 
 It rides on the previous turn's gate-log row (`store.last_gate`) and is rewritten each turn.
 
-Identity comes only from the app's trusted context: the demo persona (`persona_id`). It never comes from the
-message or the model. **This is not authentication.** Any caller can send any `persona_id` (release-blocking; see
-[../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md)).
+Identity comes only from the app's trusted context, never from the message or the model. Since Sprint 6 the
+server resolves a principal (`app/auth.py`): a demo persona is usable only locally or in development, a session is
+bound to its first persona (403 on a mismatch), and every read goes through the deny-by-default `ScopedStore`.
+Hosted mode turns demo personas off (public information only). **A demo persona is still not authentication**
+(release-blocking until real sign-in exists; see [../security/AUTHORIZATION_BOUNDARIES.md](../security/AUTHORIZATION_BOUNDARIES.md)).
 
 ## The turn (`run_turn`)
 1. **Receive.** Clean the message and redact email and phone patterns.
@@ -161,8 +163,9 @@ Provider calls go through `app/llm/contracts.py` (`generate_response`, `decide_g
 provider-independent gateway ([../deployment/gemini.md](../deployment/gemini.md), "Provider contract").
 
 ## Known gaps
-- No authentication: the persona comes from the client.
+- No real authentication: a demo persona is chosen in the browser (server-side principal and session binding limit
+  what it can reach; hosted mode turns it off).
 - One open card per conversation (a second card is parked inside a note, or queued and named on the card; not
   shown side by side).
 - No real external confirmation of anything.
-- The safety recall gaps are release-blocking ([../evaluation/SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).
+- The safety recall gaps are release-blocking ([../evaluation/SPRINT6_RESULTS.md](../evaluation/SPRINT6_RESULTS.md) §4).
