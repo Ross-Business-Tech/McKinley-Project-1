@@ -75,6 +75,7 @@ from app.intake import (
     is_change_request,
     is_common_area,
     is_decline,
+    is_entry_plain_yes,
     is_eviction_worry,
     is_issue_description,
     is_lease_break,
@@ -1720,7 +1721,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                                      workflow=_sel("maintenance", "Bare 'ok' to the entry question: confirm first.")))
             effective = "Contact me first"  # asked twice, still no clear yes: the conservative choice, editable
         elif draft and draft["kind"] == "maintenance_request" and missing_now[:1] == ["entry"]:
-            if is_bare_yes(msg):
+            if is_bare_yes(msg) or is_entry_plain_yes(msg):
                 effective = "Yes, you can enter"
             elif is_bare_no(msg):
                 effective = "Contact me first"

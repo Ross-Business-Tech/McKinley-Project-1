@@ -172,6 +172,18 @@ def is_bare_yes(message: str) -> bool:
                              r"(please|por favor)?[\s.!,?]*", message, re.I))
 
 
+# Sprint 6 (judge H-5): a plain yes to "may they enter?" said a little more fully ("ok yes", "yes go ahead",
+# "yeah that's fine"). Only used when the entry question is the one being answered.
+_ENTRY_PLAIN_YES = re.compile(
+    r"\s*(?:ok(?:ay)?|sure|yeah|yep|yes|fine)?[\s,.!]*(?:yes|yeah|yep|sure)[\s,.!]*(?:go ahead|that'?s fine|thats fine|"
+    r"that works|they can|you can|of course|no problem|please)?[\s,.!]*|\s*(?:yes|yeah|yep|sure|ok(?:ay)?)?[\s,.!]*"
+    r"(?:go ahead|that'?s fine|thats fine|that works|no problem)[\s,.!]*", re.I)
+
+
+def is_entry_plain_yes(message: str) -> bool:
+    return bool(_ENTRY_PLAIN_YES.fullmatch(message))
+
+
 def is_bare_no(message: str) -> bool:
     return bool(re.fullmatch(r"\s*(no|nope|no thanks|no gracias)[\s.!,]*", message, re.I))
 
@@ -887,7 +899,25 @@ _ISSUE_RESTATE = re.compile(r"\b(?:the (?:problem|issue) is|change (?:the )?(?:d
                             r"my )?(?P<new>[^,;.!?]{3,120})", re.I)
 
 
+# Sprint 6 (judge H-1): "the location is wrong, it should say kitchen" names ANOTHER field;
+# it never rewrites the problem.
+_OTHER_FIELD_SUBJECT = re.compile(
+    r"\b(?:the )?(?:location|room|where|place|spot|area|entry(?: permission)?|permission|contact(?: preference)?|"
+    r"phone|email|(?:visit |best )?time|date|day)(?: field| part| bit| line)?\s*(?:is|was|'s|are)\s+"
+    r"(?:wrong|incorrect|not right|off|a mistake)|"
+    r"\b(?:location|room|where|entry|contact|time)(?: field| part)? (?:should|must) (?:say|read|be)\b|"
+    r"\b(?:change|fix|correct|update) (?:the )?(?:location|room|where|entry|contact|time)(?: field| part)?\b", re.I)
+_OTHER_FIELD_VALUE = re.compile(r"\b(?:should (?:say|read|be)|to)\s*:?\s*(?:the |my |in the )?(?P<v>[^;.!?]{2,60})",
+                                re.I)
+
+
+def names_other_field(message: str) -> bool:
+    return bool(_OTHER_FIELD_SUBJECT.search(message))
+
+
 def extract_issue_restate(message: str) -> str | None:
+    if names_other_field(message):
+        return None
     s = _ISSUE_SHOULD_SAY.search(message)  # D-4: "the problem is wrong. it should say X" -> X, never "Wrong"
     if s:
         new = (s.group("new") or s.group("new2") or "").strip(" ,.;:")
@@ -929,6 +959,10 @@ _LOC_CHANGE2 = re.compile(rf"\b(?:the )?(?:location|room|place|where)\s*(?:is|:)
 
 def extract_location_change(message: str, current: str | None = None) -> str | None:
     """'change the location to the bedroom', "it's in the hall bathroom", 'the hall one, not the main one'."""
+    if re.search(r"\b(?:location|room|where|place|spot)\b", message, re.I) and names_other_field(message):
+        for v in _OTHER_FIELD_VALUE.finditer(message):
+            if (loc := extract_location(v.group("v"))) and loc != current:
+                return loc
     m2 = _LOC_CHANGE2.search(message)
     if m2:
         loc = (m2.group("loc") or m2.group("loc2") or "").strip()

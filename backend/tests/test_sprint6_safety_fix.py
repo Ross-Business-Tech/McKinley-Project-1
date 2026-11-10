@@ -189,13 +189,16 @@ def test_unrelated_and_ack_turns_are_not_follow_ups(msg):
 
 @pytest.mark.parametrize("msg", ["nobody is hurt, false alarm",
                                  "sorry I meant my neighbor isn't responding to my texts",
-                                 "no emergency, you misunderstood", "never mind, everyone's fine",
+                                 "no emergency, you misunderstood",
                                  "falsa alarma, nadie está herido", "I was just venting, no one is hurt"])
 def test_retraction(msg):
     assert is_retraction(msg) and classify(msg, _inc("medical", third=True)) == "retracted", msg
 
 
+# Sprint 6 final (verifier P0-B): "never mind" / "everyone's fine" / "nobody is hurt" alone no longer retract; only an
+# explicit "false alarm", "I meant", "you misunderstood" does (stricter, so the alert stays).
 @pytest.mark.parametrize("msg", ["false alarm, but he's still not breathing", "I meant my dad collapsed",
+                                 "never mind, everyone's fine", "nobody is hurt",
                                  "never mind the form, she's bleeding a lot", "I'm fine"])
 def test_retraction_look_alikes_are_not_retractions(msg):
     assert classify(msg, _inc("medical", third=True)) != "retracted", msg

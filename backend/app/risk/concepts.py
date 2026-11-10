@@ -262,8 +262,9 @@ NOT_PHYSICAL = re.compile(
     r"\b(?:\W+(?:\w+\W+){0,4})?|"
     r"\b(?:not|isn'?t|wasn'?t|hasn'?t|won'?t|wont|haven'?t|never|stopped) (?:answering|responding|replying|answered|"
     r"responded|replied|answer|respond|reply)\W+(?:\w+\W+){0,3}(?:texts?|calls?|emails?|e-mails?|messages?|phone|"
-    r"voicemails?|dms?|questions?|requests?|tickets?|me|us|again|for (?:days|hours|weeks|a week)|all (?:day|week)|"
-    r"since)\b|"
+    # Sprint 6 final (verifier P0-A): "me", "us", "again" and durations are NOT stripped here: "my dad is not
+    # responding to me" is a body state. Staff not replying to me/us is covered by the staff branch above.
+    r"voicemails?|dms?|questions?|requests?|tickets?)\b|"
     r"\bpass(?:ed|ing|es)? out (?:the |some |these |those |all (?:the )?|our |copies of )?(?:paperwork|papers?|forms?|"
     r"flyers?|fliers|leaflets?|cards?|candy|keys|packets?|copies|menus|tickets?|surveys?|notices?|samples|snacks|"
     r"pamphlets?|brochures?|water|masks|lease(?:s| agreements?)?|documents?|info\w*)\b", re.I)

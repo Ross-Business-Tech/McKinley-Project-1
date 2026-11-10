@@ -609,7 +609,9 @@ _ENTRY_ASK_FIRST = re.compile(
 _ENTRY_MAY = re.compile(
     r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
     r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
-    r"\blet (?:themselves|yourselves) in\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
+    r"\blet (?:themselves|yourselves) in\b|"
+    r"\b(?:enter|come in|go in)\s+(?:whenever|any ?time|when(?:ever)? (?:you|they) (?:need|want)(?: to)?|"
+    r"while i'?m (?:out|away|gone|at work))\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
     r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)",
     re.I)
 _ROOM_FIELD = re.compile(r"^\W*(?:where|room|location|place|d[oó]nde)\s*[:=-]\s*(?P<v>.{2,40}?)\W*$", re.I)

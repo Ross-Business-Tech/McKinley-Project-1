@@ -109,8 +109,8 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"display|screen)|\bco (?:levels?|reading|ppm|warning|alert)\b",
         re.I)),
     ("fire_smoke", re.compile(
-        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b|station|house|escape|"
-        r"lane))|\bflames?\b|"
+        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|dept\b|works|fighter|d\b|station|"
+        r"house|escape|lane|marshal|truck|engine|crew|m[ae]n\b))|\bflames?\b|"
         r"on fire|\bburning\b(?! question)|burnt? (smell|plastic|rubber)|smells? (like |of )?(burn|smoke)|"
         r"smell\w*\W+(?:\w+\W+){0,2}(?:burnt|burning|smoky)|"
         r"\bsmok(e|ing|y|in'?)\b(?! ?(detector|alarm)\b(?!.{0,30}(going off|sounding|won'?t stop|keeps going)))|"

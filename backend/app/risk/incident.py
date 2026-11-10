@@ -66,6 +66,8 @@ _HANDLED = (r"\b(?:(?:is|are|'s|'re|got) here|arrived|showed up|came|took (?:him
             r"got (?:him|her|them|it)|is with (?:him|her|them|us|me)|are with (?:him|her|them|us|me)|"
             r"put it out|put out|it'?s out|is out|are out|shut (?:it|the \w+) off|turned (?:it|the \w+) off|"
             r"fixed|handled|arrested|took (?:him|her|them) away|left with|cleared|all clear|said it'?s safe|"
+            r"said (?:it|everything|we|all)(?:'s| is| are|'re)? (?:fine|ok(?:ay)?|safe|good|clear)"
+            r"(?: now)?|"
             r"said (?:we|it) (?:can|is)|lleg(?:ó|aron)|se (?:lo|la|los) llevaron|lo apagaron|ya est[aá]n aqu[ií])\b")
 _RESOLVED_ALONE = re.compile(
     r"\ball clear\b|\b(?:fire|it|the fire)(?:'s| is| was) (?:out|put out|completely out)\b.*\b(?:fire ?(?:department|"
@@ -122,7 +124,25 @@ _RETRACT = re.compile(
     r"misunderst\w*|false alarm|nobody|no one|no emergency)\b)|\bfalsa alarma\b|\bnadie (?:est[aá] )?herido\b|"
     r"\bno es (?:una )?emergencia\b|\bme refer[ií]a\b", re.I)
 _RETRACT_DANGER = re.compile(r"\b(?:still|again|but (?:he|she|they|it|now)|now (?:he|she|they|it)|worse|can'?t "
-                             r"breathe|not breathing|bleeding|won'?t wake)\b", re.I)
+                             r"breathe|not breathing|bleeding|won'?t wake|"
+                             # Sprint 6 final (verifier P0-B): a body state or a hazard that is still there
+                             r"on the floor|gr[ae]y|sweat\w*|pale|turning blue|collaps\w*|fell|unconscious|"
+                             r"not responding|unresponsive|pain|seizur\w*|vomit\w*|stronger|getting (?:worse|bigger|"
+                             r"stronger)|keeps? (?:going|beeping|sparking|crackling)|crackl\w*|yet|sigue\w*|"
+                             r"todav[ií]a|peor)\b", re.I)
+# Only these phrases retract an alert. "Nobody is hurt", "not an emergency" and "everyone's fine" alone never do:
+# a gas leak or a sparking panel has no victim yet and is still dangerous.
+_RETRACT_EXPLICIT = re.compile(
+    r"\bfalse alarm\b|\bi (?:only |just )?(?:meant|was talking about|was referring to|was (?:just )?(?:venting|"
+    r"complaining|kidding|joking))\b|\bthat'?s not what i meant\b|\bi didn'?t mean\b|\byou (?:misunderstood|got it "
+    r"wrong|read that wrong)\b|\bmisunderst\w*|\bjust kidding\b|\bfalsa alarma\b|\bme refer[ií]a\b", re.I)
+# For a hazard incident (no person named), the message must not name the hazard again ("false alarm, but it still
+# smells", "falsa alarma, pero sigue oliendo").
+_HAZARD_CUE = re.compile(r"\b(?:smell\w*|odou?r|gas|smok\w*|spark\w*|alarm(?:'s| is)? (?:going|beep\w*|sound\w*)|"
+                         r"beep\w*|water|flood\w*|fire|flames?|burn\w*|heat|hot|outlet|panel|breaker|ceiling|crack\w*|"
+                         r"huele|oliendo|olor|humo|agua|fuego)\b", re.I)
+HAZARD_KINDS = {"gas", "co", "electrical", "fire_smoke", "flood", "structural", "extreme_temp"}
+REOPEN_WINDOW = 3  # turns after a retraction in which a body state or the hazard reopens the incident
 # The resident stopped the hazard ("water stopped, I shut the valve", "the smell is gone, gas is off at the stove").
 _CONTROLLED = re.compile(
     r"\b(?:water|leak|leaking|flow|it|the pipe|dripping|spraying|sparking|sparks|smell|odou?r|hissing)(?:'s| is| has| "
@@ -155,11 +175,13 @@ _LOCATION = re.compile(r"^\W*(?:i'?m|im|i am|we'?re|we are|he'?s|she'?s|they'?re
                        r"(?:on|in|at|by|near|stuck|trapped|still|upstairs|downstairs|en)\b", re.I)
 
 
-def is_retraction(message: str) -> bool:
-    """'false alarm', 'nobody is hurt', 'I meant my texts' with nothing in the rest of the message still describing
-    danger."""
+def is_retraction(message: str, kind: str | None = None) -> bool:
+    """'false alarm', 'I meant my texts', 'you misunderstood' with nothing in the rest of the message still describing
+    danger. 'Nobody is hurt' / 'not an emergency' alone are not retractions (Sprint 6 final, verifier P0-B)."""
     text = message.strip()
-    if not _RETRACT.search(text) or _RETRACT_DANGER.search(text):
+    if not _RETRACT_EXPLICIT.search(text) or _RETRACT_DANGER.search(text):
+        return False
+    if kind in HAZARD_KINDS and _HAZARD_CUE.search(_RETRACT_EXPLICIT.sub(" ", text)):
         return False
     rest = _RETRACT.sub(" ", text)
     return not scan(rest)[0]
@@ -168,7 +190,7 @@ def is_retraction(message: str) -> bool:
 def classify(message: str, inc: Incident) -> Turn:
     text = message.strip()
     low = text.lower()
-    if is_retraction(text):
+    if is_retraction(text, inc.kind):
         return "retracted"
     if inc.kind in CONTROLLABLE_KINDS and _CONTROLLED.search(low) and not _CONTROLLED_NOT.search(low):
         rest = _CONTROLLED.sub(" ", text)
@@ -252,6 +274,17 @@ def step(store: Any, session_id: str, persona_key: str, message: str, risk: Risk
                            third_party=d.kind in THIRD_PARTY_KINDS and bool(_OTHER_PERSON.search(message)))
         _save(store, session_id, persona_key, inc)
         return risk.model_copy(update={"decision": d.model_copy(update={"incident": inc.kind})})
+    if inc and inc.status == "resolved" and inc.resolved_reason == "retracted" and turn - inc.last_seen_turn <= \
+            REOPEN_WINDOW and (_RETRACT_DANGER.search(message) or scan(message)[0] or possible_risk(message)
+                               or (inc.kind in HAZARD_KINDS and _HAZARD_CUE.search(message))):
+        # "you misunderstood, he's fine" then "he's grey and sweating": the retracted incident comes back
+        inc.status, inc.resolved_reason, inc.resolved_at, inc.quiet, inc.last_seen_turn = "active", None, None, 0, turn
+        _save(store, session_id, persona_key, inc)
+        nd = d.model_copy(update={"response": "full_alert", "kind": inc.kind, "needs_human": True,
+                                  "escalation_priority": "urgent", "care": None,
+                                  "also_988": d.also_988 or (inc.kind == "poison" and "self_harm" in inc.kinds)})
+        return risk.model_copy(update={"decision": _call(nd, inc, "R10", f"danger after a retracted {inc.kind} "
+                                                                          "alert: incident reopened")})
     if not inc or inc.status != "active":
         return risk
     if inc.kind == "self_harm":
@@ -262,7 +295,8 @@ def step(store: Any, session_id: str, persona_key: str, message: str, risk: Risk
         _save(store, session_id, persona_key, inc)
         return risk.model_copy(update={"decision": d.model_copy(update={"incident": inc.kind})})
     kind = classify(message, inc)
-    if kind == "retracted" and (turn - inc.opened_turn > RETRACT_WINDOW or inc.kind == "personal_safety"):
+    if kind == "retracted" and (turn - inc.opened_turn > RETRACT_WINDOW or inc.kind == "personal_safety"
+                                or "self_harm" in inc.kinds):
         kind = "ack"  # an old incident, or a possible threat (a "never mind" may be coerced): a quiet turn only
     inc.last_seen_turn = turn
     if kind == "retracted":
@@ -324,7 +358,7 @@ def prior_hazards(store: Any, session_id: str, persona_key: str, message: str, t
         return hazards
     retracted = inc.status == "resolved" and inc.resolved_reason == "retracted"
     retracting = (inc.status == "active" and inc.kind != "personal_safety" and turn - inc.opened_turn <= RETRACT_WINDOW
-                  and is_retraction(message))
+                  and is_retraction(message, inc.kind))
     if not (retracted or retracting):
         return hazards
     gone = set(inc.kinds) | {inc.kind}
