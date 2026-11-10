@@ -101,7 +101,8 @@ def list_personas(wb: Workbook | None) -> list[Persona]:
 # account word). Relations in the "his/her" form are limited to people who share a home, so "my son is sick, I'm his
 # mom" on the holder's own account is not read as a disclaimer; the "<name>'s" form allows family too.
 _REL_HOME = (r"(?:room ?mates?|roomm?ates?|roomies?|flat ?mates?|house ?mates?|partner|husband|wife|spouse|"
-             r"boyfriend|girlfriend|bf|gf|fianc[eé]e?|friend|guest|caregiver|carer|subtenant|sublet\w*)")
+             r"boyfriend|girlfriend|bf|gf|fianc[eé]e?|friend|guest|caregiver|carer|subtenant|sublet\w*|"
+             r"neighbou?rs?|landlord|coworker|co-worker|colleague|assistant)")
 _REL_ANY = _REL_HOME[:-1] + r"|mom|mum|mother|dad|father|son|daughter|kid|brother|sister|cousin|aunt|uncle|niece|" \
     r"nephew|grand\w+|sibling|parent|relative)"
 _SUBJ = r"\b(?:i'?m|im|i am|this is|it'?s|its)\s+(?:actually\s+|just\s+|only\s+)?"
@@ -128,10 +129,50 @@ _BORROWED = re.compile(
     r"credentials|portal)\b|\bsomeone\s+else'?s\s+(?:login|account|phone|portal)\b", re.I)
 
 
+# Sprint 6 fix round: structural forms of "the speaker is someone other than the persona" (defence in depth only).
+# 1. relation + possessive + an account/identity object: "this is my sister's login", "on my mom's account",
+#    "calling about my dad's apartment". Account objects need no framing; a place, phone or email needs a framing
+#    word before it ("text my husband's phone" stays clear). "my sister's AC is broken too" has no account object.
+_ACCT_OBJ = r"(?:login|log-in|account|password|sign-?in|credentials|portal|profile)"
+_FRAMED_OBJ = r"(?:place|apartment|apt|unit|home|house|lease|phone|cell|email)"
+_REL_POSS = rf"(?:my|our|a|her|his|their)\s+{_REL_ANY}'?s"
+_REL_ACCOUNT = re.compile(rf"\b{_REL_POSS}\s+{_ACCT_OBJ}\b|\b(?:on|for|about|at|in|of|into|from|using|borrowing|"
+                          rf"check(?:ing)?|this is|it'?s|its)\s+{_REL_POSS}\s+{_FRAMED_OBJ}\b", re.I)
+# 2. "not the account owner / holder / tenant" without "I'm" ("Not the account owner here - their neighbour").
+_NOT_OWNER = re.compile(r"\bnot\s+(?:actually\s+|really\s+)?(?:the|a|an)\s+(?:\w+\s+)?(?:account ?(?:owner|holder)|"
+                        r"tenant|leaseholder|lease ?holder|renter|owner of (?:this|the) account)\b(?!'|\s+(?:"
+                        r"responsibilit\w*|issue|problem|thing|fault|portal|matter|question|rule|charge|fee)\b)", re.I)
+# 3. "logged in as <someone>" / "signed in under my mom": anyone but the persona themself.
+_LOGGED_AS = re.compile(r"\b(?:logged|signed|log|sign)(?:ged)?\s+in\s+(?:as|under)\s+(?:my\s+|a\s+|her\s+|his\s+|"
+                        r"their\s+|the\s+)?([a-z]+)\b", re.I)
+_SELF_WORDS = {"me", "myself", "usual", "normal", "resident", "tenant", "account", "holder", "owner", "my", "own",
+               "the", "a", "an", "it", "this", "that", "google", "apple", "facebook", "email", "phone", "password"}
+# 4. "<name>'s <relation>" as a self-introduction clause: "it's Sam, Jordan's roommate", "Jordan's roommate here",
+#    "hi - Marisol's sister here". It must end the clause, so "Marisol's kid broke it" stays clear.
+_NAMED_REL = re.compile(rf"(?:^|[,.;:!?\-\u2013\u2014(]\s*|\bhere\s+)([a-z]+)'s\s+{_REL_ANY}\b(?:\s+here)?"
+                        rf"\s*(?:$|[,.;:!?\-\u2013\u2014)])|\b([a-z]+)'s\s+{_REL_ANY}\s+here\b", re.I)
+
+
+def _structural_non_holder(text: str, first_name: str | None) -> bool:
+    if _REL_ACCOUNT.search(text) or _NOT_OWNER.search(text):
+        return True
+    name = (first_name or "").strip().lower()
+    for m in _LOGGED_AS.finditer(text):
+        word = m.group(1).lower()
+        if word not in _SELF_WORDS and word != name:
+            return True
+    for m in _NAMED_REL.finditer(text):
+        word = (m.group(1) or m.group(2) or "").lower()
+        if word not in _NOT_A_NAME:
+            return True
+    return False
+
+
 def states_not_account_holder(message: str, first_name: str | None = None) -> bool:
-    """Standalone non-holder identity: "I'm not Jordan", "I'm Jordan's roommate", "this is her roommate"."""
+    """Standalone non-holder identity: "I'm not Jordan", "I'm Jordan's roommate", "this is her roommate",
+    "this is my sister's login", "logged in as my mom", "not the account owner", "it's Sam, Jordan's roommate"."""
     text = message.replace("\u2019", "'")
-    if _NOT_HOLDER.search(text):
+    if _NOT_HOLDER.search(text) or _structural_non_holder(text, first_name):
         return True
     if (m := _BORROWED.search(text)) and not re.search(r"\b(?:my\s+own|my)\s+(?:login|log-in|account|password|"
                                                        r"sign-?in|credentials|portal)\b", m.group(0), re.I):
@@ -161,6 +202,12 @@ def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
     return ctx.model_copy(update={
         "persona_kind": "unmatched_resident", "record_found": False, "fields": [], "dropped_items": [],
         "notes": [*ctx.notes, "Person said they are not the account holder: no account data is used."]})
+
+
+def holder_disclaimed(before: SafeContext, after: SafeContext) -> bool:
+    """True when apply_account_holder_rule removed the account (the person said it isn't theirs): the caller then
+    also narrows the store with ScopedStore.without_account_access(), so the data layer agrees with the context."""
+    return before.persona_kind == "resident" and after.persona_kind != "resident"
 
 
 def anonymous_context(persona_id: str | None, message: str) -> SafeContext:

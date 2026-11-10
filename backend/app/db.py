@@ -544,21 +544,57 @@ class Store:
         return data
 
 
+# Principal kinds whose own records may be read across sessions: an authorised persona owns its prototype records,
+# not the browser tab. Anonymous callers share one persona key ("none"), so they stay session-only.
+_CROSS_SESSION_KINDS = frozenset({"demo_persona", "authenticated_resident"})
+# Draft slots filled from the account record (app.actions `_set(..., "on_file")`) and history references: removed
+# from every draft read once the person said they are not the account holder.
+_ACCOUNT_DRAFT_KEYS = ("history_ref",)
+
+
+def _strip_account_fields(draft: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not draft:
+        return draft
+    fields = {k: v for k, v in (draft.get("fields") or {}).items()
+              if not (isinstance(v, dict) and v.get("source") == "on_file")}
+    return {**{k: v for k, v in draft.items() if k not in _ACCOUNT_DRAFT_KEYS}, "fields": fields}
+
+
 class ScopedStore:
     """The customer-facing view of a Store, bound to ONE session and ONE principal (app/auth.Principal).
 
     Deny by default: reads for any other session or persona return nothing, writes for them raise PermissionError,
-    records are only those written in this session by this persona, and staff-wide listings (conversations, gate log,
-    eval runs) are not available at all. Chat turns, the planner and confirm/cancel receive this, never the raw Store.
+    and staff-wide listings (conversations, gate log, eval runs) are not available at all. Chat turns, the planner and
+    confirm/cancel receive this, never the raw Store.
+
+    Records (the prototype system of record) are scoped by OWNER, chat state by SESSION:
+    - chat history, gate memory and drafts: this session + this persona only;
+    - `records(session_id=<this session>)`: this session's records by this persona (in-conversation state);
+    - `records()` / `records(persona_id=<this persona>)`: this persona's records from ANY session, but only for an
+      authorised persona principal (`principal_kind` in _CROSS_SESSION_KINDS). Anonymous callers: this session only.
+    - after `without_account_access()` (the person said they are not the account holder): no account records at all
+      (an unfiltered listing returns []), only this session's in-conversation records, and drafts lose every slot
+      filled from the account record.
     """
 
     _PASSTHROUGH = frozenset({"dialect"})
 
-    def __init__(self, store: Store, session_id: str, persona_key: str):
+    def __init__(self, store: Store, session_id: str, persona_key: str, principal_kind: str = "anonymous",
+                 account_access: bool = True):
         self._store = store
         self.session_id = session_id
         self.persona_key = persona_key or "none"
         self.persona_id = None if self.persona_key == "none" else self.persona_key
+        self.principal_kind = principal_kind
+        self.account_access = account_access
+
+    @property
+    def cross_session(self) -> bool:
+        return self.account_access and self.persona_id is not None and self.principal_kind in _CROSS_SESSION_KINDS
+
+    def without_account_access(self) -> "ScopedStore":
+        """The same scope with no account data (non-holder for the rest of the session)."""
+        return ScopedStore(self._store, self.session_id, self.persona_key, self.principal_kind, account_access=False)
 
     def __getattr__(self, name: str) -> Any:
         if name in self._PASSTHROUGH:
@@ -586,17 +622,28 @@ class ScopedStore:
     def get_draft(self, session_id: str, persona_id: str, include_declined: bool = False) -> dict[str, Any] | None:
         if not self._mine(session_id, persona_id):
             return None
-        return self._store.get_draft(session_id, persona_id, include_declined=include_declined)
+        d = self._store.get_draft(session_id, persona_id, include_declined=include_declined)
+        return d if self.account_access else _strip_account_fields(d)
 
     def records(self, persona_id: str | None = None, kind: str | None = None, session_id: str | None = None,
                 limit: int = 100) -> list[dict[str, Any]]:
-        """Only this session's records by this persona, whatever filter the caller asked for."""
+        """This persona's records only, whatever filter the caller asked for (see the class docstring)."""
         if persona_id is not None and (persona_id or "none") != self.persona_key:
             return []
         if session_id is not None and session_id != self.session_id:
             return []
+        if session_id is None and not self.account_access:
+            return []  # non-holder: an account listing (status, history) shows nothing
+        if session_id is None and self.cross_session:
+            return self._store.records(persona_id=self.persona_id, kind=kind, limit=limit)
         rows = self._store.records(kind=kind, session_id=self.session_id, limit=max(limit, 200))
         return [r for r in rows if (r.get("persona_id") or None) == self.persona_id][:limit]
+
+    def own_record(self, reference: str) -> dict[str, Any] | None:
+        """One of this persona's records by its reference (a typed "DEMO-WO-1001"), from any session for an
+        authorised persona; None for anyone else's reference, which reveals nothing about it."""
+        ref = (reference or "").strip().upper()
+        return next((r for r in self.records(limit=500) if str(r.get("id", "")).upper() == ref), None)
 
     # ---- writes (only for this session + principal) ----
     def append_turns(self, session_id: str, mode: str, persona_id: str, user: str, assistant: str) -> None:
@@ -612,7 +659,10 @@ class ScopedStore:
         self._store.save_draft(session_id, persona_id, kind, data)
 
     def take_draft(self, session_id: str, persona_id: str, kind: str) -> dict[str, Any] | None:
-        return self._store.take_draft(session_id, persona_id, kind) if self._mine(session_id, persona_id) else None
+        if not self._mine(session_id, persona_id):
+            return None
+        d = self._store.take_draft(session_id, persona_id, kind)
+        return d if self.account_access else _strip_account_fields(d)
 
     def mark_stale(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
         self._require(session_id, persona_id)

@@ -141,11 +141,14 @@ def test_reference_lookup_for_another_personas_request_reveals_nothing(client):
         assert not any(s in blob(r) for s in ("Marisol", "kitchen faucet", "AC rattling"))
 
 
-def test_records_of_one_session_are_never_shown_in_another_session(client):
+def test_records_are_scoped_by_owner_not_by_session(client):
+    # Sprint 6 fix round: a persona's own prototype records follow the persona across conversations (otherwise
+    # it can't find its own request and files a duplicate); another persona's conversation never sees them.
     ref = r001_request(client, "x1")
     r = chat(client, "show my requests", "R001", "x2")  # same persona, different conversation
-    assert ref not in refs(r)
-    assert "I008" in refs(r)  # the persona's own synthetic history is still its own
+    assert ref in refs(r) and "I008" in refs(r)
+    other = chat(client, "show my requests", "R003", "x3")
+    assert ref not in refs(other) and "I008" not in refs(other)
 
 
 # ---- guest / anonymous ----------------------------------------------------------------------------------------

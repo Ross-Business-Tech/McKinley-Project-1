@@ -7,7 +7,7 @@ from app.api.staff_guard import require_staff
 from app.auth import AuthError, Principal, check_session_binding, derive_principal
 from app.db import ScopedStore
 from app.models import ActionConfirmRequest, ActionResult, PrototypeRecord
-from app.personas import apply_account_holder_rule, build_context
+from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.safety import redact
 from app.state import AppState, get_state
 
@@ -22,7 +22,7 @@ def _authorized(req: ActionConfirmRequest, state: AppState) -> tuple[Principal, 
         check_session_binding(state.store, principal)
     except AuthError as e:
         raise HTTPException(status_code=e.status, detail=e.detail()) from None
-    return principal, ScopedStore(state.store, req.session_id, principal.key)
+    return principal, ScopedStore(state.store, req.session_id, principal.key, principal_kind=principal.kind)
 
 
 @router.post("/actions/confirm", response_model=ActionResult)
@@ -31,8 +31,10 @@ def confirm_action(req: ActionConfirmRequest, state: AppState = Depends(get_stat
     always come from the draft the backend built, never from the browser. Identity is re-checked here."""
     principal, store = _authorized(req, state)
     pkey = principal.key
-    ctx = apply_account_holder_rule(build_context(principal.persona_id, "", state.deps.workbook, principal=principal),
-                                    store.user_messages(req.session_id, pkey))
+    record_ctx = build_context(principal.persona_id, "", state.deps.workbook, principal=principal)
+    ctx = apply_account_holder_rule(record_ctx, store.user_messages(req.session_id, pkey))
+    if holder_disclaimed(record_ctx, ctx):
+        store = store.without_account_access()  # the saved note carries no on-file account slots either
     draft = store.get_draft(req.session_id, pkey)
     lang = draft.get("lang", "en") if draft else "en"
     return confirm(store, req.session_id, principal.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]

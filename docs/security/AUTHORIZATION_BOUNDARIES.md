@@ -2,7 +2,7 @@
 
 Who can read which data, where identity comes from, and what stops one caller seeing another's data. This
 describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `chat_engine.py` step 2,
-`api/*.py`). Tests: `backend/tests/test_sprint6_auth.py`.
+`api/*.py`). Tests: `backend/tests/test_sprint6_auth.py`, `backend/tests/test_sprint6_auth_fix.py`.
 
 > **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list.
 > Anyone who can reach a demo-enabled backend can act as any synthetic persona. That is acceptable only because
@@ -36,12 +36,29 @@ Rules:
 |---|---|
 | `personas.build_context(persona_id, msg, wb, *, principal)` | `principal` is required. It returns the persona's context only if `may_access_persona(principal, persona_id)`. Otherwise it returns the anonymous context (no record, no fields). Database-loaded residents (Supabase) are `Workbook` rows too, so the same check applies. |
 | `chat_engine.run_turn` step 2 | Derives the principal (or takes the one the API derived). It rebinds `persona_id` / `hist_key` to the **authorized** persona only, so the later steps (`resident_for`, `plan_turn`, status lookups, history, persistence) never see an unauthorized persona id. It replaces `deps.store` with a `ScopedStore`. |
-| `db.ScopedStore(store, session_id, persona_key)` | The only store the chat turn, the planner and confirm/cancel get. Reads for any other session or persona return nothing. Writes for them raise `PermissionError`. `records()` returns only records written **in this session by this persona**, whatever filter the caller passes (so `status_items(store, …, persona_id)` cannot list another session's or persona's records). It has no staff-wide listings (`conversations`, `conversation`, `gate_log`, eval runs): accessing them raises `AttributeError`. |
+| `db.ScopedStore(store, session_id, persona_key, principal_kind=…)` | The only store the chat turn, the planner and confirm/cancel get. Chat state (history, user messages, gate memory, drafts) is **per session + persona**: reads for any other session or persona return nothing, writes for them raise `PermissionError`. Prototype records are **per owner** (see §2a). It has no staff-wide listings (`conversations`, `conversation`, `gate_log`, eval runs): accessing them raises `AttributeError`. |
 | `actions.resident_for` / `status_items` (planner, owned by the conversation engineer) | Receive only the authorized persona id and the scoped store (above). Synthetic history items come from `resident_for(persona_id)`, which `chat_engine` calls only when the context is a verified resident record. |
 | Session binding (`session_bindings` table, `Store.bind_session`) | A session id is bound to (principal kind, persona key) on first use (atomic insert-if-absent). |
 | `/api/chat` with a session bound to someone else | **Starts a new conversation** under a fresh server-issued `session_id`, returned in the response (the website adopts it). No history, drafts or records of the first session are visible. It is never a 403, so an emergency message is always answered. |
 | `/api/actions/confirm`, `/api/actions/cancel` | Derive the principal and require the session binding to match. Otherwise **403 `SESSION_PERSONA_MISMATCH`**. Then they work only on the scoped store, and the draft is keyed by (session, persona) and kind. A wrong kind gets `NO_PENDING_ACTION`. Repair requests still need a verified resident context (`NOT_AUTHORIZED`). |
-| Account-holder rule (`personas.apply_account_holder_rule`) | Wording-based **caution only**, kept from earlier sprints and extended to "borrowing / using someone's login or account". If it fires, the rest of the session uses no account data. It is **not** the security boundary: the principal and the scoped store are. |
+| Account-holder rule (`personas.apply_account_holder_rule`, `states_not_account_holder`) | Wording-based **caution only** (defence in depth on a demo-enabled deployment; the hosted boundary is the real control). If it fires, at any point in the session, the rest of the session uses no account data: the context has no fields and is not a verified resident, **and** `chat_engine` step 2 / `confirm` narrow the store with `ScopedStore.without_account_access()` (§2a), so status, history, renewal, typed-reference and card paths get no account data whatever they ask for. It is **not** the security boundary: the principal and the scoped store are. |
+
+## 2a. Records: scoped by owner, not by session (Sprint 6 fix round)
+
+Rule: **a prototype record belongs to the principal + persona that wrote it, not to the browser tab.** The same
+authorised demo persona can read its own records in any later conversation ("any update on the leak under my sink?",
+"status of DEMO-WO-1001"), so it is not invited to file a duplicate. Chat history stays per session.
+
+| `ScopedStore` read | Authorised persona (`demo_persona`; future `authenticated_resident`) | Anonymous (guest, hosted) | After "not the account holder" |
+|---|---|---|---|
+| `records()` / `records(persona_id=<own>)` (status lists, history matching) | Own persona's records from **every** session | This session's guest records only (guests share the key `none`, so never across sessions) | `[]` |
+| `records(session_id=<this session>)` (in-conversation state: duplicates, "send it", emergency follow-ups) | This session's records by this persona | Same | Same (the person's own actions in this chat) |
+| `records(persona_id=<other>)`, `records(session_id=<other>)` | `[]` | `[]` | `[]` |
+| `own_record(ref)` (typed reference) | Own record from any session; `None` for anyone else's reference | This session only | `None` |
+| `history`, `user_messages`, `last_gate`, `get_draft`, `take_draft` | This session + persona only | Same | Same, and drafts lose every slot filled from the account record (`source: "on_file"`) and `history_ref` |
+| Writes (`add_record`, `save_draft`, …) | This session + persona only (`PermissionError` otherwise) | Same | Same |
+
+Deny by default: a `ScopedStore` built without `principal_kind` is session-only. Staff never use `ScopedStore`.
 
 ## 3. Audit: every path that exposes data
 
@@ -52,7 +69,7 @@ Rules:
 | `GET /api/models` | none | Configured `provider:model` targets (no keys or URLs) | Public by design |
 | `POST /api/chat` → step 2 `build_context` | Server-derived principal (client `persona_id` is the demo selector only) | Allowlisted context fields, as `source_context_fields` and in the model prompt | `may_access_persona`. Hosted: 403 for any persona id. |
 | `POST /api/chat` → history (`history`, `user_messages`, `last_gate`) | `session_id` (a client-generated random UUID, the bearer) + principal key | Earlier turns, given to the model and the planner | `ScopedStore` + session binding |
-| `POST /api/chat` → status lookups (`status_items`, typed `DEMO-WO-…` reference, "the one for the sink", hurry/frustration) | Principal → scoped store + `resident_for` | References, short subjects, statuses, opened dates of this persona's own items | Records: this session + persona only. History items: own synthetic record only, verified resident context only. |
+| `POST /api/chat` → status lookups (`status_items`, typed `DEMO-WO-…` reference, "the one for the sink", hurry/frustration) | Principal → scoped store + `resident_for` | References, short subjects, statuses, opened dates of this persona's own items | Records: this persona's own, any session (§2a); none after a non-holder statement. History items: own synthetic record only, verified resident context only. |
 | `POST /api/chat` → drafts / action cards | session + principal key | Draft fields the person typed | `ScopedStore` |
 | `POST /api/chat` → `identity_note`, renewal, contact preference, entry window | Context fields above | Own persona's allowlisted fields only | `build_context` |
 | `POST /api/actions/confirm` / `cancel` | Server-derived principal + session binding | The saved record (own draft) | 403 on mismatch, scoped store |
@@ -79,7 +96,9 @@ Protected:
   or conversation history. In hosted mode nobody can.
 - Reusing a session id as another persona or as a guest shows nothing of the first conversation. Confirm and cancel
   are refused.
-- Records of session X are never listed in session Y, even for the same persona.
+- Records are listed only to the persona that wrote them (any of its sessions). Another persona, a guest, or a
+  session where the person said they are not the account holder never sees them. Guests never see each other's
+  records across sessions.
 - Typing another persona's reference (`DEMO-WO-…`, `I008`) reveals nothing about it.
 - Conversation text cannot raise the principal.
 
@@ -96,8 +115,12 @@ Not protected (known gaps):
    personas are dropped there (anonymous). Passing `principal=auth.TOOLING` from `app/evals.py` would restore
    persona evals behind the staff guard if that is wanted.
 5. The staff console's persona picker also uses `/api/personas`, so it is empty on a hosted backend.
-6. The account-holder caution is wording-based and will miss phrasings. That is acceptable only because it is not
-   the security mechanism.
+6. The account-holder caution is wording-based and will miss phrasings. It now recognises structural forms (a
+   relation's login/account, "on my mom's phone/place", "logged in as <someone>", "not the account owner/tenant",
+   "<name>'s <relation> here"), but that is acceptable only because it is not the security mechanism.
 7. `ScopedStore` uses an allowlist. A new store method used by the chat turn (for example persistent incident or
    workflow state) must be added to `ScopedStore` with the same session + persona check, or it raises
    `AttributeError`.
+8. Owner-scoped records mean anyone who picks a demo persona on a demo-enabled (local) deployment sees that
+   persona's prototype records from all sessions. Same reason as gap 1: personas are synthetic and anyone can pick
+   any of them there; hosted has no personas.
