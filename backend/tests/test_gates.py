@@ -207,6 +207,29 @@ def _jev(handler) -> JevGate:
     return JevGate("test-key", "https://jev.invalid", "jev-latest", 2, client)
 
 
+def test_jev_adapter_parses_the_official_shape_noul_usage_and_min_confidence():
+    def ok(req: httpx.Request) -> httpx.Response:
+        body = req.read()
+        assert b'"criteria"' in body and b'"needs_human"' in body
+        return httpx.Response(200, json={"answers": {
+            "intent": {"type": "choice", "choice": "maintenance", "confidence": 1.0, "probabilities": {}},
+            "urgency": {"type": "choice", "choice": "low", "confidence": 0.53, "probabilities": {}},
+            "needs_human": {"type": "noul", "noul": 0.88}}, "usage": {"input_tokens": 536, "output_tokens": 9}})
+    d = _jev(ok).classify("kitchen faucet dripping", RESIDENT, classify_rules("kitchen faucet dripping", RESIDENT))
+    assert d.requires_human is True  # noul 0.88 is read (it used to be silently dropped)
+    assert d.confidence == 0.53  # least confident part, not just the intent
+    assert d.gate_usage and d.gate_usage.input_tokens == 536 and d.gate_usage.estimated_cost_usd > 0
+
+
+def test_jev_noul_below_half_is_false():
+    def ok(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"answers": {
+            "intent": {"type": "choice", "choice": "general", "confidence": 0.9},
+            "urgency": {"type": "choice", "choice": "low", "confidence": 0.9},
+            "needs_human": {"type": "noul", "noul": 0.2}}})
+    assert _jev(ok).classify("hi", RESIDENT, classify_rules("hi", RESIDENT)).requires_human is False
+
+
 def test_jev_adapter_parses_documented_shape_and_applies_floor():
     def ok(req: httpx.Request) -> httpx.Response:
         assert req.headers["authorization"] == "Bearer test-key" and req.url.path == "/v1/systemone"
@@ -214,7 +237,8 @@ def test_jev_adapter_parses_documented_shape_and_applies_floor():
             "intent": {"answer": "maintenance", "confidence": 0.8},
             "urgency": {"answer": "low", "confidence": 0.6}, "needs_human": {"probability": 0.1}}})
     d = _jev(ok).classify("smell gas", RESIDENT, classify_rules("smell gas", RESIDENT))
-    assert d.decision_source == "jev" and d.confidence == 0.8 and not d.requires_human
+    # confidence = the least confident part (intent 0.8, urgency 0.6); legacy 'answer'/'probability' still parse
+    assert d.decision_source == "jev" and d.confidence == 0.6 and not d.requires_human
     final = apply_safety_floor(d, classify_rules("I smell gas", RESIDENT), RESIDENT)
     assert final.urgency == "emergency" and final.requires_human
 
