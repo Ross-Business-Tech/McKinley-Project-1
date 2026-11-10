@@ -39,11 +39,12 @@ from app.models import (
     SafeContext,
     Usage,
 )
-from app.personas import apply_account_holder_rule, build_context
+from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
 from app.risk.classifier import SemanticRiskClassifier
+from app.risk.incident import prior_hazards as incident_prior_hazards
 from app.risk.incident import step as incident_step
 from app.risk.pipeline import assess
 from app.safety import (
@@ -263,12 +264,17 @@ def run_turn(
         principal = replace(principal, session_id=session_id)
         session_bound_to(deps.store, principal)
     if deps.store is not None and not isinstance(deps.store, ScopedStore):
-        deps = replace(deps, store=ScopedStore(deps.store, session_id, hist_key))  # type: ignore[arg-type]
+        deps = replace(deps, store=ScopedStore(deps.store, session_id, hist_key,  # type: ignore[arg-type]
+                                               principal_kind=principal.kind))
     full_ctx = build_context(persona_id, msg, deps.workbook, principal=principal)
     said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
                    if (deps.store and use_history) else [])
     said_ever = deps.store.user_messages(session_id, hist_key) if (deps.store and use_history) else []
-    full_ctx = apply_account_holder_rule(full_ctx, [*said_ever, msg])
+    record_ctx, full_ctx = full_ctx, apply_account_holder_rule(full_ctx, [*said_ever, msg])
+    if holder_disclaimed(record_ctx, full_ctx) and isinstance(deps.store, ScopedStore):
+        # "not the account holder" (now or earlier in this session): the store drops account records and on-file
+        # draft slots too, so no later step can list them whatever it asks for (data layer, not just the context)
+        deps = replace(deps, store=deps.store.without_account_access())
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
               f"principal={principal.kind} ({principal.source}), audience={full_ctx.audience}, "
@@ -281,6 +287,9 @@ def run_turn(
     prior_hazards = ([r.get("hazard") for r in deps.store.records(session_id=session_id, limit=50)
                       if r.get("status") == "urgent_queued" and (r.get("persona_id") or None) == (persona_id or None)]
                      if (deps.store and use_history) else [])
+    if use_history and mode != "baseline":  # an alert the resident retracted ("false alarm") is not remembered
+        prior_hazards = incident_prior_hazards(deps.store, session_id, hist_key, msg, len(said_ever) + 1,
+                                               prior_hazards)
     risk = assess(msg, earlier, deps.risk if mode != "baseline" else None, prior_hazards)  # type: ignore[arg-type]
     # 2b'. persistent incident state (app/risk/incident.py): follow-ups during an active emergency repeat its notice
     risk = incident_step(deps.store if (use_history and mode != "baseline") else None, session_id, hist_key, msg,

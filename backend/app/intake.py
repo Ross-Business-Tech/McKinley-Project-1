@@ -290,6 +290,7 @@ _LOCATIONS = [
     ("Bathroom", r"bath ?room|restroom|shower|tub|toilet|baño|bano"),
     ("Bedroom", r"bed ?room|dormitorio|recámara"),
     ("Living room", r"living room|lounge|sala"),
+    ("Dining room", r"dining (?:room|area)|comedor"),
     ("Laundry area", r"laundry|washer|dryer|lavadora|secadora"),
     ("Balcony or patio", r"balcony|patio|balc[oó]n"),
     ("Whole apartment", r"whole (apartment|unit|place)|everywhere|all rooms|entire (apartment|unit)|todo el"),
@@ -766,7 +767,8 @@ _NEIGHBOR = re.compile(r"neighbou?r|upstairs|downstairs|next door|music|party|pa
 _BUILDING_NOISE = re.compile(r"\b(fan|ac|a/c|air ?condition\w*|heater|furnace|fridge|refrigerator|dishwasher|disposal|"
                              r"pipes?|wall|ceiling|vent|duct|toilet|water heater|washer|dryer|motor|rattl\w*|grind\w*|"
                              r"knock\w*|hum+ing|buzz\w*|squeal\w*|squeak\w*|clank\w*|bang\w* (?:in|from) the|"
-                             r"compressor|thermostat|smoke detector|alarm)\b", re.I)
+                             r"compressor|thermostat|smoke detector|alarm|aire|aire acondicionado|nevera|refri\w*|"
+                             r"lavadora|secadora|calentador|ventilador|tuber[ií]as?|motor|lavaplatos|inodoro)\b", re.I)
 
 
 def is_noise_complaint(message: str) -> bool:
@@ -797,7 +799,21 @@ _ISSUE_JOIN = re.compile(r"\s*(?:,?\s*\band also\b|,?\s*\balso\b|\bplus\b|\band 
                          r"^\W*(?:i have )?(?:two|2|a couple of|a few) (?:things|problems|issues)\W*|\bas well as\b|"
                          r",?\s*\boh and\b|,\s*(?=(?:the|my|our)\b)|"
                          r"\bon top of that\b|;|\.\s+|,?\s*\band\s+(?=(?:the|my|our|a)\b)|\by tambi[eé]n\b|"
-                         r"\badem[aá]s\b|,?\s*\by\s+(?=(?:el|la|los|las|mi)\b))\s*", re.I)
+                         r"\badem[aá]s\b|,?\s*\by\s+(?=(?:el|la|los|las|mi)\b)|"
+                         # Sprint 6 fix round: "X and separately Y", "X. Separately, Y", "1) X 2) Y", "y aparte"
+                         r",?\s*\b(?:and )?separately\b|\b(?:\d|[a-c])\)\s*|\(\d\)\s*|"
+                         r"\b(?:first|second|third)(?:ly)?[,:]\s*|"
+                         r",?\s*\by aparte\b|,?\s*\baparte\b)\s*", re.I)
+
+
+_ES_THING = re.compile(r"\b(?:inodoro|puerta|ventana|lavaplatos|refrigerador|nevera|estufa|horno|lavadora|secadora|"
+                       r"aire(?: acondicionado)?|calentador|luz|enchufe|grifo|llave|ducha|ba[ñn]era|techo|"
+                       r"cerradura|smoke detector|detector|carpet|alfombra)\b", re.I)
+
+
+def _ES_THING_FN(text: str) -> str | None:  # noqa: N802 - a named thing the English appliance list misses
+    m = _ES_THING.search(text)
+    return m.group(0).lower() if m else None
 
 
 def split_issues(message: str) -> list[str]:
@@ -810,12 +826,14 @@ def split_issues(message: str) -> list[str]:
     for p in parts:
         if len(p.split()) < 2:
             continue
-        thing = appliance_in(p) or extract_location(p) or next(
+        thing = appliance_in(p) or extract_location(p) or _ES_THING_FN(p) or next(
             (tp for tp in detect_topics(p) if tp not in ("contact_preference", "billing", "renewal")), None)
         if thing and (is_issue_description(p) or re.search(r"broke|broken|out\b|off\b|loose|fell|missing|torn|jammed|"
                                                            r"rattl|squeak|smell|won'?t|doesn'?t|not|leak|drip|stuck|"
                                                            r"loud|noise|clog|crack|mold|roto|no funciona|gotea|"
-                                                           r"warm|\bhot\b|\bcold\b|dead|dim\b|buzz|flicker|beep", p,
+                                                           r"warm|\bhot\b|\bcold\b|dead|dim\b|buzz|flicker|beep|"
+                                                           r"chirp|keeps|slow|hums?\b|jam|stain|takes \d|no (?:deja|"
+                                                           r"cierra|enfr[ií]a|prende|sirve|abre|sale)|no hay", p,
                                                            re.I)):
             if all(thing != t for _, t in out):
                 out.append((p, thing))
@@ -900,7 +918,8 @@ _LOC_DETAIL = re.compile(rf"\b(?<!not )(?<!not the )(?:the |my )?(?P<q>{_QUAL})\
                          rf"closet|kitchen|room|one)\b", re.I)
 
 
-_ROOMS = r"kitchen|bath ?room|bedroom|living room|laundry(?: area)?|balcony|patio|hallway|front door|entry door"
+_ROOMS = (r"kitchen|bath ?room|bedroom|living room|dining room|laundry(?: area)?|balcony|patio|hallway|front door|"
+          r"entry door")
 _LOC_CHANGE2 = re.compile(rf"\b(?:the )?(?:location|room|place|where)\s*(?:is|:)\s*(?:the |my |"
                           rf"in the )?(?P<loc>[^.?!,]{{3,40}})|"
                           rf"\b(?:it'?s|its|it is) (?:actually )?(?:the |my |"
@@ -1437,13 +1456,29 @@ def strip_spanish_request(message: str) -> str:
 
 # J-6 / R-3: the person says the problem came back ("third time this month", "AGAIN").
 _STATED_REPEAT = re.compile(r"\b(?:second|2nd|third|3rd|fourth|4th|fifth|5th|\d+(?:st|nd|rd|th)) time\b|\bagain\b|"
+                            # Sprint 6 fix round: "reported it twice", "for 2 weeks", "marked done but NOT fixed"
+                            r"\b(?:reported|asked|called|complained|told you)(?: about)? (?:this|it|that)? ?(?:twice|"
+                            r"(?:two|three|\d) times|already|before|last (?:week|month))\b|\b(?:for|over|in) "
+                            r"(?:(?:two|three|four|\d+|a couple of|several) weeks|(?:a|one|two|\d+) months?)\b|"
+                            r"\bmarked (?:it |my \w+ (?:request )?)?(?:as )?(?:done|fixed|complete|completed|closed|"
+                            r"resolved)\b[^.?!]{0,30}\b(?:not|isn'?t|still|never)\b|\bclosed (?:it|the (?:ticket|"
+                            r"request|work order)) without fixing\b|\bnever (?:got )?fixed\b|"
+                            r"\b(?:tercera|segunda|cuarta) vez\b|"
                             r"\bkeeps? (?:happening|breaking|coming back)\b|\bhappened before\b|"
                             r"\bsame (?:problem|issue) "
                             r"(?:as|again)\b", re.I)
 
 
+_NOT_REPEAT = re.compile(r"\b(?:answer|answering|repeat|repeating|say|saying|tell|telling|explain|explaining|type|"
+                         r"typing|go through|going through)\b[^.?!]{0,25}\bagain\b|\bagain\?\s*$", re.I)
+
+
 def states_repeat(message: str) -> bool:
-    return bool(_STATED_REPEAT.search(message)) or says_repeat_es(message)
+    """The PROBLEM came back. "I'm not answering that again" is about the chat, not a repeat."""
+    hit = _STATED_REPEAT.search(message)
+    if hit and hit.group(0).lower() == "again" and _NOT_REPEAT.search(message):
+        hit = None
+    return bool(hit) or says_repeat_es(message)
 
 
 # ---- sprint 5.1: inputs to the dialogue-act step (app/dialogue.py) ---------------------------------------------
@@ -1480,10 +1515,12 @@ def asks_to_restore(message: str) -> bool:
 
 # W-3: an explicit instruction to send. A bare "yes"/"ok"/"sure"/"sí" is not one; "send it", "yes send it",
 # "submit it", "go ahead and send", "envíelo" are.
-_EXPLICIT_SEND = re.compile(r"\b(?:send|submit)\b|\benv[ií]e(?:lo|la)?\b|\benv[ií]alo\b|\bm[aá]ndel[oa]\b", re.I)
+_EXPLICIT_SEND = re.compile(r"\b(?:send|submit)\b|\benv[ií]e(?:lo|la)?\b|\benv[ií]al[oa]s?\b|"
+                            r"\bm[aá]nd(?:el|al)[oa]s?\b", re.I)
 
 
-_ES_SEND = re.compile(r"^\W*(?:s[ií]|ok|vale|claro)?[\s,.!]*(?:env[ií]e?(?:lo|la)|m[aá]nde(?:lo|la))"
+_ES_SEND = re.compile(r"^\W*(?:s[ií]|ok|vale|claro)?[\s,.!]*"
+                      r"(?:env[ií]e?(?:lo|la)s?|env[ií]al[ao]s?|m[aá]nd(?:e|a)(?:lo|la)s?)"
                       r"(?:\s+por favor|\s+ya)?"
                       r"[\s.!]*$", re.I)
 

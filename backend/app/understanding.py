@@ -86,7 +86,7 @@ class DialogueAct(StrEnum):
 
 
 Intent = Literal["maintenance", "tour", "handoff", "status", "faq", "renewal", "small_talk", "other"]
-Field_ = Literal["issue", "location", "entry", "contact", "area", "days", "time", "move_in", "budget"]
+Field_ = Literal["issue", "location", "entry", "contact", "area", "days", "time", "move_in", "budget", "entry_window"]
 # The order in which a message's acts become its primary act: the most consequential first.
 _PRIORITY = [DialogueAct.REPORT_POSSIBLE_EMERGENCY, DialogueAct.REQUEST_HUMAN, DialogueAct.RESUME_TASK,
              DialogueAct.CANCEL, DialogueAct.CORRECT_INFORMATION, DialogueAct.CHECK_STATUS,
@@ -137,6 +137,16 @@ class Understanding(BaseModel):
     model_status: str = "not_used"  # not_used | ok | mock | unavailable | timeout | bad_output | error | budget
     model_emergency: bool = False  # the model pass said someone may be in danger (passed to safety, never lowered)
     turn: TurnAct | None = Field(default=None, exclude=True)  # the dialogue-act view plan_turn already uses
+    # Sprint 6 fix round (rules only): what the message does to the open card besides the acts above
+    edits: list[Correction] = Field(default_factory=list)  # the field-targeted subset of corrections (1c-edit)
+    split_request: bool = False  # "those are 2 different things", "make the oven light its own request"
+    split_target: str | None = None  # the problem named to become its own request
+    drop_issue: str | None = None  # "never mind the smoke detector": drop that problem only
+    keep_issue: str | None = None  # "only the faucet"
+    hold: bool = False  # "don't send it yet": keep the card, unsent
+    saved_question: bool = False  # "what have you saved so far?"
+    staff_complaint: bool = False  # "the tech was rude": a note for the office, not a repair
+    accepts_offer: bool = False  # "ok sure" / "yeah send them my questions" (the planner checks what was offered)
 
     def has(self, act: DialogueAct) -> bool:
         return act in self.acts
@@ -151,7 +161,8 @@ class Understanding(BaseModel):
                 "model_status": self.model_status, "human": self.requests_human,
                 "corrections": [c.field for c in self.corrections], "issues": len(self.entities.issues),
                 "question": self.question_topic, "confidence": round(self.confidence, 2),
-                "model_emergency": self.model_emergency}
+                "model_emergency": self.model_emergency, "split": self.split_request, "drop": bool(self.drop_issue),
+                "hold": self.hold, "saved_q": self.saved_question}
 
 
 # ---- frame detectors (rules) ---------------------------------------------------------------------------------
@@ -188,6 +199,40 @@ _HUMAN_FRAMES = [
                re.I),
     re.compile(r"\b(?:no more|not a|enough with the|stop the) (?:bot|robot|machine|ai|chatbot)\b", re.I),
 ]
+# Sprint 6 fix round: handoff by FRAME. (a person / someone from the office / whoever handles X) + (call me, reach out,
+# take over, connect me with, a callback from). Prospects too. A person who would ENTER the home ("have someone call me
+# before they come in") is the entry answer, not a handoff.
+_TEAM = (r"(?:(?:the|your|ur|our)\s+)?(?:leasing(?: office| team| department)?|office|team|management|staff|front desk|"
+         r"property management|main office)")
+_WHO = (rf"(?:(?:(?:a|an|the|some|your|ur|any|one of your)\s+)?(?:real |actual |live |human |proper )?"
+        rf"(?:person|human(?: being)?|manager|supervisor|boss|agent|rep(?:resentative)?|staff(?: member)?|employee|"
+        rf"team member|consultant|leasing (?:agent|rep(?:resentative)?|manager|consultant|person|specialist)|"
+        rf"property manager|office manager|community manager|someone|somebody|anyone|anybody)"
+        rf"(?:\s+(?:from|in|at|with|on)\s+{_TEAM})?|{_TEAM}|whoever (?:handles|runs|manages|deals with|is in charge of|"
+        rf"is responsible for|does)\b[\w ]{{0,25}}?)")
+_REACH = (r"(?:just\s+)?(?:call|ring|phone|text|e-?mail|reach out(?: to)?|get in touch(?: with)?|contact|take over|"
+          r"get back to|follow up with|give (?:me )?a call|step in|jump in|look at this)")
+_HUMAN_FRAMES_2 = [
+    re.compile(rf"\b(?:can|could|will|would|please|pls|have|get|i want|i need|i'?d like|need|want)\s+{_WHO}\s+"
+               rf"(?:(?:needs? to|should|has to|must|gotta|to|please)\s+)?{_REACH}\b(?:\s+(?:me|us|with me|to me|over|"
+               rf"this|instead))?", re.I),
+    re.compile(rf"\b{_WHO}\s+(?:needs? to|should|has to|must|gotta|better)\s+{_REACH}\s+(?:me|us)\b", re.I),
+    re.compile(rf"\b(?:want|need|like|request|get|give me|expect|deserve)\s+(?:a\s+|an\s+)?(?:call ?back|callback|"
+               rf"phone call|call|explanation|answer|response|word)\s+from\s+{_WHO}", re.I),
+    re.compile(rf"\b(?:speak|talk|chat)\s+(?:to|with)\s+(?:{_WHO})\b", re.I),
+    re.compile(rf"\b(?:connect|transfer|put|patch|hand|pass|send) me\s+(?:w/?|with|to|through to|over to|on to)\s+"
+               rf"(?:{_WHO})", re.I),
+    re.compile(rf"\bis (?:anyone|someone|somebody|anybody) (?:from|in|at|on) {_TEAM}\b[^.?!]{{0,25}}\b(?:available|"
+               rf"around|there|free|i can (?:talk|speak) to)\b", re.I),
+    re.compile(r"\bi (?:asked|am asking|'?m asking|keep asking) for (?:a |an )?(?:real )?(?:human|person|manager|"
+               r"supervisor|real person)\b|\b(?:send|write|leave|pass)\s+(?:the |a )?(?:leasing team|leasing|office|"
+               r"manager|management)\s+a (?:note|message)\b|\bsend a note to (?:the )?(?:leasing|office|team|manager|"
+               r"management)\b", re.I),
+    re.compile(r"\b(?:quiero|necesito|puedo) (?:hablar|comunicarme) con (?:una persona|alguien|un gerente|el gerente|"
+               r"la oficina|un humano)\b|\bque me llame (?:alguien|un gerente|la oficina)\b", re.I),
+]
+_HUMAN_ENTRY = re.compile(r"\b(?:first|before (?:they |you |anyone )?(?:come|coming|enter\w*|go(?:ing)? in)|"
+                          r"to (?:fix|repair|come (?:in|over|by|fix)|look at the|check the))\b", re.I)
 _HUMAN_NEG = re.compile(r"\b(?:don'?t|dont|do not|doesn'?t|never|no need to|not)\s+(?:\w+\s+){0,3}?"
                         r"(?:want|need|like|wanna|talk|speak|chat|bother|call)\b|\bwithout (?:talking|speaking)\b",
                         re.I)
@@ -204,6 +249,7 @@ _CANCEL_FRAME = re.compile(
     r"(?:it'?s|its) (?:fine|ok|okay|all good|sorted|fixed) now|(?:it|the \w+) (?:started|is) working (?:again|now)|"
     r"i'?ll pass|abort)\b", re.I)
 _CANCEL_NEG = re.compile(r"\b(?:don'?t|dont|do not|not|never) (?:cancel|scrap|drop|forget)\b|"
+                         r"\b(?:didn'?t|didnt|did not|never) (?:mean to |want to )?(?:cancel|scrap|drop|say cancel)\b|"
                          r"\b(?:don'?t|dont|do not) forget\b|\bcancel (?:my|the) (?:lease|membership|subscription|"
                          r"autopay|payment|card)\b|\bnever ?mind (?:the|my|about the) (?:\w+ )?(?:location|room|"
                          r"entry|time|day|days|area|kitchen|bathroom|bedroom|part|last (?:part|bit)|question)\b",
@@ -238,7 +284,11 @@ _STATUS_FRAME = re.compile(
     rf"\b(?:did|has) (?:my|the) (?:\w+ )?{_REQUEST_NOUN} (?:go (?:through|in)|get (?:through|received|seen|picked "
     rf"up)|been (?:seen|received|looked at|picked up))|\b(?:my|any) open (?:requests|tickets|work ?orders|repairs)\b|"
     rf"\bhave you heard (?:back|anything)\b|\bis (?:my|the) (?:\w+ )?{_REQUEST_NOUN} (?:done|finished|closed|complete|"
-    rf"scheduled|still open|moving|being handled)\b", re.I)
+    rf"scheduled|still open|moving|being handled)\b|"
+    # Sprint 6 fix round: "do i even have a heater request open", Spanish "hay novedades de lo del aire?"
+    rf"\bdo i (?:even |still |actually )?have (?:a|an|any) (?:\w+ )?{_REQUEST_NOUN}s?(?: \w+)? (?:open|in|"
+    rf"pending|on file)\b|\b(?:hay|alguna|tiene|tienen) (?:alguna )?novedad(?:es)?\b|\bc[oó]mo va (?:lo|la|mi|el)\b|"
+    rf"\ben qu[eé] va (?:lo|la|mi|el)\b|\bqu[eé] pas[oó] con (?:lo|la|mi|el)\b", re.I)
 _HISTORY_FRAME = re.compile(
     r"\b(?:has|have|did) (?:anyone|someone|anybody|somebody|maintenance|you(?: guys)?|they|a tech\w*) (?:ever |"
     r"already )?(?:fixed|repaired|looked at|worked on|come (?:out )?(?:for|about)|dealt with|seen|been out for) "
@@ -250,7 +300,15 @@ _HISTORY_FRAME = re.compile(
     r"\bis there (?:a |any )?(?:record|history) (?:of|for|on) (?:this|it|that|my|the)\b|"
     r"\b(?:any|what(?:'s| is)) (?:the )?(?:repair |maintenance )?(?:history|record) (?:on|of|for) (?:this|it|my|the)\b|"
     r"\bwas (?:this|it|that) (?:ever )?(?:fixed|repaired|reported|looked at) (?:before|in the past|previously)\b|"
-    r"\bhow many times has (?:this|it|that)\b|\bhas this been (?:a problem|an issue) before\b", re.I)
+    r"\bhow many times has (?:this|it|that)\b|\bhas this been (?:a problem|an issue) before\b|"
+    # Sprint 6 fix round: base verb forms and "already / ever" without "before" ("did someone already look at this?")
+    r"\b(?:has|have|did) (?:anyone|someone|anybody|somebody|maintenance|you(?: guys)?|they|a tech\w*) (?:ever|"
+    r"already) (?:look(?:ed)? at|fix(?:ed)?|repair(?:ed)?|work(?:ed)? on|check(?:ed)?(?: on)?|come out (?:for|about)|"
+    r"deal(?:t)? with|been out (?:for|about))\b[^.?!]{0,25}?(?:\bthis|\bit|\bthat|\bmy \w+|\bthe \w+)\b|"
+    r"\b(?:has|have|did) (?:anyone|someone|anybody|somebody|maintenance|you(?: guys)?|they|a tech\w*) "
+    r"(?:look(?:ed)?|fix(?:ed)?|repair(?:ed)?|work(?:ed)?|come out)\b[^.?!]{0,30}\b(?:before|in the past|previously|"
+    r"last time)\b|\b(?:alguien|ya) (?:revis[oó]|arregl[oó]|vino a ver) (?:esto|eso|lo)\b|\bya (?:lo|la) "
+    r"(?:revisaron|arreglaron)\b", re.I)
 _STATUS_NEG = re.compile(r"\bstatus (?:light|bar|led|icon)\b|^\W*update\W*:|\bupdate my (?:phone|number|email|contact|"
                          r"address|payment)\b", re.I)
 
@@ -316,6 +374,11 @@ def requests_human(msg: str) -> bool:
     """A request to reach a person, in any wording: 'put me through to your supervisor', 'is there someone in charge
     I can talk to?', 'can I get hold of a real human'. Not: 'my manager at work is annoying', 'I need someone to fix
     the sink', 'I don't want to talk to anyone, just fix it'."""
+    if (is_staff_request(msg) or asks_for_person(msg)) and re.search(
+            r"\b(?:call|text|contact) me (?:first|before (?:they |you |anyone )?"
+            r"(?:come|coming|enter\w*|go(?:ing)? in))",
+            msg, re.I) and not re.search(r"\b(?:manager|supervisor|human|real person|office|leasing)\b", msg, re.I):
+        return False  # "have someone call me first before they come in" is the entry answer
     if is_staff_request(msg) or asks_for_person(msg):
         return not bool(re.search(r"\b(?:don'?t|dont|do not|no need to) (?:want|need) to (?:talk|speak)|"
                                   r"\bwithout (?:talking|speaking)\b", msg, re.I))
@@ -323,6 +386,12 @@ def requests_human(msg: str) -> bool:
         m = frame.search(msg)
         if m and not _negated_before(msg, m.start()) and not re.search(r"\bmy (?:manager|boss|supervisor)\b",
                                                                        m.group(0), re.I):
+            return True
+    for frame in _HUMAN_FRAMES_2:
+        m = frame.search(msg)
+        if m and not _negated_before(msg, m.start()) and not re.search(
+                r"\bmy (?:manager|boss|supervisor|team)\b|\b(?:at|from) work\b", msg, re.I) and \
+                not _HUMAN_ENTRY.search(msg[m.start():m.end() + 40]):
             return True
     return False
 
@@ -357,12 +426,24 @@ def asks_history(msg: str) -> bool:
     return bool(_HISTORY_FRAME.search(msg))
 
 
+_AT_ASSISTANT = re.compile(r"\b(?:you|u|ur|you'?re|yall|y'?all|this (?:bot|chat|assistant|app|thing|form|process)|"
+                           r"the (?:bot|chat|assistant|app)|(?:a |the )?(?:bot|robot|chatbot|ai)|listening|"
+                           r"going in circles)\b", re.I)
+_SYMPTOM_ANY = re.compile(r"\b(?:leak\w*|drip\w*|broke\w*|not working|won'?t|wont|doesn'?t|dead|jammed|stuck|no hot|"
+                          r"clog\w*|mold|cold|warm|noise|flood\w*)\b", re.I)
+
+
 def frustration(msg: str) -> Literal["assistant", "situation"] | None:
     """Frustration with the assistant ('this is going nowhere') or with the situation ('I'm so fed up with this
     leak'). Not: 'my manager at work is annoying', 'I'm not upset, just asking'."""
     if _FRUSTRATION_NEG.search(msg):
         return None
     if is_lost_or_frustrated_with_chat(msg) or _FRUSTRATION_ASSISTANT.search(msg):
+        # Sprint 6 fix round: "this is the FOURTH time my sink is leaking, i'm so done with this" is about the repair
+        # (start it, flag the repeat), not about the chat, unless the chat itself is named
+        if (is_issue_description(msg) or (things_in(msg) and _SYMPTOM_ANY.search(msg))) and \
+                not _AT_ASSISTANT.search(msg):
+            return "situation"
         return "assistant"
     if _FRUSTRATION_FEELING.search(msg):
         return "situation"
@@ -463,6 +544,426 @@ def dates(msg: str, tour_open: bool, pending: str | None = None, card: dict[str,
     return tour, move
 
 
+# ---- Sprint 6 fix round: field-targeted edits, splits, partial cancels, holds, offers, saved-status -------------
+# Each detector below is a typed frame ("a field signal + a value of that field's type"), not a sentence list. They
+# return data only; actions.plan_turn applies them (one place: step 1c-edit) and says what changed.
+
+_THING_PATS: list[tuple[str, str]] = [
+    ("ac", r"\bac\b|\ba/c\b|air ?condition\w*|\bhvac\b|aire(?: acondicionado)?\b"),
+    ("heat", r"\bheat(?:er|ing)?\b|\bfurnace\b|\bradiator\b|calefacci[oó]n|calentador"),
+    ("hot water", r"\bhot water\b|agua caliente"), ("sink", r"\bsinks?\b|fregadero|lavabo"),
+    ("faucet", r"\bfaucets?\b|\btaps?\b|\bgrifo\b|\bllave\b"), ("toilet", r"\btoilets?\b|\binodoro\b"),
+    ("shower", r"\bshowers?\b|\btubs?\b|\bba[ñn]era\b|\bducha\b"), ("dishwasher", r"\bdishwasher\b|lavaplatos"),
+    ("fridge", r"\bfridge\b|refrigerator|\bfreezer\b|refrigerador|nevera|\brefri\b"),
+    ("oven", r"\boven\b|\bstove\b|\bhorno\b|\bestufa\b"), ("disposal", r"\bdisposal\b|triturador"),
+    ("washer", r"\bwasher\b|washing machine|lavadora"), ("dryer", r"\bdryer\b|secadora"),
+    ("window", r"\bwindows?\b|ventana"), ("door", r"\bdoors?\b|\block\b|deadbolt|puerta|cerradura"),
+    ("fan", r"\bfan\b|ventilador"), ("light", r"\blights?\b|\bbulbs?\b|\bluz\b|\bl[aá]mpara\b"),
+    ("outlet", r"\boutlets?\b|enchufe"), ("ceiling", r"\bceiling\b|\btecho\b"),
+    ("pests", r"roach\w*|\bants?\b|\bmice\b|\bmouse\b|pest\w*|hormigas|cucarachas"),
+    ("water heater", r"water heater"), ("drain", r"\bdrains?\b"), ("carpet", r"\bcarpet\b|alfombra"),
+    ("detector", r"(?:smoke|co) (?:detector|alarm)|\bdetector\b|chirp\w*"), ("blinds", r"\bblinds\b|persianas"),
+    ("closet", r"\bcloset\b|cl[oó]set"), ("microwave", r"microwave|microondas"), ("thermostat", r"thermostat")]
+
+
+def things_in(text: str) -> set[str]:
+    """What a repair text is about ('the kitchen faucet drips' -> {'faucet'}). Typed nouns, EN + ES."""
+    found = {name for name, pat in _THING_PATS if re.search(pat, text or "", re.I)}
+    if "water heater" in found:
+        found.discard("heat")
+    return found
+
+
+_CHANNELS: list[tuple[str, str]] = [
+    ("call", r"\b(?:(?:a |phone )?calls?|calling|called|phone|ring(?:ing)?|llamad[ao]s?|ll[aá]m\w*)\b"),
+    ("text", r"\b(?:texts?|texting|texted|sms|mensajes?(?: de texto)?|textos?|whatsapp)\b"),
+    ("email", r"\b(?:e-?mails?|e-?mailing|e-?mailed|correos?(?: electr[oó]nicos?)?)\b"),
+    ("portal", r"\b(?:the )?(?:resident |online )?portal\b|\bthe app\b")]
+_OLD_MARK = re.compile(r"(?:\bnot|\bno|\binstead of|\brather than|\bthan|\bdon'?t|\bdont|\bdo not|\bstop|\bnever|"
+                       r"\bno more|\bnada de|\bsin)\s+(?:(?:a|an|the|by|via|through|me|with|to|use|using|on|"
+                       r"me por)\s+){0,2}$", re.I)
+_EDIT_SIGNAL = re.compile(
+    r"^\W*(?:(?:oh|um+|uh+|hmm+|ah+|and|also|ok(?:ay)?|so)\W+)*(?:actually|correction|sorry|wait|oops|my bad|i meant|"
+    r"i mean|no+|nope|to clarify|rather|scratch that|make that|not quite|let me (?:correct|rephrase|fix)|"
+    r"perd[oó]n|mejor|en realidad|de hecho|nvm|never ?mind)\b|\b(?:not|instead|rather|better|prefer\w*|switch|"
+    r"change|update|swap|make (?:it|that)|set|fix|correct|should be|should say|meant|only|anymore|"
+    r"preferir\w*|cambi\w*|mejor)\b|^\W*(?:contact(?: preference| method)?|entry(?: permission)?|where|room|"
+    r"location|best time(?: for visits)?|visit time|time|description|problem|issue|what'?s wrong)\s*[:=-]", re.I)
+_PREF_FRAME = re.compile(r"\b(?:call|text|e-?mail|ring|phone|message)\s+(?:me|us)\b|\bprefer\w*\b|\brather\b|"
+                         r"\b(?:better|easier|best)\b|\binstead\b|\bcontact (?:preference|method|pref|me (?:by|via|"
+                         r"through))\b|\b(?:by|via|through) (?:a )?(?:call|phone|text|e-?mail|portal)\b|^\W*contact\w*"
+                         r"(?: preference| method)?\s*[:=-]|\bll[aá]menme\b|\bescr[ií]banme\b|\bmejor (?:por|que)\b|"
+                         r"\bswitch\b|\bchange\b|\bnot (?:the |by |via )?(?:portal|e-?mail|text|call|phone)\b", re.I)
+_STRONG_EDIT = re.compile(r"\b(?:not|instead|rather|better|prefer\w*|switch|change|update|than|only|actually)\b",
+                          re.I)
+_ENTRY_WORDS = re.compile(r"\b(?:enter\w*|come in|coming in|go in|going in|let (?:themselves|yourselves|them|"
+                          r"him|her) in|knock\w*|ring the (?:door)?bell|before (?:they )?(?:come|coming|enter\w*)|"
+                          r"first|entrar|entren|pasar|antes)\b", re.I)
+_ENTRY_ASK_FIRST = re.compile(
+    r"\bknock\w*(?: first| before)?\b|\bring the (?:door)?bell\b|\b(?:call|text|ring|contact|message|phone|email|"
+    r"let me know|tell me|warn me)\w* (?:me |us )?(?:first|before(?: (?:they |you )?(?:come|coming|enter\w*|go|"
+    r"going) in| entering| they enter| anyone (?:comes|enters))?|ahead)\b|\b(?:can ?not|cannot|can'?t|shouldn'?t|"
+    r"should not|don'?t|dont|do not) (?:just )?(?:come|go|walk|let themselves) in\b|\bnot (?:just )?(?:come|walk) "
+    r"in\b|\bonly (?:when|if) i'?m (?:home|there|in)\b|\bi (?:want|need|have) to be (?:home|there)\b|"
+    r"\b(?:me )?llamen antes|\bme avisen antes|\bavis(?:ar|en)me antes|\bantes de entrar\b|\bno entren\b", re.I)
+_ENTRY_MAY = re.compile(
+    r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
+    r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
+    r"\blet (?:themselves|yourselves) in\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
+    r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)",
+    re.I)
+_ROOM_FIELD = re.compile(r"^\W*(?:where|room|location|place|d[oó]nde)\s*[:=-]\s*(?P<v>.{2,40}?)\W*$", re.I)
+_INSIDE_UNIT = re.compile(r"\b(?:inside|in) (?:my|our|the) (?:apt|apartment|unit|place|home|own (?:apt|apartment|"
+                          r"unit))\b|\bnot (?:in )?(?:a |the )?(?:common area|hallway outside|building hallway)\b|"
+                          r"\bnot outside\b|\bdentro de(?:l| mi) (?:apartamento|depa)\b", re.I)
+_TIME_VALUE = re.compile(
+    r"\b(?P<v>(?:mornings?|afternoons?|evenings?|nights?)\s+(?:after|before|from|past)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|"
+    r"(?:any ?time |only )?(?:after|before|from|between|around|by|past)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|"
+    r"p\.m\.)?(?:\s*(?:and|to|-)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?|(?:weekday |weekend )?(?:mornings?|afternoons?|"
+    r"evenings?|nights?)(?: only)?|(?:only )?(?:weekends?|weekdays?)|"
+    r"(?:por|en) la (?:ma[ñn]ana|tarde|noche)|despu[eé]s de las \d{1,2})\b", re.I)
+_VISIT_TIME_WORDS = re.compile(r"\b(?:best time|visit\w*|come|coming|stop by|show up|time|window|schedule|"
+                               r"available|work(?:s)? (?:better|best)|don'?t work|doesn'?t work|anymore|vengan|"
+                               r"visita|horario)\b", re.I)
+_ISSUE_LEAD = re.compile(
+    r"^\W*(?:(?:oh|um+|uh+|no+|wait|ok(?:ay)?|sorry)\W+)*(?:let me rephrase(?: that)?|let me reword(?: that)?|"
+    r"(?:to )?rephrase|correction|to clarify|i mean(?:t)?|what i meant (?:was|is)|scratch that|let me correct "
+    r"(?:that|myself)|fix the (?:description|problem|issue)|(?:the )?(?:description|problem|issue|what'?s wrong(?: "
+    r"part| field)?) (?:is|was) wrong|update(?: it)?(?=\s*:)|replace it with|it should (?:say|read)|make it say)\b"
+    r"(?:\s*(?:to|it|that))?\s*[:,.\-–—]*\s*", re.I)
+_CHANGE_IT_TO = re.compile(r"\b(?:change|update|edit|rewrite|replace|correct|fix|make) (?:it|that|this)(?: to say| "
+                           r"to read| so it says| to| as| with)\s*:\s*(?P<v>[^!?]{3,160})", re.I)
+_SAY_IMPERATIVE = re.compile(r"^\W*(?:(?:no|ok|just|pls|please)\W+)*(?:say|write|put)\s+(?:that\s+|it'?s\s+)?"
+                             r"(?P<v>[^.!?;]{3,120})", re.I)
+_X_NOT_Y = re.compile(
+    r"\b(?:it'?s|its|it is|the (?:leak|problem|issue|drip|water) is|(?:the )?(?:leak|drip|water)'?s?(?: is)? "
+    r"coming)\s+(?P<x>(?:coming from |actually )?(?:under|behind|in|on|inside|near|next to|from|at|around|"
+    r"underneath|beneath|above|below)\b[^,.;!?]{2,40}?)\s*,?\s*(?:not|rather than|instead of)\s+(?P<y>[^,.;!?]{2,40})",
+    re.I)
+_SYMPTOM = re.compile(r"\b(?:leak\w*|drip\w*|clog\w*|flood\w*|overflow\w*|not draining|won'?t drain|backing up|"
+                      r"puddl\w*|gotea\w*|fuga)\b", re.I)
+_SPLIT_ASK = re.compile(
+    r"\b(?:those|these|they|that|it|this)(?:'re| are| is|'s)? (?:\w+ )?(?:2|two|separate|different|diff) "
+    r"(?:things|issues|problems|requests|repairs|tickets)\b|\b(?:split|separate|break)(?: (?:them|those|these|it|"
+    r"this|that|the (?:request|card|issues|problems)))?(?: up)? (?:into|in) (?:2|two|separate|different)\b|"
+    r"\b(?:split|separate) (?:them|those|these|it|this|that)(?: up)?\b|\b(?:its|it'?s|their|a) own (?:request|"
+    r"ticket|card|repair|work order)\b|\b(?:a )?separate (?:request|ticket|repair|card|thing|issue|work order)s?\b|"
+    r"\b(?:requests?|tickets?) for (?:both|each)(?: of them| one)?\b|\bson dos cosas\b|\bpor separado\b|"
+    r"\b(?:otra|su propia) solicitud\b", re.I)
+_SPLIT_TARGET = re.compile(r"\b(?:make|put|file|give|turn) (?:the )?(?P<x>[a-z][\w -]{2,40}?) (?:into )?(?:its|it'?s|"
+                           r"their|a) (?:own|separate)\b|\bthe (?P<y>[a-z][\w -]{2,30}?) (?:is|as) (?:a )?separate\b|"
+                           r"\bthe (?P<z>[a-z][\w -]{2,30}?) (?:one )?(?:should|needs to|can|could) be (?:its own|a "
+                           r"separate)\b", re.I)
+_PARTIAL_CANCEL = re.compile(
+    r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|drop|skip|scratch|remove|leave out|take out|take off|ignore|"
+    r"cancel|no need for|don'?t need|dont need|olv[ií]d(?:e|a)(?:se)? (?:de|lo de)|quite|quita)\s+(?:the |my |about "
+    r"the |that |el |la |lo del? )?(?P<x>[a-zà-ÿ][\w/ -]{2,40}?)(?:\s+(?:one|part|thing|bit|request|issue))?"
+    r"(?=\s*(?:[,.;!?]|$)|\s+(?:i |it |it'?s|we |and |only|just|for now|thing|part|one|please|pls)\b)", re.I)
+_KEEP_ONLY = re.compile(r"\b(?:only|just|solo|s[oó]lo)\s+(?:do |keep |send |fix )?(?:the |my |el |la )?"
+                        r"(?P<x>[a-zà-ÿ][\w -]{2,30}?)(?:\s+(?:one|part|request))?(?=\s*(?:[,.;!?]|$)|\s+(?:please|"
+                        r"pls|then)\b)", re.I)
+_HOLD = re.compile(r"\b(?:don'?t|dont|do not|no) (?:send|submit|file)(?: it| that| this| anything)? (?:yet|just yet|"
+                   r"for now|right now|now)\b|^\W*(?:not yet|hold on|hang on|wait(?: a (?:sec|second|minute|moment))?|"
+                   r"one (?:sec|second|moment)|give me a (?:sec|second|minute)|todav[ií]a no|espera|un momento)\W*$|"
+                   r"\b(?:i'?ll|i will|let me) (?:send|submit) it (?:later|myself|in a (?:bit|minute|sec))\b|"
+                   r"\bno (?:lo|la) (?:env[ií]e|mande) (?:todav[ií]a|a[uú]n)\b", re.I)
+_OFFER_ACCEPT = re.compile(
+    r"^\W*(?:(?:yes|yeah|yep|yup|ya|ok(?:ay)?|sure|please|pls|sounds good|that works|perfect|great|absolutely|"
+    r"definitely|of course|s[ií]|claro|vale|dale)\W*)+(?:(?:please |pls )?(?:do (?:that|it|so)|go ahead|let'?s do "
+    r"(?:it|that)|i'?d like that|that would be great|send (?:them|it|that|those|my questions|the questions|the note|"
+    r"this)(?: (?:that|this|it|those|my questions|the questions))?(?: (?:to|over to|on to) (?:them|the (?:leasing )?"
+    r"(?:team|office)|leasing))?|ask them|set (?:it|that|one) "
+    r"up|book (?:it|one)|request (?:it|one|a tour)|h[aá]galo|env[ií]e?(?:la|lo|las|los)|por favor)\W*)*$|"
+    r"^\W*(?:(?:yes|yeah|yep|ok(?:ay)?|sure|please|pls)\W+)*(?:send|pass|forward|give) (?:them|the leasing team|"
+    r"leasing|the office) (?:my|those|these|the|that|this) (?:questions?|note|message|stuff)?\W*$", re.I)
+_SAVED_Q = re.compile(
+    r"\bwhat (?:have|has|did|'?ve) (?:you|u|ya|this chat|the chat) (?:actually |really )?(?:saved|sent|submitted|"
+    r"recorded|filed|got(?:ten)?|put in|done)\b|\bwhat(?:'s| is| got| has been) (?:saved|sent|submitted|recorded|"
+    r"in the system)\b|\b(?:did|does|has|have|was|were|is|are) (?:my |the |that |this |it |both |all |those |"
+    r"these )?(?:(?:\w+ ){0,2}(?:note|request|complaint|repair|ticket|order|message|one|ones|them|it|that|those|"
+    r"these|both|of (?:them|those)))?\s*(?:actually |really |even |all )?(?:get |been |go )?(?:saved|sav(?:e|ing)|"
+    r"recorded|submitted|filed|logged|in the system|went through|go through|gone through|received)\b|"
+    r"\bcan you (?:confirm|check|verify) (?:that )?(?:you (?:have|got|saved)|it'?s (?:saved|in)|(?:it|that|they) "
+    r"(?:saved|went through|got saved))\b|\bshow me (?:what|everything) (?:you|u) (?:saved|have|sent|got)\b|"
+    r"\b(?:will|is) (?:anyone|someone|somebody|anybody|a person|staff|the office|a human|the team) (?:going to |gonna "
+    r")?(?:contact|call|reach|get back to|text|email|read|see|look at) (?:me|it|this|my)\b(?:[^.?!]{0,20}\b(?:note|"
+    r"request|complaint|it))?|\bdid (?:that|it|my \w+|the \w+) (?:actually |really )?save\b|"
+    r"\bqu[eé] (?:ha|han) guardado\b|\bse guard[oó]\b|\bqued[oó] guardad[ao]\b|\brecap\b|\bwhat (?:have|do) (?:you|u) "
+    r"(?:got|have) (?:on file )?(?:for me|on me|on file)\b|\b(?:asked|asking) if (?:they|it|that|those) (?:were |was |"
+    r"got )?saved\b|\bwhat(?:'s| is) (?:on file|in the system) for me\b", re.I)
+_STAFF_COMPLAINT = re.compile(
+    r"\b(?:formal )?complain(?:t|ing)? (?:about|regarding|against) (?:your |the |a |one of your )?(?:staff|tech\w*|"
+    r"maintenance|employee|worker|guy|man|person|manager|team|crew|visit|service)\b|\bfile (?:a )?(?:formal )?"
+    r"complaint\b|\b(?:tech\w*|maintenance (?:guy|man|person|worker|tech)|worker|employee|staff(?: member)?|guy|"
+    r"he|she|they)\b[^.?!]{0,40}\b(?:was|were|is|are|got)\b[^.?!]{0,15}\b(?:rude|disrespectful|unprofessional|"
+    r"aggressive|yelling|inappropriate|careless|condescending)\b|\b(?:left a (?:huge |big )?mess|tracked mud|"
+    r"no-?show(?:ed)?|(?:never|nobody|no one|no-one) (?:showed|came|turned) up|didn'?t (?:show|come|turn) up|"
+    r"stood me up|missed (?:the |my |"
+    r"our )?(?:\w+ )?(?:visit|appointment|window))\b|\bexplain why (?:\w+ ){0,3}(?:didn'?t|did not|never) "
+    r"(?:happen|come|show)\b|\b(?:i want|i need|i'?d like) (?:an )?explanation\b", re.I)
+
+
+def _channel_edits(clause: str) -> list[str]:
+    """The channel(s) a clause asks for, never the one it rules out ('email is better than a call' -> email)."""
+    hits: list[tuple[int, str, bool]] = []
+    for name, pat in _CHANNELS:
+        for m in re.finditer(pat, clause, re.I):
+            before = clause[:m.start()]
+            old = bool(_OLD_MARK.search(before)) or bool(re.search(r"\b(?:better|more) than\s+(?:a |an |the |by )?$|"
+                                                                    r"\b(?:it |the card |that )?(?:says|said|shows|"
+                                                                    r"is set to|has)\s+(?:a |an |the )?$",
+                                                                    before, re.I))
+            hits.append((m.start(), name, old))
+    if re.search(r"\bthan\b", clause, re.I) and re.search(r"\b(?:better|easier|best)\b", clause, re.I):
+        hits = [(p, n, old or p > clause.lower().find(" than")) for p, n, old in hits]
+    new = [n for _, n, old in sorted(hits) if not old]
+    return list(dict.fromkeys(reversed(new)))  # the last channel asked for is the correction ("it says call. text me")
+
+
+def entry_value(clause: str) -> str | None:
+    """'knock first' / 'come in whenever' / 'go ahead and enter' -> the canonical entry permission, or None."""
+    return _entry_value(clause)
+
+
+def _entry_value(clause: str) -> str | None:
+    if _ENTRY_ASK_FIRST.search(clause):
+        return "Contact me first; only enter when I'm home"
+    if _ENTRY_MAY.search(clause):
+        return "Yes, maintenance may enter if I'm not home"
+    e = extract_entry(clause)
+    if e and e.startswith("May enter after"):
+        return "Contact me first; only enter when I'm home"
+    return e
+
+
+def _fval(card: dict[str, Any] | None, key: str) -> str:
+    return str(((card or {}).get("fields", {}).get(key) or {}).get("value") or "")
+
+
+def _issue_edit(msg: str, card: dict[str, Any] | None) -> str | None:
+    """A replacement for 'What's wrong': 'let me rephrase: X', 'correction: X', 'the what's wrong part is wrong.
+    change it to: X', 'it's under the sink not the dishwasher itself' (keeps the symptom), 'say window won't lock'."""
+    cur = _fval(card, "issue")
+    if m := _X_NOT_Y.search(msg):
+        x, y = m.group("x").strip(), m.group("y").strip()
+        y_things, cur_things = things_in(y), things_in(cur)
+        if not cur or (y_things and not (y_things & cur_things)) or extract_location(y) and not y_things:
+            return None  # "it's in the kitchen not the bathroom" is a room change, handled as location
+        sym = _SYMPTOM.search(cur) or _SYMPTOM.search(msg)
+        lead = _cap(sym.group(0).lower()) if sym else "Problem"
+        x = re.sub(r"^(?:coming from|actually)\s+", "", x, flags=re.I)
+        return f"{lead} {x}, not the {re.sub(r'^(?:the|my)\s+', '', y, flags=re.I)}"[:200]
+    if m := _CHANGE_IT_TO.search(msg):
+        v = m.group("v").strip(" .\"'")
+        if len(v) >= 3 and not extract_location(v) or is_issue_description(v):
+            return _cap(v)[:200]
+    if m := _SAY_IMPERATIVE.match(msg):
+        v = m.group("v").strip(" .\"'")
+        if is_issue_description(v) or things_in(v):
+            return _cap(v)[:200]
+    if re.search(r"\b(?:description|text|summary|wording|what'?s wrong|problem|issue)\b[^.?!]{0,25}\b(?:say|read|be)\b",
+                 msg, re.I) and (rw := issue_rewrite(msg)):
+        return _cap(re.sub(r"^(?:it|that|this) (?:should|must) (?:say|read|be)\s*:?\s*", "", rw, flags=re.I))
+    lead = _ISSUE_LEAD.match(msg)
+    if lead and lead.end() > 0:
+        rest = msg[lead.end():].strip(" .\"'")
+        for _ in range(2):  # "the problem is wrong. it should say X": leads can chain
+            more = _ISSUE_LEAD.match(rest)
+            if not more or more.end() == 0:
+                break
+            rest = rest[more.end():].strip(" .\"'")
+        rest = re.split(r"(?<=[.!?])\s+(?=(?:and )?(?:add|also|plus|note)\b)", rest)[0].strip(" .\"'")
+        if len(rest.split()) >= 3 and (is_issue_description(rest) or things_in(rest) or _SYMPTOM.search(rest) or
+                                       re.search(r"\b(?:it|its|it'?s|they)\b", rest, re.I)) and \
+                not _entry_value(rest) and not _channel_edits(rest):
+            return _cap(re.sub(r"^(?:it'?s|its|it is)\s+(?=(?:the|my)\b)", "", rest, flags=re.I))[:200]
+    return issue_rewrite(msg) if re.search(r"\b(?:description|text|summary|wording|what'?s wrong)\b|:", msg, re.I) \
+        else None
+
+
+def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list[Correction]:
+    """Field-targeted corrections for the card (open, or just sent). Each names ONE field and the NEW value; 'X not Y'
+    takes X. A message with no edit signal ('actually', 'not', 'instead', 'change', 'field: value', a value that differs
+    from the card's) gives nothing, so plain answers keep their usual path."""
+    if not kind or not msg.strip():
+        return []
+    out: list[Correction] = []
+    signal = bool(_EDIT_SIGNAL.search(msg))
+    clauses = [c for c in re.split(r"(?<=[.!?;])\s+|,\s*(?=(?:and |but |also |plus )?(?:i |they |please |pls |"
+                                    r"call|text|email|contact|knock|come|after|before|mornings?|evenings?)\b)|"
+                                    r"\s+(?:and|but|y|pero)\s+(?=(?:call|text|email|ring|contact|they|knock|"
+                                    r"llamen|avisen)\b)", msg) if c.strip()]
+
+    def add(f: str, v: str) -> None:
+        if v and not any(c.field == f for c in out):
+            out.append(Correction(field=f, value=v[:200]))  # type: ignore[arg-type]
+
+    if kind == "maintenance_request":
+        if (iv := _issue_edit(msg, card)) and _fval(card, "issue") and iv.lower() != _fval(card, "issue").lower():
+            add("issue", iv)
+        for c in clauses:
+            entryish = bool(_ENTRY_WORDS.search(c))
+            ev = _entry_value(c) if entryish or extract_entry(c) else None
+            cur_e = _fval(card, "entry")
+            if ev and cur_e and ev != cur_e and not cur_e.startswith(ev.split(";")[0]):
+                add("entry", ev)
+                continue
+            chans = [] if entryish else _channel_edits(c)
+            asking = bool(re.search(r"\?\s*$", c) or re.match(r"^\W*(?:so\W+)?(?:when|will|would|is|are|do|does|did|"
+                                                              r"how|has|have)\b", c, re.I))
+            if asking and not _STRONG_EDIT.search(c):
+                chans = []  # "when will they call me?" asks about follow-up; it changes nothing
+            if chans and _PREF_FRAME.search(c):
+                cur_c = _fval(card, "contact").lower()
+                if chans[0] not in cur_c and not re.search(r"\b(?:what|when|how|is|are|do|does)\b.*\?$", c, re.I):
+                    add("contact", chans[0])
+                continue
+            tms = [tm for tm in _TIME_VALUE.finditer(c) if not _OLD_MARK.search(c[:tm.start()]) and not re.match(
+                r"\s*(?:don'?t|dont|doesn'?t|do not|no longer|won'?t|are out|is out|aren'?t good)\b", c[tm.end():],
+                re.I)]
+            if tms and _VISIT_TIME_WORDS.search(msg) and not _channel_edits(c) and (
+                    signal or re.search(r"\bbest time\b|\bvisits?\b", c, re.I)):
+                v = tms[0].group("v").strip()
+                if v.lower() not in _fval(card, "entry_window").lower():
+                    add("entry_window", _cap(v))
+        m = _ROOM_FIELD.match(msg)
+        inside = _INSIDE_UNIT.search(msg)
+        if m or inside:
+            src = m.group("v") if m else msg
+            room = extract_location(re.sub(r"\bnot (?:in )?(?:a |the )?(?:common area|hallway outside|building "
+                                           r"hallway)\b|\bnot outside\b", " ", src, flags=re.I)) or \
+                (re.search(r"\bhall(?:way)?\b", src, re.I) and "Hallway")
+            if inside and room in (None, "Outside or common area") and re.search(r"\bhall(?:way)?\b", src, re.I):
+                room = "Hallway"
+            if room and room != _fval(card, "location"):
+                add("location", room)
+    elif kind == "tour_request" and signal:
+        # the place asked for, never the one ruled out ("ypsilanti instead of ann arbor", "nvm heron lake. actually
+        # no, fernhill" -> the last one named)
+        kept = re.sub(r"\b(?:instead of|not|rather than)\s+(?:the\s+|in\s+)?[A-Za-z]+(?:\s+[A-Za-z]+)?", " ", msg,
+                      flags=re.I)
+        parts = [p for p in re.split(r"[.;!?]|\bactually\b|\bno\b", kept, flags=re.I) if p.strip()]
+        place = next((n for p in reversed(parts) for n in [community_in(p) or city_in(p)] if n), None)
+        if place and not _fval(card, "area").lower().startswith(place.lower()):
+            add("area", place)
+    elif kind == "staff_handoff":
+        for c in clauses:
+            chans = _channel_edits(c)
+            if (re.search(r"\?\s*$", c) or re.match(r"^\W*(?:so\W+)?(?:when|will|would|is|are|do|does|did|how)\b", c,
+                                                    re.I)) and not _STRONG_EDIT.search(c):
+                chans = []
+            if chans and _PREF_FRAME.search(c):
+                if chans[0] not in _fval(card, "contact").lower():
+                    add("contact", chans[0])
+    return out
+
+
+def asks_split(msg: str) -> tuple[bool, str | None]:
+    """'those are 2 different things', 'make the oven light its own request', 'son dos cosas' -> (True, target)."""
+    if not _SPLIT_ASK.search(msg):
+        return False, None
+    m = _SPLIT_TARGET.search(msg)
+    target = next((g for g in (m.group("x"), m.group("y"), m.group("z")) if g), None) if m else None
+    if target and not things_in(target):
+        target = None
+    return True, target
+
+
+def partial_cancel(msg: str) -> tuple[str | None, str | None]:
+    """(drop, keep): 'never mind the smoke detector, only the faucet' -> ('smoke detector', 'faucet'). A thing must be
+    named; 'never mind', 'forget it', 'cancel the request' name none (those are whole-card cancels)."""
+    drop = keep = None
+    for m in _PARTIAL_CANCEL.finditer(msg):
+        x = m.group("x").strip()
+        if things_in(x) and not re.fullmatch(r"(?:it|that|this|request|repair|tour|note|form|whole thing|thing)", x,
+                                             re.I):
+            drop = x
+            break
+    if k := _KEEP_ONLY.search(msg):
+        if things_in(k.group("x")):
+            keep = k.group("x").strip()
+    return drop, keep
+
+
+def holds(msg: str) -> bool:
+    """'don't send it yet', 'not yet', 'hold on': keep the card unsent (not a cancel)."""
+    return bool(_HOLD.search(msg))
+
+
+def accepts_offer(msg: str) -> bool:
+    """'ok sure', 'yeah send them my questions', 'ok yes send them that' right after the assistant offered something."""
+    return bool(_OFFER_ACCEPT.match(msg.strip())) and len(msg.split()) <= 12
+
+
+def asks_saved(msg: str) -> bool:
+    """'what have you saved so far?', 'did my note actually get saved?', 'will anyone contact me about the note?'"""
+    return bool(_SAVED_Q.search(msg))
+
+
+def complains_about_staff(msg: str) -> bool:
+    """A complaint about a visit or a staff member ('the tech was rude', 'missed Tuesday visit, I want an
+    explanation'): a note for the office, never a repair card."""
+    return bool(_STAFF_COMPLAINT.search(msg))
+
+
+_ORD_DATE = re.compile(r"\b(?:the\s+)?(?P<d>[1-9]|[12]\d|3[01])(?:st|nd|rd|th)\b", re.I)
+_DATE_CHANGE = re.compile(r"\b(?:push|move|change|switch|bump|shift|reschedule|make)\b[^.?!]{0,20}\b(?:to|for|until|"
+                          r"till)\b|\b(?:can|could) we do\b|\bhow about\b|\bwhat about\b|\binstead\b|\blet'?s do\b|"
+                          r"\b(?:works? (?:better|for me))\b|\b(?:on|for) the \d", re.I)
+
+
+def ordinal_date(msg: str) -> str | None:
+    """'push it to the 20th' -> 'The 20th' (a day of the month with no month named)."""
+    spans = [(x.start(), x.end()) for x in _MONTH_DAY.finditer(msg)]
+    m = next((x for x in _ORD_DATE.finditer(msg) if not any(a <= x.start() < b for a, b in spans)), None)
+    if not m or re.search(r"\b(?:floor|time|unit|apt|bed|row|grade|place|birthday)\b", msg[m.end():m.end() + 10],
+                          re.I) or re.search(r"\b(?:\d+(?:st|nd|rd|th)) (?:time|floor)\b", msg, re.I):
+        return None
+    return f"The {m.group('d')}{m.group(0).strip()[-2:].lower()}"
+
+
+def date_target(msg: str, card: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    """(value, field) for a date with no clause of its own on a tour card. field is 'days', 'move_in', or
+    'ask' when the card holds both and the message doesn't say which ('push it to the 20th')."""
+    val = ordinal_date(msg)
+    if not val or not (_DATE_CHANGE.search(msg) or re.search(r"\b(?:tour|visit|move[- ]?in|moving)\b", msg, re.I)):
+        return None, None
+    tourish = bool(re.search(r"\b(?:tour|visit|viewing|showing|visita)\b", msg, re.I))
+    moveish = bool(re.search(r"\bmove[- ]?in\b|\bmoving\b|\bmove date\b|lease start|mudanza|mudar", msg, re.I))
+    if moveish and _MONTH_DAY.search(msg) and not move_clause(msg, _ORD_DATE.search(msg).start()):  # type: ignore
+        return val, "days"  # "move in is dec 15. and can we do the 20th instead": the move-in is the dated one
+    if moveish and not tourish:
+        return val, "move_in"
+    if tourish and not moveish:
+        return val, "days"
+    has_days, has_move = bool(_fval(card, "days")), bool(_fval(card, "move_in"))
+    if has_days and has_move:
+        return val, "ask"
+    return val, "move_in" if has_move and not has_days else "days"
+
+
+_RANGE = re.compile(r"(?<![\d/])\$?\s?(?P<a>\d{1,2},\d{3}|\d{3,5}|\d(?:\.\d{1,2})?\s?k?)\s*(?:-|–|to|and)\s*\$?\s?"
+                    r"(?P<b>\d{1,2},\d{3}|\d{3,5}|\d(?:\.\d{1,2})?\s?k)\b", re.I)
+
+
+def budget_range(msg: str) -> str | None:
+    """'1200 to 1400', '1.2-1.4k', 'between $1,200 and $1,400' -> '$1,200 to $1,400' (the range is kept)."""
+    if _INCOME.search(msg):
+        return None
+    m = _RANGE.search(msg)
+    if not m:
+        return None
+    a_raw, b_raw = m.group("a"), m.group("b")
+    if b_raw.lower().strip().endswith("k") and not a_raw.lower().strip().endswith("k"):
+        a_raw = a_raw + "k"
+    a, b = _money(a_raw), _money(b_raw)
+    if not a or not b or not (300 <= a < b <= 20000):
+        return None
+    if re.search(r"\b(?:sq|square|feet|ft|unit|apt|#)\b", msg[m.end():m.end() + 8], re.I):
+        return None
+    return f"${a:,} to ${b:,}"
+
+
 # ---- the rules pass --------------------------------------------------------------------------------------------
 
 
@@ -522,8 +1023,21 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
                                       msg[lead.end():], flags=re.I))
         if loc and cur and loc.lower() != cur.lower():
             corr.append(Correction(field="location", value=loc))
+    # Sprint 6 fix round: field-targeted edits (one typed field each; "X not Y" takes X). They replace, never append.
+    edits = field_edits(msg, live, kind) if live else []
+    for c in edits:
+        corr = [x for x in corr if x.field != c.field] + [c]
     if corr:
         add(DialogueAct.CORRECT_INFORMATION)
+    split_ask, split_target = asks_split(msg) if live and kind == "maintenance_request" else (False, None)
+    drop, keep = partial_cancel(msg) if live and kind == "maintenance_request" else (None, None)
+    if drop and not (things_in(_fval(live, "issue")) - things_in(drop) or (live or {}).get("queued")):
+        drop = None  # the only problem on the card: that is a whole-card cancel
+    hold = bool(live) and holds(msg)
+    lead_cancel = bool(re.match(r"^\W*(?:nvm|never ?mind|nah|no+|actually|wait)\b", msg, re.I)) and \
+        not re.search(r"\b(?:cancel|don'?t send|dont send|do not send|forget it|scrap)\b", msg, re.I)
+    if DialogueAct.CANCEL in acts and (hold or drop or (edits and lead_cancel)):
+        acts.remove(DialogueAct.CANCEL)  # "dont send yet", "never mind the smoke detector", "nvm switch it to X"
 
     if ta.has(Act.ANSWER) or ta.extra:
         add(DialogueAct.PROVIDE_INFORMATION)
@@ -535,6 +1049,8 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
         add(DialogueAct.SMALL_TALK)
     cm = _CANCEL_FRAME.search(msg)
     rest = msg[cm.end():] if cm else ""
+    rest = re.sub(r"^\s*(?:that|this|it)?\s*(?:for (?:a |one )?(?:sec|second|moment|minute|bit)|for now)?"
+                  r"(?=\s*[,.;:!-])", "", rest, flags=re.I)  # "never mind that for a sec, <question>"
     if live and DialogueAct.CANCEL in acts and DialogueAct.ASK_QUESTION in acts and re.match(r"^\s*[,.;:!-]", rest) \
             and "?" in rest and len(re.findall(r"[A-Za-z]{3,}", rest)) >= 2:
         add(DialogueAct.SWITCH_TOPIC)  # "forget it, what are the pool hours?": the card is set aside, not destroyed
@@ -548,7 +1064,7 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
     ent.issue_location = extract_location(msg)
     ent.community, ent.city = community_in(msg), city_in(msg)
     ent.tour_date, ent.move_in_date = dates(msg, kind == "tour_request" and bool(live), pending, live)
-    ent.budget = budget(msg)
+    ent.budget = budget_range(msg) or budget(msg)  # "1200 to 1400" keeps the range
     ent.contact_preference = contact_change(msg)
     ent.entry_permission = extract_entry(msg) or (ta.value if ta.slot == "entry" else None)
     if ref := re.search(r"\bDEMO-(?:WO|TOUR|TASK)-\d+\b", msg, re.I):
@@ -581,7 +1097,9 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
         primary_intent=intents[0], secondary_intents=intents[1:], dialogue_act=acts[0], acts=acts, entities=ent,
         corrections=corr, references_existing_request=bool(ent.reference_id), requests_human=human,
         needs_clarification=vague, confidence=0.8 if known else 0.5, question_topic=question,
-        frustration_target=target, explicit_send=is_explicit_send(msg), source="rules", turn=ta)
+        frustration_target=target, explicit_send=is_explicit_send(msg), source="rules", turn=ta,
+        edits=edits, split_request=split_ask, split_target=split_target, drop_issue=drop, keep_issue=keep, hold=hold,
+        saved_question=asks_saved(msg), staff_complaint=complains_about_staff(msg), accepts_offer=accepts_offer(msg))
 
 
 # ---- the optional model pass -----------------------------------------------------------------------------------
@@ -807,4 +1325,5 @@ def with_acts(u: Understanding) -> TurnAct:
 __all__ = ["DialogueAct", "Understanding", "Entities", "Correction", "ModelUnderstanding", "understand",
            "understand_rules", "model_pass", "merge", "parse_model_json", "provider_mode", "requests_human", "cancels",
            "resumes", "checks_status", "asks_history", "frustration", "issue_rewrite", "budget", "dates", "with_acts",
-           "SCHEMA", "SCHEMA_NAME"]
+           "SCHEMA", "SCHEMA_NAME", "field_edits", "asks_split", "partial_cancel", "holds", "accepts_offer",
+           "asks_saved", "complains_about_staff", "things_in", "ordinal_date", "date_target", "budget_range"]

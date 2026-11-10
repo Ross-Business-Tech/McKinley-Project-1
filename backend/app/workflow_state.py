@@ -58,11 +58,15 @@ class Event(StrEnum):
     SECOND_ISSUE = "second_issue"  # two problems in one message
     SMALL_TALK = "small_talk"
     EMERGENCY = "emergency"
+    HOLD = "hold"  # "don't send it yet": the card stays, unsent (never a cancel)
+    DROP_ISSUE = "drop_issue"  # "never mind the smoke detector, only the faucet": that problem only
+    SPLIT_ISSUE = "split_issue"  # "those are 2 different things": one request per problem
 
 
 @dataclass(frozen=True)
 class Effect:
-    kind: str  # update_field | ask_next | answer_question | prompt_send | save | decline | restore | park_draft |
+    kind: str  # update_field | drop_issue | split_issue |
+    #           ask_next | answer_question | prompt_send | save | decline | restore | park_draft |
     #           open_handoff | queue_issue | show_status | acknowledge | start_draft | pass_to_safety | keep_card
     field: str | None = None
     value: str | None = None
@@ -109,6 +113,9 @@ TRANSITIONS: dict[tuple[WState, Event], WState | str] = {
     **{(s, E.CANCEL): S.DECLINED for s in _OPEN},
     **{(s, E.SWITCH_TOPIC): "same" for s in _OPEN},
     (S.IDLE, E.SWITCH_TOPIC): S.IDLE,
+    **{(s, E.HOLD): "same" for s in _OPEN},
+    **{(s, E.DROP_ISSUE): "recompute" for s in (S.COLLECTING, S.AWAITING_CLARIFICATION, S.READY)},
+    **{(s, E.SPLIT_ISSUE): "recompute" for s in (S.COLLECTING, S.AWAITING_CLARIFICATION, S.READY)},
     (S.DECLINED, E.RESUME): "recompute",
     **{(s, E.REQUEST_HUMAN): S.ESCALATION_RECOMMENDED for s in WState if s != S.ESCALATION_RECORDED},
     (S.ESCALATION_RECORDED, E.REQUEST_HUMAN): S.ESCALATION_RECORDED,  # the urgent note already went to staff
@@ -166,6 +173,12 @@ def event_for(u: Understanding, *, send_button: bool = False, open_card: bool = 
         return E.RESUME
     if u.has(DialogueAct.SWITCH_TOPIC):
         return E.SWITCH_TOPIC
+    if u.hold:
+        return E.HOLD
+    if u.drop_issue:
+        return E.DROP_ISSUE
+    if u.split_request:
+        return E.SPLIT_ISSUE
     if u.has(DialogueAct.CANCEL):
         return E.CANCEL
     if u.corrections:
@@ -221,6 +234,12 @@ def apply(snap: Snapshot, u: Understanding, *, send_button: bool = False) -> Tra
         effects += [Effect("answer_question", u.question_topic), Effect("keep_card", snap.kind)]
     elif ev is E.RESUME:
         effects.append(Effect("restore", snap.kind))
+    elif ev is E.HOLD:
+        effects.append(Effect("keep_card", snap.kind))
+    elif ev is E.DROP_ISSUE:
+        effects += [Effect("drop_issue", value=u.drop_issue), Effect("ask_next")]
+    elif ev is E.SPLIT_ISSUE:
+        effects += [Effect("split_issue", value=u.split_target), Effect("ask_next")]
     elif ev is E.CORRECT:
         effects += [Effect("update_field", c.field, c.value) for c in u.corrections]
         effects.append(Effect("ask_next"))

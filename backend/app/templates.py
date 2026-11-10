@@ -975,6 +975,41 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I don't have verified floor plans or prices here, so I won't guess.",
         "es": "Aquí no tengo planos ni precios verificados, así que no voy a adivinar.",
     },
+    # ---- Sprint 6 fix round (TEAM DRAFTS, NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
+    "hold_kept": {  # NEEDS McKINLEY REVIEW: "don't send it yet" keeps the card
+        "en": "Okay, I won't send it. Your {what} stays below, unsent, until you tap Send.",
+        "es": "De acuerdo, no la envío. Su {what} queda abajo, sin enviar, hasta que pulse Enviar.",
+    },
+    "split_done": {  # NEEDS McKINLEY REVIEW: one request per problem
+        "en": "Okay, I've split them: this request is now just \"{first}\". Waiting as its own request, after this "
+              "one: {items}.",
+        "es": "Listo, las separé: esta solicitud ahora es solo \"{first}\". En espera como solicitud aparte, después "
+              "de esta: {items}.",
+    },
+    "split_none": {  # NEEDS McKINLEY REVIEW
+        "en": "I can only see one problem on this request. Tell me the other problem and I'll make it its own request.",
+        "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
+    },
+    "issue_dropped": {  # NEEDS McKINLEY REVIEW: "never mind the smoke detector, only the faucet"
+        "en": "Okay, I've taken {detail} off. This request is now: \"{issue}\".",
+        "es": "Listo, quité {detail}. Esta solicitud ahora es: \"{issue}\".",
+    },
+    "change_requested": {  # NEEDS McKINLEY REVIEW: a change after Send, cited in the change note
+        "en": " The note asks for this change: {detail}.",
+        "es": " La nota pide este cambio: {detail}.",
+    },
+    "date_which": {  # NEEDS McKINLEY REVIEW: an ordinal date with both a tour day and a move-in on the card
+        "en": "Is {value} for the tour or for the move-in?",
+        "es": "¿{value} es para la visita o para la mudanza?",
+    },
+    "staff_complaint_note": {  # NEEDS McKINLEY REVIEW: a complaint about a visit or staff member
+        "en": "I'm sorry that happened. A manager should hear about this directly, so I've written a note with what "
+              "you said. It isn't a repair request. Send it to the office when you're ready. In this prototype nobody "
+              "is notified automatically.",
+        "es": "Lamento que haya pasado. Un gerente debe enterarse directamente, así que escribí una nota con lo que "
+              "dijo. No es una solicitud de reparación. Envíela a la oficina cuando quiera. En este prototipo no se "
+              "avisa a nadie automáticamente.",
+    },
     "next_leasing_note": {
         "en": "The leasing team can answer that: I can send them your question as a note.",
         "es": "El equipo de arrendamiento puede responder: puedo enviarles su pregunta en una nota.",
@@ -1032,6 +1067,11 @@ CONFIRM: dict[str, dict[Lang, str]] = {
               "prototype nobody is notified automatically.",
         "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos. En "
               "este prototipo no se avisa a nadie automáticamente.",
+    },
+    # NEEDS McKINLEY REVIEW: a note with no details of the person's own (never claims "with the details")
+    "staff_handoff_plain": {
+        "en": "Note {id} is saved for the office. In this prototype nobody is notified automatically.",
+        "es": "La nota {id} quedó guardada para la oficina. En este prototipo no se avisa a nadie automáticamente.",
     },
 }
 

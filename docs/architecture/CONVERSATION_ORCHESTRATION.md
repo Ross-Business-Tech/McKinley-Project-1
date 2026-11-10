@@ -98,8 +98,39 @@ detectors. A frame is a small grammar, not a list of sentences:
 
 The safety, identity, injection and contact-privacy steps before 1c still run first, and nothing here can lower them.
 
+## Fix round (after the independent simulators)
+Simulators with unseen wording found that corrections were appended to "What's wrong", two issues joined by "; also",
+"and separately", "1) … 2)" or "y aparte" stayed on one card, and a second request to reach a person, accept an offer,
+or name a month-less date ("push it to the 20th") was missed. The fixes are typed frames in `app/understanding.py`,
+applied in one place (`plan_turn` step 1c-edit):
+- **Field-targeted edits** (`field_edits(msg, card, kind)` → `Understanding.edits`). Each edit names ONE field with a
+  value of that field's type: contact channel (call/text/email/portal, "X is better than Y" and "X not Y" take X, and a
+  preference frame is required, so "nobody answered my 2 emails" changes nothing), entry permission ("knock first",
+  "they can NOT just come in", "mejor que me llamen antes de entrar"), visit time ("after 6pm not 5", "mornings only"),
+  location ("inside my apt not common area", "where: X") and the description ("let me rephrase:", "correction:",
+  "change it to: X", "it's under the sink not the dishwasher itself" keeps the symptom). A question ("when will they
+  call me?") is never an edit. Edits REPLACE the field; after Send they become a change note citing the reference.
+- **Splits**: `intake.split_issues` knows more joins and symptoms; `asks_split` handles a later request; `partial_cancel`
+  and `holds` keep "never mind the X" and "don't send yet" from discarding the card.
+- **Handoff by frame**: (a person / someone from the office / whoever handles X) + (call me, reach out, take over,
+  connect me with, a callback from), for prospects too, with the entry guard ("have someone call me first before they
+  come in" is an entry answer). An explicit request for a person beats the "chat isn't helping" recovery.
+- **Frustration about the repair** ("this is the FOURTH time my sink is leaking, i'm so done") starts the repair (repeat
+  flag) instead of a "the chat wasn't helping" note, unless the chat itself is named.
+- **Saved-status and history** questions are answered from this conversation's records, even with a draft open.
+- **Dates and budgets**: `date_target` puts "the 20th" in the field the card holds, or asks "the tour or the move-in?"
+  when it holds both; `budget_range` keeps "1200 to 1400". A community named earlier in the chat beats the profile's.
+- **Offers**: the reply's offer (`tour`, `leasing_note`) is kept in planner memory (a kind, never text); "ok sure" or
+  "yeah send them my questions" opens that card. Saving still needs Send or an explicit "send it".
+- **Notes**: a rebuilt note keeps "Details so far", the questions, budget and a stated contact preference; a note with
+  none of the person's own details is confirmed without "with the details".
+- **Staff complaints** ("the tech was rude", "missed my Tuesday visit, I want an explanation") are a note for a manager.
+
 ## Measured
-- Journey suite (MOCK, 35): 27 PASS / 8 WARN / 0 FAIL before, 28 / 7 / 0 after. Duplicates stayed at 0, and
+- Journey suite (MOCK, 35): 27 PASS / 8 WARN / 0 FAIL before, 28 / 7 / 0 after. Fix round: 28 / 7 / 0 before,
+  29 / 6 / 0 after (the one change is a safety journey; the safety engineer's concurrent work may account for it).
+  Fix-round tests: 248 in `tests/test_sprint6_conversation_fix.py`.
+- Duplicates stayed at 0, and
   honesty and safety flags stayed at 0.
 - New tests: 258 in `tests/test_sprint6_conversation*.py` (208 paraphrase-family and API replays, 50 model-path and state-machine tests).
 - Live model check (5 calls, `openrouter:nvidia/nemotron-3.5-super-vl:free`):

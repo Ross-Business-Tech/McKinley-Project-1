@@ -64,7 +64,9 @@ stateDiagram-v2
   escalation_recommended --> pending_staff_review: confirm_explicit (save, parked card returns)
   escalation_recommended --> declined: cancel (decline, parked card returns)
   pending_staff_review --> collecting: new_request
-  collecting --> collecting: ask / check_status / frustration / switch_topic (keep_card)
+  collecting --> collecting: ask / check_status / frustration / switch_topic / hold (keep_card)
+  collecting --> collecting: drop_issue / split_issue (one problem dropped or queued)
+  ready --> ready: hold (keep_card) / drop_issue / split_issue
   idle --> escalation_recorded: emergency (safety step, not this module)
   collecting --> escalation_recorded: emergency (safety step)
   note right of pending_staff_review
@@ -73,15 +75,28 @@ stateDiagram-v2
 ```
 
 Events come from `event_for(understanding)`, checked most consequential first: `confirm_explicit` (button or typed
-send) → `request_human` → `resume` → `switch_topic` → `cancel` → `correct` → `check_status` → `confirm_bare` →
+send) → `request_human` → `resume` → `switch_topic` → `hold` → `drop_issue` → `split_issue` → `cancel` → `correct` → `check_status` → `confirm_bare` →
 `frustration` (with the assistant) → `provide_info` → `ask` → `second_issue` → `small_talk` → `new_request`.
 So "yes, but it's the kitchen, not the bathroom" is a correction, never consent. "Forget it, what are the pool
 hours?" is `switch_topic`: the question is answered and the card stays, unsent, with a line saying how to cancel.
+
+Fix round events (rules only, so a model can't cause them):
+- `hold` ("don't send it yet", "not yet", "hold on"): the card stays on screen, unsent. It is never a cancel.
+- `drop_issue` ("never mind the smoke detector, only the faucet"): that one problem leaves the card (or its queue). If it
+  is the only problem on the card, the message is an ordinary cancel.
+- `split_issue` ("those are 2 different things", "make the oven light its own request"): one request per problem; the
+  others are queued and become the next card after Send. A card that is already split says so and changes nothing.
+- A cancel word that leads a correction ("nvm switch it to Heron Lake") is `correct`, not `cancel`.
 
 ## Where plan_turn uses it (documented position)
 - **Top (declined card):** `apply(derive(declined), u0)` → `restore`. This is how paraphrased restores ("I hit
   Don't send by accident") bring back the same card.
 - **Step 1c-understand:** `tr = apply(derive(live, mine), u)`, plus the switch-topic branch.
+- **Step 1c-edit (fix round, right after the switch-topic branch):** `hold`, `drop_issue` and `split_issue`, then
+  `u.edits` (field-targeted corrections) are applied to the open card, and the reply names each change ("Updated:
+  Contact preference → Prefers call"). With no open card (or only an untouched queued card) and a record just sent,
+  the same edit becomes a change note citing that record's reference. Then: more detail for an open note, a pet on
+  an open tour card, and accepting the assistant's last offer (`memory["offer"]`: `tour` or `leasing_note`).
 - **Step 2 (consent):** `tr2.event in (confirm_explicit, confirm_bare)`. `prompt_send` gives "Tap Send"; `save`
   calls `confirm()`. This replaced `is_affirmative(msg) or is_explicit_send(msg)`.
 - **`confirm()`:** `duplicate_of` after the atomic `take_draft`.
