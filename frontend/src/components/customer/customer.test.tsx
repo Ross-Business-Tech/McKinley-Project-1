@@ -345,6 +345,8 @@ describe("Sprint 5.1 UI fixes", () => {
     expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent(/That didn't save/);
     await user.click(screen.getByRole("button", { name: /Send again/ }));
     expect(await screen.findByText(/Submitted, waiting for staff review/)).toBeInTheDocument();
+    // Sprint 7 (judge H-10): after the retry goes through, no stale "Send again" button stays on screen
+    expect(screen.queryByRole("button", { name: /Send again/ })).not.toBeInTheDocument();
   });
 
   it("shows 'Ready to send', hides demo-system rows, and gives a sent card one honest line", async () => {

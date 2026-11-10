@@ -307,7 +307,7 @@ export interface Health {
   interaction_count: number;
   // deployment facts (optional: older backends and the static snapshot don't send them)
   app_env?: "local" | "hosted";
-  database?: "sqlite" | "postgres";
+  database?: "sqlite" | "postgres" | ""; // "" = public health subset (not staff)
   resident_source?: string | null;
   is_mock?: boolean;
   // false = this backend has no demo personas (APP_ENV=hosted): hide the demo sign-in, guest only

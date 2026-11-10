@@ -377,7 +377,9 @@ export function CustomerApp() {
     setBusy(true);
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
+      // Sprint 7: once a retry goes through, the earlier "Not sent" box for this card goes (no stale "Send again")
+      setMessages((m) => [...m.filter((x) => !(x.error && x.retryKind === kind)),
+        { id: mid(), role: "assistant", text: result.message, result, lang }]);
       // The outcome and its reference, said once (focus also moves to the new message).
       const ref = result.action?.record?.id;
       setAnnouncement(`${t.assistantSaid} ${result.message}${ref && !result.message.includes(ref) ? ` ${t.reference} ${ref}.` : ""}`);
