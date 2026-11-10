@@ -77,6 +77,17 @@ CREATE TABLE IF NOT EXISTS eval_results (
 );
 """
 
+# Session -> principal binding (app/auth.py). Kept outside SCHEMA (which mirrors migration 0001); migration 0003
+# creates the same table. A session id is bound to the (principal kind, persona key) that first used it.
+AUTH_SCHEMA = """
+CREATE TABLE IF NOT EXISTS session_bindings (
+  session_id TEXT PRIMARY KEY,
+  principal_kind TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+"""
+
 MAX_HISTORY_TURNS = 6
 
 
@@ -113,6 +124,7 @@ class Store:
             self._conn: Any = self._connect_pg()
             with self._lock:
                 self._conn.execute(_postgres_schema())
+                self._conn.execute(AUTH_SCHEMA + "ALTER TABLE session_bindings ENABLE ROW LEVEL SECURITY;\n")
         else:
             if path is None:
                 raise ValueError("Store needs a SQLite path or a database_url")
@@ -120,7 +132,7 @@ class Store:
             self._conn = sqlite3.connect(path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             with self._lock:
-                self._conn.executescript(SCHEMA)
+                self._conn.executescript(SCHEMA + AUTH_SCHEMA)
 
     # ---- connection plumbing ----
     def _connect_pg(self) -> Any:
@@ -209,6 +221,23 @@ class Store:
                     yield
         finally:
             self._in_tx = False
+
+    # ---- session binding (authorization, see app/auth.py) ----
+    def bind_session(self, session_id: str, principal_kind: str, persona_key: str) -> tuple[str, str]:
+        """Bind on first use (atomic insert-if-absent) and return the binding that is in force."""
+        with self._lock, self._tx():
+            self._q("INSERT INTO session_bindings(session_id, principal_kind, persona_id, created_at) "
+                    "VALUES (?,?,?,?) ON CONFLICT(session_id) DO NOTHING",
+                    (session_id, principal_kind, persona_key, now_iso()))
+            row = self._q("SELECT principal_kind, persona_id FROM session_bindings WHERE session_id=?",
+                          (session_id,)).fetchone()
+        return row["principal_kind"], row["persona_id"]
+
+    def session_binding(self, session_id: str) -> tuple[str, str] | None:
+        with self._lock:
+            row = self._q("SELECT principal_kind, persona_id FROM session_bindings WHERE session_id=?",
+                          (session_id,)).fetchone()
+        return (row["principal_kind"], row["persona_id"]) if row else None
 
     # ---- chat sessions ----
     def user_messages(self, session_id: str, persona_id: str) -> list[str]:
@@ -513,3 +542,92 @@ class Store:
         data.update(id=r["id"], run_id=r["run_id"], case_id=r["case_id"], mode=r["mode"],
                     human_verdict=r["human_verdict"], human_notes=r["human_notes"])
         return data
+
+
+class ScopedStore:
+    """The customer-facing view of a Store, bound to ONE session and ONE principal (app/auth.Principal).
+
+    Deny by default: reads for any other session or persona return nothing, writes for them raise PermissionError,
+    records are only those written in this session by this persona, and staff-wide listings (conversations, gate log,
+    eval runs) are not available at all. Chat turns, the planner and confirm/cancel receive this, never the raw Store.
+    """
+
+    _PASSTHROUGH = frozenset({"dialect"})
+
+    def __init__(self, store: Store, session_id: str, persona_key: str):
+        self._store = store
+        self.session_id = session_id
+        self.persona_key = persona_key or "none"
+        self.persona_id = None if self.persona_key == "none" else self.persona_key
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._PASSTHROUGH:
+            return getattr(self._store, name)
+        raise AttributeError(f"ScopedStore does not expose {name!r}: add an authorized, session-scoped method to "
+                             "app/db.py ScopedStore instead of reaching the raw store")
+
+    def _mine(self, session_id: str, persona_key: str | None) -> bool:
+        return session_id == self.session_id and (persona_key or "none") == self.persona_key
+
+    def _require(self, session_id: str, persona_key: str | None) -> None:
+        if not self._mine(session_id, persona_key):
+            raise PermissionError("write outside the request's session/principal refused")
+
+    # ---- reads ----
+    def user_messages(self, session_id: str, persona_id: str) -> list[str]:
+        return self._store.user_messages(session_id, persona_id) if self._mine(session_id, persona_id) else []
+
+    def history(self, session_id: str, mode: str, persona_id: str) -> list[dict[str, str]]:
+        return self._store.history(session_id, mode, persona_id) if self._mine(session_id, persona_id) else []
+
+    def last_gate(self, session_id: str, mode: str, persona_id: str) -> dict[str, Any] | None:
+        return self._store.last_gate(session_id, mode, persona_id) if self._mine(session_id, persona_id) else None
+
+    def get_draft(self, session_id: str, persona_id: str, include_declined: bool = False) -> dict[str, Any] | None:
+        if not self._mine(session_id, persona_id):
+            return None
+        return self._store.get_draft(session_id, persona_id, include_declined=include_declined)
+
+    def records(self, persona_id: str | None = None, kind: str | None = None, session_id: str | None = None,
+                limit: int = 100) -> list[dict[str, Any]]:
+        """Only this session's records by this persona, whatever filter the caller asked for."""
+        if persona_id is not None and (persona_id or "none") != self.persona_key:
+            return []
+        if session_id is not None and session_id != self.session_id:
+            return []
+        rows = self._store.records(kind=kind, session_id=self.session_id, limit=max(limit, 200))
+        return [r for r in rows if (r.get("persona_id") or None) == self.persona_id][:limit]
+
+    # ---- writes (only for this session + principal) ----
+    def append_turns(self, session_id: str, mode: str, persona_id: str, user: str, assistant: str) -> None:
+        self._require(session_id, persona_id)
+        self._store.append_turns(session_id, mode, persona_id, user, assistant)
+
+    def log_gate(self, session_id: str, mode: str, persona_id: str, data: dict[str, Any]) -> None:
+        self._require(session_id, persona_id)
+        self._store.log_gate(session_id, mode, persona_id, data)
+
+    def save_draft(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
+        self._require(session_id, persona_id)
+        self._store.save_draft(session_id, persona_id, kind, data)
+
+    def take_draft(self, session_id: str, persona_id: str, kind: str) -> dict[str, Any] | None:
+        return self._store.take_draft(session_id, persona_id, kind) if self._mine(session_id, persona_id) else None
+
+    def mark_stale(self, session_id: str, persona_id: str, kind: str, data: dict[str, Any]) -> None:
+        self._require(session_id, persona_id)
+        self._store.mark_stale(session_id, persona_id, kind, data)
+
+    def clear_draft(self, session_id: str, persona_id: str) -> None:
+        self._require(session_id, persona_id)
+        self._store.clear_draft(session_id, persona_id)
+
+    def add_record(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
+                   data: dict[str, Any]) -> dict[str, Any]:
+        self._require(session_id, persona_id)
+        return self._store.add_record(prefix, kind, session_id, persona_id, data)
+
+    def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
+                        data: dict[str, Any], once_key: str) -> dict[str, Any]:
+        self._require(session_id, persona_id)
+        return self._store.add_record_once(prefix, kind, session_id, persona_id, data, once_key)

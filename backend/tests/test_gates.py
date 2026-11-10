@@ -3,6 +3,7 @@
 import httpx
 import pytest
 
+from app.auth import TOOLING
 from app.config import Settings
 from app.context import load_workbook
 from app.gates import DecisionGateService, GateContext, GateUnavailable
@@ -40,7 +41,7 @@ def test_high_intent_prospect():
     msg = "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?"
     d = classify_rules(msg, PROSPECT)
     assert (d.intent, d.audience, d.requires_human) == ("leasing", "prospect", False)
-    lead = lead_profile(msg, build_context("P-RELOCATE-AA", msg, None))
+    lead = lead_profile(msg, build_context("P-RELOCATE-AA", msg, None, principal=TOOLING))
     assert lead.intent_level == "high" and "tour_request" in lead.signals and lead.known["floor_plan"] == "2-bed"
 
 
@@ -48,13 +49,13 @@ def test_low_intent_price_shopper():
     msg = "What is the cheapest 1-bedroom apartment you have in Florida right now?"
     d = classify_rules(msg, PROSPECT)
     assert d.intent == "leasing" and d.urgency == "low"
-    lead = lead_profile(msg, build_context("P-BROWSE-FL", msg, None))
+    lead = lead_profile(msg, build_context("P-BROWSE-FL", msg, None, principal=TOOLING))
     assert lead.intent_level == "low" and lead.next_question  # asks one qualifying question
 
 
 def test_repeated_ac_complaint_with_history(workbook):
     msg = "My AC stopped cooling again. This has happened multiple times and I'm really upset."
-    ctx = build_context("R001", msg, workbook)
+    ctx = build_context("R001", msg, workbook, principal=TOOLING)
     flags = frozenset(f.name for f in ctx.fields if f.name.endswith("_flag"))
     d = classify_rules(msg, GateContext("resident", True, True, ctx.topics, flags))
     assert d.intent == "maintenance" and d.urgency == "high" and d.requires_human
@@ -71,7 +72,7 @@ def test_minor_faucet_leak_routine():
     d = classify_rules(msg, UNVERIFIED)
     assert d.intent == "maintenance" and d.urgency == "medium" and not d.requires_human
     assert "no_matched_record" in d.risk_flags
-    triage = maintenance_triage(msg, build_context("U-NOMATCH", msg, None), d)
+    triage = maintenance_triage(msg, build_context("U-NOMATCH", msg, None, principal=TOOLING), d)
     assert triage.level == "routine" and triage.category == "plumbing_drip"
     assert any("towel" in s for s in triage.approved_troubleshooting)
     assert triage.work_order_created is False
@@ -79,7 +80,7 @@ def test_minor_faucet_leak_routine():
 
 def test_renewal_worry(workbook):
     msg = "I got a renewal offer and I'm worried about the cost. Can someone explain my choices?"
-    ctx = build_context("R003", msg, workbook)
+    ctx = build_context("R003", msg, workbook, principal=TOOLING)
     flags = frozenset(f.name for f in ctx.fields if f.name.endswith("_flag"))
     d = classify_rules(msg, GateContext("resident", True, True, ctx.topics, flags))
     assert d.intent == "renewal" and d.requires_human
@@ -98,7 +99,7 @@ def test_emergency_is_deterministic_for_everyone(msg, ctx):
     assert d.urgency == "emergency" and d.requires_human and d.intent == "maintenance"
     wf = select_workflow(d)
     assert wf.id == "maintenance"
-    h = build_handoff(d, wf, build_context(None, msg, None), False, "")
+    h = build_handoff(d, wf, build_context(None, msg, None, principal=TOOLING), False, "")
     assert h and h.team == "emergency_maintenance" and h.priority == "urgent"
 
 
@@ -139,7 +140,8 @@ def test_explicit_human_request():
 def test_fair_housing_accommodation_routes_to_staff_not_declined():
     d = classify_rules("I need a reasonable accommodation for my service animal", RESIDENT)
     assert d.requires_human and select_workflow(d).id == "human_handoff"
-    assert build_handoff(d, select_workflow(d), build_context(None, "", None), False, "").team == "management"
+    ctx = build_context(None, "", None, principal=TOOLING)
+    assert build_handoff(d, select_workflow(d), ctx, False, "").team == "management"
 
 
 def test_message_injection_is_flagged_not_obeyed():
@@ -149,7 +151,7 @@ def test_message_injection_is_flagged_not_obeyed():
 
 def test_injection_in_retrieved_history_is_screened():
     msg = "My bathroom sink is leaking again."
-    ctx = build_context("F-INJECT", msg, None)
+    ctx = build_context("F-INJECT", msg, None, principal=TOOLING)
     blob = " ".join(f.value for f in ctx.fields).lower()
     assert "ignore" not in blob and "technician" not in blob and "free month" not in blob
     assert len(ctx.dropped_items) == 2

@@ -119,6 +119,14 @@ export const api = {
   staffConversation: (hash: string) => request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`),
 };
 
+/** Whether the customer page may offer the demo sign-in picker. The backend decides (app/auth.py): a hosted backend
+ * says demo_personas_enabled=false and returns no personas, so the page is guest-only. Picking a demo persona is
+ * NOT authentication; the backend re-derives and checks the principal on every request. */
+export function demoSignInAvailable(personas: Persona[], health: Health | null): boolean {
+  if (health?.demo_personas_enabled === false) return false;
+  return personas.length > 0;
+}
+
 /** Root-relative static snapshot served with the site (used when the backend is unreachable). */
 export const SNAPSHOT_PATH = "/demo/snapshot.json";
 

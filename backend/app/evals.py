@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.auth import TOOLING
 from app.chat_engine import EngineDeps, prompt_for, run_turn
 from app.db import Store
 from app.llm import LLMError, Target
@@ -263,7 +264,7 @@ def run_evals(
                 }
                 try:
                     resp = run_turn(deps, case.message, mode, case.persona_id or None, session_id=None,
-                                    use_history=False, target=target)
+                                    use_history=False, target=target, principal=TOOLING)
                     crit, verdict, why = grade(case, mode, resp)
                     base.update(
                         status="ok", reply=resp.reply, audience=resp.audience, suite=case.suite,
@@ -310,7 +311,7 @@ def regrade_run(deps: EngineDeps, store: Store, run_id: int) -> int:
         case = CASES_BY_ID[r["case_id"]]
         allowed = ""
         if r["mode"] == "aware":
-            ctx = build_context(case.persona_id or None, case.message, deps.workbook)
+            ctx = build_context(case.persona_id or None, case.message, deps.workbook, principal=TOOLING)
             allowed = " ".join(f.value for f in ctx.fields)
         checks = output_checks(r["reply"], allowed, r.get("gate_urgency"))
         old = {c["code"]: c for c in r.get("output_checks", [])}

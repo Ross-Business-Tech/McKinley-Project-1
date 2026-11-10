@@ -184,6 +184,8 @@ export const UI = {
     demoButton: "Demo",
     demoTitle: "About this demo",
     demoSignIn: "Demo sign-in",
+    // NEEDS McKINLEY REVIEW: shown instead of the demo sign-in when the backend has no demo accounts (hosted)
+    guestOnly: "Guest: general questions and notes to the office",
     demoClose: "Close",
     safetyInfo: "If that happens",
   },
@@ -239,6 +241,8 @@ export const UI = {
     demoButton: "Demo",
     demoTitle: "Sobre esta demo",
     demoSignIn: "Inicio de sesión de demo",
+    // NEEDS McKINLEY REVIEW
+    guestOnly: "Invitado: preguntas generales y notas a la oficina",
     demoClose: "Cerrar",
     gasCall: "Salga y luego llame al 911",
     safetyInfo: "Si eso pasa",

@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, R
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { ApiError, LIVE_BACKEND_CONFIGURED, api, loadDemoSnapshot } from "@/lib/api";
+import { ApiError, LIVE_BACKEND_CONFIGURED, api, demoSignInAvailable, loadDemoSnapshot } from "@/lib/api";
 import {
   GUEST,
   type Identity,
@@ -32,7 +32,7 @@ import { StatusPill, statusTone } from "./StatusPill";
 
 type Boot =
   | { mode: "loading" }
-  | { mode: "live"; identities: Identity[]; mock: boolean | null }
+  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean }
   | { mode: "preview"; identities: Identity[]; journeys: Journey[] }
   | { mode: "error"; message: string };
 
@@ -65,8 +65,14 @@ const mid = () => `m${++counter}`;
 async function boot(): Promise<Boot> {
   try {
     const personas = await api.personas();
-    const health = await api.health().catch(() => null); // only for the "About this demo" line
-    return { mode: "live", identities: toIdentities(personas), mock: health ? health.is_mock ?? health.provider === "mock" : null };
+    const health = await api.health().catch(() => null); // "About this demo" line + whether demo sign-in exists
+    const demoSignIn = demoSignInAvailable(personas, health);
+    return {
+      mode: "live",
+      identities: demoSignIn ? toIdentities(personas) : [GUEST],
+      mock: health ? health.is_mock ?? health.provider === "mock" : null,
+      demoSignIn,
+    };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE") {
       return { mode: "error", message: e instanceof ApiError ? e.message : "The assistant could not start." };
@@ -313,6 +319,8 @@ export function CustomerApp() {
     let readyCard = false;
     try {
       const response = await api.chat({ message, persona_id: identity.id || null, mode: "aware", session_id: sessionId });
+      // the backend starts a new conversation if this session id belonged to another sign-in: follow it
+      if (response.session_id && response.session_id !== sessionId) setSessionId(response.session_id);
       setMessages((m) => [
         ...m.map((x) => (x.id === userId ? { ...x, lang: response.language ?? x.lang } : x)),
         { id: mid(), role: "assistant", text: response.reply, lang: response.language, response },
@@ -460,32 +468,40 @@ export function CustomerApp() {
       demoStrip={
         <section aria-label={t.demoButton} lang={lang} className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
           <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-4">
-            <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
-              {t.demoSignIn}
-            </label>
-            <select
-              id={`${inputId}-who`}
-              value={identity.id}
-              aria-describedby={whoHintId}
-              onChange={(e) => changeIdentity(e.target.value)}
-              className="mk-focus h-11 min-w-0 flex-1 rounded-md border border-mk-line-strong bg-mk-surface px-2.5 text-base sm:max-w-80"
-            >
-              {groups.map((g) => {
-                const opts = state.identities.filter((i) => i.group === g);
-                return opts.length ? (
-                  <optgroup key={g} label={g}>
-                    {opts.map((i) => (
-                      <option key={i.id || "guest"} value={i.id}>
-                        {i.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null;
-              })}
-            </select>
-            <span id={whoHintId} className="sr-only" lang={lang}>
-              {t.signInHint}
-            </span>
+            {state.mode === "preview" || state.demoSignIn ? (
+              <>
+                <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
+                  {t.demoSignIn}
+                </label>
+                <select
+                  id={`${inputId}-who`}
+                  value={identity.id}
+                  aria-describedby={whoHintId}
+                  onChange={(e) => changeIdentity(e.target.value)}
+                  className="mk-focus h-11 min-w-0 flex-1 rounded-md border border-mk-line-strong bg-mk-surface px-2.5 text-base sm:max-w-80"
+                >
+                  {groups.map((g) => {
+                    const opts = state.identities.filter((i) => i.group === g);
+                    return opts.length ? (
+                      <optgroup key={g} label={g}>
+                        {opts.map((i) => (
+                          <option key={i.id || "guest"} value={i.id}>
+                            {i.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
+                </select>
+                <span id={whoHintId} className="sr-only" lang={lang}>
+                  {t.signInHint}
+                </span>
+              </>
+            ) : (
+              <p data-testid="guest-only" className="min-h-11 py-2.5 text-sm font-medium text-mk-muted">
+                {t.guestOnly}
+              </p>
+            )}
             <button
               ref={aboutBtnRef}
               type="button"
@@ -518,7 +534,7 @@ export function CustomerApp() {
               <div className="rounded-lg bg-mk-paper p-4">
                 <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
                 <p className="mt-1 text-sm text-mk-muted">
-                  {t.prototype} {replySource} {t.signInHint}
+                  {t.prototype} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4">
                   <Link href="/staff" prefetch={false} className="mk-focus inline-flex min-h-11 items-center font-medium text-mk-brand-hover underline underline-offset-2">

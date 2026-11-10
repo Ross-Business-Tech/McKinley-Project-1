@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from app.actions import confirm
 from app.api.staff_guard import require_staff
+from app.auth import AuthError, Principal, check_session_binding, derive_principal
+from app.db import ScopedStore
 from app.models import ActionConfirmRequest, ActionResult, PrototypeRecord
 from app.personas import apply_account_holder_rule, build_context
 from app.safety import redact
@@ -12,25 +14,38 @@ from app.state import AppState, get_state
 router = APIRouter(prefix="/api")
 
 
+def _authorized(req: ActionConfirmRequest, state: AppState) -> tuple[Principal, ScopedStore]:
+    """Server-side principal + the session binding check, then a store scoped to (session, principal): a draft of
+    another session or persona can never be confirmed or cancelled from here."""
+    try:
+        principal = derive_principal(state.deps.settings, req.persona_id, req.session_id, state.deps.workbook)
+        check_session_binding(state.store, principal)
+    except AuthError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail()) from None
+    return principal, ScopedStore(state.store, req.session_id, principal.key)
+
+
 @router.post("/actions/confirm", response_model=ActionResult)
 def confirm_action(req: ActionConfirmRequest, state: AppState = Depends(get_state)) -> ActionResult:
     """Write the server-side draft for this session. The body names the session and kind only: the saved fields
     always come from the draft the backend built, never from the browser. Identity is re-checked here."""
-    pkey = req.persona_id or "none"
-    ctx = apply_account_holder_rule(build_context(req.persona_id, "", state.deps.workbook),
-                                    state.store.user_messages(req.session_id, pkey))
-    draft = state.store.get_draft(req.session_id, pkey)
+    principal, store = _authorized(req, state)
+    pkey = principal.key
+    ctx = apply_account_holder_rule(build_context(principal.persona_id, "", state.deps.workbook, principal=principal),
+                                    store.user_messages(req.session_id, pkey))
+    draft = store.get_draft(req.session_id, pkey)
     lang = draft.get("lang", "en") if draft else "en"
-    return confirm(state.store, req.session_id, req.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
+    return confirm(store, req.session_id, principal.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
 
 
 @router.post("/actions/cancel", response_model=ActionResult)
 def cancel_action(req: ActionConfirmRequest, state: AppState = Depends(get_state)) -> ActionResult:
-    draft = state.store.get_draft(req.session_id, req.persona_id or "none")
+    principal, store = _authorized(req, state)
+    draft = store.get_draft(req.session_id, principal.key)
     if not draft or draft.get("kind") != req.kind:
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION", message="There's nothing waiting to be sent.")
     # kept, marked declined, so "send it after all" in the chat can bring it back once
-    state.store.save_draft(req.session_id, req.persona_id or "none", draft["kind"], {**draft, "declined": True})
+    store.save_draft(req.session_id, principal.key, draft["kind"], {**draft, "declined": True})
     return ActionResult(ok=True, message="Okay, I haven't sent it. If you change your mind, say \"send it after "
                                          "all\".")
 

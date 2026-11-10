@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     # local = a developer machine (defaults stay convenient). hosted = ANY shared deployment (Render, a team demo):
     # startup refuses unsafe settings (see hosted_problems). "hosted" does not mean production ready.
     app_env: Literal["local", "hosted"] = "local"
+    # Demo personas (the "Demo sign-in" picker) let anyone act as any SYNTHETIC account. That is NOT authentication.
+    # Unset = on for APP_ENV=local, off for hosted. DEMO_PERSONAS_ENABLED=true is refused on a hosted backend
+    # (hosted_problems). See app/auth.py and docs/security/AUTHORIZATION_BOUNDARIES.md.
+    demo_personas_enabled: bool | None = None
+    # Structured understanding layer (app/understanding.py): rules (default, deterministic) | model | auto. The model
+    # pass may only add acts/entities; it never mutates state, grants access or confirms a save.
+    understanding_provider: Literal["rules", "model", "auto"] = "rules"
+    understanding_timeout_seconds: float = 5.0
 
     # ---- default target used by /api/chat ----
     llm_provider: ProviderName = "openrouter"
@@ -114,6 +122,13 @@ class Settings(BaseSettings):
     def resolve(self, p: Path) -> Path:
         return p if p.is_absolute() else BACKEND_DIR / p
 
+    @property
+    def demo_personas_allowed(self) -> bool:
+        """Effective switch: demo personas only on a local deployment (never on APP_ENV=hosted)."""
+        if self.app_env == "hosted":
+            return False
+        return True if self.demo_personas_enabled is None else self.demo_personas_enabled
+
     def hosted_problems(self) -> list[str]:
         """Settings that are unsafe on a shared deployment. Messages never contain secret values."""
         if self.app_env != "hosted":
@@ -133,6 +148,9 @@ class Settings(BaseSettings):
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
+        if self.demo_personas_enabled:
+            out.append("DEMO_PERSONAS_ENABLED must be false: demo personas are not authentication, so a shared "
+                       "deployment must not let anyone act as a resident account")
         if not (self.database_url and self.database_url.get_secret_value().strip()):
             out.append("DATABASE_URL must be set (a hosted backend's local SQLite file is lost on every restart)")
         return out

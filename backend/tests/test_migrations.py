@@ -11,6 +11,7 @@ from alembic import command
 from alembic.config import Config
 
 from app import seed_synthetic
+from app.auth import TOOLING
 from app.config import Settings
 from app.context import load_workbook
 from app.db import Store
@@ -97,8 +98,8 @@ def test_seed_then_database_residents_match_the_file(db, monkeypatch):
     assert set(db_wb.residents) == set(file_wb.residents)
     for rid in sorted(file_wb.residents):
         for msg in ("my AC is broken again", "what about my renewal?", "can you text me instead"):
-            a = build_context(rid, msg, file_wb).model_dump()
-            b = build_context(rid, msg, db_wb).model_dump()
+            a = build_context(rid, msg, file_wb, principal=TOOLING).model_dump()
+            b = build_context(rid, msg, db_wb, principal=TOOLING).model_dump()
             assert a == b, (rid, msg)
 
 

@@ -14,6 +14,12 @@ from app.llm import LLMGateway
 from app.models import HealthResponse, ModelTarget
 from app.state import AppState, get_state
 
+
+class HealthWithAuth(HealthResponse):
+    # False = this deployment has no demo personas (APP_ENV=hosted): the website hides the demo sign-in picker and
+    # the assistant answers public information only. Never a secret.
+    demo_personas_enabled: bool = False
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 _settings = get_settings()
@@ -47,14 +53,15 @@ app.include_router(gates.router)
 app.include_router(actions.router)
 
 
-@app.get("/api/health", response_model=HealthResponse)
-def health(state: AppState = Depends(get_state)) -> HealthResponse:
+@app.get("/api/health", response_model=HealthWithAuth)
+def health(state: AppState = Depends(get_state)) -> HealthWithAuth:
     s = state.deps.settings
     gw = state.deps.llm
     ready, status = gw.provider_ready(gw.default_target.provider)
     wb = state.deps.workbook
-    return HealthResponse(
+    return HealthWithAuth(
         status="ok",
+        demo_personas_enabled=s.demo_personas_allowed,
         provider=gw.default_target.provider,
         model=gw.default_target.model,
         provider_ready=ready,

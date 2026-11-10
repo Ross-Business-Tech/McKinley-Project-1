@@ -380,3 +380,39 @@ describe("Sprint 5.1 UI fixes", () => {
     expect(sortStatusItems(status_items)[0].status).toMatch(/^Urgent/);
   });
 });
+
+describe("Sprint 6 authorization: demo sign-in follows the backend", () => {
+  it("hides the demo sign-in and sends no persona when the backend has no demo personas (hosted)", async () => {
+    const bodies: { persona_id: string | null; session_id: string }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/personas")) return new Response(JSON.stringify([]));
+      if (url.endsWith("/api/health")) {
+        return new Response(JSON.stringify({ status: "ok", provider: "mock", model: "m", provider_ready: true, provider_status: "ok",
+          prompt_version: "v", data_loaded: true, data_error: null, resident_count: 0, interaction_count: 0, app_env: "hosted",
+          is_mock: true, demo_personas_enabled: false }));
+      }
+      if (url.endsWith("/api/chat")) {
+        bodies.push(JSON.parse(String(init?.body)));
+        return new Response(JSON.stringify(resp({ reply: "General help only.", audience: "unknown", session_id: "server-new" })));
+      }
+      throw new TypeError("fetch failed");
+    }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    expect(await screen.findByTestId("guest-only")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Demo sign-in")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Message the assistant"), "show my requests{Enter}");
+    await screen.findByText("General help only.");
+    await user.type(screen.getByLabelText("Message the assistant"), "and my renewal?{Enter}");
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies.every((b) => b.persona_id === null)).toBe(true);
+    expect(bodies[1].session_id).toBe("server-new"); // follows a new conversation the backend started
+  });
+
+  it("keeps the demo sign-in on a local backend", async () => {
+    live(() => resp({}));
+    render(<CustomerApp />);
+    expect(await screen.findByLabelText("Demo sign-in")).toBeInTheDocument();
+    expect(screen.queryByTestId("guest-only")).not.toBeInTheDocument();
+  });
+});

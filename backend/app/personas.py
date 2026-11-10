@@ -6,6 +6,7 @@ Only safe labels are exposed by the API. Workbook-backed context is produced by 
 import re
 from datetime import datetime
 
+from app.auth import Principal, may_access_persona
 from app.context import NEVER_FORWARDED, Interaction, Resident, Workbook, build_resident_context, detect_topics
 from app.models import ContextField, Persona, SafeContext
 
@@ -119,10 +120,21 @@ _NOT_A_NAME = {"it", "that", "this", "there", "what", "he", "she", "who", "let",
                "their", "our", "your", "my", "ye", "u"}
 
 
+# "I'm borrowing my neighbour's login", "using a friend's account", "on someone else's phone" (P0, Sprint 6). This is
+# conversational caution only: access control never depends on wording (app/auth.py).
+_BORROWED = re.compile(
+    r"\b(?:borrow(?:ing|ed)?|using|use|on|logged in (?:as|with|on))\s+(?:my\s+|a\s+|her\s+|his\s+|their\s+|"
+    r"someone\s+else'?s\s+|somebody\s+else'?s\s+)?(?:\w+'?s\s+)?(?:login|log-in|account|password|sign-?in|"
+    r"credentials|portal)\b|\bsomeone\s+else'?s\s+(?:login|account|phone|portal)\b", re.I)
+
+
 def states_not_account_holder(message: str, first_name: str | None = None) -> bool:
     """Standalone non-holder identity: "I'm not Jordan", "I'm Jordan's roommate", "this is her roommate"."""
     text = message.replace("\u2019", "'")
     if _NOT_HOLDER.search(text):
+        return True
+    if (m := _BORROWED.search(text)) and not re.search(r"\b(?:my\s+own|my)\s+(?:login|log-in|account|password|"
+                                                       r"sign-?in|credentials|portal)\b", m.group(0), re.I):
         return True
     for m in _POSSESSIVE.finditer(text):
         word = (m.group(1) or m.group(2) or "").lower()
@@ -151,7 +163,29 @@ def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
         "notes": [*ctx.notes, "Person said they are not the account holder: no account data is used."]})
 
 
-def build_context(persona_id: str | None, message: str, wb: Workbook | None) -> SafeContext:
+def anonymous_context(persona_id: str | None, message: str) -> SafeContext:
+    """What an unauthorized or anonymous caller gets: no record, no fields, audience unknown."""
+    return SafeContext(
+        persona_id=None,
+        persona_kind=None,
+        audience="unknown",
+        record_found=False,
+        topics=detect_topics(message),
+        fields=[],
+        withheld_fields=NEVER_FORWARDED if persona_id else [],
+        notes=["No persona selected or record unavailable; audience unknown."],
+    )
+
+
+def build_context(persona_id: str | None, message: str, wb: Workbook | None, *, principal: Principal) -> SafeContext:
+    """The minimized context for `persona_id`, ONLY if `principal` may access that persona (app/auth.py). Anything
+    else gets the anonymous context: deny by default. Residents loaded from the database go through the same check."""
+    if not may_access_persona(principal, persona_id):
+        return anonymous_context(persona_id, message)
+    return _persona_context(persona_id, message, wb)
+
+
+def _persona_context(persona_id: str | None, message: str, wb: Workbook | None) -> SafeContext:
     topics = detect_topics(message)
     if persona_id in FICTIONAL_PROSPECTS:
         p = FICTIONAL_PROSPECTS[persona_id]
