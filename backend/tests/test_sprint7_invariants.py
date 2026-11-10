@@ -39,7 +39,10 @@ CORRECTIONS = [("the location is wrong, it's the bedroom", "location", "Bedroom"
                ("la ubicación está mal, es la cocina", "location", "Cocina"),
                ("actually call me instead of texting", "contact", "call")]
 QUESTIONS = ["what are the pool hours?", "do you allow cats?", "is parking free?", "who will see this?",
-             "¿a qué hora abre la oficina?"]
+             "¿a qué hora abre la oficina?",
+             # fix round P2: a question that MENTIONS a field never mutates it
+             "the issue is that I work nights, does that matter?", "does the location matter?",
+             "is the contact preference important?", "what if the entry permission is wrong?"]
 BARE = ["yes", "ok", "sure", "sí", "sounds good"]
 SENDS = ["send it", "yes please send it", "go ahead and submit it", "envíelo por favor"]
 CANCELS = ["never mind, cancel it", "forget it, I don't need it anymore", "no lo envíe, cancélelo"]

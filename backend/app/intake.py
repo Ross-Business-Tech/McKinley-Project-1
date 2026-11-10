@@ -1323,7 +1323,9 @@ def is_security_repair(message: str) -> bool:
     """'the door lock is broken', 'front door won't lock' (not 'the closet door is off its track', not a lockout)."""
     return bool(_SECURITY_REPAIR.search(message)) and bool(_DOOR.search(message)) and not is_lockout(message) \
         and not re.search(r"\b(?:closet|cabinet|fridge|refrigerator|oven|dishwasher|shower|washer|dryer|microwave)"
-                          r" door\b", message, re.I)
+                          r" door\b", message, re.I) \
+        and not re.search(r"\bmail ?box\b|\bbuz[oó]n\b|\bgarage door opener\b|\bopener\b|\bremote\b|\blocker\b|"
+                          r"\bstorage\b", message, re.I)  # Sprint 7: not the home's own entry lock
 
 
 # D-15: a reference to a request already listed ("the one for the sink leak", "the AC one").
@@ -1584,13 +1586,13 @@ _ES_SEND = re.compile(r"^\W*(?:s[ií]|ok|vale|claro)?[\s,.!]*"
 # need to send"), so the command never becomes a field value and "send me the pool hours" is not consent.
 _SEND_COMMAND = re.compile(
     r"^\W*(?:(?:yes|yeah|yep|yup|ok(?:ay)?|sure|alright|all right|fine|please|pls|go ahead(?: and)?|you can|you may|"
-    r"wait|no|oh|um+|hmm+|on second thought|"
+    r"wait|no|oh|um+|hmm+|on second thought|do|ok fine|"
     r"can you|could you|just|and|then|actually|now|great|perfect|s[ií]|vale|claro|por favor|ya)\W+)*"
     r"(?:send|submit|file|env[ií]e(?:lo|la|las|los)?|env[ií]al[oa]s?|m[aá]nd(?:e|a)(?:lo|la|las|los)?)"
     r"(?:\s+(?:it|that|this|them|the (?:note|request|repair(?: request)?|tour(?: request)?|message|card|form|"
     r"one|thing)|my (?:note|request)|over|in|through|along|now|right now|already|off|please|pls|por favor|ya|"
     r"ahora|thanks|thank you|whatever (?:you need|is needed|you have)(?: to send)?|it all|everything|"
-    r"to (?:the )?(?:office|team|leasing(?: team)?|maintenance)|ahead))*\W*$", re.I)
+    r"to (?:the )?(?:office|team|leasing(?: team)?|maintenance)|ahead|anyway|then))*\W*$", re.I)
 
 
 def is_explicit_send(message: str) -> bool:

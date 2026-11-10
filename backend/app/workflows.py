@@ -104,12 +104,13 @@ APPROVED_TROUBLESHOOTING: list[tuple[str, re.Pattern[str], list[str]]] = [
         "Stop using that drain until it is looked at.",
         "Do not use chemical drain cleaners.",
     ]),
+    # Sprint 7 (judge): a named appliance wins over hvac words ("fridge not cooling" gets appliance tips)
+    ("appliance", re.compile(r"dishwasher|fridge|refrigerator|oven|stove|washer|dryer|microwave|disposal", re.I), [
+        "Check that the appliance is plugged in and its door is fully closed.",
+    ]),
     ("hvac", re.compile(r"\bac\b|a/c|air condition|cooling|heat|thermostat|furnace", re.I), [
         "Check the thermostat is set to the right mode (cool or heat) and to a temperature past the room's.",
         "Make sure the air vents are open and not blocked by furniture.",
-    ]),
-    ("appliance", re.compile(r"dishwasher|fridge|refrigerator|oven|stove|washer|dryer|microwave|disposal", re.I), [
-        "Check that the appliance is plugged in and its door is fully closed.",
     ]),
     ("pest", re.compile(r"roach|bug|pest|mice|mouse|ants", re.I), [
         "Keep food in sealed containers and wipe up crumbs.",

@@ -1005,6 +1005,26 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
     },
     # ---- Sprint 7 (all NEEDS McKINLEY REVIEW) ----
+    "queued_other_safety": {  # NEEDS McKINLEY REVIEW: shown AFTER the fixed safety text, never instead of it
+        "en": " Your other request (\"{topic}\") is in the same note, so it isn't lost.",
+        "es": " Su otra solicitud (\"{topic}\") va en la misma nota, así que no se pierde.",
+    },
+    "all_clear_ack": {  # NEEDS McKINLEY REVIEW: after a safety retraction; nothing else changes
+        "en": "Thanks for letting me know, I'm glad it's okay. Nothing else was changed, and the urgent note stays for "
+              "staff to close. Is there anything else I can help with?",
+        "es": "Gracias por avisarme, me alegra que todo esté bien. No cambié nada más y la nota urgente queda para que "
+              "el personal la cierre. ¿Le ayudo con algo más?",
+    },
+    "danger_no_form": {  # NEEDS McKINLEY REVIEW: no repair form while someone may be in danger
+        "en": "Please follow the safety steps above first. The repair can wait: when everyone is safe, tell me about "
+              "it and we can start the repair request then.",
+        "es": "Por favor, siga primero los pasos de seguridad de arriba. La reparación puede esperar: cuando todos "
+              "estén a salvo, cuénteme y empezamos la solicitud entonces.",
+    },
+    "queued_dropped": {  # NEEDS McKINLEY REVIEW: "cancel the callback, keep the faucet"
+        "en": "Okay, I've taken the request for a call off. Your {what} stays as it is.",
+        "es": "Listo, quité la solicitud de llamada. Su {what} sigue igual.",
+    },
     "exposure_note": {  # NEEDS McKINLEY REVIEW: no heat / no AC with a vulnerable person at home
         "en": "Urgent: no heating or cooling with a vulnerable person at home",
         "es": "Urgente: sin calefacción o aire con una persona vulnerable en casa",
@@ -1138,23 +1158,30 @@ DIY_ADVICE: dict[str, dict[Lang, str]] = {
 # I-16 drafts). They state the real outcome and never promise timing.
 CONFIRM: dict[str, dict[Lang, str]] = {
     "maintenance_request": {
-        "en": "Request {id} is saved for staff review. A team member reviews it before anything is scheduled. In "
-              "this prototype nobody is notified automatically. You can ask me for its status anytime.",
-        "es": "La solicitud {id} quedó guardada para revisión del personal. Un miembro del equipo la revisa antes de "
-              "programar algo. En este prototipo no se avisa a nadie automáticamente. Puede preguntarme por su estado "
-              "cuando quiera.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): same honesty as the card ("Demo only ... No McKinley staff will see it")
+        "en": "Request {id} is saved in this demo. In the real service a team member would review it before anything "
+              "is scheduled; in this prototype nobody is notified automatically and no McKinley staff will see it. You "
+              "can ask me for its status anytime.",
+        "es": "La solicitud {id} quedó guardada en esta demostración. En el servicio real un miembro del equipo la "
+              "revisaría antes de programar algo; en este prototipo no se avisa a nadie automáticamente y nadie del "
+              "personal de McKinley la verá. Puede "
+              "preguntarme por su estado cuando quiera.",
     },
     "tour_request": {
-        "en": "Tour request {id} is saved for the leasing team. It isn't a booking yet: the team picks a time from "
-              "your preferences. In this prototype nobody is notified automatically.",
-        "es": "La solicitud de visita {id} quedó guardada para el equipo de arrendamiento. Todavía no es una cita: el "
-              "equipo elige una hora según sus preferencias. En este prototipo no se avisa a nadie automáticamente.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
+        "en": "Tour request {id} is saved in this demo. It isn't a booking yet: in the real service the leasing team "
+              "would pick a time from your preferences; in this prototype nobody is notified automatically and no "
+              "McKinley staff will see it.",
+        "es": "La solicitud de visita {id} quedó guardada en esta demostración. No es una cita: en el servicio real el "
+              "equipo de arrendamiento elegiría una hora según sus preferencias; aquí nadie del personal de McKinley "
+              "la verá ni recibirá aviso.",
     },
     "staff_handoff": {
-        "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself. In this "
-              "prototype nobody is notified automatically.",
-        "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos. En "
-              "este prototipo no se avisa a nadie automáticamente.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
+        "en": "Note {id} is saved in this demo with the details, so you won't have to repeat yourself. In this "
+              "prototype nobody is notified automatically and no McKinley staff will see it.",
+        "es": "La nota {id} quedó guardada en esta demostración con los detalles, para que no tenga que repetirlos. "
+              "Aquí nadie del personal de McKinley la verá ni recibirá aviso.",
     },
     # NEEDS McKINLEY REVIEW: a note with no details of the person's own (never claims "with the details")
     "staff_handoff_plain": {

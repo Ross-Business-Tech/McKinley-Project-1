@@ -374,6 +374,8 @@ def run_turn(
                          channel=channel, lang=lang,  # type: ignore[arg-type]
                          hazard=rd.kind if rd.response == "full_alert" else None,
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
+                         person_danger=bool(getattr(rd, "person_danger", False)),  # Agent A: no repair intake now
+                         full_alert=rd.response == "full_alert", danger_rule=rd.rule,
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
                          understanding_hint=hint)
