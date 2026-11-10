@@ -153,7 +153,20 @@ _NAMED_REL = re.compile(rf"(?:^|[,.;:!?\-\u2013\u2014(]\s*|\bhere\s+)([a-z]+)'s\
                         rf"\s*(?:$|[,.;:!?\-\u2013\u2014)])|\b([a-z]+)'s\s+{_REL_ANY}\s+here\b", re.I)
 
 
+# 5. Sprint 6 final (verifier P1): a device or login that belongs to "the tenant / resident / owner", or a worker
+#    role introducing itself: "I'm the cleaner using the tenant's tablet", "dog walker on the resident's phone".
+_HOLDER_DEVICE = re.compile(r"\b(?:the|this|my|our)\s+(?:tenant|resident|owner|occupant|renter|homeowner|client|"
+                            r"customer|lease ?holder|account ?holder|employer|boss)'?s\s+(?:phone|cell|tablet|ipad|"
+                            r"laptop|computer|device|app|login|log-in|account|portal|profile)\b", re.I)
+_WORKER_ROLE = re.compile(rf"{_SUBJ}(?:the|a|an|their|her|his)\s+(?:house\s?)?(?:cleaner|cleaning (?:lady|person)|"
+                          r"housekeeper|maid|dog ?walker|pet ?sitter|house ?sitter|babysitter|baby ?sitter|nanny|"
+                          r"au pair|home (?:health )?aide|contractor|handyman|mover|realtor|delivery \w+|courier)\b",
+                          re.I)
+
+
 def _structural_non_holder(text: str, first_name: str | None) -> bool:
+    if _HOLDER_DEVICE.search(text) or _WORKER_ROLE.search(text):
+        return True
     if _REL_ACCOUNT.search(text) or _NOT_OWNER.search(text):
         return True
     name = (first_name or "").strip().lower()

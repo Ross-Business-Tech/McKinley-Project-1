@@ -288,7 +288,14 @@ _STATUS_FRAME = re.compile(
     # Sprint 6 fix round: "do i even have a heater request open", Spanish "hay novedades de lo del aire?"
     rf"\bdo i (?:even |still |actually )?have (?:a|an|any) (?:\w+ )?{_REQUEST_NOUN}s?(?: \w+)? (?:open|in|"
     rf"pending|on file)\b|\b(?:hay|alguna|tiene|tienen) (?:alguna )?novedad(?:es)?\b|\bc[oó]mo va (?:lo|la|mi|el)\b|"
-    rf"\ben qu[eé] va (?:lo|la|mi|el)\b|\bqu[eé] pas[oó] con (?:lo|la|mi|el)\b", re.I)
+    rf"\ben qu[eé] va (?:lo|la|mi|el)\b|\bqu[eé] pas[oó] con (?:lo|la|mi|el)\b|"
+    # Sprint 6 final (verifier/judge P1): "what repair requests do I have open?", "any maintenance requests still
+    # pending", "do I have any open repair requests", "which of those are still not fixed?"
+    rf"\b(?:what|which) (?:\w+ )?{_REQUEST_NOUN}s? (?:do i have|have i got|are (?:still )?(?:open|pending))\b|"
+    rf"\bdo i have (?:any|a|an) (?:open|pending|active|outstanding) (?:\w+ )?{_REQUEST_NOUN}s?\b|"
+    rf"\b(?:any|are there any|are my) (?:\w+ )?{_REQUEST_NOUN}s? (?:still )?(?:open|pending|outstanding|active|"
+    rf"waiting)\b|\bwhich (?:ones?|of (?:those|them|these|my \w+))\b[^.?!]{{0,20}}\b(?:still|open|pending|not "
+    rf"(?:yet )?(?:fixed|done|finished|closed))\b", re.I)
 _HISTORY_FRAME = re.compile(
     r"\b(?:has|have|did) (?:anyone|someone|anybody|somebody|maintenance|you(?: guys)?|they|a tech\w*) (?:ever |"
     r"already )?(?:fixed|repaired|looked at|worked on|come (?:out )?(?:for|about)|dealt with|seen|been out for) "
@@ -296,7 +303,7 @@ _HISTORY_FRAME = re.compile(
     r"\b(?:has|did) (?:this|it|that) (?:ever )?(?:happen(?:ed)?|break|broken|come up|been (?:fixed|reported|repaired|"
     r"an issue)) (?:before|in the past|previously)\b|"
     r"\b(?:have|did) i (?:ever |already )?(?:report(?:ed)?|ask(?:ed)? about|put in (?:a )?(?:request|ticket) for|"
-    r"complain(?:ed)? about) (?:this|it|that|the \w+)(?: \w+)? (?:before|in the past|previously)\b|"
+    r"complain(?:ed)? about) (?:this|it|that|the \w+|my \w+)(?: \w+)? (?:before|in the past|previously)\b|"
     r"\bis there (?:a |any )?(?:record|history) (?:of|for|on) (?:this|it|that|my|the)\b|"
     r"\b(?:any|what(?:'s| is)) (?:the )?(?:repair |maintenance )?(?:history|record) (?:on|of|for) (?:this|it|my|the)\b|"
     r"\bwas (?:this|it|that) (?:ever )?(?:fixed|repaired|reported|looked at) (?:before|in the past|previously)\b|"

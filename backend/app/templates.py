@@ -854,9 +854,23 @@ T: dict[str, dict[Lang, str]] = {
     },
     # ---- Sprint 6 (TEAM DRAFTS, NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
     "q_history": {  # NEEDS McKINLEY REVIEW: earlier repairs from the signed-in resident's own record only
+        "en": "On your account I can see earlier requests about this: {items}.",
+        "es": "En su cuenta veo solicitudes anteriores sobre esto: {items}.",
+    },
+    "q_history_all": {  # NEEDS McKINLEY REVIEW: the resident's own repair history, nothing specific named
+        "en": "These are the repair requests on your account: {items}. Tell me which one you mean, or what's wrong "
+              "now.",
+        "es": "Estas son las solicitudes de reparación en su cuenta: {items}. Dígame a cuál se refiere, o qué falla "
+              "ahora.",
+    },
+    "q_history_card": {  # NEEDS McKINLEY REVIEW: earlier repairs on the same thing, with a card open
         "en": "On your account I can see earlier requests about this: {items}. Your new request below stays as it "
               "is.",
         "es": "En su cuenta veo solicitudes anteriores sobre esto: {items}. Su nueva solicitud de abajo sigue igual.",
+    },
+    "q_history_none_all": {  # NEEDS McKINLEY REVIEW
+        "en": "I don't see any earlier repair requests on your account.",
+        "es": "No veo solicitudes de reparación anteriores en su cuenta.",
     },
     "q_history_none": {  # NEEDS McKINLEY REVIEW
         "en": "I don't see an earlier repair request about this on your account.",

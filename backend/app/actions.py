@@ -740,6 +740,21 @@ _CRISIS_HELP = re.compile(
     r"\bay[uú]d(?:a|e)me\b", re.I)
 
 
+_STOP = {"also", "that", "this", "with", "have", "from", "they", "there", "it's", "its", "the", "and", "just",
+         "mention", "forgot", "thing", "more", "really", "very", "still", "when", "what", "your", "about", "into",
+         "like", "it"}
+
+
+def _content_words(text: str) -> set[str]:
+    return {w.rstrip("s") for w in re.findall(r"[a-z']{4,}", text.lower()) if w not in _STOP}
+
+
+# "oh, also ...", "to add: ...", "forgot to mention ...": more detail, said as an addition
+_ADD_DETAIL = re.compile(r"^\W*(?:oh|ah|um|and|ok(?:ay)?)?[\s,.!-]*(?:also|and also|plus|to add|i (?:forgot|meant) to "
+                         r"(?:mention|say|add)|forgot to (?:mention|say|add)|one more thing|another thing|btw|by the "
+                         r"way|oh and|p\.?s\.?|quick add|adding)\b\W*", re.I)
+
+
 def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx: SafeContext,
               triage: MaintenanceTriage | None, store: Store | None, session_id: str, persona_id: str | None,
               resident: Resident | None, channel: Channel, lang: Lang, recent: list[str] | None = None,
@@ -1234,18 +1249,22 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             about = f"{about} {wo_h.get('title') or ''} {wo_h.get('summary') or ''}"  # "this" = the request just sent
         things = _things_in(about) - {"drain"} or _things_in(about)
         items = []
-        if resident and things:
+        # Sprint 6 final (judge P1): "what's the history on my place" names nothing: list the resident's own repair
+        # history (same allowlist), never "nothing found" while requests exist
+        everything = not things
+        if resident:
             for i in reversed(resident.interactions):
-                if i.category == "maintenance" and _things_in(i.subject) & things:
+                if i.category == "maintenance" and (everything or _things_in(i.subject) & things):
                     subj = sanitize_field(i.subject, 80) or "Maintenance request"
                     when = i.timestamp.strftime("%Y-%m-%d") if i.timestamp else ""
                     items.append(f"{i.interaction_id} \"{subj}\" ({i.status}{', ' + when if when else ''})")
         for r in sent:
-            if r["kind"] == "maintenance_request" and things & _things_in(r.get("title") or ""):
+            if r["kind"] == "maintenance_request" and (everything or things & _things_in(r.get("title") or "")):
                 items.append(f"{r['id']} \"{r.get('title')}\" ({r.get('status_label', 'Submitted')})")
         if not items:
-            return t("q_history_none", lang)
-        return t("q_history", lang, items="; ".join(items[:4]))
+            return t("q_history_none_all" if everything else "q_history_none", lang)
+        key = "q_history_all" if everything else ("q_history_card" if card else "q_history")
+        return t(key, lang, items="; ".join(items[:4]))
 
     def answer_text(q: str, card: dict[str, Any] | None) -> str | None:
         """An honest answer to a side question, or None when a later step owns it."""
@@ -1372,6 +1391,23 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             if offer == "tour" and not is_resident:
                 msg = "I'd like to request a tour"  # replayed as the request that was offered (step 9 starts the card)
         rec_e = next((r for r in sent if r["kind"] in ("maintenance_request", "tour_request", "staff_handoff")), None)
+        if (not live or to_sent) and rec_e and rec_e["kind"] == "maintenance_request" and _ADD_DETAIL.match(msg) and \
+                len(msg.split()) <= 30 and not act.has(Act.QUESTION) and "?" not in msg:
+            # Sprint 6 final (verifier P1): "oh, also it's the upper cabinet by the fridge" right after Send is more
+            # detail for THAT request (a change note citing it), never a second request for the same repair. A
+            # different thing named ("also the bathroom fan is loud") is a new problem and goes on below.
+            sent_things = _things_in(f"{rec_e.get('title') or ''} {rec_e.get('summary') or ''} " + " ".join(
+                str(f.get("value") or "") for f in rec_e.get("fields", [])))
+            new_things = _things_in(msg)
+            sent_text = f"{rec_e.get('title') or ''} " + " ".join(str(f.get("value") or "") for f in rec_e.get(
+                "fields", []) if f.get("key") in ("issue", "location"))
+            shared = _content_words(msg) & _content_words(sent_text)
+            if shared or new_things & sent_things or not (new_things or is_issue_description(msg)):
+                detail = redact(_ADD_DETAIL.sub("", msg, count=1).strip(" ,.;:-") or msg)[:200]
+                ref_a = rec_e["id"]
+                return handoff_plan("maint_change", f"More detail for {ref_a} after Send (staff add it).",
+                                    topic=f"Change {ref_a}", ref=f"{WHAT['maintenance_request'][lang]} {ref_a}",
+                                    extra=t("change_requested", lang, detail=f"{LABEL['notes'][lang]}: {detail}"))
         if (not live or to_sent) and rec_e and not is_issue_description(msg) and len(msg.split()) <= 25:
             card_e = {"kind": rec_e["kind"], "fields": {f.get("key"): {"value": f.get("value")}
                                                         for f in rec_e.get("fields", []) if f.get("key")}}

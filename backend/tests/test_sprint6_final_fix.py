@@ -252,3 +252,94 @@ def test_api_overdose_after_self_harm_is_never_retracted(client):
                                  "nobody is hurt, never mind"])
     d = rs[2]["risk"]["decision"]
     assert d["response"] == "full_alert" or d.get("also_988")
+
+
+# ---- Verifier P1: someone on the holder's device, or a worker introducing themself ---------------------------------
+from app.personas import states_not_account_holder  # noqa: E402
+from app.understanding import asks_history, checks_status  # noqa: E402
+
+NON_HOLDER_DEVICE = ["I'm the housekeeper on the tenant's iPad, what repairs are booked?",
+                     "this is the pet sitter, using the resident's phone - any open tickets?",
+                     "using the owner's laptop to look at the work orders",
+                     "I'm the nanny here, checking the requests on my employer's account",
+                     "I'm a contractor on the account holder's tablet"]
+HOLDER_OK = ["I'm the tenant and my phone died", "my cleaner said the sink leaks", "the dog walker left the gate open",
+             "can the housekeeper let the tech in?", "I'm a nurse, I work nights", "my tablet's screen cracked"]
+
+
+@pytest.mark.parametrize("msg", NON_HOLDER_DEVICE)
+def test_someone_on_the_holders_device_is_not_the_holder(msg):
+    assert states_not_account_holder(msg, "Jordan")
+
+
+@pytest.mark.parametrize("msg", HOLDER_OK)
+def test_ordinary_mentions_of_workers_or_devices(msg):
+    assert not states_not_account_holder(msg, "Jordan")
+
+
+def test_api_worker_on_tenant_device_sees_no_account_records(client):
+    r = chat(client, "hey I'm the house sitter on the resident's phone, what tickets are open?", None, "R001")
+    assert not r.get("status_items")
+    assert "I008" not in r.get("reply", "") and "AC rattling" not in r.get("reply", "")
+
+
+# ---- Verifier/judge P1: "what requests do I have open?" is a status question ---------------------------------------
+STATUS_Q = ["which repair requests do I have open right now?", "do I have any pending maintenance tickets",
+            "any work orders still outstanding?", "are my repairs still open?", "what requests are still pending",
+            "which of those are still not done?"]
+NOT_STATUS_Q = ["my dishwasher is still not fixed", "any requests for the pool?", "which one is the kitchen?",
+                "the faucet I asked about is still leaking"]
+
+
+@pytest.mark.parametrize("msg", STATUS_Q)
+def test_open_request_questions_are_status(msg):
+    assert checks_status(msg)
+
+
+@pytest.mark.parametrize("msg", NOT_STATUS_Q)
+def test_open_request_near_misses(msg):
+    assert not checks_status(msg)
+
+
+def test_api_open_requests_question_lists_without_a_new_card(client):
+    r = chat(client, "do I have any open maintenance requests?", None, "R001")
+    assert r.get("status_items") and not r.get("action")
+
+
+def test_history_about_my_thing_and_everything(client):
+    assert asks_history("did I ever complain about my fridge before?")
+    r = chat(client, "what's the repair history on my apartment?", None, "R001")
+    assert "I008" in r["reply"] and "new request below" not in r["reply"]
+
+
+# ---- Verifier P1: a detail added after Send is a change note, never a duplicate ------------------------------------
+def _sent_repair(client):
+    sid = chat(client, "the bedroom closet door is off its track", None, "R003")["session_id"]
+    chat(client, "yes they can come in", sid, "R003")
+    rec = client.post("/api/actions/confirm", json={"session_id": sid, "persona_id": "R003",
+                                                    "kind": "maintenance_request"}).json()
+    return sid, rec["record"]["id"]
+
+
+@pytest.mark.parametrize("extra", ["oh, also the closet door rubs on the carpet", "forgot to say, it's the left closet",
+                                   "to add: the track bracket is bent", "btw the door wobbles when it opens"])
+def test_api_added_detail_after_send_cites_the_sent_request(client, extra):
+    from app.state import get_state
+    sid, ref = _sent_repair(client)
+    r = chat(client, extra, sid, "R003")
+    assert (r.get("action") or {}).get("kind") == "staff_handoff" and ref in r["reply"]
+    client.post("/api/actions/confirm", json={"session_id": sid, "persona_id": "R003", "kind": "staff_handoff"})
+    kinds = [x["kind"] for x in get_state().store.records(session_id=sid, limit=10)]
+    assert kinds.count("maintenance_request") == 1
+
+
+def test_api_new_problem_after_send_is_its_own_request(client):
+    sid, ref = _sent_repair(client)
+    r = chat(client, "also the bathroom fan is really loud", sid, "R003")
+    assert (r.get("action") or {}).get("kind") == "maintenance_request"
+
+
+def test_api_question_after_send_is_answered_not_a_change(client):
+    sid, ref = _sent_repair(client)
+    r = chat(client, "by the way, what are the pool hours?", sid, "R003")
+    assert (r.get("action") or {}).get("kind") != "staff_handoff"
