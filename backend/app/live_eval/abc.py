@@ -201,7 +201,7 @@ def run_live_eval(
 
     def blocked(code: str, reason: str, **kw: Any) -> tuple[int, dict[str, Any]]:
         doc = {"status": "blocked", "reason_code": code, "reason": reason, "target": target_raw, **kw,
-               "keys_present": {p: bool(settings.api_key_for(p)) for p in ("openrouter", "anthropic")},
+               "keys_present": {p: bool(settings.api_key_for(p)) for p in ("gemini", "openrouter", "anthropic")},
                "note": "No model was called and nothing fell back to mock."}
         write_status(out_dir, **doc)
         log(f"BLOCKED {code}: {reason}")
@@ -263,6 +263,10 @@ def run_live_eval(
         if listing_info.get("listed"):
             gw.pricing[target.model] = (listing_info["pricing_prompt_usd_per_token"],
                                         listing_info["pricing_completion_usd_per_token"])
+
+    if target.provider == "gemini" and not allow_paid:  # free tier or billed depends on the key's project
+        return blocked("MAY_BE_BILLED", f"'{target.key}' may be billed on this key's Google project; pass "
+                       "--allow-paid after checking the project's quota and billing", resolved_target=target.key)
 
     execution = "MOCK" if is_mock else "LIVE"
     label = label or ("mock-dryrun" if is_mock else "live-" + datetime.now(UTC).strftime("%Y%m%d-%H%M"))

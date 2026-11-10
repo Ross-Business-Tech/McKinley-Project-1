@@ -114,12 +114,34 @@ def recommend(targets: list[dict[str, Any]]) -> tuple[str | None, str]:
     return None, "no configured OpenRouter model is listed and free"
 
 
-def run_preflight(settings: Settings, client: httpx.Client | None = None, timeout: float = 10.0) -> dict[str, Any]:
+def gemini_model_names(api_key: str) -> list[str]:
+    """Model names visible to this Gemini key (a list call: no generation, no tokens spent)."""
+    from google import genai
+
+    return [str(m.name).removeprefix("models/") for m in genai.Client(api_key=api_key).models.list()]
+
+
+def gemini_info(model_id: str, names: list[str] | None, error: str | None) -> dict[str, Any]:
+    if names is None:
+        return {"model": model_id, "listed": None,
+                "note": error or "GEMINI_API_KEY not set: the model list needs a key, so this model is unverified"}
+    return {"model": model_id, "listed": model_id in names, "note": "checked against models.list for this key"}
+
+
+def run_preflight(settings: Settings, client: httpx.Client | None = None, timeout: float = 10.0,
+                  gemini_lister: Any = None) -> dict[str, Any]:
     gw = LLMGateway(settings)
     targets = gw.eval_targets()
     need_listing = any(t.provider == "openrouter" for t in targets)
     listing, list_error = fetch_models(client, timeout) if need_listing else (None, "not needed")
-    keys = {p: bool(settings.api_key_for(p)) for p in ("openrouter", "anthropic")}
+    keys = {p: bool(settings.api_key_for(p)) for p in ("gemini", "openrouter", "anthropic")}
+    gem_names: list[str] | None = None
+    gem_error: str | None = None
+    if keys["gemini"] and any(t.provider == "gemini" for t in targets):
+        try:
+            gem_names = (gemini_lister or gemini_model_names)(settings.api_key_for("gemini"))
+        except Exception as e:  # never print the key or the raw error body
+            gem_error = f"model list failed: {type(e).__name__}"
     ollama_ok = (_ollama_reachable(settings.base_url_for("ollama") or "http://localhost:11434", client)
                  if any(t.provider == "ollama" for t in targets) else None)
     rows = []
@@ -127,8 +149,12 @@ def run_preflight(settings: Settings, client: httpx.Client | None = None, timeou
         ready, status = gw.provider_ready(t.provider)
         if t.provider == "ollama":
             ready, status = bool(ollama_ok), "local server reachable" if ollama_ok else "OLLAMA_NOT_REACHABLE"
-        info = model_info(t.model, listing) if t.provider == "openrouter" else {"model": t.model, "listed": None,
-                                                                                  "note": "not an OpenRouter model"}
+        if t.provider == "openrouter":
+            info = model_info(t.model, listing)
+        elif t.provider == "gemini":
+            info = gemini_info(t.model, gem_names, gem_error)
+        else:
+            info = {"model": t.model, "listed": None, "note": "not an OpenRouter or Gemini model"}
         rows.append({"target": t.key, "provider": t.provider, "is_default": t == gw.default_target,
                      "is_mock": t.provider == "mock", "provider_ready": ready, "provider_status": status,
                      "info": info})
@@ -136,6 +162,8 @@ def run_preflight(settings: Settings, client: httpx.Client | None = None, timeou
     blocked: list[str] = []
     if rec is None:
         blocked.append(f"NO_RECOMMENDED_MODEL: {why}")
+    if gw.default_target.provider == "gemini" and not keys["gemini"]:
+        blocked.append("NEEDS_API_KEY: GEMINI_API_KEY is not set (default provider is gemini; presence checked only)")
     if not keys["openrouter"]:
         blocked.append("NEEDS_API_KEY: OPENROUTER_API_KEY is not set in backend/.env (presence checked only)")
     cfg = gw.generation_config(Target.parse(rec)) if rec else gw.generation_config(gw.default_target)

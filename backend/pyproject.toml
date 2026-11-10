@@ -5,6 +5,7 @@ description = "McKinley AI prototype backend: synthetic context adapter, safety 
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.162.0",
+    "google-genai>=3.0.0",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
     "psycopg[binary]>=3.2",

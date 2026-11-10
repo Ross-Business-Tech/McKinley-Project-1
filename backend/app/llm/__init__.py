@@ -36,6 +36,11 @@ def _mock(s: Settings) -> LLMProvider:
     return MockProvider()
 
 
+def _gemini(s: Settings) -> LLMProvider:
+    from app.llm.gemini_provider import GeminiProvider
+    return GeminiProvider(s.api_key_for("gemini"))
+
+
 def _anthropic(s: Settings) -> LLMProvider:
     from app.llm.anthropic_provider import AnthropicProvider
     return AnthropicProvider(s.api_key_for("anthropic"), s.anthropic_effort)
@@ -43,6 +48,7 @@ def _anthropic(s: Settings) -> LLMProvider:
 
 # Gemini, Groq, etc. can be added here (Groq and many others are OpenAI-compatible like OpenRouter).
 FACTORIES: dict[str, Callable[[Settings], LLMProvider]] = {
+    "gemini": _gemini,
     "openrouter": _openrouter,
     "ollama": _ollama,
     "mock": _mock,
@@ -91,7 +97,7 @@ class LLMGateway:
         return targets
 
     def provider_ready(self, provider: str) -> tuple[bool, str]:
-        if provider in ("openrouter", "anthropic"):
+        if provider in ("openrouter", "anthropic", "gemini"):
             ok = bool(self.settings.api_key_for(provider))
             return ok, "API key configured" if ok else "NEEDS_API_KEY"
         if provider == "ollama":

@@ -4,13 +4,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BACKEND_DIR.parent
 
-ProviderName = Literal["openrouter", "ollama", "mock", "anthropic"]
+ProviderName = Literal["gemini", "openrouter", "ollama", "mock", "anthropic"]
 
 
 class Settings(BaseSettings):
@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     openrouter_app_title: str = "McKinley AI Prototype (synthetic data)"
     ollama_base_url: str = "http://localhost:11434"
     anthropic_api_key: SecretStr | None = None
+    # Gemini Developer API (Google AI Studio key). The intended provider for deployed environments.
+    # gemini-3.6-flash: stable model listed in Google's model docs (checked 2026-11-10); verify with
+    # `uv run python -m app.live_eval.preflight` once a key exists. Change it deliberately, never silently.
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-3.6-flash"
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 
     # ---- evaluation targets offered in the dashboard: "provider:model" comma-separated ----
@@ -43,7 +48,8 @@ class Settings(BaseSettings):
         "openrouter:nvidia/nemotron-3.5-super-vl:free,"
         "openrouter:google/gemma-4-31b-it:free,"
         "openrouter:dots-studio/dots-3-note-preview:free,"
-        "ollama:llama3.2"
+        "ollama:llama3.2,"
+        "gemini:gemini-3.6-flash"
     )
 
     # ---- decision gate (see docs/architecture/decision-gate.md) ----
@@ -76,6 +82,13 @@ class Settings(BaseSettings):
     eval_results_path: Path = REPO_DIR / "evals" / "actual_results.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    @model_validator(mode="after")
+    def _provider_default_model(self) -> "Settings":
+        """LLM_PROVIDER=gemini without an explicit LLM_MODEL uses GEMINI_MODEL (one model per run, chosen up front)."""
+        if self.llm_provider == "gemini" and "llm_model" not in self.model_fields_set:
+            self.llm_model = self.gemini_model
+        return self
+
     def resolve(self, p: Path) -> Path:
         return p if p.is_absolute() else BACKEND_DIR / p
 
@@ -84,7 +97,8 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     def api_key_for(self, provider: str) -> str | None:
-        specific = {"openrouter": self.openrouter_api_key, "anthropic": self.anthropic_api_key}.get(provider)
+        specific = {"openrouter": self.openrouter_api_key, "anthropic": self.anthropic_api_key,
+                    "gemini": self.gemini_api_key}.get(provider)
         key = specific or (self.llm_api_key if provider == self.llm_provider else None)
         value = key.get_secret_value().strip() if key else ""
         return value or None
