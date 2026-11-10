@@ -12,10 +12,13 @@ Status labels: **VERIFIED** (reproduced in a real browser engine), **IMPLEMENTED
 - **Engines:** Playwright **Chromium** (Android-like: `isMobile` and touch) and **WebKit** (Safari's engine, touch),
   both headless. Neither is a real phone.
 - **Script:** `frontend/e2e/mobile-acceptance.mjs`, which is in the repo and works against a built folder or a
-  deployed URL. For each size it opens the page, checks for sideways scrolling, taps the message box, types,
-  taps Send, waits for the reply, sends a second message and refreshes.
-- **Keyboard stand-in:** the viewport height is cut to 55% after the box is tapped. The script then checks that
-  the composer, the 911 link and the newest reply are visible, and how much of the screen the composer takes. A
+  deployed URL. For each size it opens the page, checks for sideways scrolling, taps the message box, enters
+  text with Playwright's `fill()` (not key-by-key typing), taps Send, waits for the reply, sends a second message
+  and refreshes. Agent F separately typed key by key (`keyboard.type`) at 5 sizes, and that also passed.
+- **Keyboard stand-in:** the viewport height is cut to 55% after the box is tapped. This applies to portrait phone
+  and tablet sizes only. The script then checks that the composer and the 911 link are inside the visible area,
+  and how much of the screen the composer takes. The newest-reply check runs **after** full height is restored: the
+  top of the reply must not be below the top of the composer. A
   real on-screen keyboard **cannot be opened headless**.
 - **Independent reviewers:** none of them wrote the code. Each was given only the running app and its screenshots.
   - B (mobile UX)
@@ -34,14 +37,14 @@ Status labels: **VERIFIED** (reproduced in a real browser engine), **IMPLEMENTED
 | 430×932 | PASS → **PASS** | PASS → **PASS** | 28–40% (chips shown above 480px tall) | |
 | 768×1024 | PASS → **PASS** | PASS → **PASS** | 25–36% | |
 | 1440×900 | PASS → **PASS** | PASS → **PASS** | — | |
-| 844×390 landscape | PASS → **PASS** | PASS → **PASS** | ~30% | the composer used to stop being sticky in landscape |
+| 844×390 landscape | PASS → **PASS** | PASS → **PASS** | not measured by the script (about 30% from the screenshots, judge C) | the composer used to stop being sticky in landscape |
 
 Checked in every run, all **VERIFIED (MOCK ONLY)**:
 - no sideways scroll;
-- the message box can be focused and typed in;
-- the send button is at least 44px;
+- the message box can be focused and filled;
+- the send button is at least 44px. Other controls under 44px are only listed, not failed;
 - a reply arrives, and a second message works;
-- the newest reply is never below the composer;
+- the top of the newest reply is not below the composer (checked at full height);
 - refresh restores the conversation (3 assistant messages);
 - tap-to-call 911 is visible.
 
@@ -63,9 +66,9 @@ keyboard stand-in, landscape, desktop, and the staff console on phone and deskto
 | 9 | Long replies scroll correctly? | VERIFIED: a reply taller than the free space is shown from its first line (B-3) |
 | 10 | Action cards reviewed and confirmed? | VERIFIED by Agent D: Send / Don't send, then a green "Submitted, waiting for staff review" and a reference |
 | 11 | Does the user know if it was really done? | VERIFIED: the press shows as the user's own turn ("Send repair request"), then the saved message. Green is used only after a real save. Drafts read "Check, then send" |
-| 12 | Human help? | VERIFIED: "Talk to a person" is under the composer at every height. **OPEN:** a frustrated user is not offered a person automatically (D-12) |
+| 12 | Human help? | VERIFIED by Agents D, F and the consolidation reviewer (not by the script): "Talk to a person" is under the composer at the sizes they tried. **OPEN:** a frustrated user is not offered a person automatically (D-12) |
 | 13 | Loading and API errors understandable? | VERIFIED: "Waking the assistant up…" after 4s; a failed send shows "Not sent" with "Send again", and the text is kept |
-| 14 | Touch and keyboard navigation? | VERIFIED: 44px targets, keyboard paths by Agent E. WebKit's default Tab setting skips links (Safari behaviour) |
+| 14 | Touch and keyboard navigation? | VERIFIED: send button 44px by the script; other targets by Agent E's audit; keyboard paths by Agent E. WebKit's default Tab setting skips links (Safari behaviour) |
 | 15 | Works after refresh? | VERIFIED: same-tab restore with sessionStorage |
 | 16 | Focus and scroll after new messages? | VERIFIED: focus stays in the box after sending and moves to the outcome after Send. The first screen no longer auto-scrolls (B-5) |
 

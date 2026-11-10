@@ -2,8 +2,9 @@
 
 **Short answer (2026-11-10): NOT yet satisfied.** No public URL exists that an outside phone can open and hold a
 real conversation with. The redesigned chat **does** work interactively on phones. That was proven against a locally
-running backend with the deterministic mock responder: real typing, sending, multi-turn replies, cards and
-refresh, in Chromium and WebKit at 7 sizes. The public step is blocked: the backend and database are not deployed,
+running backend with the deterministic mock responder. The repo script (`frontend/e2e/mobile-acceptance.mjs`)
+fills the box, sends, gets multi-turn replies and refreshes, in Chromium and WebKit at 7 sizes. Reviewers separately
+checked key-by-key typing, cards with Send, Talk to a person and error retry at several sizes. The public step is blocked: the backend and database are not deployed,
 and there is no Gemini key ([DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md)).
 
 ## Three levels, kept separate
