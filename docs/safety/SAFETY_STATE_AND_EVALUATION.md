@@ -232,6 +232,72 @@ on a paid or dedicated model. Raising the cap above 6 s trades latency for cover
   - a storage failure; the policy decision is never lowered.
 - No existing test was changed. `tests/test_risk_policy_table.py` passes unchanged.
 
+## 6b. Fix round (after the independent verifier and the resident simulator)
+
+What changed, each generalised by concept with positive and negative tests in `tests/test_sprint6_safety_fix.py`
+(143 tests):
+
+- **P0, question or past event plus a live report.** The Sprint 6 "asking about signs" and "past car break-in"
+  exemptions hid current emergencies in the same message. Now `emergency._present_now` splits the message into
+  clauses and drops the question, "if" and past-event clauses. If what is left still describes a current situation,
+  the message is a **report**. A current situation means:
+  - a person or the speaker with a symptom now;
+  - a hazard sign perceived now ("it smells like sulfur in here");
+  - a person or intruder present now ("the guy is still hiding in our garage").
+
+  The past property-crime exemption also no longer applies when someone is present. "Carbon monoxide poisoning"
+  is now treated as CO, not as an ingestion. Pure questions and past events with nothing ongoing stay calm.
+- **P0, false medical alarms.** `concepts.NOT_PHYSICAL` removes three things before the person-plus-weak-sign rules
+  run:
+  - the speaker refusing to answer ("I'm not answering that again");
+  - staff or anyone not replying ("your maintenance person isn't responding to my texts");
+  - the "hand out" sense ("passed out the paperwork").
+
+  A person's body state ("my dad isn't responding and he's on the floor") still alerts.
+- **Break-in in progress:** someone forcing, prying, kicking, jimmying or climbing through a door or window now
+  (EN and ES); a person inside who shouldn't be there; a thief or intruder still present.
+- **Cold exposure:** a vulnerable person (a newborn, infant, baby, elderly person) with a sign of harm (blue lips,
+  shivering, barely moving, ice cold) when the heat is out or it is freezing. This raises a **medical** alert
+  (911, stay with the person).
+- **Veiled farewell:** "these are my final words", "saying my goodbyes tonight", "you won't have to deal with me
+  much longer". These get the 988 care line (R6). Everyday goodbyes stay clear ("goodbye to this apartment" no
+  longer triggers the 988 hint).
+- **P2, loose railing:** a loose or wobbly railing on its own gets the calm 911 line and a normal repair. It is a
+  full structural alert only if the railing broke, came off or gave way, or there is a danger sign (someone almost
+  fell, a child nearby). **Review point for McKinley.**
+- **Incident follow-ups** (`incident.classify`). During an active incident, any question about safety actions,
+  location, going back in or the responders is a follow-up. So is a location statement ("I'm on the balcony, 3rd
+  floor"). Each gets rule R10: the approved notice first, and never a repair form. Examples: "is it fine to go back
+  in?", "what do I tell the dispatcher", "should I turn off the breaker".
+- **Retraction** ("false alarm", "nobody is hurt", "I meant my texts"):
+  - It closes an incident opened in the same turn or the one before (`RETRACT_WINDOW = 1`). It never closes one
+    when the rest of the message still describes danger.
+  - The retracted kind is dropped from the remembered alerts (`incident.prior_hazards`, called in chat_engine step
+    2b), so R9 no longer sticks.
+  - It never applies to self-harm. For personal safety it is only a quiet turn, because a "never mind" may be
+    coerced. **This is the one place the incident layer lowers the policy (R9 only). Review point.**
+- **Hazard controlled** ("water stopped, I shut the valve", "the smell is gone, gas is off at the stove"):
+  - For flood, gas, electrical and structural incidents, this closes the incident. The calm 911 line stays on that
+    turn.
+  - Fire, smoke and CO stay open until responders clear them, as the approved notice says.
+  - Once an incident is closed, the planner's step 1b stops treating short messages as emergency follow-ups, so a
+    request like "now get me a manager" gets a handoff. Privacy questions are still answered.
+- **"I don't have the emergency number"** during an incident: the approved notice, then
+  `emergency.NO_LINE` (**NEEDS McKINLEY REVIEW**, EN + ES draft). It says honestly that this prototype has no
+  community emergency number and can't connect anyone. It ends with the approved "call 911" sentence.
+
+Dev-B (never tuned), before → after this round: full alert 44 → 46/55, right notice 43 → 45, any guidance
+44 → 47, look-alike full alerts 4/33 → 4/33.
+
+**Contamination note:** the three Dev-B items that changed are:
+- the Spanish door-forcing message;
+- "a stranger got into my apartment";
+- "my last message to anyone" (care line).
+
+The engineer had seen all three in the Dev-B miss list, and the new rules cover those concepts. Dev-B therefore no
+longer counts as untuned for them, and this round shows **no clean generalisation gain** on Dev-B. Only an
+independent holdout can measure it.
+
 ## 7. Independent holdout results (to be filled in by the lead)
 _Reserved. Run a fresh holdout written by someone who has not seen this code or Dev-A/Dev-B. Use the same scorer
 measures:_
@@ -259,4 +325,8 @@ _Report the rules-only and semantic-on runs separately._
 - The reply language of an emergency comes from the planner's language rule. Some Spanish emergency messages
   ("mi esposo se desmayó y no responde") are answered in English, even for guests. This existing behaviour is
   owned by the conversation layer; the notice always matches the reply language.
+- Clause splitting is regex-based: a live report phrased as a conditional ("if my dad can't breathe, what do I do")
+  is still read as a question.
+- Retraction and "hazard controlled" are rule-based phrase families. A coerced retraction can't be told apart
+  except for personal safety, where it never closes the incident.
 - A self-harm incident never auto-resolves. R9 keeps the 988 line for the rest of the session by design.

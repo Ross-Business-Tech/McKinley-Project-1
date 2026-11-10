@@ -9,9 +9,14 @@ approve the list and the wording (docs/workflows/traceability.md, I-17/I-18).
 import re
 import unicodedata
 
+from app.risk.concepts import PRESENT_PERSON as _PRESENT_PERSON_RE
 from app.risk.concepts import RULES as CONCEPT_RULES
+from app.risk.concepts import cold_exposure as _cold_exposure
 from app.risk.concepts import concern as _concern
+from app.risk.concepts import not_physical as _not_physical
+from app.risk.concepts import present_signs as _present_signs
 from app.risk.concepts import stockpile as _stockpile
+from app.risk.concepts import veiled_farewell as _veiled_farewell
 
 # Ordered: the first match wins, so the most life-critical kinds come first.
 _W = r"(?:\w+\W+){0,6}"  # up to six words in between
@@ -41,7 +46,15 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"lift)\W+(?:\w+\W+){0,4}stuck|trapped (in|inside|under)|"
         r"atrapad[oa] en el (elevador|ascensor)", re.I)),
     ("structural", re.compile(
-        r"(railing|handrail|balcony)\W+(?:\w+\W+){0,4}(loose|broke|broken|gave way|came off|came loose|wobbl\w*)|"
+        # fix round (P2): a loose / wobbly railing alone is a repair (calm 911 line + form); it is an emergency when
+        # it broke, came off or gave way, or with a danger sign (someone almost fell, leaning on it, a child near it)
+        r"(railing|handrail|balcony)\W+(?:\w+\W+){0,4}(broke|broken|gave way|came off|came loose|snapped|"
+        r"fell (?:off|down)|collaps\w*)|"
+        r"(railing|handrail)\W+(?:\w+\W+){0,4}(loose|wobbl\w*|moves|shak\w*)\W+(?:\w+\W+){0,10}(almost fell|nearly "
+        r"fell|about to (?:give|fall|come off|break)|could fall|leaning on|lean on|kid|child|toddler|baby|"
+        r"fell|falling|pulling (?:out|away))|"
+        r"(almost fell|nearly fell|leaning on|lean on)\W+(?:\w+\W+){0,8}(railing|handrail)\W+(?:\w+\W+){0,4}"
+        r"(loose|wobbl\w*|moves|shak\w*)|"
         r"almost fell (off|out|over|from)|"
         rf"\b(ceiling|roof|floor|wall|balcony|stairs?|deck)\W+{_W}(collaps\w*|fell (in|down)|falling (in|down)|sag\w*|"
         r"cav(ed|ing) in|caving)|collapsed (ceiling|roof|balcony)|techo se (cay[oó]|derrumb)", re.I)),
@@ -462,7 +475,9 @@ _DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works
                          r"\W+)"
                          r"{0,3}gas|gas\W+(?:\w+\W+){0,3}(?:incluido|incluida)|(?:smoke|co|carbon monoxide) (?:alarm|"
                          r"detector)s?\W+(?:\w+\W+){0,6}(?:chirp\w*|low batter\w*|batter(?:y|ies))", re.I)
-_SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to|letter|note)|giving away (?:my|all)|sleep forever|no way out|"
+_SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to(?! (?:this|the|my|our) (?:apartment|place|unit|building|lease|"
+                             r"neighbou?rhood|city|town|area|old \w+)\b)|letter|note)|giving away (?:my|all)|"
+                             r"sleep forever|no way out|"
                              r"(?:rather|want to|wanna) (?:just )?(?:not exist|disappear|be dead|not wake up)|"
                              r"(?:no|any) reason to (?:keep going|go on|live|stay)|how (?:i would|to) do it|"
                              r"\bcutting (?:again|myself)|hurting myself|self[- ]harm|(?:won'?t|wont) be (?:alive|here|"
@@ -490,6 +505,8 @@ _NEGATED_SELF_HARM = re.compile(
     r"(?:no|nunca) (?:me voy a|quiero) (?:matar|hacer daño)|no (?:estoy|soy) suicida", re.I)
 # Possibly someone in danger, but not enough for the full alert: the 911 line, never silence.
 _DANGER_HINT = re.compile(
+    # fix round (P2): a loose / wobbly railing alone is a repair with the calm 911 line, not a full alert
+    r"\b(?:railing|handrail|guard ?rail)s?\W+(?:\w+\W+){0,4}(?:loose|wobbl\w*|shak\w*|moves)\b|"
     r"(?:crash|scream\w*|thud|bang\w*|yell\w*)\W+(?:\w+\W+){0,10}(?:then )?(?:silence|quiet|nothing|stopped)|"
     r"(?:has|have|kept|still has) (?:a |the )?key\w*\W+(?:\w+\W+){0,12}(?:coming in|came in|let (?:him|her|them)sel\w* "
     r"in|moved|in my (?:apartment|unit|place)|when i'?m (?:not home|out|away|asleep))|(?:things|stuff) (?:keep )?"
@@ -534,7 +551,7 @@ REFUSE_LEAD = {
 def person_concern(message: str) -> bool:
     """Sprint 6: the care line came from a sign that a PERSON may be hurt or in danger (concept slots or the welfare /
     break-in hints), not just from broad hazard vocabulary. Such a line is never removed by the semantic layer (R7)."""
-    text = _strip_negated(_strip_figurative(_prepare(message)))
+    text = _clean(_prepare(message))
     return bool(_concern(text) or _DANGER_HINT.search(text))
 
 
@@ -544,8 +561,8 @@ def possible_risk(message: str) -> str | None:
     # Someone who brings up self-harm only to deny it ("I'm not suicidal, but...") still gets the calm 988 line.
     if _NEGATED_SELF_HARM.search(raw) or (_LAUGH.search(raw) and _kind_of(raw) == "self_harm"):
         return "distress"
-    text = _strip_negated(_strip_figurative(raw))
-    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text) or _stockpile(text):
+    text = _clean(raw)
+    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text) or _stockpile(text) or _veiled_farewell(text):
         return "distress"
     if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text) or _concern(text):
         return "danger"
@@ -572,11 +589,14 @@ _POLICY_OR_FIGURATIVE = re.compile(
     # sprint 6: asking for a detector (new, extra, replacement) is a maintenance request, not an alarm sounding
     r"(?:get|install\w*|replac\w*|buy|add|put in|new|another|extra|spare|expired|old)\W+(?:\w+\W+){0,3}(?:co|"
     r"carbon monoxide|smoke|fire) (?:detectors?|alarms?)(?!\W+(?:\w+\W+){0,4}(?:going off|beep\w*|sounding|"
-    r"won'?t stop|went off))|(?:co|carbon monoxide|smoke) (?:detectors?|alarms?) (?:installed|replaced|put in)|"
-    # sprint 6: a past break-in of a car / storage / mailbox is property crime, not a person in danger now
-    r"(?:car|truck|vehicle|bike|storage(?: unit)?|mailbox|locker|garage)\W+(?:\w+\W+){0,2}(?:got |was |been |were )?"
-    r"(?:broken into|broke into|stolen)\W+(?:\w+\W+){0,4}(?:last|ago|yesterday|over the weekend|the other)\w*",
+    r"won'?t stop|went off))|(?:co|carbon monoxide|smoke) (?:detectors?|alarms?) (?:installed|replaced|put in)",
     re.I)
+# sprint 6: a past break-in of a car / storage / mailbox is property crime, not a person in danger now. Fix round: the
+# exemption never applies when the same message describes someone present now ("...and the guy is still in our
+# garage"); see _kind_of.
+_PAST_PROPERTY_CRIME = re.compile(
+    r"(?:car|truck|vehicle|bike|storage(?: unit)?|mailbox|locker|garage)\W+(?:\w+\W+){0,2}(?:got |was |been |were )?"
+    r"(?:broken into|broke into|stolen)\W+(?:\w+\W+){0,4}(?:last|ago|yesterday|over the weekend|the other)\w*", re.I)
 # Everyday idioms that use hazard words ("this rent is killing me", "the view is fire", "dying to see it").
 _FIGURATIVE = re.compile(
     r"\b(?:rent|prices?|fees?|bills?|commute|noise|traffic|stairs|heat|humidity|wait(?:ing)?|process|paperwork|"
@@ -598,6 +618,10 @@ _FIGURATIVE = re.compile(
 # Negated hazards ("no smoke", "it's not sparking", "I don't smell gas"); only the negated phrase is removed.
 _NEGATED = re.compile(
     r"\bnothing (?:is |was |'s )?(?:sparking|smoking|burning|on fire|leaking gas)\b|"
+    # fix round: the hazard sign has stopped ("the smell is gone", "the hissing stopped"); a negation never clears
+    # an active incident by itself (app/risk/incident.py decides that)
+    r"\b(?:the )?(?:gas )?(?:smell|odou?r|stench|hissing|sparking)(?:'s| is| has| has been)? (?:completely |finally |"
+    r"all )?(?:gone|stopped|cleared|went away|gone away|faded)\b|"
     r"\bnot (?:a |any )?(?:flood\w*|fire|on fire|smok\w+|sparking|sparks|gas(?: leak| smell)?|an emergency|emergency|"
     r"burning)\b|"
     r"\bnever (?:reported|said|mentioned|told you|claimed)\W+(?:\w+\W+){0,3}(?:gas|fire|smoke|leak|emergency)\w*|"
@@ -676,6 +700,12 @@ def _strip_negated(text: str) -> str:
     return _NEGATED.sub(" ", text)
 
 
+def _clean(text: str) -> str:
+    """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
+    replying, "passed out the forms")."""
+    return _not_physical(_strip_negated(_strip_figurative(text)))
+
+
 # Sprint 5.1 (journey j-safe-indirect-co): an alarm sounding + (a heat source OR several people) + symptoms = CO, even
 # without the words "CO" / "carbon monoxide". Symptoms the person puts down to something else ("a headache from
 # work", "sick of this") are not counted.
@@ -729,6 +759,12 @@ def _abbrev_co(text: str) -> bool:
     return bool(_UNWELL_CUE.search(_SYMPTOM_ELSEWHERE.sub(" ", text)))
 
 
+_PRESENT_PERSON = re.compile(_PRESENT_PERSON_RE, re.I)
+_CO_POISONING = re.compile(r"\b(?:carbon mon\w*|co|mon[oó]xido(?: de carbono)?)\s+poison\w*|"
+                           r"intoxicaci[oó]n por mon[oó]xido", re.I)
+_INGESTED = re.compile(r"\b(?:drank|ate|swallow\w*|took|pills?|bleach|chemical\w*|clean\w*)\b", re.I)
+
+
 def _kind_of(text: str) -> str | None:
     """Layer-1 + concept match on prepared text (no framing)."""
     if _abbrev_co(text):
@@ -736,9 +772,13 @@ def _kind_of(text: str) -> str | None:
     if re.search(r"(smoke|co|fire) (alarm|detector)", text, re.I) and re.search(
             r"dizz|headache|nause|head hurts|sick", _SYMPTOM_ELSEWHERE.sub(" ", text), re.I):
         return "co"  # alarm + symptoms = treat as carbon monoxide
-    text = _strip_negated(_strip_figurative(text))
+    text = _clean(text)
     if _POLICY_OR_FIGURATIVE.search(text):
         text = _POLICY_OR_FIGURATIVE.sub(" ", text)
+    if _PAST_PROPERTY_CRIME.search(text) and not _PRESENT_PERSON.search(text):
+        text = _PAST_PROPERTY_CRIME.sub(" ", text)
+    if _cold_exposure(text):
+        return "medical"  # fix round: extreme cold + a vulnerable person with a sign of harm (911, stay with them)
     # "Is the parking lot well lit? I don't feel safe walking" asks about lighting; it is not a threat in progress.
     threat = re.search(r"following|stranger|\bex\b|someone|scared|threat|gun|knife|hit|hurt|kill|break", text, re.I)
     if not threat and "?" in text and re.search(r"feel safe (walking|at night|in the parking)", text, re.I):
@@ -751,6 +791,8 @@ def _kind_of(text: str) -> str | None:
         return "co"
     for kind, pat in KINDS:
         if pat.search(text):
+            if kind == "poison" and _CO_POISONING.search(text) and not _INGESTED.search(text):
+                return "co"  # "carbon monoxide poisoning" is CO (fresh air first), not an ingestion
             return kind
     for kind, pat in CONCEPTS:
         if pat.search(text):
@@ -759,6 +801,29 @@ def _kind_of(text: str) -> str | None:
 
 
 _SENTENCE = re.compile(r"(?<=[.!?;])\s+|\n+")
+# Fix round (P0): clause boundaries used to find what the message says OUTSIDE its question / past-event part.
+_CLAUSE = re.compile(r"[.!?;,:\n]+|\s+[-\u2013\u2014]+\s+|\b(?:but|because|cause|cuz|since|although|though|so|"
+                     r"y|pero|porque)\b|\band\b(?=\s+(?:now|right now|then|the|he|she|they|it|it'?s|there|someone|"
+                     r"somebody|that|this)\b)", re.I)
+_IF_CLAUSE = re.compile(r"^\s*(?:and\s+)?(?:what if|if|in case|si|en caso)\b", re.I)
+_PAST_CLAUSE = re.compile(_PAST.pattern + r"|\b(?:last (?:night|week|weekend)|yesterday|the other (?:day|night)|"
+                          r"over the weekend|earlier (?:this|today)|ago|anoche|ayer)\b", re.I)
+
+
+def _present_now(text: str) -> bool:
+    """Fix round (P0): does the message ALSO describe a current situation (a person or the speaker with a symptom
+    now, a hazard sign perceived now, a person / intruder present now) outside its question or past-event clauses?
+    If so, the "asking about signs" and "past event" framings never apply: a question plus a live report is a
+    report ("what are the signs of a stroke, my dad can't lift his arm")."""
+    rest = [c for c in _CLAUSE.split(text) if c and c.strip() and not _HYPO.search(c) and not _IF_CLAUSE.search(c)
+            and not _PAST_CLAUSE.search(c) and not re.search(r"\?\s*$", c)]
+    residual = " , ".join(rest)
+    if not residual.strip():
+        return False
+    clean = _clean(residual)
+    return _present_signs(clean) or bool(_kind_of(residual) and re.search(
+        r"\b(?:i|we|my|our|his|her|he|she|they|it|it'?s|there'?s|everyone|everybody|someone|somebody|the (?:guy|man|"
+        r"baby|kids?))\b", clean, re.I))
 
 
 def scan(message: str) -> tuple[str | None, str]:
@@ -778,6 +843,8 @@ def scan(message: str) -> tuple[str | None, str]:
     hits = [(s, _kind_of(s)) for s in sentences]
     hazard = [(s, k) for s, k in hits if k] or [(text, kind)]
     now_any = bool(_NOW.search(text))
+    if (_HYPO.search(text) or _PAST.search(text)) and _present_now(text):
+        return kind, "report"  # a question / past event PLUS a current situation in the same message
     framings: list[tuple[str, str]] = []
     for s, k in hazard:
         if k in _NEVER_DOWNGRADE:
@@ -805,6 +872,31 @@ def intent_to_self_harm(message: str) -> bool:
     return bool(_SELF_HARM_HINT.search(text) or _DISTRESS.search(text) or re.search(
         r"on purpose|intentional\w*|so i (?:could|would|wouldn'?t)|wanted to (?:sleep|not|stop|end)|\bi (?:took|"
         r"swallowed|downed|popped)\b|a prop[oó]sito|me tom[eé]", text, re.I))
+
+
+# Fix round (P1), NEEDS McKINLEY REVIEW: asked for the emergency number during an incident. The prototype has no
+# community emergency line, so say so plainly; the closing 911 sentence is the approved emergency_follow wording.
+NO_LINE = {
+    "en": "I don't have your community's emergency maintenance number in this prototype, and I can't call or connect "
+          "you from here. Your urgent note {ref} is saved, but nobody is notified automatically. If anyone feels "
+          "unwell or is in danger, call 911.",
+    "es": "En este prototipo no tengo el número de emergencias de mantenimiento de su comunidad, y desde aquí no puedo "
+          "llamar ni comunicarle. Su nota urgente {ref} está guardada, pero no se avisa a nadie automáticamente. Si "
+          "alguien se siente mal o corre peligro, llame al 911.",
+}
+_ASKS_LINE = re.compile(
+    r"\b(?:don'?t|do not|dont|didn'?t|never got|can'?t find|cant find|lost) (?:have |know |get )?(?:the|an?|your|that|"
+    r"any|their) (?:\w+ )?(?:emergency |maintenance |after[- ]?hours |on[- ]?call )?(?:number|line|phone(?: number)?|"
+    r"contact)\b|\bwhat(?:'?s| is) (?:the|that|your|their) (?:\w+ )?(?:emergency|maintenance|after[- ]?hours|on["
+    r"- ]?call)"
+    r" (?:number|line|phone)\b|\b(?:where|how) (?:do|can|would) (?:i|we) (?:find|get|call) (?:the|that|your) "
+    r"(?:\w+ )?(?:emergency|maintenance) (?:number|line)\b|\b(?:which|what) (?:number|line) (?:do|should) (?:i|we) "
+    r"call\b|\bno tengo (?:el|ese) (?:n[uú]mero|tel[eé]fono)\b|\bcu[aá]l es el (?:n[uú]mero|tel[eé]fono)\b", re.I)
+
+
+def asks_emergency_line(message: str) -> bool:
+    """'I don't have the emergency number' / 'what's the maintenance line?' (fix round P1)."""
+    return bool(_ASKS_LINE.search(_prepare(message)))
 
 
 QUEUE_NOTE = {
