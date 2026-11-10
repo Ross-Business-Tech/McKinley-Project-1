@@ -1,4 +1,4 @@
-# Conversation state and workflow engine (as implemented, Sprint 5)
+# Conversation state and workflow engine (as implemented, Sprint 6)
 
 This describes what the code does today. Pipeline order and safety: [overview.md](overview.md) and
 [../diagrams/](../diagrams/). Code: `backend/app/chat_engine.py` (`run_turn`), `backend/app/actions.py`
@@ -41,6 +41,13 @@ message or the model. **This is not authentication.** Any caller can send any `p
      change the open card. It runs after the safety, identity, injection and contact-privacy steps.
    - Only ANSWER, CORRECTION and NEW_DETAIL change fields. A QUESTION (who sees it, what Send does, cost, priority,
      timing, a phone number, a gate code, renewal, a name, the budget) gets an honest answer and the card stays.
+   - Step **1c-understand** (Sprint 6) understands the message once, in a typed object (`app/understanding.py`:
+     rules plus an optional, validated model pass), and runs the card's state machine (`app/workflow_state.py`).
+     Later steps read that object instead of their own keyword checks. See
+     [CONVERSATION_ORCHESTRATION.md](CONVERSATION_ORCHESTRATION.md) and
+     [WORKFLOW_STATE_MACHINE.md](WORKFLOW_STATE_MACHINE.md).
+   - "Has anyone fixed this before?" is answered from the signed-in resident's own history: reference, subject,
+     status and date only. The card stays.
 7. **Generate.** One model call only when the plan needs free text; otherwise the approved template is used. The
    reply source is recorded (`model`, `template`, `template_after_validation`, `template_after_model_error`).
 8. **Validate.** Output checks: no invented commitments, prices or dispatch.
@@ -67,16 +74,24 @@ stateDiagram-v2
 ```
 
 - **Only Send saves.** A record is written only by the Send button or an explicit typed instruction ("send it",
-  "yes send it", "submit it", "envíelo"). A bare "yes", "ok", "sure" or "sí" on a ready card gets "Tap Send to pass
+  "yes send it", "submit it", "envíelo"). Saving is idempotent: a card identical to a request already saved in this
+  chat shows that request ("…didn't save it twice") and writes nothing. A bare "yes", "ok", "sure" or "sí" on a ready card gets "Tap Send to pass
   it on" and the card stays. A card is never submitted by the model, and green appears only after the backend
   returns a saved record.
-- **Cancel and restore:** "never mind, don't send it" cancels even inside a longer sentence. A bare "no" to the
-  entry question means "contact me first", never cancel. "Undo", "I pressed the wrong button", "send it after all"
-  bring back the same card with its fields; an incomplete restored card asks its missing question.
+- **Cancel and restore:** "never mind, don't send it" cancels even inside a longer sentence, and so do
+  paraphrases ("scrap that, I don't need it anymore", "call it off"). "Don't cancel it" does not. A cancel word
+  followed by a new question ("forget it, what are the pool hours?") answers the question and keeps the card,
+  unsent, saying how to cancel. A bare "no" to the
+  entry question means "contact me first", never cancel. "Undo", "I pressed the wrong button", "I hit Don't send by
+  accident", "send it after all" bring back the same card with its fields; an incomplete restored card asks its missing question.
 - **Parking (still one open card):** a second need while a card is open (a manager note, a renewal note asked twice)
   parks the first card inside the note. It comes back after the note is sent or skipped, and the reply says so.
 - **Corrections:**
-  - A correction updates the open card and says what changed ("change what's wrong to: X" replaces with X).
+  - A correction updates the open card and says what changed ("change what's wrong to: X", "the description
+    should be: X" replace with X, never with the prefix). "Actually, it is the bedroom AC" says "Updated: Where →
+    Bedroom" and the intake continues.
+  - A date on an open tour card goes to one field only: a clause about moving goes to Move-in; "could we do
+    December 14th instead?" goes to the tour days.
   - A problem that matches a request already open (sent in this chat, or open on the record) becomes a follow-up
     note citing its reference, never a duplicate. A sent request can't be edited here.
   - A second community for a tour reuses the days and time already given.
@@ -114,7 +129,9 @@ tour pitch is offered at most once per session.
     wrong". Pets and "keep the door shut" go to "Notes for the visit".
   - Common-area repairs (front gate, parking lot, lobby) need no room and no entry permission.
   - Lock or entry-door repairs offer Front door first and are high priority.
-  - Two issues in one message: one card at a time (a known P1).
+  - Two issues in one message: one card at a time, never merged. The card's note names the waiting problems
+    ("Waiting as separate requests, after this one: …"). After Send, "yes" starts the next one, with the room taken
+    from its description.
 - **Status:** shows the person's open requests. "The one for the sink leak" answers about that request.
 - **Handoff:**
   - A request for a person (any state, including right after declining) or a manager (routes to management)
@@ -145,6 +162,7 @@ provider-independent gateway ([../deployment/gemini.md](../deployment/gemini.md)
 
 ## Known gaps
 - No authentication: the persona comes from the client.
-- One open card per conversation (a second card is parked inside a note, not shown side by side).
+- One open card per conversation (a second card is parked inside a note, or queued and named on the card; not
+  shown side by side).
 - No real external confirmation of anything.
 - The safety recall gaps are release-blocking ([../evaluation/SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).

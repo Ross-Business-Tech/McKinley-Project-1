@@ -792,6 +792,10 @@ def is_issue_description(message: str) -> bool:
 
 
 _ISSUE_JOIN = re.compile(r"\s*(?:,?\s*\band also\b|,?\s*\balso\b|\bplus\b|\band then\b|\banother thing(?: is)?\b|"
+                         # Sprint 6: more joins between two problems ("X, the oven won't heat", "X as well as Y",
+                         # "two things: X and Y", "X, oh and Y"); split_issues still needs a named thing on each side
+                         r"^\W*(?:i have )?(?:two|2|a couple of|a few) (?:things|problems|issues)\W*|\bas well as\b|"
+                         r",?\s*\boh and\b|,\s*(?=(?:the|my|our)\b)|"
                          r"\bon top of that\b|;|\.\s+|,?\s*\band\s+(?=(?:the|my|our|a)\b)|\by tambi[eé]n\b|"
                          r"\badem[aá]s\b|,?\s*\by\s+(?=(?:el|la|los|las|mi)\b))\s*", re.I)
 
@@ -810,7 +814,8 @@ def split_issues(message: str) -> list[str]:
             (tp for tp in detect_topics(p) if tp not in ("contact_preference", "billing", "renewal")), None)
         if thing and (is_issue_description(p) or re.search(r"broke|broken|out\b|off\b|loose|fell|missing|torn|jammed|"
                                                            r"rattl|squeak|smell|won'?t|doesn'?t|not|leak|drip|stuck|"
-                                                           r"loud|noise|clog|crack|mold|roto|no funciona|gotea", p,
+                                                           r"loud|noise|clog|crack|mold|roto|no funciona|gotea|"
+                                                           r"warm|\bhot\b|\bcold\b|dead|dim\b|buzz|flicker|beep", p,
                                                            re.I)):
             if all(thing != t for _, t in out):
                 out.append((p, thing))

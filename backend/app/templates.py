@@ -852,6 +852,36 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I don't have an answer for that here, so I won't guess.",
         "es": "No tengo una respuesta para eso aquí, así que no voy a adivinar.",
     },
+    # ---- Sprint 6 (TEAM DRAFTS, NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
+    "q_history": {  # NEEDS McKINLEY REVIEW: earlier repairs from the signed-in resident's own record only
+        "en": "On your account I can see earlier requests about this: {items}. Your new request below stays as it "
+              "is.",
+        "es": "En su cuenta veo solicitudes anteriores sobre esto: {items}. Su nueva solicitud de abajo sigue igual.",
+    },
+    "q_history_none": {  # NEEDS McKINLEY REVIEW
+        "en": "I don't see an earlier repair request about this on your account.",
+        "es": "No veo una solicitud de reparación anterior sobre esto en su cuenta.",
+    },
+    "q_history_unverified": {  # NEEDS McKINLEY REVIEW
+        "en": "I can only check repair history for a signed-in resident account.",
+        "es": "Solo puedo revisar el historial de reparaciones de una cuenta de residente con sesión iniciada.",
+    },
+    "switch_keep": {  # NEEDS McKINLEY REVIEW: "forget it, what are the pool hours?" keeps the card, unsent
+        "en": "Your {what} is still below and hasn't been sent. If you don't want it, say \"cancel it\".",
+        "es": "Su {what} sigue abajo y no se ha enviado. Si no la quiere, diga \"cancélela\".",
+    },
+    "queued_note": {  # NEEDS McKINLEY REVIEW: the other problems from the same message, each its own request
+        "en": "Waiting as separate requests, after this one: {items}.",
+        "es": "En espera como solicitudes aparte, después de esta: {items}.",
+    },
+    "location_confirmed": {  # NEEDS McKINLEY REVIEW: the room given matches the card (nothing changed)
+        "en": "Thanks, that matches the card: Where → {loc}.",
+        "es": "Gracias, coincide con la tarjeta: Dónde → {loc}.",
+    },
+    "already_saved": {  # NEEDS McKINLEY REVIEW: idempotent save (the same request was already saved)
+        "en": "{what} {ref} already has these details, so I didn't save it twice.",
+        "es": "{what} {ref} ya tiene estos datos, así que no la guardé dos veces.",
+    },
     "meta_sorry": {
         "en": "Sorry, you did tell me. I've got it now.",
         "es": "Perdón, sí me lo dijo. Ya lo tengo.",

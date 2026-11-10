@@ -12,13 +12,16 @@ resident context), aware (everything). See docs/diagrams/chat-turn-sequence.md.
 import re
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
-from app.actions import TurnPlan, identity_note, plan_turn, resident_for
+from app import understanding as und
+from app import workflow_state as wf
+from app.actions import TurnPlan, identity_note, plan_turn, resident_for, synthesize_handoff
+from app.auth import Principal, derive_principal, session_bound_to
 from app.config import Settings
 from app.context import Workbook
-from app.db import Store
+from app.db import ScopedStore, Store
 from app.emergency import heading as emergency_heading
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
@@ -41,6 +44,7 @@ from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_awa
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
 from app.risk.classifier import SemanticRiskClassifier
+from app.risk.incident import step as incident_step
 from app.risk.pipeline import assess
 from app.safety import (
     CRITICAL_CHECKS,
@@ -228,12 +232,13 @@ def run_turn(
     deps: EngineDeps, message: str, mode: Mode, persona_id: str | None, session_id: str | None,
     use_history: bool = True, target: Target | None = None, gate_provider: str | None = None,
     channel: Channel = "web_chat", enforce_validation: bool = True, fallback_on_model_error: bool = False,
+    principal: Principal | None = None,
 ) -> ChatResponse:
-    """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net)."""
+    """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net).
+    `principal` is derived by the API layer (app/auth.py); without one it is derived here from the settings."""
     settings = deps.settings
     target = target or deps.llm.default_target
     session_id = session_id or uuid.uuid4().hex
-    hist_key = persona_id or "none"
     mode_key = f"{mode}|{target.key}"
     trace = _Trace()
 
@@ -242,15 +247,33 @@ def run_turn(
     pii_found = contains_pii(_TAG.sub("", normalize_for_matching(message)))
     trace.add("1_receive", "ok", f"{len(msg)} chars after cleaning")
 
-    # 2. identity: audience comes ONLY from the trusted app context (demo persona), never from the message/model
-    full_ctx = build_context(persona_id, msg, deps.workbook)
+    # 2. identity: the PRINCIPAL is derived server-side only (app/auth.py): anonymous unless this deployment allows
+    # demo personas and the id is a known one. Message text, the model and audience classification never change it.
+    # Every later step sees only the authorized persona and a store scoped to (this session, this principal).
+    if principal is None:
+        principal = derive_principal(settings, persona_id, session_id, deps.workbook, strict=False)
+    principal = replace(principal, session_id=session_id)
+    persona_id = principal.persona_id
+    hist_key = principal.key
+    rebound = False
+    if deps.store is not None and use_history and not session_bound_to(deps.store, principal):
+        # the session id belongs to another principal/persona: never refuse (this may be an emergency), never show
+        # its history, drafts or records. Start a new conversation under a fresh server-issued id (returned below).
+        session_id, rebound = uuid.uuid4().hex, True
+        principal = replace(principal, session_id=session_id)
+        session_bound_to(deps.store, principal)
+    if deps.store is not None and not isinstance(deps.store, ScopedStore):
+        deps = replace(deps, store=ScopedStore(deps.store, session_id, hist_key))  # type: ignore[arg-type]
+    full_ctx = build_context(persona_id, msg, deps.workbook, principal=principal)
     said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
                    if (deps.store and use_history) else [])
     said_ever = deps.store.user_messages(session_id, hist_key) if (deps.store and use_history) else []
     full_ctx = apply_account_holder_rule(full_ctx, [*said_ever, msg])
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
-              f"audience={full_ctx.audience}, identity_verified={verified} (demo persona = trusted app context)")
+              f"principal={principal.kind} ({principal.source}), audience={full_ctx.audience}, "
+              f"{'session belonged to another sign-in: new conversation started, ' if rebound else ''}"
+              f"identity_verified={verified} (demo persona = synthetic demo account, NOT authentication)")
 
     # 2b. safety: deterministic rules -> semantic classifier -> conservative policy. Runs before routing and before
     # any response generation; nothing later (model, user instructions, retrieved records) can lower it.
@@ -259,6 +282,9 @@ def run_turn(
                       if r.get("status") == "urgent_queued" and (r.get("persona_id") or None) == (persona_id or None)]
                      if (deps.store and use_history) else [])
     risk = assess(msg, earlier, deps.risk if mode != "baseline" else None, prior_hazards)  # type: ignore[arg-type]
+    # 2b'. persistent incident state (app/risk/incident.py): follow-ups during an active emergency repeat its notice
+    risk = incident_step(deps.store if (use_history and mode != "baseline") else None, session_id, hist_key, msg,
+                         risk, len(said_ever) + 1)
     rd = risk.decision
     trace.add("2b_safety", "warn" if rd.response != "none" or rd.degraded else "ok",
               f"{rd.rule}: {rd.response}" + (f" ({rd.kind or rd.care})" if (rd.kind or rd.care) else "")
@@ -321,6 +347,15 @@ def run_turn(
             renewal = renewal_assessment(msg, ctx)
         # planner memory (flags/counts only, no text) rides on the previous turn's gate-log row
         last = deps.store.last_gate(session_id, mode_key, hist_key) if (deps.store and use_history) else None
+        # 6a. understanding (Sprint 6, app/understanding.py). The rules pass runs inside plan_turn on every turn; the
+        # optional model pass (UNDERSTANDING_PROVIDER=model|auto, a live provider) runs here, bounded and validated,
+        # and falls back to the rules on any failure. It sees the message, recent user messages and the open card's
+        # kind only, never account data, and it can't confirm, change identity or lower safety.
+        hint = None
+        if und.provider_mode(settings) != "rules":
+            open_d = deps.store.get_draft(session_id, hist_key) if (deps.store and use_history) else None
+            hint = und.model_pass(deps.llm, settings, msg, (open_d or {}).get("kind"), wf.derive(open_d).pending,
+                                  said_before[-3:])
         plan = plan_turn(msg=msg, gate=gate, workflow=workflow, ctx=ctx, triage=triage,
                          memory=(last or {}).get("planner_memory") or {},
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
@@ -329,7 +364,14 @@ def run_turn(
                          hazard=rd.kind if rd.response == "full_alert" else None,
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
-                                 if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
+                                 if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
+                         understanding_hint=hint)
+        if plan.understanding:
+            uu, tt = plan.understanding, plan.transition
+            trace.add("6a_understanding", "warn" if uu.get("model_status") in ("timeout", "bad_output", "error")
+                      else "ok", f"{uu.get('act')} {uu.get('acts')} source={uu.get('source')} "
+                      f"model={uu.get('model_status')}" + (f" | {tt.get('from')} --{tt.get('event')}--> {tt.get('to')}"
+                                                           f" {tt.get('effects')}" if tt else ""))
         lang = plan.lang or lang  # R-9: a conversation the planner kept in Spanish is reported as Spanish
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:
             gate = gate.model_copy(update={
@@ -420,6 +462,12 @@ def run_turn(
                 f"Saved to the PROTOTYPE staff queue as {staff_recs[0].id}. No one is paged, called or notified.")})
         if handoff is None and rd.needs_human:  # possible distress etc.: a person should look (recommendation only)
             handoff = risk_escalation.recommend(rd, sorted({f.name for f in ctx.fields}))
+        if handoff is None and plan and plan.understanding.get("model_emergency") and rd.response == "none":
+            # Sprint 6 pass-through: the understanding model thought someone may be in danger and the safety rules
+            # found nothing. Raise only: a staff-review recommendation (nothing is sent, no alert text is invented).
+            handoff = synthesize_handoff(gate, ctx, "safety_emergency", "management",
+                                         "Understanding model flagged possible danger; safety rules did not: staff "
+                                         "should review this chat.").model_copy(update={"priority": "high"})
         recommended = handoff is not None
         category: HandoffCategory = handoff.category if handoff else "none"
         reason = " | ".join(handoff.reasons) if handoff else None
