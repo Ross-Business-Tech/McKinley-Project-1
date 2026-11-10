@@ -621,13 +621,18 @@ T: dict[str, dict[Lang, str]] = {
     # ---- sprint 5 round 2 (TEAM DRAFTS) ----
     # J-1. NEEDS McKINLEY REVIEW: shown after a self-harm / personal-safety / medical alert. The crisis line itself is
     # never written here: the planner puts the approved CARE_NOTE / NOTICE text from app/emergency.py in front of it.
-    "crisis_privacy": {
-        "en": "About privacy: the urgent note saved in this prototype's staff queue doesn't include what you wrote. It "
-              "only says a resident may need a check-in. Staff who review that queue can see the note, and I can't "
-              "remove it, but nobody is notified automatically.",
+    "crisis_privacy": {  # NEEDS McKINLEY REVIEW (J-1)
+        "en": "About privacy: the urgent note saved in this prototype's staff queue doesn't include what you wrote. "
+              "It is labelled \"{label}\" and says safety guidance was shown in the chat. Staff who review that "
+              "queue can see the note, and I can't remove it, but nobody is notified automatically.",
         "es": "Sobre su privacidad: la nota urgente guardada en la cola del personal de este prototipo no incluye lo "
-              "que escribió. Solo dice que un residente podría necesitar que lo contacten. El personal que revisa esa "
-              "cola puede ver la nota y yo no puedo borrarla, pero no se avisa a nadie automáticamente.",
+              "que escribió. Está marcada como \"{label}\" e indica que se mostró orientación de seguridad en el "
+              "chat. El personal que revisa esa cola puede ver la nota y yo no puedo borrarla, pero no se avisa a "
+              "nadie automáticamente.",
+    },
+    "crisis_help": {  # NEEDS McKINLEY REVIEW (J-1): a fact line; the approved hazard notice follows it verbatim
+        "en": "I can't call or send anyone from here, and nobody is notified automatically.",
+        "es": "Desde aquí no puedo llamar ni enviar a nadie, y no se avisa a nadie automáticamente.",
     },
     "crisis_follow": {
         "en": "Your urgent note {ref} is saved without your words, and nobody is notified automatically. I'm here if "

@@ -479,6 +479,14 @@ def _slot_only(message: str) -> bool:
     return len(re.findall(r"[A-Za-zÀ-ÿ]{3,}", rest)) <= 2
 
 
+# J-1: a direct ask for help after a personal-safety alert gets the approved hazard notice again, not a status line.
+_CRISIS_HELP = re.compile(
+    r"\bwhat (?:should|do|can) i do\b|\b(?:can|could|will) (?:you|someone|somebody|anyone) (?:call|send|come|check)|"
+    r"\b(?:call|send) (?:someone|somebody|anyone|help)\b|\bcheck on me\b|\bis (?:someone|anyone|help) coming\b|"
+    r"\bhelp me\b|\bqu[eé] (?:hago|debo hacer|puedo hacer)\b|\b(?:pueden|puede) (?:llamar|mandar|enviar|venir)\b|"
+    r"\bay[uú]d(?:a|e)me\b", re.I)
+
+
 def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx: SafeContext,
               triage: MaintenanceTriage | None, store: Store | None, session_id: str, persona_id: str | None,
               resident: Resident | None, channel: Channel, lang: Lang, recent: list[str] | None = None,
@@ -681,7 +689,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         # calm line (988 after self-harm, else 911) is already shown above this reply by the safety policy (rule R9,
         # app/risk/policy.py), so it isn't repeated; the reply says honestly what the urgent note holds and that
         # nobody is notified automatically.
-        tail = t("crisis_privacy" if asks_privacy(msg) else "crisis_follow", lang, ref=urgent_mine[0]["id"])
+        if asks_privacy(msg):
+            tail = t("crisis_privacy", lang, label=LABEL_EMERGENCY.get(latest_hz, latest_hz).capitalize())
+        elif _CRISIS_HELP.search(msg):
+            # "what do I do / can you call someone / will someone come": no new advice, the approved notice verbatim
+            tail = f"{t('crisis_help', lang)} {emergency_notice(latest_hz, lang)}"
+        else:
+            tail = t("crisis_follow", lang, ref=urgent_mine[0]["id"])
         return done(TurnPlan(template=tail, functions=["F6", "F9"], skip_model=True,
                              consumed_by_draft=True, force_handoff=True, handoff=handoff,
                              workflow=_sel("general_inquiry", "Follow-up after a personal-safety alert: approved "

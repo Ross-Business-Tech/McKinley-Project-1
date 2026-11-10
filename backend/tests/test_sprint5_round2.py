@@ -404,3 +404,42 @@ def test_note_confirmation_says_nobody_is_notified(client):
 def test_user_visible_reasons_have_no_internal_ids(client):
     r = chat(client, "this is useless", "id1", persona="R003")
     assert "(D-" not in (r["workflow"] or {}).get("reason", "")
+
+
+
+def _crisis_session(client, pid="R016"):
+    import uuid
+    sid = uuid.uuid4().hex
+    first = client.post("/api/chat", json={"message": "I've been thinking about ending my life", "persona_id": pid,
+                                            "mode": "aware", "session_id": sid}).json()
+    assert first["safety_notice"]
+    return sid
+
+
+@pytest.mark.parametrize("msg", ["what should I do right now?", "can you call someone for me?",
+                                 "will someone come check on me?"])
+def test_direct_help_after_self_harm_repeats_the_approved_notice(client, msg):
+    from app.emergency import notice
+    sid = _crisis_session(client)
+    r = client.post("/api/chat", json={"message": msg, "persona_id": "R016", "mode": "aware", "session_id": sid}).json()
+    assert "can't call or send anyone" in r["reply"]
+    assert notice("self_harm", "en") in r["reply"]  # approved wording, verbatim
+    assert "maintenance line" not in r["reply"].lower()
+
+
+def test_privacy_answer_names_the_real_note_label(client):
+    from app.emergency import LABEL
+    sid = _crisis_session(client)
+    r = client.post("/api/chat", json={"message": "Please don't tell the property manager", "persona_id": "R016",
+                                       "mode": "aware", "session_id": sid}).json()
+    assert LABEL["self_harm"].lower() in r["reply"].lower()
+    assert "only says a resident may need a check-in" not in r["reply"]
+    assert "nobody is notified automatically" in r["reply"]
+
+
+@pytest.mark.parametrize("msg", ["what should I do with the old couch?", "can you help with my lease?"])
+def test_help_pattern_ignores_ordinary_questions_without_a_crisis(client, msg):
+    import uuid
+    r = client.post("/api/chat", json={"message": msg, "persona_id": "R016", "mode": "aware",
+                                       "session_id": uuid.uuid4().hex}).json()
+    assert "can't call or send anyone" not in r["reply"]
