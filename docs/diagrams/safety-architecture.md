@@ -25,7 +25,7 @@ flowchart TB
   SEM -->|"ok / timeout / error /<br/>bad_output / unavailable / mock"| POL
   PRIOR[("Urgent notes already saved<br/>in this session")] --> POL
   subgraph L3["Layer 3: risk/policy.py (explicit rules R1-R9, R9e)"]
-    POL["decide(): semantic never removes a rules alert<br/>(may drop only the broad 911 line, R7, and never<br/>a person-in-danger line); failure = degraded, never 'safe'"]
+    POL["decide(): semantic only adds caution;<br/>never removes a rules alert or care line (Sprint 7);<br/>failure = degraded, never 'safe'"]
   end
   POL --> CAT["risk/category.py: approved notice that fits<br/>(hot car / child shut in -> medical, device smoke -><br/>electrical, fuel source + symptoms -> co)"]
   CAT --> INC
@@ -60,9 +60,7 @@ flowchart TD
   F -->|no| E9{"R9e: danger words AND an earlier<br/>threat/medical/poison/trapped alert?"}
   E9 -->|yes| FA9["FULL ALERT again (same kind)"]
   E9 -->|no| G{"R7: broad danger vocabulary?"}
-  G -->|yes| H{"semantic ran ok, says none,<br/>confidence >= 0.8, no person-danger<br/>alert earlier, and no person-in-danger<br/>sign (concern) in the message?"}
-  H -->|yes| NONE7["R7-suppressed: no safety text (recorded)"]
-  H -->|no| CL7["care line: 911<br/>(988 if self-harm was alerted earlier)"]
+  G -->|yes| CL7["care line: 911<br/>(988 if self-harm was alerted earlier);<br/>semantic none = conflict logged, line kept"]
   G -->|no| I{"R9: person-danger alert<br/>earlier in this session?"}
   I -->|yes| CL9["keep calm line:<br/>988 if self-harm, else 911"]
   I -->|no| NONE8["R8: no safety text"]

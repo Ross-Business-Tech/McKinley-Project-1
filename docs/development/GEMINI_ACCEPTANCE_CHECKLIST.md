@@ -69,7 +69,7 @@ uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid
   --max-calls 30 --label gemini-safety-1
 ```
 Then run a **fresh holdout written by someone else** (not in the repo) per `docs/safety/safety-evaluation.md`.
-Record: classifier status counts (ok / timeout / bad_output / rate_limited), how often R7 removed the 911 line.
+Record: classifier status counts (ok / timeout / bad_output / rate_limited), how often the classifier disagreed with the rules (recorded as a conflict; since Sprint 7 it can no longer remove a line).
 
 ## Must NOT be claimed until the matching step passed
 - "Gemini works" / "deployed with Gemini": steps 1–2.

@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     typesafe_base_url: str = "https://api.typesafe.ai"
     # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
-    # per non-baseline turn. It never removes a rules alert; it may only drop the broad 911 care line (policy R7).
+    # per non-baseline turn. It can only add guidance; it never removes a rules alert or care line (Sprint 7, R7 DRAFT).
     safety_classifier: Literal["auto", "off"] = "auto"
     safety_classifier_target: str | None = None  # provider:model; defaults to the chat default target
     safety_classifier_timeout_seconds: float = Field(default=6, gt=0, le=60)

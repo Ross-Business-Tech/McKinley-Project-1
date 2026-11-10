@@ -33,6 +33,7 @@ from pydantic import BaseModel
 
 from app.db import now_iso
 from app.emergency import asks_emergency_line, possible_risk, scan
+from app.risk.frame import analyse as frame_of
 from app.risk.models import RiskAssessment, RiskDecision
 
 INCIDENT_MODE = "safety_incident"
@@ -102,7 +103,10 @@ _CONTINUE_CUE = re.compile(
     r"\b(?:still|again|worse|getting worse|spreading|help|he|she|they|him|her|them|his|kid|kids|baby|child|son|"
     r"daughter|mom|dad|grand\w+|"
     r"wife|husband|partner|roommate|neighbou?r|dog|cat|smoke|fire|gas|smell\w*|spark\w*|alarm|breath\w*|wake|"
-    r"bleed\w*|blood|hurt\w*|sick|dizzy|unconscious|todav[ií]a|sigue|ayuda)\b", re.I)
+    r"bleed\w*|blood|hurt\w*|sick|dizzy|unconscious|todav[ií]a|sigue|ayuda|"
+    # sprint 7: the hazard getting closer / bigger, and Spanish continuation words
+    r"closer|close to|bigger|higher|rising|spread\w*|outlets?|wires?|panel|ceiling|reaching|creciendo|subiendo|"
+    r"m[aá]s cerca|enchufes?|peor|[eé]l|ella|est[aá]|sigue\w*|adentro|inside|in there)\b", re.I)
 
 
 _WHAT_NOW = re.compile(
@@ -230,6 +234,9 @@ def classify(message: str, inc: Incident) -> Turn:
         return "follow"  # a question about safety actions, location, re-entry or responders; "I'm on the balcony"
     if possible_risk(text) or scan(text)[0]:
         return "follow"  # danger words, or the hazard named again (even negated / past / hypothetical)
+    fr = frame_of(text)
+    if fr.states or fr.hazards or fr.urgency != "none" or any(r != "self" for r in fr.who):
+        return "follow"  # sprint 7: any body state, hazard or person in the frame ties the turn to the incident
     return "topic" if _TOPIC.search(low) else "ack"
 
 

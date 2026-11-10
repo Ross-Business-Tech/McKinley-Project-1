@@ -45,8 +45,9 @@ model exists for your key **without generating anything**: `uv run python -m app
   submit sensitive, confidential, or personal information"). Synthetic data is fine, but a public hosted demo sends
   whatever visitors type: use a billed key for public hosting, or say so on the site. Free tier is not offered in
   the EEA, Switzerland or the UK.
-- The semantic safety classifier's `confidence` is model-written: it can drop the broad 911 care line (policy R7)
-  at ≥ 0.8. Review how often that happens in the first live run.
+- The semantic safety classifier's `confidence` is model-written and is never used to remove guidance: since Sprint
+  7 the classifier can only add caution (the old R7 exception is gone). In the first live run, review how often it
+  disagrees with the rules (logged as a conflict) and how often it times out.
 - Billing: the live A/B/C runner refuses Gemini without `--allow-paid`.
 
 ## First live test (after the key is set)

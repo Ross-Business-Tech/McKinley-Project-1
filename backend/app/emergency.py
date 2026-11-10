@@ -214,7 +214,9 @@ _STRUCT2 = (r"(?:ceiling|roof|wall)\W+(?:\w+\W+){0,3}(?:came|fell|caved|crashed)
             r"roof|wall|floor) (?:came|fell|collapsed|caved)|crack\w*\W+(?:\w+\W+){0,8}(?:bowing|bulging|sagging|"
             r"widening|spreading|getting bigger)|bowing (?:down|in|out)|pull\w* away from (?:the )?(?:building|wall)|"
             r"about to (?:give out|collapse|fall|cave)|g[ai]ve way|tree (?:fell|came down|crashed) (?:on|through|into)|"
-            r"hole in (?:the|my) (?:roof|ceiling)|hole above|se est[aá] cayendo el techo|grieta")
+            r"hole in (?:the|my) (?:roof|ceiling)|hole above|se est[aá] cayendo el techo|"
+            # sprint 7: a crack alone is a repair; only a crack that grows / opens is structural danger
+            r"grieta\W+(?:\w+\W+){0,4}(?:creciendo|cada vez m[aá]s|se (?:est[aá] )?abriendo|enorme|se agranda)")
 _ELEC2 = (r"\bzapp\w*|\bshocked\b|electric (?:shock|current)|(?:outlet|socket|switch|plug|panel|"
           r"breaker)\W+(?:\w+\W+){0,8}"
           r"(?:pop\w*|bang|black mark|scorch\w*|crackl\w*|warm|hot to the touch|burn\w*)|(?:pop\w*|"
@@ -613,7 +615,10 @@ _FIGURATIVE = re.compile(
     r"break(?:ing)? the bank|(?:i'?m|im) (?:so )?dead\b(?! (?:serious))(?=.{0,20}(?:lol|lmao|haha|😂|🤣|💀))|"
     r"(?:heart|this) attack of (?:cuteness|nostalgia)|"
     # sprint 6: "the bill almost gave me a heart attack"
-    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b",
+    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b|"
+    # sprint 7: a stroke / heart attack in the future or a modal is hyperbole; a real one is "is having"
+    r"\b(?:about to|going to|gonna|could|might|will|i'?ll) have (?:a |an )?(?:stroke|heart attack|aneurysm|"
+    r"breakdown|meltdown)\b",
     re.I)
 # Negated hazards ("no smoke", "it's not sparking", "I don't smell gas"); only the negated phrase is removed.
 _NEGATED = re.compile(
@@ -636,7 +641,8 @@ _NEGATED = re.compile(
     r"|fire|sparks?|burning)\b|"
     r"\b(?:isn'?t|is not|aren'?t|are not|wasn'?t|was not)\s+(?:\w+\s+)?(?:beeping|sparking|smoking|on fire|leaking"
     r" gas|going off)\b|"
-    r"\bno (?:hay|había|veo|huele a)\s+(?:\w+\s+)?(?:humo|fuego|olor a gas|gas|chispas)\b|\bsin (?:humo|fuego|chispas)"
+    r"\bno (?:hay|había|veo|huele a|huele|se huele|siento olor a)\s+(?:\w+\s+)?(?:humo|fuego|olor a gas|gas|chispas)\b"
+    r"|\bsin (?:humo|fuego|chispas)"
     r"\b",
     re.I)
 # Framing: a hazard named only in a question/hypothetical, a school project, or a clearly past event.
@@ -700,10 +706,47 @@ def _strip_negated(text: str) -> str:
     return _NEGATED.sub(" ", text)
 
 
+# Sprint 7: body heat is not a fire ("burning up", "his skin is burning hot", "ardiendo en fiebre").
+_BODY_HEAT = re.compile(r"\bburning (?:up|hot)\b|\b(?:skin|forehead|body|head|he|she|baby|kid|chest)\W+(?:\w+\W+){0,2}"
+                        r"(?:is |feels |felt )?(?:burning|on fire)(?: up| hot| to the touch)?\b(?! (?:smell|down|in))|"
+                        r"\bon fire to the touch\b|\bardiendo(?: en fiebre| de fiebre)?\b|\bburning (?:with )?fever\b",
+                        re.I)
+# Sprint 7 (lead class 1): smoke from OTHER people's habits (a neighbour smoking cigarettes or weed, smoke drifting in
+# from the hallway) is a nuisance for the office, not a fire. Removed only when nothing in the message describes a
+# fire: flames, "fire", black / thick smoke pouring or filling, an alarm going off, a burning smell, sparks.
+_HABIT_SMOKE = re.compile(
+    r"\b(?:cigarettes?|cigs?|cigars?|weed|pot\b|marijuana|cannabis|joints?|blunts?|vap(?:e|es|ing)|hookah|tobacco|"
+    r"second[- ]?hand smoke|cigarrillos?|cigarros?|mota|marihuana|tabaco|porro)\b|"
+    r"\b(?:neighbou?rs?|someone|somebody|people|they|guy|guys|tenants?|roommates?|upstairs|downstairs|next door|"
+    r"vecin\w*|alguien|la gente)\b\W+(?:(?!unit|apartment|door|vent|kitchen|building|house|place|oven|dryer|stove|"
+    r"room|hallway|wall|outlet|panel|car|attic|roof)\w+\W+){0,3}(?:smok(?:e|es|ing)|chain ?smok\w*|light(?:s|ing)? up|"
+    r"fuma\w*)\b", re.I)
+_REAL_FIRE_SIGN = re.compile(r"\bfire\b(?! (?:alarm|exit|door|lane|code|hazard|department|dept))|\bflames?\b|"
+                             r"\bon fire\b|\b(?:black|thick|heavy|gr[ae]y) smoke\b|smoke (?:is )?(?:pouring|billowing|"
+                             r"filling|everywhere|coming out of (?:the|my|our) (?:vent|outlet|wall|ceiling|oven|dryer)"
+                             r")|"
+                             r"(?:alarm|detector)s? (?:is |are )?(?:going off|sounding|went off)|burn(?:ing|t) "
+                             r"(?:smell|plastic|rubber)|smells? (?:like |of )?burn|\bsparks?\b|\bllamas?\b|\bfuego\b|"
+                             r"\bincendio\b|can'?t (?:breathe|see)", re.I)
+_SMOKE_WORD = re.compile(r"\b(?:smok(?:e|ing|y|es)|humo|fumes?)\b", re.I)
+
+
+def _strip_habit_smoke(text: str) -> str:
+    if _HABIT_SMOKE.search(text) and not _REAL_FIRE_SIGN.search(text):
+        return _SMOKE_WORD.sub(" ", text)
+    return text
+
+
+def clean_for_frame(message: str) -> str:
+    """The message with negated, figurative, not-physical, body-heat and other people's smoking phrases removed, for
+    the compositional frame (app/risk/frame.py), so both layers read the same meaning."""
+    return _clean(_prepare(message))
+
+
 def _clean(text: str) -> str:
     """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
-    replying, "passed out the forms")."""
-    return _not_physical(_strip_negated(_strip_figurative(text)))
+    replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
+    return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
 
 
 # Sprint 5.1 (journey j-safe-indirect-co): an alarm sounding + (a heat source OR several people) + symptoms = CO, even
@@ -826,6 +869,12 @@ def _present_now(text: str) -> bool:
         r"baby|kids?))\b", clean, re.I))
 
 
+def describes_current_situation(message: str) -> bool:
+    """Sprint 7 (for app/risk/frame.py): the message also describes something happening now, outside its question or
+    past-event clauses ("how do I recognise a gas leak, it smells like sulfur in here")."""
+    return _present_now(_prepare(message))
+
+
 def scan(message: str) -> tuple[str | None, str]:
     """(hazard kind, framing). framing: report | hypothetical | past | joking | none.
 
@@ -861,9 +910,16 @@ def scan(message: str) -> tuple[str | None, str]:
 
 
 def emergency_kind(message: str) -> str | None:
-    """Hazard kind for an acute emergency being reported now, or None (see scan for framing)."""
-    kind, framing = scan(message)
-    return kind if framing == "report" else None
+    """Hazard kind for an acute emergency being reported now, or None.
+
+    Sprint 7: the same single-message decision as the safety layer (phrase rules + the compositional frame in
+    app.risk.detect), so the decision gate and the planner never disagree with it: a look-alike the frame reads as a
+    drill / policy question / past event is not re-raised here, and a frame alert (a symptom-only or Spanish
+    subjectless report) is an emergency here too."""
+    from app.risk.detect import detect  # late import: app.risk.detect imports this module
+
+    det = detect(message)
+    return det.kind if det.framing == "report" else None
 
 
 def intent_to_self_harm(message: str) -> bool:

@@ -55,7 +55,9 @@ Look-alike fixes, each with positive and negative tests:
 - The timeout is capped at `MAX_TIMEOUT_SECONDS = 10`, whatever the environment says. There are no retries.
 - Every failure (timeout, rate limit, provider error, no key, mock, bad output) gives `decision.degraded = true`.
   The rules alone then decide.
-- **R7 exception, reviewed.** The semantic layer may still remove the broad 911 care line (semantic `none`,
+- **Superseded in Sprint 7:** the R7 exception below was removed; the semantic layer can no longer remove any rules
+  alert or care line ([../evaluation/SPRINT7_GENERALIZATION.md](../evaluation/SPRINT7_GENERALIZATION.md)). Sprint 6 record kept below.
+- **R7 exception, reviewed (Sprint 6).** The semantic layer may still remove the broad 911 care line (semantic `none`,
   confidence ≥ 0.8), but only when:
   - the line came from broad hazard vocabulary alone;
   - there was no person-danger alert earlier in the session (as before);

@@ -22,7 +22,7 @@ kind, and they go through the same framing logic (hypothetical / past / negated 
 went under in the pool?" is safety info, not an alert. Each vocabulary is generic; none is a copy of a test sentence.
 
 `concern()` is the conservative middle tier: words that suggest a person may be hurt or in danger without enough for
-an alert. It produces the calm 911 care line, never silence, and it blocks the R7 semantic suppression.
+an alert. It produces the calm 911 care line, never silence (sprint 7: the semantic layer removes no line at all).
 """
 
 import re
@@ -219,9 +219,14 @@ _COLD_CONTEXT = (r"\b(?:no heat|heat(?:'s| is| has| was)?(?: been)? (?:out|off|g
                  r"broke|stopped|isn'?t working|is broken|went out)|furnace (?:died|broke|stopped|isn'?t working|is "
                  r"broken|went out|out)|radiators? (?:is |are )?(?:broken|cold|off|dead)|freezing|below freezing|ice "
                  r"cold|\d{1,2} ?(?:degrees|°)|frigid|sin calefacci[oó]n|helad\w*|mucho fr[ií]o)\b")
-_COLD_HARM = (r"\b(?:freezing|ice[- ]cold|icy|so cold|very cold|too cold|cold to the touch|feels? (?:so |really "
-              r"|very )?"
-              r"cold|shiver\w*|shaking|turning (?:blue|purple|gr[ae]y)|(?:lips|hands|feet|skin|face) (?:are |is |look "
+# Sprint 7 (lead class 2): only BODY signs count here. "Freezing", "so cold", "ice cold" describe the apartment; with a
+# vulnerable person and no symptom that is an urgent repair with the calm "unwell" line, not the medical alert.
+_COLD_HARM = (r"\b(?:cold to the touch|(?:is|are|feels?|felt) (?:so |really |very |ice |icy |freezing )?cold"
+              r"\b(?! (?:in|"
+              r"out|outside|inside|here|there|weather|today|tonight|in here))|is freezing\b(?! (?:in|out|outside|insid"
+              r"e|"
+              r"here|cold (?:in|out)))|shiver\w*|shaking|turning (?:blue|purple|gr[ae]y)|(?:lips|hands|feet|skin|face)"
+              r" (?:are |is |look "
               r"|looks |turning )?(?:blue|purple|gr[ae]y|icy)|barely moving|limp|letharg\w*|(?:really |so |very )sleepy"
               r"|confused|won'?t (?:eat|feed|wake)|not (?:feeding|eating|waking))\b")
 COLD_EXPOSURE = _near(_VULNERABLE, _COLD_HARM, 6)

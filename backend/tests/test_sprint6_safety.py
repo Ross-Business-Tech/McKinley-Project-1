@@ -154,8 +154,10 @@ def test_every_category_maps_to_an_approved_notice():
 
 # ---- 4. R7: the semantic layer can no longer remove a person-in-danger line ----------------------------------------
 def test_r7_suppression_still_applies_to_broad_vocabulary():
+    # Sprint 7 (stricter, moved): this pinned the old "R7-suppressed" exception. The semantic layer can no longer
+    # remove deterministic guidance, so even broad vocabulary keeps the 911 line; the conflict is recorded instead.
     d = decide(DeterministicRisk(care="danger"), sem("none", conf=0.95), [])
-    assert d.rule == "R7-suppressed"
+    assert d.rule == "R7" and d.response == "care_line" and d.care == "danger" and d.conflict
 
 
 def test_r7_suppression_blocked_for_a_person_in_danger_sign():
