@@ -45,7 +45,7 @@ Global handoff triggers from the source ("any step"), all deterministic, none de
 
 | ID | What it is | Status | Where | Needs |
 | --- | --- | --- | --- | --- |
-| I-01 | Greeting + AI disclosure | Draft (web chat greeting) | `frontend/src/lib/customer.ts` `greeting()` | McKinley + legal; recording consent for voice |
+| I-01 | Greeting + AI disclosure | Draft (web chat greeting): "I'm McKinley's automated assistant, not a person" (true for the mock and for a live model; replaced "I'm an AI" in Sprint 4) | `frontend/src/lib/customer.ts` `greeting()` | McKinley + legal; recording consent for voice |
 | I-02 | When to transfer a call | Unavailable (voice) | — | Voice channel |
 | I-03 | Voice reply style | Unavailable | — | Voice channel |
 | I-04 | End-of-call summary + SMS confirmation | Unavailable | — | Voice + texting consent |

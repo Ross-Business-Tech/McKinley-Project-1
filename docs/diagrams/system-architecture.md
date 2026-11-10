@@ -84,3 +84,27 @@ flowchart LR
 Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`) live only in Render's settings. The browser never
 talks to Supabase or Gemini. Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
 
+
+## What the customer page shows (no silent substitution)
+
+```mermaid
+flowchart TD
+  O["Phone opens the link"] --> B{"Built with<br/>NEXT_PUBLIC_API_BASE_URL?"}
+  B -- "no (here.now)" --> RP["Recorded replay<br/>'Preview link' notice, typing off"]
+  B -- yes --> W["GET /api/personas<br/>(after 4 s: 'Waking the assistant up…')"]
+  W -- "answers" --> L["Live chat: type and send<br/>About this demo says: fixed rules or AI model"]
+  W -- "unreachable (90 s timeout)" --> OFF["'The live assistant can't be reached'<br/>Try again + recorded replay"]
+  L --> T["Each turn: POST /api/chat"]
+  T -- "model error" --> TPL["Approved template or clear error<br/>(never the mock in disguise)"]
+  T -- "network error" --> RETRY["'Not sent' + Send again<br/>(text kept)"]
+```
+
+Layout on a phone, top to bottom:
+- the blue McKinley band;
+- the demo row (Demo sign-in select and About this demo), which scrolls away;
+- the conversation;
+- the composer, pinned at every height and lifted above the keyboard (`visualViewport` on iOS,
+  `interactive-widget=resizes-content` on Android). It holds the suggestions, the message box with Send, then
+  Talk to a person, Start over and Call 911.
+
+Details: [../design/BRAND_SYSTEM.md](../design/BRAND_SYSTEM.md), [../design/MOBILE_UX_AUDIT.md](../design/MOBILE_UX_AUDIT.md).

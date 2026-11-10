@@ -6,6 +6,11 @@ to work here). The project is a **prototype, not production ready**.
 
 ## Deployment (Vercel + Render + Supabase + Gemini; prepared, not deployed)
 - [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) — status, missing access, checklist, blockers
+- [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) — can a phone open a public link and chat? (not yet)
+- [design/BRAND_SYSTEM.md](design/BRAND_SYSTEM.md) — McKinley colours, type, components, contrast
+- [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) — viewport matrix, findings, fixes, open issues
+- [design/TASTE_SKILL_REVIEW.md](design/TASTE_SKILL_REVIEW.md) — which design skills were used and how
+- [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md) — what changed in each sprint and what was tested
 - [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
   [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
 

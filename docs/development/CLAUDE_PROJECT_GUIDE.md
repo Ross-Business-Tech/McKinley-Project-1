@@ -72,6 +72,16 @@ Tests are offline: an autouse fixture removes provider keys and staff tokens fro
 WCAG 2.2 AA (keyboard, visible focus, 44 px targets, live regions announce once, reflow at 320 px); customer UI stays
 simple — diagnostics belong in `/staff/`; read-back before any save; say plainly what was and was not sent. Check
 real screenshots at 375, 390, 768 and 1440 px for visible changes.
+- **Brand:** McKinley blue `#4e6f92` and Barlow headings, through the `mk-*` tokens only. Status colours are not
+  the brand: green means saved, amber means a person should help, red means emergency. Each status also has an
+  icon and words. See [`docs/design/BRAND_SYSTEM.md`](../design/BRAND_SYSTEM.md).
+- **Phones first:**
+  - The composer stays pinned on every phone height, keyboard open or not (it scrolls with the page only at extreme zoom, 280px tall or less).
+  - The tap-to-call 911 link and "Talk to a person" are always visible.
+  - Run `frontend/e2e/mobile-acceptance.mjs` (Chromium and WebKit, 7 sizes, keyboard stand-in) before a UI PR; see
+    [`docs/design/MOBILE_UX_AUDIT.md`](../design/MOBILE_UX_AUDIT.md).
+- **Honesty:** never claim the public phone requirement is met until a deployed URL passes on a real phone
+  ([`docs/INTERACTIVE_DEMO_READINESS.md`](../INTERACTIVE_DEMO_READINESS.md)).
 
 ## Docs and diagrams
 - Update the docs your change makes untrue, in the same PR: README status, `docs/workflows/traceability.md`,
