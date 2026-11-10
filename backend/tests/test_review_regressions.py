@@ -338,7 +338,11 @@ def test_every_backend_template_passes_output_checks():  # F N8
                                                             what="Request", team="the maintenance team",
                                                             issue="Fan", loc="Kitchen", topic="parking",
                                                             sent="repair request DEMO-WO-1001 saved", pending="",
-                                                            n=2, first="the fan", next="the window"),
+                                                            n=2, first="the fan", next="the window",
+                                                                step="Your note is ready below.", label="entry",
+                                                                missing="entry permission", saved="Where: Kitchen",
+                                                                route="through your profile", value="Saturday",
+                                                                status="Open"),
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 

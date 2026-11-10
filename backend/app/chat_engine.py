@@ -273,7 +273,10 @@ def run_turn(
             lead = lead_profile(msg, ctx)
         if workflow.id == "renewal":
             renewal = renewal_assessment(msg, ctx)
+        # planner memory (flags/counts only, no text) rides on the previous turn's gate-log row
+        last = deps.store.last_gate(session_id, mode_key, hist_key) if (deps.store and use_history) else None
         plan = plan_turn(msg=msg, gate=gate, workflow=workflow, ctx=ctx, triage=triage,
+                         memory=(last or {}).get("planner_memory") or {},
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
                          resident=resident_for(persona_id, deps.workbook) if verified else None,
                          channel=channel, lang=lang,  # type: ignore[arg-type]
@@ -398,6 +401,7 @@ def run_turn(
                 "action": f"{plan.action.kind}:{plan.action.stage}" if plan and plan.action else None,
                 "records": [r.id for r in plan.records] if plan else [], "reply_source": reply_source,
                 "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
+                "planner_memory": plan.memory if plan else {},
             })
     trace.add("10_persist", "ok" if (deps.store and use_history) else "skipped",
               "gate metadata logged (no message text)" if (deps.store and use_history and gate) else

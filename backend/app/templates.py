@@ -487,8 +487,8 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Listo, cambié el problema a \"{issue}\".",
     },
     "location_updated": {
-        "en": "Updated: the location is now {loc}.",
-        "es": "Actualizado: el lugar ahora es {loc}.",
+        "en": "Updated: Where → {loc}.",
+        "es": "Actualizado: Dónde → {loc}.",
     },
     "contact_noted": {
         "en": "This request now includes \"{pref}\" for the team. I can't change your account's contact settings "
@@ -517,6 +517,138 @@ T: dict[str, dict[Lang, str]] = {
     "repeat_heard": {
         "en": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again.",
         "es": "Eso no está bien después de tantas visitas, y no le voy a pedir que lo revise otra vez.",
+    },
+    # ---- sprint 5 (TEAM DRAFTS): recovery, follow-ups, honest limits ----
+    "lost_draft": {
+        "en": "I'm sorry this has been confusing. {step} If you'd rather talk to a person, tap \"Talk to a person\" "
+              "and I'll put everything you've told me into a note for the office, so you won't have to answer "
+              "anything again.",
+        "es": "Lamento la confusión. {step} Si prefiere hablar con una persona, toque \"Hablar con una persona\" y "
+              "pondré todo lo que me dijo en una nota para la oficina, para que no tenga que responder nada otra vez.",
+    },
+    "lost_note": {
+        "en": "I'm sorry this hasn't been helpful. A person at the office can take it from here: I've written a note "
+              "with what you've told me, so you won't have to repeat anything. Send it when you're ready. In this "
+              "prototype nobody is notified automatically, so if it's urgent, please also contact the office.",
+        "es": "Lamento que esto no le haya ayudado. Una persona de la oficina puede seguir desde aquí: escribí una "
+              "nota con lo que me dijo, para que no tenga que repetir nada. Envíela cuando quiera. En este prototipo "
+              "no se avisa a nadie automáticamente; si es urgente, comuníquese también con la oficina.",
+    },
+    "lost_note_open": {
+        "en": "The note for the office is below with everything you've told me. Press \"Send note to the office\" "
+              "to save it for them. In this prototype nobody is notified automatically.",
+        "es": "La nota para la oficina está abajo con todo lo que me dijo. Pulse \"Enviar nota a la oficina\" para "
+              "guardarla. En este prototipo no se avisa a nadie automáticamente.",
+    },
+    "next_step_missing": {
+        "en": "Your {what} isn't sent yet. The one thing I still need is: {label}.",
+        "es": "Su {what} todavía no está enviada. Solo me falta: {label}.",
+    },
+    "next_step_ready": {
+        "en": "Your {what} is ready below. Check it, then press Send.",
+        "es": "Su {what} está lista abajo. Revísela y pulse Enviar.",
+    },
+    "pending_ready": {
+        "en": " Your {what} is ready but not sent yet; it's waiting for you to press Send.",
+        "es": " Su {what} está lista pero todavía no está enviada; espera a que pulse Enviar.",
+    },
+    "pending_missing": {
+        "en": " Your {what} is not sent yet: it isn't finished. Still needed: {missing}.",
+        "es": " Su {what} todavía no está enviada: no está completa. Falta: {missing}.",
+    },
+    "after_send_saved": {
+        "en": "{what} {ref} is saved for {team} to review, with: {saved}. In the real service the team would follow "
+              "up with you. In this prototype nobody is notified automatically and no time is set, so no one will "
+              "call, email or come because of this chat yet. If it's urgent, please contact the office.",
+        "es": "{what} {ref} está guardada para que {team} la revise, con: {saved}. En el servicio real el equipo le "
+              "daría seguimiento. En este prototipo no se avisa a nadie automáticamente ni se fija una hora, así que "
+              "nadie llamará, escribirá ni vendrá todavía por este chat. Si es urgente, llame a la oficina.",
+    },
+    "after_send_tour": {
+        "en": "Tour request {ref} is saved for the leasing team, with: {saved}. It's a request, not a booking: no "
+              "time is confirmed. In the real service the leasing team would follow up to confirm a time; {route}. "
+              "In this prototype nobody is notified automatically, so no one will call or email because of this chat "
+              "yet.",
+        "es": "La solicitud de visita {ref} está guardada para el equipo de arrendamiento, con: {saved}. Es una "
+              "solicitud, no una cita: no hay hora confirmada. En el servicio real el equipo le contactaría para "
+              "confirmar una hora; {route}. En este prototipo no se avisa a nadie automáticamente, así que nadie le "
+              "llamará ni escribirá todavía por este chat.",
+    },
+    "route_profile": {
+        "en": "they would use the contact on your profile",
+        "es": "usaría el contacto de su perfil",
+    },
+    "route_none": {
+        "en": "this prototype doesn't collect a phone number or email in chat, so please also contact the leasing "
+              "office directly",
+        "es": "este prototipo no recoge teléfono ni correo en el chat, así que comuníquese también con la oficina de "
+              "arrendamiento",
+    },
+    "contact_route_profile": {
+        "en": "In this prototype the leasing team follows up through the contact on your profile. I don't collect "
+              "phone numbers or emails in chat yet, so nothing you type here is saved.",
+        "es": "En este prototipo el equipo de arrendamiento le contacta por el contacto de su perfil. Todavía no "
+              "recojo teléfonos ni correos en el chat, así que lo que escriba aquí no se guarda.",
+    },
+    "contact_route_none": {
+        "en": "I don't collect phone numbers or emails in chat yet, and there's no contact on a profile here, so "
+              "nothing you type is saved. Please also contact the leasing office directly so they can reach you.",
+        "es": "Todavía no recojo teléfonos ni correos en el chat y aquí no hay un contacto en un perfil, así que lo "
+              "que escriba no se guarda. Comuníquese también con la oficina de arrendamiento para que le contacten.",
+    },
+    "lease_break": {
+        "en": "Moving out early is handled by the leasing office directly: the options and any costs depend on your "
+              "lease, and I can't quote or decide them here. I've written a note with your question for them. Send "
+              "it when you're ready.",
+        "es": "Mudarse antes de tiempo lo atiende directamente la oficina de arrendamiento: las opciones y cualquier "
+              "costo dependen de su contrato, y yo no puedo darlos ni decidirlos aquí. Escribí una nota con su "
+              "pregunta. Envíela cuando quiera.",
+    },
+    "maint_ask_location_door": {
+        "en": "Sorry you're dealing with that. Which door is it: your front (entry) door, or a door inside the "
+              "apartment? A lock that doesn't secure your home is marked high priority.",
+        "es": "Lamento la molestia. ¿Qué puerta es: la puerta principal (de entrada) o una puerta dentro del "
+              "apartamento? Una cerradura que no asegura su casa se marca como prioridad alta.",
+    },
+    "existing_request": {
+        "en": "That one is {ref}: {title}. Status: {status}. I can't give repair times here. If it needs attention, "
+              "I can send a note to the office about {ref}.",
+        "es": "Esa es {ref}: {title}. Estado: {status}. Aquí no puedo dar horarios de reparación. Si necesita "
+              "atención, puedo enviar una nota a la oficina sobre {ref}.",
+    },
+    "tour_already_sent": {
+        "en": "Your tour request {ref} is already saved for the leasing team ({saved}). To add or change details, I "
+              "can prepare a note for them. To see a different community, just tell me which one.",
+        "es": "Su solicitud de visita {ref} ya está guardada para el equipo de arrendamiento ({saved}). Para agregar o "
+              "cambiar datos, puedo preparar una nota. Para ver otra comunidad, dígame cuál.",
+    },
+    "tour_skip_slot": {
+        "en": "No problem, I'll leave {label} for the leasing team to ask you about.",
+        "es": "Sin problema, dejo {label} para que el equipo de arrendamiento se lo pregunte.",
+    },
+    "tour_recheck": {
+        "en": "Check it over before you send it.",
+        "es": "Revísela antes de enviarla.",
+    },
+    "field_updated": {
+        "en": "Updated: {label} → {value}.",
+        "es": "Actualizado: {label} → {value}.",
+    },
+    "field_first": {
+        "en": "{label}: {value}.",
+        "es": "{label}: {value}.",
+    },
+    "maint_entry_confirm": {
+        "en": "Just to check: if you're not home, may maintenance go in, or should they contact you first?",
+        "es": "Solo para confirmar: si usted no está, ¿puede entrar mantenimiento o prefieren contactarle primero?",
+    },
+    "floor_plans_none": {
+        "en": "I don't have verified floor plans or prices here, so I won't guess.",
+        "es": "Aquí no tengo planos ni precios verificados, así que no voy a adivinar.",
+    },
+    "next_leasing_note": {
+        "en": "The leasing team can answer that: I can send them your question as a note.",
+        "es": "El equipo de arrendamiento puede responder: puedo enviarles su pregunta en una nota.",
     },
 }
 
@@ -585,6 +717,11 @@ CONFIRM_LABEL: dict[str, dict[Lang, str]] = {
 CHIPS: dict[str, dict[Lang, list[str]]] = {
     "locations": {"en": ["Kitchen", "Bathroom", "Bedroom", "Living room"],
                   "es": ["Cocina", "Baño", "Dormitorio", "Sala"]},
+    "door_locations": {"en": ["Front door", "Bedroom", "Bathroom", "Balcony or patio"],
+                       "es": ["Puerta principal", "Dormitorio", "Baño", "Balcón o patio"]},
+    "lost": {"en": ["Talk to a person"], "es": ["Hablar con una persona"]},
+    "ask_leasing": {"en": ["Ask the leasing team", "Request a tour"],
+                    "es": ["Preguntar a arrendamiento", "Solicitar una visita"]},
     "entry": {"en": ["Yes, you can enter", "Contact me first"],
               "es": ["Sí, pueden entrar", "Llamen antes"]},
     "who": {"en": ["I live at McKinley", "I'm looking for a home"],

@@ -225,7 +225,7 @@ _STAFF = re.compile(
 
 def is_staff_request(message: str) -> bool:
     """Quick-action / plain request to reach the office (softer than 'real person, not a bot')."""
-    return bool(_STAFF.search(message))
+    return bool(_STAFF.search(message)) or asks_for_person(message)
 
 
 _SAYS_RESIDENT = re.compile(r"\bi (live|rent) (at|in|here)|i'?m a (current )?resident|vivo en", re.IGNORECASE)
@@ -403,7 +403,10 @@ def negated_days(message: str) -> list[str]:
 
 def extract_days(message: str) -> str | None:
     message = _NEG_DAY.sub(" ", message)
-    found = [m.group(0).strip() for m in _DAY_PHRASE.finditer(_ES_MORNING.sub(" ", message))]
+    scan = _ES_MORNING.sub(" ", message)
+    # D-8: 'moving this week, tour saturday': a week phrase in a clause about moving is not a tour day
+    found = [m.group(0).strip() for m in _DAY_PHRASE.finditer(scan)
+             if not (move_clause(scan, m.start()) and re.match(r"(this|next) (week|month)", m.group(0), re.I))]
     if not found:
         return None
     seen = list(dict.fromkeys(f[0].upper() + f[1:] for f in found))
@@ -546,11 +549,12 @@ _MOVE_CONTEXT = re.compile(r"\bmov(e|ing)\b|move-?in|lease start|start(ing)? (th
 def extract_move_in(message: str) -> str | None:
     """Move-in timing. The LAST date in the message wins ('March 1, no wait, May 1' -> 'May 1'). Week-only phrases
     ('this week') count only when the person talks about moving, so a tour day isn't saved as a move-in date."""
-    found = [m for m in _MONTH_DAY.finditer(message)]
+    found = [m for m in _MONTH_DAY.finditer(message) if not tour_clause(message, m.start())]
     move = bool(_MOVE_CONTEXT.search(message))
-    if not found:
+    if not found:  # D-8: 'moving next month, tour this week' -> the tour clause's week is not the move-in
         found = [m for m in _MOVE_IN.finditer(message)
-                 if move or not re.match(r"(this|next) (week|month)|in (\d+|two|three|a few) weeks?", m.group(0), re.I)]
+                 if (move and not tour_clause(message, m.start()))
+                 or not re.match(r"(this|next) (week|month)|in (\d+|two|three|a few) weeks?", m.group(0), re.I)]
     if not found:
         return None
     v = found[-1].group(0)
@@ -892,7 +896,7 @@ _AFTER_SEND_Q = re.compile(
 
 def is_after_send_question(message: str) -> bool:
     """A question about what happens to something already sent ('when will they call me?', 'so a tech is coming?')."""
-    return bool(_AFTER_SEND_Q.search(message))
+    return bool(_AFTER_SEND_Q.search(message)) or is_after_send_followup(message)
 
 
 _POLICY_TOPICS = [
@@ -992,3 +996,201 @@ _APPLIANCE = re.compile(r"\b(dishwasher|fridge|refrigerator|freezer|oven|stove|r
 def appliance_in(message: str) -> str | None:
     m = _APPLIANCE.search(message)
     return m.group(0) if m else None
+
+
+# ---- sprint 5: conversation recovery, requests for a person, follow-ups after sending (D-8..D-22) -------------
+
+# D-12: the person is lost or says the chat isn't helping. About the CHAT, not the repair: "the dishwasher isn't
+# working" never matches. Venting already handled elsewhere ("are you even listening") is left to frustration_only.
+_LOST = re.compile(
+    r"\bwhat (?:do|should|am) i (?:supposed to )?do (?:now|next|here)\b|\bwhat do i do\W*\?|"
+    r"\b(?:this|that|you|it)(?: chat| bot| thing)? (?:is|are|was)?\s?(?:n'?t|not) (?:helping|helpful|any help)|"
+    r"\bthis isnt helping\b|\b(?:not|no) help(?:ful)? at all\b|\bnot helpful\b|"
+    r"\b(?:you'?re|you are|ur|this is|that'?s|this bot is|this chat is) (?:so |totally |completely )?(?:useless|"
+    r"pointless|no help|worthless|a waste of time)\b|\b(?:useless|pointless) (?:bot|chat|assistant)\b|"
+    r"\bi (?:already|just) (?:told|said|gave|answered) (?:you|that|this|it)\b|\bi'?ve already (?:told|said|answered)\b|"
+    r"\bi'?m (?:so |really |totally )?(?:lost|confused)\b|\bi don'?t (?:understand|get it|know what (?:to do|you "
+    r"want))\b|\byou'?re not (?:understanding|getting it)\b|\bgoing in circles\b|"
+    r"^\W*\?{2,}\W*$|^\W*(?:huh|what)\W*\?{2,}\W*$|"
+    r"\bno me (?:est[aá] )?ayuda\b|\bno sirve (?:de nada|para nada)\b|\bya (?:le|te) (?:dije|lo dije)\b|"
+    r"\bno entiendo\b|\by ahora qu[eé]\b|\bqu[eé] hago ahora\b", re.I)
+
+
+def is_lost_or_frustrated_with_chat(message: str) -> bool:
+    """'what do I do now??', 'this isn't helping', '???', 'i already told you', "you're useless" (D-12)."""
+    return bool(_LOST.search(message)) and not frustration_only(message)
+
+
+# D-11: more ways to ask for a person. Kept separate from _STAFF (extend, don't merge). "I need someone to fix it" is
+# a repair, not a request for a person, so 'someone' only counts with talk/speak/connect.
+_PERSON_ASK = re.compile(
+    r"\b(?:want|need|like|prefer)(?: to (?:talk|speak|chat) (?:to|with))? (?:a |an |the )?(?:real |actual |live )?"
+    r"(?:person|human|team member|staff member|people)\b(?! to (?:fix|come|look|repair|check|enter))|"
+    r"\b(?:talk|speak|chat) to (?:a |an )?(?:real |actual |live )?(?:person|human|people)\b|"
+    r"\b(?:connect|put|transfer) me (?:to|through to|with) (?:a |an |the |someone|somebody)|"
+    r"^\W*(?:can i |could i |may i )?(?:talk|speak) (?:to|with) (?:someone|somebody)\b|"
+    r"^\W*(?:the |a |your |my )?(?:property |community |building )?(?:manager|supervisor|management)\W*(?:please|pls|"
+    r"plz|now)?\W*$|\b(?:i want|i need|i'?d like|let me (?:talk|speak) to|i'?ll talk to) (?:to (?:talk|speak) (?:to|"
+    r"with) )?(?:the |a |your |my )?(?:property |community |building )?(?:manager|supervisor|management)\b|"
+    r"\bquiero hablar con (?:alguien|una persona|el gerente|la gerente)\b|\bun(?:a)? persona,? por favor\b|"
+    r"^\W*ask (?:the )?leasing(?: team| office)?\W*$|^\W*preguntar a arrendamiento\W*$", re.I)
+
+
+def asks_for_person(message: str) -> bool:
+    return bool(_PERSON_ASK.search(message))
+
+
+_MANAGER = re.compile(r"\b(?:manager|supervisor|management|gerente|whoever(?:'s| is) in charge)\b", re.I)
+
+
+def asks_for_manager(message: str) -> bool:
+    """A request for a person that names a manager: routes to the management team, not leasing (D-11)."""
+    return bool(_MANAGER.search(message))
+
+
+# D-9: follow-up questions about something already sent. Extends _AFTER_SEND_Q.
+_AFTER_SEND_Q2 = re.compile(
+    r"\bwill (?:someone|somebody|anyone|they|the (?:office|team|leasing team|leasing office|manager)|leasing|"
+    r"maintenance|a person) (?:actually |ever )?(?:call|email|e-mail|text|contact|reach|get back to|confirm|follow up)|"
+    r"\bwhen (?:will|do|does|would|is|are) (?:they|someone|the (?:office|team|leasing team)|leasing|i) "
+    r"(?:\w+ ){0,2}(?:confirm|hear|get (?:a |an )?(?:call|email|text|confirmation))|"
+    r"\bwill i (?:get|receive|hear) (?:a |an |back|anything)|\bhow (?:will|do|would) i (?:know|hear)\b|"
+    r"\bwho (?:will|is going to) (?:call|email|contact|reach) me\b|\bis (?:someone|anyone) going to (?:call|email|"
+    r"contact|text)|\b(?:did|has) (?:it|that|my (?:tour|request|note)) (?:been |get |got )?(?:confirmed|booked)\b|"
+    r"\bme van a (?:llamar|escribir|contactar)\b|\bcu[aá]ndo (?:me )?(?:confirman|llaman)\b", re.I)
+
+
+def is_after_send_followup(message: str) -> bool:
+    return bool(_AFTER_SEND_Q2.search(message))
+
+
+# B1: how a prospect will be reached. Contact details are never stored from chat (they are redacted before this).
+_HOW_REACHED = re.compile(
+    r"\bhow (?:will|would|do|are|can) (?:you|they|the (?:leasing )?(?:team|office)|someone|leasing) (?:\w+ )?(?:reach|"
+    r"contact|get (?:a )?hold of|get back to|call|email|text) me|\bhow will i be (?:contacted|reached)|"
+    r"\b(?:do|does|did) (?:you|they|the team) (?:have|need|get) my (?:number|phone|email|contact)|"
+    r"\b(?:should|can|do|could) i (?:give|send|leave|share) (?:you |them )?my (?:number|phone|email|contact)|"
+    r"\bhere'?s my (?:number|phone|email|contact)|\b(?:you can |they can )?(?:reach|contact) me at\b|"
+    r"\bmy (?:number|phone|email|cell) is\b|\bc[oó]mo me (?:van a )?contacta", re.I)
+
+
+def asks_how_reached(message: str) -> bool:
+    return bool(_HOW_REACHED.search(message))
+
+
+# D-14: early move-out / breaking a lease. Not a renewal question.
+_LEASE_BREAK = re.compile(
+    r"\bmov(?:e|ing) out (?:early|before (?:my|the) lease)|\bmove out (?:in|next) (?:\w+ )?(?:before|early)|"
+    r"\bbreak(?:ing)? (?:my|the|our) lease\b|\bend (?:my|the|our) lease (?:early|before)|\bterminat\w* (?:my|the|our) "
+    r"lease\b|\bget out of (?:my|the|our) lease\b|\blease (?:break|termination|buy-?out)\b|\bleave before (?:my|the) "
+    r"lease\b|\bearly (?:termination|move-?out)\b|\bromper (?:el|mi) contrato\b|\bterminar (?:el|mi) contrato\b|"
+    r"\bmudarme antes\b|\bsalir(?:me)? antes de(?:l| que termine el) contrato\b", re.I)
+
+
+def is_lease_break(message: str) -> bool:
+    return bool(_LEASE_BREAK.search(message))
+
+
+# D-13: a lock that doesn't secure the home. Kept apart from the gate's urgency rules and from emergency.py.
+_SECURITY_REPAIR = re.compile(
+    r"\b(?:door|deadbolt|lock|latch)\w*\W+(?:\w+\W+){0,3}(?:broken|broke|stuck|jammed|loose|won'?t (?:lock|latch|close|"
+    r"shut)|doesn'?t (?:lock|latch|close)|can'?t (?:lock|be locked)|not (?:locking|latching|closing))|"
+    r"\b(?:broken|jammed|stuck|loose) (?:door ?)?(?:lock|deadbolt|latch)\b|\bwon'?t lock\b|\bdoesn'?t lock\b|"
+    r"\bcan'?t lock (?:my|the) (?:front |entry |apartment )?door\b|\bcerradura\b|\bla puerta no cierra\b", re.I)
+_DOOR = re.compile(r"\b(?:door|deadbolt|lock|latch|cerradura|puerta)\b", re.I)
+
+
+def is_security_repair(message: str) -> bool:
+    """'the door lock is broken', 'front door won't lock' (not 'the closet door is off its track', not a lockout)."""
+    return bool(_SECURITY_REPAIR.search(message)) and bool(_DOOR.search(message)) and not is_lockout(message) \
+        and not re.search(r"\b(?:closet|cabinet|fridge|refrigerator|oven|dishwasher|shower|washer|dryer|microwave)"
+                          r" door\b", message, re.I)
+
+
+# D-15: a reference to a request already listed ("the one for the sink leak", "the AC one").
+_REF_EXISTING = re.compile(
+    r"\bthe (?:one|request|repair|ticket) (?:for|about|with|re) (?:the |my )?(?P<a>[\w /-]{2,40}?)\W*$|"
+    r"^\W*(?:what about |and |ok(?:ay)?,? )?(?:the|my) (?P<b>[\w/-]+(?: [\w/-]+){0,2}) (?:one|request|ticket)\W*"
+    r"(?:please)?\W*\??\W*$|\b(?:what about|how about|any news on|update on) the (?P<c>[\w/-]+(?: [\w/-]+){0,2}) "
+    r"(?:one|request)\b", re.I)
+_REF_STOP = {"the", "my", "a", "an", "for", "about", "with", "one", "request", "repair", "ticket", "is", "it", "that",
+             "this", "open", "old", "other", "first", "last", "new", "please"}
+
+
+def existing_request_words(message: str) -> list[str]:
+    """Descriptive words of a reference to an existing request, or [] when the message isn't one."""
+    m = _REF_EXISTING.search(message.strip())
+    if not m:
+        return []
+    words = re.findall(r"[a-z/]+", (m.group("a") or m.group("b") or m.group("c") or "").lower())
+    return [w for w in words if w not in _REF_STOP and len(w) >= 2]
+
+
+def matches_words(words: list[str], title: str) -> bool:
+    """Every descriptive word matches the start of a word in the title ('leak' ~ 'leaking', 'ac' ~ 'AC')."""
+    tw = re.findall(r"[a-z/]+", title.lower().replace("a/c", "ac"))
+    return bool(words) and all(any(t.startswith(w.replace("a/c", "ac")) or (len(t) >= 4 and w.startswith(t))
+                                   for t in tw) for w in words)
+
+
+# D-8: a message about a move and a tour at once ('moving next month, tour this week'): the clause decides.
+_CLAUSE_SPLIT = re.compile(r"[,;.!?…—]+|\s(?:but|and|so|then|y|pero)\s", re.I)
+_TOURISH = re.compile(r"\b(?:tour|visit|see (?:it|the|a|an|one)|come (?:by|see|look)|show me|recorrido|visitar)\b",
+                      re.I)
+_MOVEISH = re.compile(r"\bmov(?:e|ing)\b|move-?in|lease start|mudar|mudanza", re.I)
+
+
+def _span_clause(message: str, start: int) -> str:
+    bounds = [0] + [m.end() for m in _CLAUSE_SPLIT.finditer(message) if m.end() <= start]
+    end = next((m.start() for m in _CLAUSE_SPLIT.finditer(message) if m.start() >= start), len(message))
+    return message[max(bounds):end]
+
+
+def tour_clause(message: str, start: int) -> bool:
+    """The phrase at `start` sits in a clause about the tour (and not about moving)."""
+    c = _span_clause(message, start)
+    return bool(_TOURISH.search(c)) and not _MOVEISH.search(c)
+
+
+def move_clause(message: str, start: int) -> bool:
+    c = _span_clause(message, start)
+    return bool(_MOVEISH.search(c)) and not _TOURISH.search(c)
+
+
+# D-8 / p-vague-start: "whenever", "any time", "no preference" answers a days or time question.
+_FLEXIBLE = re.compile(r"^\W*(?:um+\W+|idk\W+|honestly\W+)?(?:whenever|any ?time|any ?day|anyday|any of them|"
+                       r"flexible|i'?m flexible|no preference|doesn'?t matter|don'?t care|either|whatever works|"
+                       r"cuando sea|cualquier (?:d[ií]a|hora|momento)|me da igual)\b", re.I)
+
+
+def flexible_answer(message: str) -> bool:
+    return bool(_FLEXIBLE.search(message))
+
+
+# D-17: a bare 'ok' to "may maintenance enter?" is not permission; 'yes' is.
+def is_bare_ok(message: str) -> bool:
+    return bool(re.fullmatch(r"\s*(?:ok(?:ay)?|k|kk|fine|alright|all right|vale|bueno)[\s.!,]*", message, re.I))
+
+
+# D-20: a channel stated in chat ("text me first") for the card's contact line.
+_CHANNEL_SAID = re.compile(r"\b(?P<c>text|call|email|e-mail|phone)\b (?:me|first)\b|\bmensaje de texto\b|\bllámenme\b|"
+                           r"\bescr[ií]banme\b", re.I)
+
+
+def channel_said(message: str) -> str | None:
+    m = _CHANNEL_SAID.search(message)
+    if not m:
+        return None
+    c = (m.group("c") or "").lower()
+    if not c:
+        return "text" if "texto" in m.group(0).lower() else "call" if "llám" in m.group(0).lower() else "email"
+    return {"e-mail": "email", "phone": "call"}.get(c, c)
+
+
+# D-19: Spanish ways to say a problem came back (English 'again' is already a gate signal).
+_REPEAT_ES = re.compile(r"\bya pas[oó] antes\b|\botra vez\b|\bde nuevo\b|\bvolvi[oó] a\b|\bvuelve a\b|\bsigue "
+                        r"(?:pasando|igual|fallando|sin)\b|\botra vez lo mismo\b|\bpor (?:segunda|tercera) vez\b", re.I)
+
+
+def says_repeat_es(message: str) -> bool:
+    return bool(_REPEAT_ES.search(message))
