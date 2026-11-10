@@ -16,6 +16,7 @@ import {
   formatDate,
   greeting,
   journeyPersonaIds,
+  providerLabel,
   loadSession,
   saveConversation,
   saveSession,
@@ -438,7 +439,9 @@ export function CustomerApp() {
   // Plain reply-source line for "About this demo": from the last reply if there is one, else from the backend.
   const replySource = !lastResponse
     ? state.mode === "live" && state.mock !== null ? (state.mock ? t.replyMock : t.replyAi) : preview ? t.replyMock : ""
-    : lastResponse.is_mock ? t.replyMock : lastResponse.reply_source === "model" ? t.replyAi : "";
+    : lastResponse.is_mock ? t.replyMock
+      : lastResponse.reply_source === "model" ? t.replyModel(providerLabel(lastResponse.provider, lastResponse.model))
+        : t.replyTemplate(providerLabel(lastResponse.provider, lastResponse.model));
 
   return (
     <Frame

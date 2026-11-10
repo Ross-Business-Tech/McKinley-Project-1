@@ -130,6 +130,8 @@ export const UI = {
     followUpOwed: "Follow-up owed",
     replyMock: "Replies here come from fixed rules, not an AI model.",
     replyAi: "Replies are written by an AI model and checked by fixed safety rules; it can make mistakes.",
+    replyModel: (who: string) => `Replies are written by an AI model (${who}) and checked by fixed safety rules; it can make mistakes.`,
+    replyTemplate: (who: string) => `The last reply used approved wording, not the AI model (${who}).`,
     staffLink: "Staff and demo console",
     message: "Message the assistant",
     send: "Send message",
@@ -191,6 +193,8 @@ export const UI = {
     followUpOwed: "Seguimiento pendiente",
     replyMock: "Las respuestas aquí vienen de reglas fijas, no de un modelo de IA.",
     replyAi: "Las respuestas las escribe un modelo de IA y las revisan reglas de seguridad fijas; puede equivocarse.",
+    replyModel: (who: string) => `Las respuestas las escribe un modelo de IA (${who}) y las revisan reglas de seguridad fijas; puede equivocarse.`,
+    replyTemplate: (who: string) => `La última respuesta usó un texto aprobado, no el modelo de IA (${who}).`,
     staffLink: "Consola del personal",
     message: "Escriba al asistente",
     send: "Enviar mensaje",
@@ -230,6 +234,16 @@ export const UI = {
 } as const;
 
 export type UIStrings = (typeof UI)["en"] | (typeof UI)["es"];
+
+const PROVIDER_LABEL: Record<string, string> = {
+  openrouter: "OpenRouter", gemini: "Gemini", ollama: "Ollama (local)", anthropic: "Anthropic", mock: "Mock",
+};
+
+/** "OpenRouter: model-id" for the About panel and diagnostics; never shows prompts or keys. */
+export function providerLabel(provider?: string | null, model?: string | null): string {
+  const name = PROVIDER_LABEL[provider ?? ""] ?? provider ?? "unknown provider";
+  return model ? `${name}: ${model}` : name;
+}
 
 export function formatDate(iso: string, lang: Lang): string {
   const d = new Date(`${iso.slice(0, 10)}T12:00:00`);

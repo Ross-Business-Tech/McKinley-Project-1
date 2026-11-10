@@ -190,6 +190,23 @@ describe("CustomerApp", () => {
     expect(within(screen.getByTestId("about-demo")).getByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
   });
 
+  it("names OpenRouter and the served model, and says when a live provider's reply was approved wording", async () => {
+    let n = 0;
+    live(() => (++n === 1
+      ? resp({ reply: "Sure.", is_mock: false, provider: "openrouter", model: "vendor/model-x:free", reply_source: "model" })
+      : resp({ reply: "Okay.", is_mock: false, provider: "openrouter", model: "vendor/model-x:free", reply_source: "template" })));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "hi{Enter}");
+    await screen.findByText("Sure.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/AI model \(OpenRouter: vendor\/model-x:free\)/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Message the assistant"), "thanks{Enter}");
+    await screen.findByText("Okay.");
+    expect(within(screen.getByTestId("about-demo")).getByText(/approved wording, not the AI model \(OpenRouter/)).toBeInTheDocument();
+  });
+
   it("labels live model replies as AI-written", async () => {
     live(() => resp({ reply: "Got it.", is_mock: false, provider: "gemini", reply_source: "model" }));
     const user = userEvent.setup();
@@ -198,7 +215,7 @@ describe("CustomerApp", () => {
     await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
     await screen.findByText("Got it.");
     await user.click(screen.getByRole("button", { name: "About this demo" }));
-    expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model \(Gemini/)).toBeInTheDocument();
   });
 
   it("keeps a tap-to-call 911 link and an honest 'not a person' greeting on screen", async () => {
