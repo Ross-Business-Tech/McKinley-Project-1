@@ -182,7 +182,7 @@ export function StaffConsole() {
         {state && (
           <Tabs defaultValue={staffTools ? "records" : "inspector"}>
             {/* One row on every width; on phones it scrolls sideways (the next tab peeks in). Selected = 3px blue bar. */}
-            <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] md:mx-0 md:px-1">
+            <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] max-md:[mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:px-1">
               <TabsList variant="line" className="h-auto! w-max flex-nowrap justify-start gap-0 p-0">
                 {[
                   ["records", "Saved requests"],

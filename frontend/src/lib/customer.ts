@@ -62,9 +62,11 @@ export function toIdentities(personas: Persona[]): Identity[] {
 /** I-01 draft: AI disclosure on the first message. Wording still needs McKinley approval. */
 export function greeting(identity: Identity): string {
   if (identity.lang === "es") {
-    return `Hola, ${identity.firstName ?? ""}. Soy el asistente virtual de McKinley. Soy una IA; si prefiere hablar con una persona, dígamelo y preparo una nota para nuestro equipo. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
+    return `Hola, ${identity.firstName ?? ""}. Soy el asistente automático de McKinley, no una persona. Si prefiere hablar con alguien del equipo, dígamelo y preparo una nota. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
   }
-  const intro = "I'm McKinley's virtual assistant. I'm an AI. If you'd rather talk to a person, just say so and I'll prepare a note for our team.";
+  // I-01 AI disclosure (team draft, McKinley approves). "Automated, not a person" is true for the fixed-rule demo
+  // responder and for a live AI model, and it is short enough for a 320px screen.
+  const intro = "I'm McKinley's automated assistant, not a person. Want a person instead? Just say so and I'll prepare a note for our team.";
   switch (identity.kind) {
     case "resident":
       return `Hi ${identity.firstName ?? "there"}. ${intro} I can help you report a repair, check your open requests, ask about your renewal, or reach the office.`;
@@ -158,6 +160,7 @@ export const UI = {
     newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
     prototype: "Prototype with made-up data.",
     emergencyLead: "Emergency?",
+    emergencyCall: "Emergency: call 911",
     demoButton: "Demo",
     demoTitle: "About this demo",
     demoSignIn: "Demo sign-in",
@@ -207,6 +210,7 @@ export const UI = {
     newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
     prototype: "Prototipo con datos ficticios.",
     emergencyLead: "¿Emergencia?",
+    emergencyCall: "Emergencia: llame al 911",
     demoButton: "Demo",
     demoTitle: "Sobre esta demo",
     demoSignIn: "Inicio de sesión de demo",

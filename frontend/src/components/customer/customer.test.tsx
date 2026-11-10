@@ -116,7 +116,7 @@ describe("CustomerApp", () => {
     const user = userEvent.setup();
     render(<CustomerApp />);
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R012");
-    expect(screen.getByText(/Soy el asistente virtual de McKinley/)).toBeInTheDocument();
+    expect(screen.getByText(/Soy el asistente automático de McKinley, no una persona/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Escriba al asistente"), "el horno no calienta{Enter}");
     const reply = await screen.findByText("¿En qué parte del apartamento es?");
     expect(reply.closest("[lang]")).toHaveAttribute("lang", "es");
@@ -170,6 +170,33 @@ describe("CustomerApp", () => {
     await screen.findByText("Got it.");
     await user.click(screen.getByRole("button", { name: "About this demo" }));
     expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model/)).toBeInTheDocument();
+  });
+
+  it("keeps a tap-to-call 911 link and an honest 'not a person' greeting on screen", async () => {
+    live(() => resp({ reply: "Got it." }));
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    expect(screen.getByRole("link", { name: "Emergency: call 911" })).toHaveAttribute("href", "tel:911");
+    expect(screen.getByText(/automated assistant, not a person/)).toBeInTheDocument();
+    expect(screen.queryByText(/I'm an AI/)).not.toBeInTheDocument();
+  });
+
+  it("opens and closes 'About this demo' from the keyboard and returns focus", async () => {
+    live(() => resp({ reply: "Got it." }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    const toggle = screen.getByRole("button", { name: "About this demo" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByTestId("about-demo");
+    expect(within(panel).getByRole("link", { name: "Staff and demo console" })).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: /Close/ }));
+    await user.click(toggle);
+    await user.keyboard("{Tab}{Escape}");
+    expect(screen.queryByTestId("about-demo")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
   });
 
   it("always offers a way to talk to a person", async () => {

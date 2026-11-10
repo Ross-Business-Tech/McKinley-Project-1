@@ -99,6 +99,7 @@ export function CustomerApp() {
   const [step, setStep] = useState(0);
   const [announcement, setAnnouncement] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [typing, setTyping] = useState(false); // the message box has focus: on a short screen show only the essentials
   const aboutBtnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!announcement) return;
@@ -148,7 +149,7 @@ export function CustomerApp() {
     setDraft("");
   }, []);
 
-  // Scrolling after each message. First screen: stay at the top (brand, sign-in, the "I'm an AI" greeting).
+  // Scrolling after each message. First screen: stay at the top (brand, sign-in, the "not a person" greeting).
   // A new assistant message taller than the space above the composer (a long reply, a card to check before
   // sending) is shown from its first line; anything else scrolls to the end so it sits just above the composer.
   const prevCount = useRef(0);
@@ -176,7 +177,17 @@ export function CustomerApp() {
     const vv = window.visualViewport;
     if (!vv) return;
     const root = document.documentElement;
+    const el = document.scrollingElement ?? document.documentElement;
+    let atEnd = true;
+    const onScroll = () => {
+      atEnd = el.scrollHeight - (el.scrollTop + (vv.height || window.innerHeight)) < 48;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    let lastH = vv.height;
     const apply = () => {
+      const grew = vv.height > lastH + 40; // the keyboard closed (or the phone rotated): stay at the end if you were there
+      lastH = vv.height;
+      if (grew && atEnd) requestAnimationFrame(() => el.scrollTo?.({ top: el.scrollHeight }));
       const zoomed = Math.abs(vv.scale - 1) > 0.01; // pinch-zoom also shrinks the visual viewport: not a keyboard
       const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
       root.style.setProperty("--mk-kb", `${kb}px`);
@@ -188,6 +199,7 @@ export function CustomerApp() {
     return () => {
       vv.removeEventListener("resize", apply);
       vv.removeEventListener("scroll", apply);
+      window.removeEventListener("scroll", onScroll);
       root.style.removeProperty("--mk-kb");
       root.removeAttribute("data-mk-short");
     };
@@ -576,7 +588,8 @@ export function CustomerApp() {
       <div
         ref={composerRef}
         style={{ bottom: "var(--mk-kb, 0px)" }}
-        className="sticky bottom-0 z-10 border-t border-mk-line bg-mk-paper/95 backdrop-blur supports-[backdrop-filter]:bg-mk-paper/90"
+        data-typing={typing || undefined}
+        className="group/composer sticky bottom-0 z-10 border-t border-mk-line bg-mk-paper"
       >
         <div className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-0 [@media(max-height:480px)]:pt-1.5 [html[data-mk-short]_&]:pt-1.5">
           {chips.length > 0 && (
@@ -584,7 +597,7 @@ export function CustomerApp() {
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="mb-2 flex flex-wrap gap-2 py-1 sm:px-1 [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
+              className="mb-2 flex flex-wrap gap-2 py-1 sm:px-1 [@media(max-height:480px)]:group-data-typing/composer:hidden [html[data-mk-short]_&]:group-data-typing/composer:hidden [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
             >
               {chips.map((c) => (
                 <button
@@ -618,6 +631,8 @@ export function CustomerApp() {
               lang={lang}
               aria-describedby={preview ? `${bannerId} ${statusId}` : statusId}
               onChange={(e) => setDraft(e.target.value)}
+              onFocus={() => setTyping(true)}
+              onBlur={() => setTyping(false)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -639,16 +654,17 @@ export function CustomerApp() {
               </span>
             </button>
           </form>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3">
+          {/* One row, always visible: a person, start over, and a tap-to-call emergency number. */}
+          <div className="mt-2 flex items-center gap-x-1">
             {!preview && (
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => send(t.talkToPerson)}
-                className="mk-focus inline-flex min-h-11 items-center gap-2 rounded-md px-1 text-base font-medium text-mk-brand-hover underline underline-offset-2 disabled:opacity-60"
+                className="mk-focus inline-flex min-h-11 items-center gap-2 rounded-md px-1.5 text-base font-medium text-mk-brand-hover underline underline-offset-2 disabled:opacity-60"
                 lang={lang}
               >
-                <UserRound aria-hidden className="size-4" /> {t.talkToPerson}
+                <UserRound aria-hidden className="size-4 shrink-0" /> {t.talkToPerson}
               </button>
             )}
             {(talked || journeyDone) && (
@@ -658,18 +674,24 @@ export function CustomerApp() {
                 onClick={() => {
                   if (journeyDone || window.confirm(t.newChatConfirm)) reset(identity);
                 }}
-                className="mk-focus inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-base text-mk-muted hover:text-mk-ink disabled:opacity-60"
+                className="mk-focus inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-1.5 text-base text-mk-muted hover:text-mk-ink disabled:opacity-60"
                 lang={lang}
               >
-                <RotateCcw aria-hidden className="size-4" /> {t.newChat}
+                <RotateCcw aria-hidden className="size-4 shrink-0" />
+                <span className="max-[374px]:sr-only">{t.newChat}</span>
               </button>
             )}
+            <a
+              href="tel:911"
+              aria-label={t.emergencyCall}
+              className="mk-focus ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2 font-semibold text-mk-danger hover:bg-mk-danger-soft"
+              lang={lang}
+            >
+              <Phone aria-hidden className="size-4" /> 911
+            </a>
           </div>
           <p id={statusId} className="pb-0.5 text-sm text-mk-muted [@media(max-height:480px)]:sr-only [html[data-mk-short]_&]:sr-only" lang={lang}>
-            {t.prototype} {t.emergencyLead}{" "}
-            <a href="tel:911" className="mk-focus font-semibold text-mk-danger underline underline-offset-2">
-              {t.call911}
-            </a>
+            {t.prototype} {t.emergencyLead} {t.call911}.
           </p>
         </div>
       </div>
