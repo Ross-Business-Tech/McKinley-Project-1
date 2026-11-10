@@ -1,5 +1,6 @@
 """Runtime configuration. Provider secrets come from the environment or backend/.env only (server-side)."""
 
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -108,11 +109,14 @@ class Settings(BaseSettings):
         origins = self.cors_origin_list
         if not origins or any(o == "*" or "*" in o for o in origins):
             out.append("CORS_ORIGINS must list the exact website address(es); wildcards are not allowed")
+        elif not all(re.fullmatch(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", o) for o in origins):
+            out.append("each CORS_ORIGINS entry must be a bare origin like https://site.vercel.app (no path)")
         if any(o.startswith(("http://localhost", "http://127.0.0.1")) for o in origins):
             out.append("CORS_ORIGINS must not include localhost addresses on a hosted backend")
         if any(o.startswith("http://") for o in origins if not o.startswith(("http://localhost", "http://127."))):
             out.append("CORS_ORIGINS must use https:// addresses")
-        if not (self.staff_api_token and len(self.staff_api_token.get_secret_value()) >= 24):
+        token = self.staff_api_token.get_secret_value().strip() if self.staff_api_token else ""
+        if len(token) < 24 or len(set(token)) < 8:
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
@@ -122,7 +126,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # browsers send the origin without a trailing slash; a pasted "https://x.vercel.app/" would block every request
+        return [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip().rstrip("/")]
 
     def api_key_for(self, provider: str) -> str | None:
         specific = {"openrouter": self.openrouter_api_key, "anthropic": self.anthropic_api_key,

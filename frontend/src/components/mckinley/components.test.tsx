@@ -232,6 +232,30 @@ const snapshot: DemoSnapshot = {
   },
 };
 
+describe("Staff console on a hosted backend", () => {
+  it("shows the backend status, says staff tools are locked, and never calls staff routes for the queue", async () => {
+    const health = { status: "ok", provider: "gemini", model: "gemini-3.6-flash", provider_ready: true,
+      provider_status: "API key configured", prompt_version: "v", data_loaded: true, data_error: null,
+      resident_count: 20, interaction_count: 101, app_env: "hosted", database: "postgres",
+      resident_source: "database (synthetic)", is_mock: false };
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "/demo/snapshot.json") return new Response(JSON.stringify(snapshot));
+      if (url.endsWith("/api/health")) return new Response(JSON.stringify(health));
+      if (url.endsWith("/api/personas")) return new Response(JSON.stringify(snapshot.personas));
+      if (url.endsWith("/api/models")) return new Response(JSON.stringify([]));
+      return new Response(JSON.stringify({ error: { code: "STAFF_ONLY", message: "locked", retryable: false } }),
+        { status: 403 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<StaffConsole />);
+    expect(await screen.findByTestId("staff-locked")).toBeInTheDocument();
+    expect(screen.getByTestId("backend-status")).toHaveTextContent(/gemini · gemini-3.6-flash \(live AI model\)/);
+    expect(screen.getByTestId("backend-status")).toHaveTextContent(/database postgres/);
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/prototype/records"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/staff/conversations"))).toBe(false);
+  });
+});
+
 describe("Staff console static demo fallback", () => {
   it("loads the snapshot when the backend is unreachable", async () => {
     const fetchMock = vi.fn(async (url: string) => {

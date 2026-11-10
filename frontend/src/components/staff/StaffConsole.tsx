@@ -108,6 +108,8 @@ const COVERAGE_TONE: Record<CoverageStatus, { tone: StateTone; text: string }> =
 
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
+  // On a hosted backend the staff routes refuse browsers (no staff sign-in yet): use the recorded demo there.
+  const staffTools = Boolean(state?.live && state.health?.app_env !== "hosted");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -156,9 +158,18 @@ export function StaffConsole() {
             {state.health.app_env === "hosted" ? " · hosted deployment" : " · local"}
           </p>
         )}
+        {state?.live && !staffTools && (
+          <p role="note" data-testid="staff-locked" className="flex gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
+            <Info aria-hidden className="mt-1 size-4 shrink-0" />
+            <span>
+              Staff tools are locked on the shared site until real staff sign-in exists. Saved requests, live
+              conversations and evaluations below show the recorded demo, not this backend&apos;s data.
+            </span>
+          </p>
+        )}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
-          <Tabs defaultValue={state.live ? "records" : "inspector"}>
+          <Tabs defaultValue={staffTools ? "records" : "inspector"}>
             {/* Phones: tabs wrap (nothing hidden off-screen); wider screens: one row. Selected = 2px underline. */}
             <div className="-mx-4 border-b border-mk-line px-4 py-1 sm:overflow-x-auto md:mx-0 md:px-1">
               <TabsList variant="line" className="h-auto! w-full flex-wrap justify-start gap-0 p-0 sm:w-max sm:flex-nowrap">
@@ -185,10 +196,10 @@ export function StaffConsole() {
               <Inspector snapshot={state.snapshot} />
             </TabsContent>
             <TabsContent value="records">
-              <Records live={state.live} snapshot={state.snapshot} />
+              <Records live={staffTools} snapshot={state.snapshot} />
             </TabsContent>
             <TabsContent value="live">
-              <LiveConversations live={state.live} />
+              <LiveConversations live={staffTools} />
             </TabsContent>
             <TabsContent value="coverage">
               <CoverageTable />
@@ -202,11 +213,11 @@ export function StaffConsole() {
                 targets={state.targets}
                 cases={state.cases}
                 gateConfig={state.gateConfig}
-                demo={state.live ? null : state.snapshot}
+                demo={staffTools ? null : state.snapshot}
               />
             </TabsContent>
             <TabsContent value="evals">
-              <EvalDashboard targets={state.targets} cases={state.cases} gateConfig={state.gateConfig} demo={state.live ? null : state.snapshot} />
+              <EvalDashboard targets={state.targets} cases={state.cases} gateConfig={state.gateConfig} demo={staffTools ? null : state.snapshot} />
             </TabsContent>
           </Tabs>
         )}

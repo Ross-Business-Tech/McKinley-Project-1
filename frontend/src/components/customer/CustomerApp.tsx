@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, R
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { ApiError, api, loadDemoSnapshot } from "@/lib/api";
+import { ApiError, LIVE_BACKEND_CONFIGURED, api, loadDemoSnapshot } from "@/lib/api";
 import {
   GUEST,
   type Identity,
@@ -81,6 +81,12 @@ async function boot(): Promise<Boot> {
 
 export function CustomerApp() {
   const [state, setState] = useState<Boot>({ mode: "loading" });
+  const [slowStart, setSlowStart] = useState(false); // a sleeping hosted backend can take a minute to answer
+  useEffect(() => {
+    if (state.mode !== "loading") return;
+    const id = window.setTimeout(() => setSlowStart(true), 4000);
+    return () => window.clearTimeout(id);
+  }, [state.mode]);
   const [attempt, setAttempt] = useState(0);
   const [identity, setIdentity] = useState<Identity>(GUEST);
   const [sessionId, setSessionId] = useState(() => newSessionId());
@@ -326,7 +332,7 @@ export function CustomerApp() {
     return (
       <Frame>
         <p role="status" className="px-4 py-10 text-center text-mk-muted">
-          Starting the assistant…
+          {slowStart ? "Waking the assistant up. This can take up to a minute the first time." : "Starting the assistant…"}
         </p>
       </Frame>
     );
@@ -390,8 +396,20 @@ export function CustomerApp() {
         <p id={bannerId} className="mx-4 mt-3 flex max-w-2xl gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-2.5 text-sm text-mk-muted sm:mx-auto sm:w-full">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
-            Preview link: this page replays real conversations recorded from the prototype, with made-up data and no live AI.
-            Typing is turned off here. Tap a suggestion to continue.
+            {LIVE_BACKEND_CONFIGURED ? (
+              <>
+                The live assistant can&apos;t be reached right now, so this page is replaying recorded conversations
+                (made-up data, no live AI). Typing is turned off.{" "}
+                <button type="button" onClick={() => window.location.reload()} className="mk-focus underline underline-offset-2">
+                  Try again
+                </button>
+              </>
+            ) : (
+              <>
+                Preview link: this page replays real conversations recorded from the prototype, with made-up data and no
+                live AI. Typing is turned off here. Tap a suggestion to continue.
+              </>
+            )}
           </span>
         </p>
       )}

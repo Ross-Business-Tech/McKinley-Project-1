@@ -79,6 +79,18 @@ def upgrade() -> None:
     if postgres:
         for t in TABLES:
             op.execute(f"ALTER TABLE {t} ENABLE ROW LEVEL SECURITY")
+        # Alembic's own bookkeeping table lives in `public` too: lock it like every other table.
+        op.execute("ALTER TABLE alembic_version ENABLE ROW LEVEL SECURITY")
+        # Defence in depth on Supabase: the public Data API roles get no table privileges at all (no-op elsewhere).
+        op.execute("""DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA public FROM authenticated';
+  END IF;
+END $$""")
 
 
 def downgrade() -> None:

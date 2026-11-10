@@ -15,6 +15,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.11
+      - key: UV_PYTHON_PREFERENCE  # use Render's Python; never download one into a folder that may not persist
+        value: only-system
       - key: APP_ENV               # hosted: startup refuses wildcard/localhost CORS, a missing staff token, etc.
         value: hosted
       - key: LLM_PROVIDER          # Gemini writes replies; set to "mock" (and LLM_MODEL=mock-deterministic-v1)

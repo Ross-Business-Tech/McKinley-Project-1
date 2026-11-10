@@ -126,10 +126,18 @@ class Store:
     def _connect_pg(self) -> Any:
         import psycopg  # imported here so a SQLite-only run never needs it
         from psycopg.rows import dict_row
+        if not self._pg_url.startswith(("postgresql://", "postgres://")):
+            raise ValueError("DATABASE_URL must start with postgresql:// (value not shown)")
         # prepare_threshold=None keeps this working behind Supabase's transaction pooler (port 6543).
-        return psycopg.connect(self._pg_url, autocommit=True, row_factory=dict_row, prepare_threshold=None,
-                               connect_timeout=10, keepalives=1, keepalives_idle=30, keepalives_interval=10,
-                               keepalives_count=3)
+        try:
+            return psycopg.connect(self._pg_url, autocommit=True, row_factory=dict_row, prepare_threshold=None,
+                                   connect_timeout=10, keepalives=1, keepalives_idle=30, keepalives_interval=10,
+                                   keepalives_count=3)
+        except Exception as e:  # psycopg messages can echo the connection string (password included): scrub
+            from urllib.parse import urlsplit
+            host = urlsplit(self._pg_url).hostname or "unknown host"
+            raise ConnectionError(f"Could not connect to Postgres at {host} ({type(e).__name__}); "
+                                  "check DATABASE_URL (value not shown)") from None
 
     def _ensure(self) -> None:
         """Reconnect if the Postgres connection was dropped (idle timeout, pooler restart, free-tier sleep)."""
