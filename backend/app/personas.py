@@ -160,12 +160,22 @@ _HOLDER_DEVICE = re.compile(r"\b(?:the|this|my|our)\s+(?:tenant|resident|owner|o
                             r"laptop|computer|device|app|login|log-in|account|portal|profile)\b", re.I)
 _WORKER_ROLE = re.compile(rf"{_SUBJ}(?:the|a|an|their|her|his)\s+(?:house\s?)?(?:cleaner|cleaning (?:lady|person)|"
                           r"housekeeper|maid|dog ?walker|pet ?sitter|house ?sitter|babysitter|baby ?sitter|nanny|"
-                          r"au pair|home (?:health )?aide|contractor|handyman|mover|realtor|delivery \w+|courier)\b",
+                          r"au pair|home (?:health )?aide|contractor|handyman|mover|realtor|delivery \w+|courier|"
+                          r"maintenance (?:tech|guy|person|worker)|tech(?:nician)?)\b|"
+                          # Spanish: "soy la niñera / el jardinero / la que limpia"
+                          r"\b(?:soy|estoy como)\s+(?:la|el|una|un)\s+(?:niñera|ni[nñ]era|jardiner[oa]|limpiador[a]?|"
+                          r"señora de la limpieza|empleada|cuidador[a]?|paseador[a]? de perros|t[eé]cnic[oa]|"
+                          r"contratista|vecin[oa]|amig[oa]|herman[oa]|prim[oa]|novi[oa])\b|\bla que limpia\b",
                           re.I)
+_HOLDER_DEVICE_ES = re.compile(r"\b(?:tel[eé]fono|celular|cuenta|tableta|computadora)\s+de\s+(?:la|el|mi)\s+"
+                               r"(?:inquilin[oa]|residente|dueñ[oa]|due[nñ][oa]|patr[oó]n|jef[ae]|vecin[oa]|amig[oa])\b|"
+                               r"\b(?:me prest[oó]|me dio) (?:su|el) (?:tel[eé]fono|celular|cuenta)\b|"
+                               r"\b(?:handed|gave|lent) me (?:her|his|their) (?:phone|tablet|ipad|laptop|login)\b",
+                               re.I)
 
 
 def _structural_non_holder(text: str, first_name: str | None) -> bool:
-    if _HOLDER_DEVICE.search(text) or _WORKER_ROLE.search(text):
+    if _HOLDER_DEVICE.search(text) or _WORKER_ROLE.search(text) or _HOLDER_DEVICE_ES.search(text):
         return True
     if _REL_ACCOUNT.search(text) or _NOT_OWNER.search(text):
         return True

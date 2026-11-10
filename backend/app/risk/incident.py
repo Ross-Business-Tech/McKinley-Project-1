@@ -66,9 +66,11 @@ _HANDLED = (r"\b(?:(?:is|are|'s|'re|got) here|arrived|showed up|came|took (?:him
             r"got (?:him|her|them|it)|is with (?:him|her|them|us|me)|are with (?:him|her|them|us|me)|"
             r"put it out|put out|it'?s out|is out|are out|shut (?:it|the \w+) off|turned (?:it|the \w+) off|"
             r"fixed|handled|arrested|took (?:him|her|them) away|left with|cleared|all clear|said it'?s safe|"
-            r"said (?:it|everything|we|all)(?:'s| is| are|'re)? (?:fine|ok(?:ay)?|safe|good|clear)"
+            r"said (?:its|it|everythings|everything|we|all)(?:'s| is| are|'re)? (?:fine|ok(?:ay)?|safe|good|clear)"
             r"(?: now)?|"
-            r"said (?:we|it) (?:can|is)|lleg(?:ó|aron)|se (?:lo|la|los) llevaron|lo apagaron|ya est[aá]n aqu[ií])\b")
+            r"said (?:we|it) (?:can|is)|"
+            r"dijeron que (?:ya )?(?:est[aá] bien|todo (?:est[aá] )?bien|no hay peligro|es seguro)|lleg(?:ó|aron)|"
+            r"se (?:lo|la|los) llevaron|lo apagaron|ya est[aá]n aqu[ií])\b")
 _RESOLVED_ALONE = re.compile(
     r"\ball clear\b|\b(?:fire|it|the fire)(?:'s| is| was) (?:out|put out|completely out)\b.*\b(?:fire ?(?:department|"
     r"fighters?)|they|911)\b|\b(?:he|she|they)(?:'s| is| are|'re) (?:at|in) the hospital\b|"
@@ -141,6 +143,20 @@ _RETRACT_EXPLICIT = re.compile(
 _HAZARD_CUE = re.compile(r"\b(?:smell\w*|odou?r|gas|smok\w*|spark\w*|alarm(?:'s| is)? (?:going|beep\w*|sound\w*)|"
                          r"beep\w*|water|flood\w*|fire|flames?|burn\w*|heat|hot|outlet|panel|breaker|ceiling|crack\w*|"
                          r"huele|oliendo|olor|humo|agua|fuego)\b", re.I)
+# Hazard words a genuine false alarm uses harmlessly: negated ("no sparks", "not smoke", "there is no fire"), a harmless
+# source ("burnt toast", "steam from the shower"), or a device named ("the fire extinguisher is expired"). Removed
+# before the hazard-cue check, so "false alarm, it was burnt toast" retracts while "false alarm, but it still smells"
+# does not ("still" is a danger word above).
+_HARMLESS_HAZARD = re.compile(
+    r"\b(?:no|not|never|isn'?t|wasn'?t|there(?:'s| is| was) no|nothing (?:is |was )?)\s+"
+    r"(?:any\s+|a\s+|actual\s+|real\s+)?"
+    r"(?:smok\w*|spark\w*|fire|flames?|gas(?: leak)?|leak\w*|water|flood\w*|burn\w*|smell\w*|odou?r)\b|"
+    r"\b(?:burn(?:t|ed|ing)?|charred)\s+(?:toast|popcorn|food|bacon|rice|pan|pizza|dinner|eggs?|cookies)\b|"
+    r"\b(?:toast|popcorn|cooking|candle|incense|steam\w*|shower|vapou?r|fog machine|reflection|sunlight|glare)\b|"
+    r"\b(?:fire|smoke|co|carbon monoxide) (?:extinguisher|detector|alarm|door|drill)s?\b|"
+    r"\b(?:the )?smell\w*\s+(?:was|is|came|comes)\s+(?:just\s+)?(?:from\s+)?(?:the\s+|my\s+|a\s+)?(?:trash|"
+    r"garbage|bin|food|cooking|fridge|candle|perfume|paint|dog|compost|drain)\b|"
+    r"\bno (?:hay|había) (?:humo|fuego|gas|olor)\b|\bera (?:vapor|la tostada|comida)\b", re.I)
 HAZARD_KINDS = {"gas", "co", "electrical", "fire_smoke", "flood", "structural", "extreme_temp"}
 REOPEN_WINDOW = 3  # turns after a retraction in which a body state or the hazard reopens the incident
 # The resident stopped the hazard ("water stopped, I shut the valve", "the smell is gone, gas is off at the stove").
@@ -181,7 +197,7 @@ def is_retraction(message: str, kind: str | None = None) -> bool:
     text = message.strip()
     if not _RETRACT_EXPLICIT.search(text) or _RETRACT_DANGER.search(text):
         return False
-    if kind in HAZARD_KINDS and _HAZARD_CUE.search(_RETRACT_EXPLICIT.sub(" ", text)):
+    if kind in HAZARD_KINDS and _HAZARD_CUE.search(_HARMLESS_HAZARD.sub(" ", _RETRACT_EXPLICIT.sub(" ", text))):
         return False
     rest = _RETRACT.sub(" ", text)
     return not scan(rest)[0]

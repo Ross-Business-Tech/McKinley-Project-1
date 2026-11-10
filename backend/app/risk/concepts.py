@@ -265,6 +265,12 @@ NOT_PHYSICAL = re.compile(
     # Sprint 6 final (verifier P0-A): "me", "us", "again" and durations are NOT stripped here: "my dad is not
     # responding to me" is a body state. Staff not replying to me/us is covered by the staff branch above.
     r"voicemails?|dms?|questions?|requests?|tickets?)\b|"
+    # Sprint 6 final (verifier I3): not responding ABOUT something, or a buyer / seller / date not replying, is social
+    r"\b(?:not|isn'?t|is not|hasn'?t|has not|won'?t|wont|stopped|never) (?:been )?(?:respond\w*|repl\w*|answer\w*|"
+    r"getting back)(?: to (?:me|us|my \w+|our \w+))?\s+(?:about|regarding|re|over|on the|for the)\b|"
+    r"\b(?:who (?:bought|sold|is buying|is selling|rented|is renting|i sold|i bought|i met|i'?m dating)|buyer|seller|"
+    r"match|landlord|recruiter|ex)\b[^.?!]{0,40}?\b(?:isn'?t|is not|not|hasn'?t|has not|stopped|never) (?:been )?"
+    r"(?:respond\w*|repl\w*|answer\w*)\b(?: to (?:me|us|my \w+))?|"
     r"\bpass(?:ed|ing|es)? out (?:the |some |these |those |all (?:the )?|our |copies of )?(?:paperwork|papers?|forms?|"
     r"flyers?|fliers|leaflets?|cards?|candy|keys|packets?|copies|menus|tickets?|surveys?|notices?|samples|snacks|"
     r"pamphlets?|brochures?|water|masks|lease(?:s| agreements?)?|documents?|info\w*)\b", re.I)

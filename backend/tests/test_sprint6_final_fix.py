@@ -343,3 +343,62 @@ def test_api_question_after_send_is_answered_not_a_change(client):
     sid, ref = _sent_repair(client)
     r = chat(client, "by the way, what are the pool hours?", sid, "R003")
     assert (r.get("action") or {}).get("kind") != "staff_handoff"
+
+
+# ---- Verifier I3: a genuine false alarm that names the hazard harmlessly still retracts ----------------------------
+GENUINE_FALSE_ALARM = ["false alarm, it was burnt bacon, we're fine", "false alarm - just steam from the kettle",
+                       "you misunderstood, there's no smoke, I was asking about the smoke detector",
+                       "false alarm, no gas, the smell was the trash", "I meant the fire drill, sorry, false alarm",
+                       "falsa alarma, era vapor de la ducha"]
+STILL_DANGER = ["false alarm, but there is still smoke", "false alarm I think, it still smells like gas",
+                "you misunderstood, the sparks are coming from the other outlet now",
+                "false alarm on the toast but the smoke is getting thicker"]
+
+
+@pytest.mark.parametrize("msg", GENUINE_FALSE_ALARM)
+@pytest.mark.parametrize("kind", ["fire_smoke", "gas", "electrical"])
+def test_genuine_false_alarm_retracts(msg, kind):
+    assert is_retraction(msg, kind)
+
+
+@pytest.mark.parametrize("msg", STILL_DANGER)
+def test_false_alarm_with_danger_still_present_does_not_retract(msg):
+    assert not is_retraction(msg, "fire_smoke") and not is_retraction(msg, "gas")
+
+
+# ---- Verifier I3: social "not responding" is not medical ------------------------------------------------------------
+SOCIAL_NOT_RESPONDING = ["my roommate isn't responding to me about the utilities", "my sister hasn't replied about "
+                         "the holiday plans", "the lady who sold me the dresser isn't answering",
+                         "the guy I'm subletting to stopped responding to us about rent"]
+
+
+@pytest.mark.parametrize("msg", SOCIAL_NOT_RESPONDING)
+def test_social_not_responding_is_not_medical(msg):
+    assert scan(msg)[0] is None
+
+
+@pytest.mark.parametrize("msg", BODY_NOT_RESPONDING)
+def test_body_not_responding_still_medical_after_social_rule(msg):
+    assert scan(msg)[0] == "medical"
+
+
+# ---- Verifier I3: responder all-clear without an apostrophe / in Spanish -------------------------------------------
+@pytest.mark.parametrize("msg", ["the firefighters said its ok now", "fire dept said everythings fine",
+                                 "los bomberos dijeron que ya no hay peligro"])
+def test_responder_all_clear_variants_resolve(msg):
+    inc = Incident(kind="fire_smoke", started_at="t", opened_turn=0, last_seen_turn=0, kinds=["fire_smoke"])
+    assert classify(msg, inc) == "resolved"
+
+
+# ---- Verifier I3: Spanish worker / borrowed device ------------------------------------------------------------------
+@pytest.mark.parametrize("msg", ["soy el jardinero y uso el celular de la residente", "soy la señora de la limpieza",
+                                 "estoy usando la cuenta de mi vecina", "my client handed me his phone to check this",
+                                 "soy la cuidadora, me prestó su teléfono"])
+def test_spanish_and_handed_device_non_holder(msg):
+    assert states_not_account_holder(msg, "Jordan")
+
+
+@pytest.mark.parametrize("msg", ["mi jardín necesita agua", "la niñera de mi hijo viene hoy",
+                                 "my phone is the best way to reach me"])
+def test_spanish_and_device_near_misses(msg):
+    assert not states_not_account_holder(msg, "Jordan")
