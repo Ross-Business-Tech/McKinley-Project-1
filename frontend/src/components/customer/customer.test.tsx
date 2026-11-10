@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatResponse, Persona, ProposedAction } from "@/lib/types";
 
-import { CustomerApp } from "./CustomerApp";
+import { CustomerApp, sortStatusItems } from "./CustomerApp";
 
 const personas: Persona[] = [
   { id: "R001", label: "R001 · Marisol (synthetic resident)", kind: "resident", description: "Synthetic workbook resident at Heron Lake Apartments.", synthetic: true },
@@ -322,5 +322,61 @@ describe("CustomerApp", () => {
     await screen.findByText("Here's your request.");
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Actually it's the bathroom" })).toBeEnabled();
+  });
+});
+
+
+describe("Sprint 5.1 UI fixes", () => {
+  it("marks a failed Send as not sent, announces it, and retries the same card", async () => {
+    let fail = true;
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const base = globalThis.fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/actions/confirm") && fail) { fail = false; return new Response("{}", { status: 500 }); }
+      return base(url, init);
+    }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    expect((await screen.findAllByText(/That didn't save/)).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("choice").parentElement).toHaveTextContent("Not sent");
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent(/That didn't save/);
+    await user.click(screen.getByRole("button", { name: /Send again/ }));
+    expect(await screen.findByText(/Submitted, waiting for staff review/)).toBeInTheDocument();
+  });
+
+  it("shows 'Ready to send', hides demo-system rows, and gives a sent card one honest line", async () => {
+    const card = { ...readyCard, fields: [...readyCard.fields,
+      { key: "who", label: "Account", value: "Signed-in resident (demo account)", source: "on_file" as const },
+      { key: "contact_route", label: "Contact route", value: "Not collected in this prototype", source: "assistant" as const }] };
+    live(() => resp({ reply: "Here's your request.", action: card }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    const group = await screen.findByRole("group", { name: "Repair request" });
+    expect(within(group).getByText("Ready to send")).toBeInTheDocument();
+    expect(within(group).queryByText(/demo account/)).not.toBeInTheDocument();
+    expect(within(group).queryByText(/Not collected in this prototype/)).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Send repair request" }));
+    expect(await screen.findByText(/No McKinley staff will see it or be notified/)).toBeInTheDocument();
+  });
+
+  it("never pins more than three urgent rows and always shows the newest request", async () => {
+    const status_items = [
+      ...Array.from({ length: 6 }, (_, i) => ({ reference: `DEMO-TASK-10${i}`, title: `Alert ${i}`, status: "Urgent; in the office queue", opened: "2026-11-10", source: "prototype_store" as const, note: null })),
+      { reference: "DEMO-WO-1080", title: "Bathroom sink", status: "Submitted, waiting for staff review", opened: "2026-11-10", source: "prototype_store" as const, note: null },
+    ];
+    live(() => resp({ reply: "Here are your open requests.", status_items }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "check my requests{Enter}");
+    const list = await screen.findByRole("list", { name: "Your open requests" });
+    expect(within(list).getByText("Bathroom sink")).toBeInTheDocument();
+    expect(within(list).getAllByText(/Urgent/).length).toBe(3);
+    expect(sortStatusItems(status_items)[0].status).toMatch(/^Urgent/);
   });
 });

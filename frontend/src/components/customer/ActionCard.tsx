@@ -43,7 +43,7 @@ export function ActionCard({
   const declined = state === "declined" && !submitted;
   const base = actionTone(action);
   const tone: StatusTone = declined ? "declined" : base === "sent" ? "submitted" : base;
-  const stageText = declined ? t.notSent : submitted && action.record ? action.record.status_label : t.stage[action.stage];
+  const stageText = declined ? t.notSent : submitted && action.record ? t.statusText(action.record.status_label) : t.stage[action.stage];
   const shownFields = action.fields.filter((f) => f.value);
   const open = !declined && !submitted;
   const urgent = tone === "urgent";
@@ -89,7 +89,8 @@ export function ActionCard({
         </p>
       )}
 
-      {!declined && <p className="mt-2 text-sm text-mk-muted">{action.note}</p>}
+      {/* A sent card gets one honest line instead of the backend's "Prototype…" note next to "waiting for review". */}
+      {!declined && <p className="mt-2 text-sm text-mk-muted">{submitted ? t.sentDemoNote : action.note}</p>}
 
       {open && action.stage === "ready" && action.confirm_label && (confirmAvailable || cancelAvailable) && (
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -123,11 +124,14 @@ export function ActionCard({
 const ENGLISH_VALUE =
   /\b(the|and|by|prefers?|afternoons?|mornings?|evenings?|weekdays?|weekends?|email|phone|text|chat|am|pm|kitchen|bathroom|bedroom|living room|hallway|heating|cooling|system)\b/i;
 
+/** Rows that describe the demo system rather than the request: not shown to customers (staff console keeps them). */
+const SYSTEM_ONLY = /^(not collected in this prototype|no se recoge en este prototipo|signed-in resident \(demo account\)|signed in(?: as [^()]+)? \(demo account\))$/i;
+
 function FieldList({ fields, t, onFileLabel }: { fields: ProposedAction["fields"]; t: UIStrings; onFileLabel?: string }) {
   const spanish = t.lang === "es";
   return (
     <dl className="mt-3 divide-y divide-mk-line border-y border-mk-line">
-      {fields.map((f) => (
+      {fields.filter((f) => !SYSTEM_ONLY.test(f.value ?? "")).map((f) => (
         // Phone: label + source on the first row, value below. Desktop: three columns. The dt is the label only.
         <div key={f.key} className="grid grid-cols-[1fr_auto] gap-x-3 py-2 sm:grid-cols-[9.5rem_1fr_auto] sm:items-baseline">
           <dt className="col-start-1 row-start-1 text-sm text-mk-muted">{f.label}</dt>
