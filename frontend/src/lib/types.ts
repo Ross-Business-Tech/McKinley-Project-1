@@ -310,6 +310,8 @@ export interface Health {
   database?: "sqlite" | "postgres";
   resident_source?: string | null;
   is_mock?: boolean;
+  // false = this backend has no demo personas (APP_ENV=hosted): hide the demo sign-in, guest only
+  demo_personas_enabled?: boolean;
 }
 
 export interface EvalCase {

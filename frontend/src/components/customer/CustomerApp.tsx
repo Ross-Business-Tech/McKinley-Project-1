@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowUp, ChevronRight, Info, MessageSquareText, Phone, R
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { ApiError, LIVE_BACKEND_CONFIGURED, api, loadDemoSnapshot } from "@/lib/api";
+import { ApiError, LIVE_BACKEND_CONFIGURED, api, demoSignInAvailable, loadDemoSnapshot } from "@/lib/api";
 import {
   GUEST,
   type Identity,
@@ -16,6 +16,7 @@ import {
   formatDate,
   greeting,
   journeyPersonaIds,
+  providerLabel,
   loadSession,
   saveConversation,
   saveSession,
@@ -31,7 +32,7 @@ import { StatusPill, statusTone } from "./StatusPill";
 
 type Boot =
   | { mode: "loading" }
-  | { mode: "live"; identities: Identity[]; mock: boolean | null }
+  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean }
   | { mode: "preview"; identities: Identity[]; journeys: Journey[] }
   | { mode: "error"; message: string };
 
@@ -47,6 +48,7 @@ interface Msg {
   cleared?: string; // assistant message confirming a card of this kind was not sent
   restored?: boolean; // brought back after a reload: never re-announced as a new alert
   choice?: boolean; // a button the person pressed (Send / Don't send), shown on their side
+  retryKind?: ActionKind; // a failed Send: the error box retries the same card
 }
 
 interface SavedSession {
@@ -63,8 +65,14 @@ const mid = () => `m${++counter}`;
 async function boot(): Promise<Boot> {
   try {
     const personas = await api.personas();
-    const health = await api.health().catch(() => null); // only for the "About this demo" line
-    return { mode: "live", identities: toIdentities(personas), mock: health ? health.is_mock ?? health.provider === "mock" : null };
+    const health = await api.health().catch(() => null); // "About this demo" line + whether demo sign-in exists
+    const demoSignIn = demoSignInAvailable(personas, health);
+    return {
+      mode: "live",
+      identities: demoSignIn ? toIdentities(personas) : [GUEST],
+      mock: health ? health.is_mock ?? health.provider === "mock" : null,
+      demoSignIn,
+    };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE") {
       return { mode: "error", message: e instanceof ApiError ? e.message : "The assistant could not start." };
@@ -148,6 +156,7 @@ export function CustomerApp() {
     setJourney(null);
     setStep(0);
     setDraft("");
+    setAnnouncement("");
     requestAnimationFrame(() => inputRef.current?.focus()); // the Start over button disappears: never leave focus on <body>
   }, []);
 
@@ -264,7 +273,7 @@ export function CustomerApp() {
     } else if (last.result?.ok) {
       // next steps after Send: residents can check status; "Report a repair" only follows a repair
       const k = last.result.action?.kind;
-      const next = identity.kind !== "resident" ? [] : k === "maintenance_request" ? t.afterSend : t.afterSend.slice(0, 1);
+      const next = identity.kind !== "resident" ? t.afterSendGuest : k === "maintenance_request" ? t.afterSend : t.afterSend.slice(0, 1);
       chips = next.map((s) => ({ label: s, send: s }));
     } else if (last.cleared) {
       const next = identity.kind === "resident" && last.cleared === "maintenance_request" ? t.afterDecline : t.afterDecline.slice(0, 1);
@@ -307,14 +316,18 @@ export function CustomerApp() {
     // A retry replaces its failed copy and the error box (no stale "Not sent" bubble above the one that went through).
     setMessages((m) => [...m.filter((x) => !x.error && !(x.failed && x.text === message)), { id: userId, role: "user", text: message, lang }]);
     setBusy(true);
+    let readyCard = false;
     try {
       const response = await api.chat({ message, persona_id: identity.id || null, mode: "aware", session_id: sessionId });
+      // the backend starts a new conversation if this session id belonged to another sign-in: follow it
+      if (response.session_id && response.session_id !== sessionId) setSessionId(response.session_id);
       setMessages((m) => [
         ...m.map((x) => (x.id === userId ? { ...x, lang: response.language ?? x.lang } : x)),
         { id: mid(), role: "assistant", text: response.reply, lang: response.language, response },
       ]);
       setTurns((t) => [...t, { message, response }]);
       announce(response);
+      readyCard = response.action?.stage === "ready";
     } catch (e) {
       const why = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE" ? t.unreachable : t.serverError;
       const text = `${why} ${t.tryAgain}`;
@@ -325,7 +338,8 @@ export function CustomerApp() {
       setAnnouncement(text);
     } finally {
       setBusy(false);
-      requestAnimationFrame(() => inputRef.current?.focus()); // keep typing where you were (keyboard stays open)
+      // keep typing where you were (keyboard stays open); a card to check gets focus instead, so Send is in reach
+      requestAnimationFrame(() => (readyCard ? lastAssistantRef.current : inputRef.current)?.focus());
     }
   }
 
@@ -369,7 +383,13 @@ export function CustomerApp() {
       setAnnouncement(`${t.assistantSaid} ${result.message}${ref && !result.message.includes(ref) ? ` ${t.reference} ${ref}.` : ""}`);
       setTurns((t) => [...t, { confirm: kind, result }]);
     } catch {
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: t.notSaved, lang }]);
+      // The press didn't reach the office queue: say so on the person's own turn, announce it, offer a retry.
+      setMessages((m) => {
+        const idx = m.map((x) => !!x.choice).lastIndexOf(true);
+        const marked = idx >= 0 ? m.map((x, i) => (i === idx ? { ...x, failed: true } : x)) : m;
+        return [...marked, { id: mid(), role: "assistant", text: t.notSaved, lang, error: { retry: "" }, retryKind: kind }];
+      });
+      setAnnouncement(t.notSaved);
     } finally {
       setBusy(false);
       requestAnimationFrame(() => lastAssistantRef.current?.focus());
@@ -438,39 +458,50 @@ export function CustomerApp() {
   // Plain reply-source line for "About this demo": from the last reply if there is one, else from the backend.
   const replySource = !lastResponse
     ? state.mode === "live" && state.mock !== null ? (state.mock ? t.replyMock : t.replyAi) : preview ? t.replyMock : ""
-    : lastResponse.is_mock ? t.replyMock : lastResponse.reply_source === "model" ? t.replyAi : "";
+    : lastResponse.is_mock ? t.replyMock
+      : lastResponse.reply_source === "model" ? t.replyModel(providerLabel(lastResponse.provider, lastResponse.model))
+        : t.replyTemplate(providerLabel(lastResponse.provider, lastResponse.model));
 
   return (
     <Frame
+      subtitle={t.subtitle}
       demoStrip={
         <section aria-label={t.demoButton} lang={lang} className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
           <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-4">
-            <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
-              {t.demoSignIn}
-            </label>
-            <select
-              id={`${inputId}-who`}
-              value={identity.id}
-              aria-describedby={whoHintId}
-              onChange={(e) => changeIdentity(e.target.value)}
-              className="mk-focus h-11 min-w-0 flex-1 rounded-md border border-mk-line-strong bg-mk-surface px-2.5 text-base sm:max-w-80"
-            >
-              {groups.map((g) => {
-                const opts = state.identities.filter((i) => i.group === g);
-                return opts.length ? (
-                  <optgroup key={g} label={g}>
-                    {opts.map((i) => (
-                      <option key={i.id || "guest"} value={i.id}>
-                        {i.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null;
-              })}
-            </select>
-            <span id={whoHintId} className="sr-only" lang={lang}>
-              {t.signInHint}
-            </span>
+            {state.mode === "preview" || state.demoSignIn ? (
+              <>
+                <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
+                  {t.demoSignIn}
+                </label>
+                <select
+                  id={`${inputId}-who`}
+                  value={identity.id}
+                  aria-describedby={whoHintId}
+                  onChange={(e) => changeIdentity(e.target.value)}
+                  className="mk-focus h-11 min-w-0 flex-1 rounded-md border border-mk-line-strong bg-mk-surface px-2.5 text-base sm:max-w-80"
+                >
+                  {groups.map((g) => {
+                    const opts = state.identities.filter((i) => i.group === g);
+                    return opts.length ? (
+                      <optgroup key={g} label={g}>
+                        {opts.map((i) => (
+                          <option key={i.id || "guest"} value={i.id}>
+                            {i.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
+                </select>
+                <span id={whoHintId} className="sr-only" lang={lang}>
+                  {t.signInHint}
+                </span>
+              </>
+            ) : (
+              <p data-testid="guest-only" className="min-h-11 py-2.5 text-sm font-medium text-mk-muted">
+                {t.guestOnly}
+              </p>
+            )}
             <button
               ref={aboutBtnRef}
               type="button"
@@ -503,7 +534,7 @@ export function CustomerApp() {
               <div className="rounded-lg bg-mk-paper p-4">
                 <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
                 <p className="mt-1 text-sm text-mk-muted">
-                  {t.prototype} {replySource} {t.signInHint}
+                  {t.prototype} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4">
                   <Link href="/staff" prefetch={false} className="mk-focus inline-flex min-h-11 items-center font-medium text-mk-brand-hover underline underline-offset-2">
@@ -554,7 +585,7 @@ export function CustomerApp() {
         </h2>
         <div className="space-y-5">
           {messages.map((m, i) => (
-            <div key={m.id} data-msg={m.role} className="scroll-mt-3 sm:scroll-mt-36">
+            <div key={m.id} data-msg={m.role} className="scroll-mt-3 sm:[@media(min-height:481px)]:scroll-mt-36">
             <Message
               msg={m}
               t={UI[m.lang ?? lang]}
@@ -754,7 +785,7 @@ function cardStatesFor(messages: Msg[]): (CardState | null)[] {
   return out;
 }
 
-function Frame({ children, demoStrip }: { children: React.ReactNode; demoStrip?: React.ReactNode }) {
+function Frame({ children, demoStrip, subtitle }: { children: React.ReactNode; demoStrip?: React.ReactNode; subtitle?: string }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="sm:sticky sm:top-0 sm:z-20 [@media(max-height:480px)]:static">
@@ -762,7 +793,7 @@ function Frame({ children, demoStrip }: { children: React.ReactNode; demoStrip?:
           <div className="mx-auto flex w-full max-w-2xl items-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 sm:px-4">
             <h1 className="flex min-w-0 flex-wrap items-baseline gap-x-3 leading-tight">
               <span className="font-heading text-[1.4rem] font-semibold tracking-[-0.01em]">McKinley</span>
-              <span className="font-heading text-base font-medium">Resident and leasing help</span>
+              <span className="font-heading text-base font-medium">{subtitle ?? "Resident and leasing help"}</span>
             </h1>
           </div>
         </header>
@@ -844,7 +875,7 @@ function Message({
         </p>
         <button
           type="button"
-          onClick={() => onRetry(msg.error!.retry)}
+          onClick={() => (msg.retryKind ? onConfirm(msg.retryKind) : onRetry(msg.error!.retry))}
           className="mk-focus mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-line-strong bg-mk-surface px-4"
         >
           <RotateCcw aria-hidden className="size-4" /> {t.sendAgain}
@@ -960,16 +991,23 @@ const VISIBLE_RECENT = 3;
 /** Urgent and follow-up-owed first, then the most recent; the rest behind "Show all". */
 export function sortStatusItems(items: StatusItem[]): StatusItem[] {
   const rank = (s: StatusItem) => ({ urgent: 0, owed: 1 } as Record<string, number>)[statusTone(s.status)] ?? 2;
-  return [...items].sort((a, b) => rank(a) - rank(b) || (b.opened ?? "").localeCompare(a.opened ?? ""));
+  return [...items].sort((a, b) => rank(a) - rank(b) || newestFirst(a, b));
+}
+
+/** Newest first: by date, then by reference (references on the same day increase). */
+function newestFirst(a: StatusItem, b: StatusItem): number {
+  return (b.opened ?? "").localeCompare(a.opened ?? "") || b.reference.localeCompare(a.reference, undefined, { numeric: true });
 }
 
 function StatusList({ items, t }: { items: StatusItem[]; t: UIStrings }) {
   const [all, setAll] = useState(false);
   const listId = useId();
   const sorted = sortStatusItems(items);
-  const pinned = Math.min(3, sorted.filter((s) => statusTone(s.status) !== "submitted").length); // never a wall of alerts
-  const limit = pinned + VISIBLE_RECENT;
-  const shown = all ? sorted : sorted.slice(0, limit);
+  // Never a wall of alerts: at most 3 urgent/owed rows, then the newest of everything else (what you just sent).
+  const pinnedRows = sorted.filter((s) => statusTone(s.status) !== "submitted").slice(0, 3);
+  const rest = items.filter((s) => statusTone(s.status) === "submitted").sort(newestFirst).slice(0, VISIBLE_RECENT);
+  const limit = pinnedRows.length + rest.length;
+  const shown = all ? sorted : [...pinnedRows, ...rest];
   return (
     <div className="mt-3">
       <ul id={listId} aria-label={t.openRequests} className="divide-y divide-mk-line rounded-xl border border-mk-line bg-mk-surface">
@@ -985,7 +1023,7 @@ function StatusList({ items, t }: { items: StatusItem[]; t: UIStrings }) {
                 </p>
               </div>
               <StatusPill tone={tone} className="self-start">
-                {tone === "owed" ? t.followUpOwed : s.status.split(";")[0]}
+                {tone === "owed" ? t.followUpOwed : t.statusText(s.status.split(";")[0])}
               </StatusPill>
             </li>
           );

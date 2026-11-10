@@ -41,7 +41,7 @@ Selection: `DECISION_GATE_PROVIDER=rules|llm|jev` (default `rules`). `DECISION_G
 
 **B. Structured LLM** (`llm_gate.py`). One extra call through the existing `LLMGateway`, using a gate-specific JSON schema (providers gained an optional `schema` argument). The call has a short timeout and **no retries**, so it fails fast to rules. Output is validated strictly: an intent or urgency outside the vocabulary is rejected, not guessed, and unknown flags are dropped.
 
-**C. Jev** (`jev_gate.py`). `POST {TYPESAFE_BASE_URL}/v1/systemone` with `{model, state, questions}`, using `choice` questions for intent and urgency and a `noul` question for needs_human. This follows the TypeSafe quickstart (https://jev-llm.com/api/quickstart/). The **response schema is not publicly documented**, so the parser accepts a few plausible shapes and raises `JEV_UNEXPECTED_RESPONSE` for anything else, which falls back to rules. Without `TYPESAFE_API_KEY` it reports `JEV_NOT_CONFIGURED` and falls back. The `typesafe-sdk` package is deliberately not a dependency.
+**C. Jev** (`jev_gate.py`). `POST {TYPESAFE_BASE_URL}/v1/systemone` with `{model, state, questions}`, using `choice` questions for intent and urgency and a `noul` question for needs_human. The contract was checked against the official docs (https://docs.typesafe.ai/api, OpenAPI at https://api.typesafe.ai/openapi.json) in Sprint 5.1. Answers come back as choice `{choice, confidence, probabilities}` and noul `{noul: 0..1}`, plus `usage` (input $0.042 per 1M tokens; output free). Anything else raises `JEV_UNEXPECTED_RESPONSE`, which falls back to rules. Two synthetic live calls succeeded in 80–150 ms, and the rules floor stayed authoritative (a gas smell remained an emergency). Without `TYPESAFE_API_KEY` it reports `JEV_NOT_CONFIGURED` and falls back. The `typesafe-sdk` package is deliberately not a dependency.
 
 ## Safety floor (`policy.py`): what no external gate can change
 
@@ -79,7 +79,7 @@ Keep **rules as the default and the permanent safety floor**. An LLM or Jev gate
 - paraphrased intents;
 - messages that contain two requests.
 
-Even then, it should only add to the floor, never replace it. Jev's typed choice/score/yes-no questions map cleanly onto this interface, and its vendor-reported latency (70–500 ms) is lower than a free LLM's. However, it needs a paid key, the response schema is undocumented, and it is early access. Evaluate it only after someone gets a key and runs `run_gate_evals --providers rules,jev` on a larger, independently labelled scenario set.
+Even then, it should only add to the floor, never replace it. Jev's typed choice/score/yes-no questions map cleanly onto this interface, and its vendor-reported latency (70–500 ms) is lower than a free LLM's. However, it needs a paid key, it is early access, and its data-processing terms must be reviewed before any non-synthetic message is sent (the schema is now documented and matched; see above). Evaluate it only after someone gets a key and runs `run_gate_evals --providers rules,jev` on a larger, independently labelled scenario set.
 
 ## Known limitations
 

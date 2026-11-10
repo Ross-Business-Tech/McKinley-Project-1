@@ -11,6 +11,10 @@ to work here). The project is a **prototype, not production ready**.
 - [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) — viewport matrix, findings, fixes, open issues
 - [design/TASTE_SKILL_REVIEW.md](design/TASTE_SKILL_REVIEW.md) — which design skills were used and how
 - [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md) — what changed in each sprint and what was tested
+- [evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md](evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md) — Sprint 5.1: live OpenRouter journeys, simulators, judges, fixes, remaining failures
+- [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md) — Sprint 5: what is verified with OpenRouter (nothing yet), with Mock, Gemini-ready
+- [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md) — conversation state, card lifecycle, tour states
+- [development/GEMINI_ACCEPTANCE_CHECKLIST.md](development/GEMINI_ACCEPTANCE_CHECKLIST.md) — what to run the moment a Gemini key exists
 - [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
   [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
 

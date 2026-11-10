@@ -48,6 +48,7 @@ class Scenario:
     risk: Risk = "medium"
     tags: tuple[str, ...] = field(default_factory=tuple)
     channel: str = "web_chat"  # "sms" for text-message scenarios (STOP keywords only apply there)
+    suite: str = "persona"  # the 35 adaptive customer journeys live in journeys.py (suite "journeys")
 
 
 W = frozenset

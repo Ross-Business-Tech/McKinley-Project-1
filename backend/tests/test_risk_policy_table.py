@@ -23,7 +23,9 @@ CASES = [  # (deterministic, semantic, prior hazards, expected rule, expected re
     (DeterministicRisk(mentioned_kind="gas", framing="past"), sem("none"), [], "R5", "safety_info", "info"),
     (DeterministicRisk(care="unwell"), sem("none", conf=0.99), [], "R6", "care_line", "unwell"),
     (DeterministicRisk(care="danger"), sem("none", conf=0.5), [], "R7", "care_line", "danger"),
-    (DeterministicRisk(care="danger"), sem("none", conf=0.95), [], "R7-suppressed", "none", None),
+    # Sprint 7 (stricter, moved): this case used to be "R7-suppressed" (semantic none at >= 0.8 removed the broad 911
+    # line). The semantic layer may now only add guidance, so the line is kept and the disagreement recorded.
+    (DeterministicRisk(care="danger"), sem("none", conf=0.95), [], "R7", "care_line", "danger"),
     (DeterministicRisk(care="danger"), sem("none", conf=0.99), ["personal_safety"], "R9e", "full_alert", None),
     (DeterministicRisk(), sem("none"), ["self_harm"], "R9", "care_line", "distress"),
     (DeterministicRisk(), sem("none"), [], "R8", "none", None),

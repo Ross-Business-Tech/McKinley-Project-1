@@ -1,5 +1,71 @@
 # Implementation changelog
 
+## Sprint 6: robust workflow orchestration, safety and authorization hardening (2026-11-10)
+Branch `feat/robust-workflow-safety-auth`. Report: [evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md).
+
+- **Conversation:**
+  - `app/understanding.py` reads each message once into a typed `Understanding`. Rules are the default; the
+    optional model pass is validated and may only add.
+  - `app/workflow_state.py` is an explicit state machine of 8 states with a transition table.
+  - Field-targeted corrections, two-issue splits, partial cancel, hold, offer acceptance, history questions and
+    changes after Send all go through these two layers. Saving stays idempotent.
+- **Authorization:**
+  - `app/auth.py` resolves the principal on the server; `ScopedStore` is deny-by-default.
+  - `session_bindings` (migration 0003, RLS on) binds a session to its persona.
+  - Hosted mode is public-information only, and a non-holder statement cuts account data at the store.
+- **Safety:**
+  - Concept co-occurrence detection, and incident-specific notices (no elevator text for an injury).
+  - A persistent incident state machine (follow-ups R10, calm line R10q), and clause splitting for live reports
+    inside questions.
+  - A stricter retraction rule in the final round.
+- **Tests:**
+  - backend 1315 → 2350 passed (9 skipped); frontend 49 → 54; phone test 14/14; axe 0 violations;
+  - journeys 27/8/0 → 29/6/0;
+  - independent holdout (109 emergencies) full alert 70% → 76%, any guidance 79% → 85%, security 40/41 → 41/41.
+- **Live OpenRouter: BLOCKED** by the free tier's daily limit (HTTP 429). 11 development calls succeeded or timed
+  out before the limit; no live journey ran.
+- **Verdict:** supervised demo only. 16 immediate-danger holdout misses are release-blocking, and there is no real
+  sign-in.
+
+## Sprint 5.1: live OpenRouter, customer-journey simulation, workflow fixes (2026-11-10)
+Branch `feat/live-conversation-workflows`. Report: [evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md](evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md).
+
+- **Live calls:**
+  - 46 real OpenRouter calls on one fixed model, `nvidia/nemotron-3.5-super-vl:free`, with no rate limits.
+  - A central call budget and a metadata-only ledger.
+  - `OPENROUTER_REASONING_EFFORT=none` made the slowest reply 48 s → 3.4 s.
+  - 16 TypeSafe/Jev calls; the adapter now matches the official contract.
+- **Conversation:** a typed dialogue-act step (`app/dialogue.py`) runs before any card changes. Only Send or an
+  explicit "send it" saves. Corrections, side questions, undo, changes after Send and language switching are all
+  reworked.
+- **Safety:** CO, poisoning, fall, door-handle and welfare detection; a session-long non-holder disclaimer;
+  validator fixes for the live model.
+- **UI:** failed Send, the status list, Spanish labels, clearer card wording, landscape scroll and focus.
+- **Tests:**
+  - a 35-journey adaptive suite (`--suite journeys`): 21/9/5 → 27/8/0 (PASS/WARN/FAIL);
+  - judge F mean per reply 2.91 → 3.89;
+  - backend 1315 passed, 9 skipped; frontend 49; phone test 14/14;
+  - holdout full alert 50/63 → 50/63, any guidance 53/63 → 54/63.
+- **Verdict:** a supervised demo only. Release-blocking safety and privacy gaps remain.
+
+## Sprint 5: conversation workflows, provider contracts, Gemini readiness (2026-11-10)
+Branch `feat/live-conversation-workflows`. Full report: [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md).
+
+- **No live model call.** There is no OpenRouter or Gemini key here, so the smoke and A/B/C runners are built,
+  tested offline and BLOCKED.
+- **Provider contract:** 102 tests show identical application behaviour on OpenRouter and Gemini. Error mapping
+  now matches across adapters. `app/llm/contracts.py` gives a named facade.
+- **Live scripts:** `app.live_eval.smoke` (8 calls at most) and `docs/development/GEMINI_ACCEPTANCE_CHECKLIST.md`.
+- **Conversation:** two rounds of deterministic planner fixes from the resident and prospect simulators and the UX
+  judge, re-verified by an independent replay. See [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md).
+- **UI:** "About this demo" names the reply source (OpenRouter, Gemini or Mock, plus the served model).
+- **Safety:** an independent red-team holdout gave full alert 50/63 and any guidance 53/63. 10 misses are
+  release-blocking. No safety rule changed, and the crisis follow-up wording needs McKinley review.
+- **Tests:**
+  - backend 1002 passed, 9 skipped; frontend 46;
+  - phone test 14/14 (mock);
+  - red-team holdout unchanged before and after the conversation changes.
+
 ## Sprint 4: McKinley brand redesign and mobile-first chat (2026-11-10)
 Branch `feat/mckinley-mobile-brand-redesign`. It is built on `feat/gemini-supabase-deployment`, which carries the
 Gemini, Supabase, Render and Vercel preparation, and `origin/development` had nothing newer. Prototype, made-up data.

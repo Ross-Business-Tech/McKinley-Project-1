@@ -54,11 +54,15 @@ Backend variables and secrets: [Render guide](deployment/render.md) and `backend
 website, the repository, a pull request or a chat.
 
 ## Blockers before any real resident uses it (unchanged by this work)
-- **Missed emergencies:** independent fresh holdout 64.5% full alert / 78.5% any guidance; 14 immediate-danger
-  messages got nothing ([safety evaluation](safety/safety-evaluation.md)). Gemini may run as the semantic safety
-  classifier; it never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8), and it has not been evaluated.
+- **Missed emergencies:** Sprint 6 independent holdout 76% full alert / 85% any guidance; 16 of 109
+  immediate-danger messages got nothing ([SAFETY_STATE_AND_EVALUATION.md §7](safety/SAFETY_STATE_AND_EVALUATION.md);
+  earlier holdouts: [safety evaluation](safety/safety-evaluation.md)). Gemini may run as the semantic safety
+  classifier; it never removes a rules alert or care line (Sprint 7), and it has not been evaluated.
 - **No authentication:** the demo sign-in (`persona_id`) is chosen by the browser; staff tools are protected only by a
-  loopback/token boundary. Real resident and staff sign-in, enforced on the backend, is required.
+  loopback/token boundary. Real resident and staff sign-in, enforced on the backend, is required. Since Sprint 6,
+  `APP_ENV=hosted` turns demo personas off (`DEMO_PERSONAS_ENABLED`), so a hosted backend serves **public
+  information only** and never reads resident records ([security/AUTHORIZATION_BOUNDARIES.md](security/AUTHORIZATION_BOUNDARIES.md)).
+  Do not add a bypass; keep real resident data disconnected until real sign-in exists.
 - **Unapproved scripts:** emergency and escalation wording (I-17/I-18) are team drafts; McKinley must approve them.
 - **No live-model evaluation:** Gemini has never been called; the model ID is unverified on a real key; the Gemini
   semantic safety classifier and reply quality are unevaluated. All results so far are mock.

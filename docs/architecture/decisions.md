@@ -103,7 +103,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 - Safety behaviour must be deterministic and auditable.
 - The rules gate is free and instant.
 - No live model or Jev key was available to justify a model-first gate.
-- Jev requires a paid key and has an undocumented response schema.
+- Jev requires a paid key (the response schema is now documented and the adapter matches it, Sprint 5.1); it stays opt-in.
 
 ---
 

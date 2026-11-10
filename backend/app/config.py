@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     # local = a developer machine (defaults stay convenient). hosted = ANY shared deployment (Render, a team demo):
     # startup refuses unsafe settings (see hosted_problems). "hosted" does not mean production ready.
     app_env: Literal["local", "hosted"] = "local"
+    # Demo personas (the "Demo sign-in" picker) let anyone act as any SYNTHETIC account. That is NOT authentication.
+    # Unset = on for APP_ENV=local, off for hosted. DEMO_PERSONAS_ENABLED=true is refused on a hosted backend
+    # (hosted_problems). See app/auth.py and docs/security/AUTHORIZATION_BOUNDARIES.md.
+    demo_personas_enabled: bool | None = None
+    # Structured understanding layer (app/understanding.py): rules (default, deterministic) | model | auto. The model
+    # pass may only add acts/entities; it never mutates state, grants access or confirms a save.
+    understanding_provider: Literal["rules", "model", "auto"] = "rules"
+    understanding_timeout_seconds: float = 5.0
 
     # ---- default target used by /api/chat ----
     llm_provider: ProviderName = "openrouter"
@@ -49,6 +57,13 @@ class Settings(BaseSettings):
     # Thinking depth, pinned so a server-side default change can't silently alter evaluations. Empty = the model's
     # default (recorded as such). Levels per Google's thinking guide; verify which ones the model accepts.
     gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
+    # OpenRouter unified `reasoning` parameter. Empty = the model's default (not sent). "none" turns reasoning off;
+    # the other values set its effort. Recorded on every call; never changes the model.
+    openrouter_reasoning_effort: Literal["", "none", "minimal", "low", "medium", "high"] = ""
+    # Central live-call budget: 0 = unlimited. Counted across processes when LLM_CALL_LEDGER is set (one JSON line
+    # per real model call, metadata only: no prompts, no replies, no keys). Mock calls are never counted.
+    llm_call_budget: int = 0
+    llm_call_ledger: Path | None = None
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 
     # ---- evaluation targets offered in the dashboard: "provider:model" comma-separated ----
@@ -76,7 +91,7 @@ class Settings(BaseSettings):
     typesafe_base_url: str = "https://api.typesafe.ai"
     # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
-    # per non-baseline turn. It never removes a rules alert; it may only drop the broad 911 care line (policy R7).
+    # per non-baseline turn. It can only add guidance; it never removes a rules alert or care line (Sprint 7, R7 DRAFT).
     safety_classifier: Literal["auto", "off"] = "auto"
     safety_classifier_target: str | None = None  # provider:model; defaults to the chat default target
     safety_classifier_timeout_seconds: float = Field(default=6, gt=0, le=60)
@@ -107,6 +122,13 @@ class Settings(BaseSettings):
     def resolve(self, p: Path) -> Path:
         return p if p.is_absolute() else BACKEND_DIR / p
 
+    @property
+    def demo_personas_allowed(self) -> bool:
+        """Effective switch: demo personas only on a local deployment (never on APP_ENV=hosted)."""
+        if self.app_env == "hosted":
+            return False
+        return True if self.demo_personas_enabled is None else self.demo_personas_enabled
+
     def hosted_problems(self) -> list[str]:
         """Settings that are unsafe on a shared deployment. Messages never contain secret values."""
         if self.app_env != "hosted":
@@ -126,6 +148,9 @@ class Settings(BaseSettings):
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
+        if self.demo_personas_enabled:
+            out.append("DEMO_PERSONAS_ENABLED must be false: demo personas are not authentication, so a shared "
+                       "deployment must not let anyone act as a resident account")
         if not (self.database_url and self.database_url.get_secret_value().strip()):
             out.append("DATABASE_URL must be set (a hosted backend's local SQLite file is lost on every restart)")
         return out

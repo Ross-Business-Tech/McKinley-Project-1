@@ -62,7 +62,7 @@ that send the header.
 Before any routing or generation, `risk.pipeline.assess` combines the deterministic rules (`risk/detect.py`, which
 wraps `emergency.scan`: keywords, meaning-level concepts, framing, negation, a 3-turn window) with an optional
 semantic classifier (`risk/classifier.py`, structured output through the gateway; runs only when a key exists and the
-target is not the mock). `risk/policy.decide` applies rules R1–R9e: the semantic layer never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8); failure
+target is not the mock). `risk/policy.decide` applies rules R1–R9e: the semantic layer never removes a rules alert or care line (Sprint 7: the old R7 exception is removed; policy text is a DRAFT for McKinley approval); failure
 marks the turn `degraded`, never "safe". `risk/responses.select` picks fixed team-draft text (911 / 988 / Poison Help /
 maintenance line). A full alert forces the gate to `emergency` and the planner saves one urgent prototype note per
 hazard (nobody is paged). Other layers still apply: input redaction and tag stripping, pre-model policy gates

@@ -23,12 +23,38 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 - **Safety:** on a fresh, independent test set the emergency rules gave a full alert for 64.5% of emergencies and
   some guidance for 78.5%; 14 immediate-danger messages got nothing. This is release-blocking
   ([safety evaluation](docs/safety/safety-evaluation.md)). McKinley has not approved the emergency scripts.
-- **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication.
+- **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication. Since Sprint 6
+  the server decides what a caller may see (deny by default), binds each conversation to one persona, and turns
+  demo sign-in off in hosted mode (public information only).
 - **No integrations:** no Yardi, CRM, work orders, paging, SMS/email or calendar. Nobody is ever notified.
 - **Models:** exactly one historical run used a real model (2026-11-01, sprint-1 pipeline). Everything since is the
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Sprint 6 (2026-11-10):**
+  - **Conversation:** each message is understood once into a typed object, and an explicit state machine decides
+    what may change. Corrections replace the field that was named, a side question never corrupts the open
+    request, and only Send or "send it" saves (never twice).
+  - **Privacy:** a server-side principal with deny-by-default data access. 41/41 independent API attacks were
+    blocked at the data layer.
+  - **Safety:** on a new independent holdout of 109 emergencies, full alert went 70% → 76% and any guidance 79% →
+    85%. **16 immediate-danger messages still get nothing, which is release-blocking.**
+  - **Journeys:** 29 of 35 PASS with 0 FAIL (Sprint 5.1: 27).
+  - **Live OpenRouter: BLOCKED.** The free model's daily limit returned HTTP 429 all sprint.
+  - **Fit for a supervised demo only** ([Sprint 6 report](docs/evaluation/SPRINT6_RESULTS.md)).
+- **Sprint 5.1 (2026-11-10):**
+  - **Live OpenRouter verified:** 46 real calls, all on `nvidia/nemotron-3.5-super-vl:free`.
+  - **Conversation reworked:** independent simulators drove two fix rounds and a typed dialogue-act step was
+    added. Only Send or "send it" saves.
+  - **Results:** the journey suite went 21 → 27 of 35 PASS with 0 FAIL, and the held-out safety set went 53 → 54
+    of 63 any-guidance.
+  - **Fit for a supervised demo only**; safety and privacy blockers remain
+    ([Sprint 5.1 report](docs/evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md)).
+- **Sprint 5 (2026-11-10):**
+  - The conversation workflows were reworked from simulator findings, verified with the **mock** only.
+  - OpenRouter and Gemini share a tested provider contract.
+  - **No live model call was made**, because there is no key. See [Sprint 5 report](docs/evaluation/SPRINT5_LIVE_CONVERSATION.md).
+  - A new independent safety holdout found **10/63 immediate-danger messages with no guidance**, which is release-blocking.
 - **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
   ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
 - **Static preview:** the here.now link has no backend; it replays recorded conversations (see below). It is not

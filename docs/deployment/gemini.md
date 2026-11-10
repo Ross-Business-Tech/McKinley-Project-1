@@ -17,7 +17,7 @@ pipeline, the decision gate (`DECISION_GATE_PROVIDER=llm`) and the semantic safe
 | Thinking | `GEMINI_THINKING_LEVEL` = minimal / low / medium / high pins the level (empty = model default, recorded as such) so a server default change can't alter an evaluation |
 | Retries | SDK retries 429/500/502/503/504 on the **same** model (`LLM_MAX_RETRIES`) |
 | No silent switching | served `model_version` is compared with the requested model; a different model raises `MODEL_SWITCHED` |
-| Errors | auth (401/403), not found (404), rate limit (429), bad request, server, timeout, connection, truncated, blocked/refused, empty → the gateway's standard codes |
+| Errors | 401 and 400 `API_KEY_INVALID` → `MODEL_AUTH_ERROR`, 403 → `MODEL_PERMISSION_DENIED` (same as OpenRouter), not found (404), rate limit (429), bad request, server, timeout, connection, truncated, blocked/refused, empty → the gateway's standard codes |
 | Usage | prompt tokens; output = visible answer + thinking (billed), both also recorded separately; cost left unknown (no invented prices) |
 | Network errors | the SDK uses `httpx2`; timeouts and connection errors from either httpx family map to `MODEL_TIMEOUT` / `MODEL_CONNECTION_ERROR`; anything else to `MODEL_API_ERROR` (never a raw 500) |
 
@@ -45,17 +45,32 @@ model exists for your key **without generating anything**: `uv run python -m app
   submit sensitive, confidential, or personal information"). Synthetic data is fine, but a public hosted demo sends
   whatever visitors type: use a billed key for public hosting, or say so on the site. Free tier is not offered in
   the EEA, Switzerland or the UK.
-- The semantic safety classifier's `confidence` is model-written: it can drop the broad 911 care line (policy R7)
-  at ≥ 0.8. Review how often that happens in the first live run.
+- The semantic safety classifier's `confidence` is model-written and is never used to remove guidance: since Sprint
+  7 the classifier can only add caution (the old R7 exception is gone). In the first live run, review how often it
+  disagrees with the rules (logged as a conflict) and how often it times out.
 - Billing: the live A/B/C runner refuses Gemini without `--allow-paid`.
 
 ## First live test (after the key is set)
+Full step-by-step list with pass/fail criteria: [`GEMINI_ACCEPTANCE_CHECKLIST.md`](../development/GEMINI_ACCEPTANCE_CHECKLIST.md).
 ```bash
 cd backend
 uv run python -m app.live_eval.preflight                     # model listed for this key? (no tokens spent)
+uv run python -m app.live_eval.smoke --provider gemini --allow-paid --max-calls 8   # 7 bounded calls, real app path
 uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --max-calls 30 --label gemini-v1
 uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --with-safety-classifier \
   --cases none --max-calls 30 --label gemini-safety-v1
 ```
 Then a person reviews the `pending` records (`evals/live/`), and a **fresh** independent safety holdout is run with
 `SAFETY_CLASSIFIER=auto` before anyone claims the semantic layer works (see `docs/safety/safety-evaluation.md`).
+
+## Provider contract (OpenRouter and Gemini behave the same to the app)
+`tests/test_provider_contract.py` runs one parametrised suite against both adapters (OpenRouter over
+`httpx.MockTransport`, Gemini over a fake `google-genai` client, the Mock where meaningful): system prompt delivery,
+history order and roles, each app schema passed as structured output (`app.llm.contracts`: reply, gate, risk), the
+same text parsing to the same `ModelOutput`, normalised usage (thinking counted in output tokens), served model and
+`MODEL_SWITCHED`, identical error codes / retryable flags / HTTP statuses, and the real callers (`LLMGate`,
+`SemanticRiskClassifier`, `run_turn`) on each adapter. Genuine differences are asserted explicitly, not skipped:
+temperature (OpenRouter only), schema name (OpenRouter only), cost (OpenRouter only; Gemini `None`), who retries
+(app vs SDK), provider-only errors (402 and errors inside a 200 body on OpenRouter; `API_KEY_INVALID` and prompt
+blocks on Gemini). The differences table is in the [acceptance checklist](../development/GEMINI_ACCEPTANCE_CHECKLIST.md).
+All of this is offline evidence about the adapters, not about Gemini's behaviour on a real key.

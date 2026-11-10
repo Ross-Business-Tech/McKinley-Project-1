@@ -7,6 +7,7 @@ call per scenario; `jev` needs TYPESAFE_API_KEY. Unavailable providers are repor
 import time
 from typing import Any
 
+from app.auth import TOOLING
 from app.chat_engine import EngineDeps, clean_message
 from app.evals import CASES
 from app.gates import GateContext
@@ -26,7 +27,7 @@ def evaluate_gates(deps: EngineDeps, providers: list[str]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for sc in gate_scenarios():
         msg = clean_message(sc["message"])
-        ctx = build_context(sc["persona_id"] or None, msg, deps.workbook)
+        ctx = build_context(sc["persona_id"] or None, msg, deps.workbook, principal=TOOLING)
         gctx = GateContext(audience=ctx.audience, identity_verified=ctx.persona_kind == "resident" and ctx.record_found,
                            record_found=ctx.record_found, topics=ctx.topics,
                            context_flags=frozenset(f.name for f in ctx.fields if f.name.endswith("_flag")))

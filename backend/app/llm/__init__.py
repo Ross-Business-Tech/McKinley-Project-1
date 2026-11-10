@@ -23,7 +23,7 @@ __all__ = [
 def _openrouter(s: Settings) -> LLMProvider:
     from app.llm.openrouter import OpenRouterProvider
     return OpenRouterProvider(s.api_key_for("openrouter"), s.base_url_for("openrouter") or "",
-                              s.openrouter_app_title)
+                              s.openrouter_app_title, reasoning_effort=s.openrouter_reasoning_effort or None)
 
 
 def _ollama(s: Settings) -> LLMProvider:
@@ -125,16 +125,62 @@ class LLMGateway:
             self._providers[name] = factory(self.settings)
         return self._providers[name]
 
+    # ---- central live-call budget and ledger (metadata only) ----
+    def _calls_so_far(self) -> int:
+        led = self.settings.llm_call_ledger
+        if led:
+            try:
+                with open(led, encoding="utf-8") as f:
+                    return sum(1 for line in f if line.strip())
+            except FileNotFoundError:
+                return 0
+        return getattr(self, "_count", 0)
+
+    def _check_budget(self) -> None:
+        budget = self.settings.llm_call_budget
+        if budget and self._calls_so_far() >= budget:
+            raise LLMError("LLM_BUDGET_EXHAUSTED",
+                           f"The live model-call budget ({budget}) is used up; no call was made.", http_status=503)
+
+    def _record(self, target: Target, schema_name: str, result: LLMResult | None, error: str | None) -> None:
+        import json
+        import time
+
+        self._count = getattr(self, "_count", 0) + 1
+        led = self.settings.llm_call_ledger
+        if not led:
+            return
+        extra = result.extra if result else {}
+        row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "execution": "LIVE", "provider": target.provider,
+               "requested_model": target.model, "served_model": result.model if result else None,
+               "schema": schema_name, "latency_ms": result.latency_ms if result else None,
+               "input_tokens": result.input_tokens if result else None,
+               "output_tokens": result.output_tokens if result else None,
+               "thinking_tokens": extra.get("thinking_tokens"), "reasoning": extra.get("reasoning"),
+               "parse_mode": result.parse_mode if result else None, "error_code": error}
+        with open(led, "a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+
     def complete(self, system: str, messages: list[dict[str, str]], target: Target | None = None,
                  strict_model: bool = True, schema: dict[str, Any] | None = None,
                  schema_name: str = "mckinley_reply", cfg: GenerationConfig | None = None) -> LLMResult:
         target = target or self.default_target
         cfg = cfg or self.generation_config(target)
         provider = self._provider(target.provider)
-        if schema is None:
-            result = provider.complete(system, messages, target, cfg)
-        else:
-            result = provider.complete(system, messages, target, cfg, schema=schema, schema_name=schema_name)
+        live = target.provider != "mock"
+        if live:
+            self._check_budget()
+        try:
+            if schema is None:
+                result = provider.complete(system, messages, target, cfg)
+            else:
+                result = provider.complete(system, messages, target, cfg, schema=schema, schema_name=schema_name)
+        except LLMError as e:
+            if live and e.code not in ("NEEDS_API_KEY", "LLM_BUDGET_EXHAUSTED"):
+                self._record(target, schema_name, None, e.code)
+            raise
+        if live:
+            self._record(target, schema_name, result, None)
         if strict_model and not same_model(result.model, target.model):
             raise LLMError(
                 "MODEL_SWITCHED",
