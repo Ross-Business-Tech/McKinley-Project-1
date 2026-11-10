@@ -724,9 +724,164 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Su solicitud de visita {ref} ya está guardada para el equipo de arrendamiento ({saved}). Para agregar o "
               "cambiar datos, puedo preparar una nota. Para ver otra comunidad, dígame cuál.",
     },
-    "tour_skip_slot": {
-        "en": "No problem, I'll leave {label} for the leasing team to ask you about.",
-        "es": "Sin problema, dejo {label} para que el equipo de arrendamiento se lo pregunte.",
+    "tour_skip_slot": {  # C-6 / W-11: never "I'll leave X for the team" as if the person had declined it
+        "en": "I'll mark {label} as not given yet for the leasing team to ask you about.",
+        "es": "Marco {label} como pendiente, para que el equipo de arrendamiento se lo pregunte.",
+    },
+    # ---- sprint 5.1: answers while a card is open (TEAM DRAFTS; Spanish needs review) ----
+    "q_who_sees": {
+        "en": "In this prototype, only McKinley staff who review the office queue can see it, and nothing here is "
+              "sent to your neighbors. I can't promise how the office handles it when they follow up; if you want "
+              "your name kept out of it, add that to the note.",
+        "es": "En este prototipo solo el personal de McKinley que revisa la cola de la oficina puede verlo, y nada de "
+              "aquí se envía a sus vecinos. No puedo prometer cómo lo manejará la oficina; si quiere que no se "
+              "mencione su nombre, agréguelo a la nota.",
+    },
+    "q_what_send": {
+        "en": "Pressing Send saves this {what} in the prototype for staff to review. Nothing else happens: nobody "
+              "is notified automatically, nothing is scheduled and nothing is charged.",
+        "es": "Al pulsar Enviar, esta {what} se guarda en el prototipo para que el personal la revise. No pasa nada "
+              "más: no se avisa a nadie, no se programa nada y no se cobra nada.",
+    },
+    "q_what_send_none": {
+        "en": "There's nothing waiting to send right now. When a card is shown, pressing Send saves it in the "
+              "prototype for staff to review; nobody is notified automatically and nothing is charged.",
+        "es": "Ahora no hay nada pendiente de enviar. Cuando aparece una tarjeta, Enviar la guarda en el prototipo "
+              "para que el personal la revise; no se avisa a nadie y no se cobra nada.",
+    },
+    "q_cost": {
+        "en": "Nothing in this chat charges you anything: pressing Send only saves the request for staff to review. "
+              "I can't speak to fees the office might set, so ask them if you're unsure.",
+        "es": "Nada en este chat le cobra: Enviar solo guarda la solicitud para que el personal la revise. No puedo "
+              "hablar de cargos que fije la oficina; pregúnteles si tiene dudas.",
+    },
+    "q_priority": {
+        "en": "Staff set the priority when they review it, so I can't promise it's urgent.{flag}",
+        "es": "El personal fija la prioridad cuando la revisa, así que no puedo prometer que sea urgente.{flag}",
+    },
+    "q_priority_flag": {
+        "en": " The card already asks them to look at it: {note}.",
+        "es": " La tarjeta ya les pide revisarla: {note}.",
+    },
+    "q_priority_sent": {
+        "en": "Staff set the priority when they review {ref}; I can't mark it urgent from here. In this prototype "
+              "nobody is notified automatically.",
+        "es": "El personal fija la prioridad cuando revisa {ref}; yo no puedo marcarla como urgente. En este "
+              "prototipo no se avisa a nadie automáticamente.",
+    },
+    "q_timing": {
+        "en": "I can't promise a call or a time. Once you press Send, it waits for staff to review; in this "
+              "prototype nobody is notified automatically, so no one will call because of this chat yet.",
+        "es": "No puedo prometer una llamada ni una hora. Cuando pulse Enviar, queda para revisión del personal; en "
+              "este prototipo no se avisa a nadie, así que nadie llamará todavía por este chat.",
+    },
+    "q_phone": {
+        "en": "I don't have a phone number for the office in this prototype, so I can't connect you to a call. Your "
+              "community office or McKinley's website will have it. If anyone is in danger, call 911.",
+        "es": "En este prototipo no tengo el teléfono de la oficina, así que no puedo comunicarle por llamada. La "
+              "oficina de su comunidad o el sitio de McKinley lo tendrán. Si alguien está en peligro, llame al 911.",
+    },
+    "q_gate_code": {
+        "en": "I don't have gate or door codes here, and I can't share access codes in chat. The office can help "
+              "with that.",
+        "es": "Aquí no tengo códigos de portón ni de puertas, y no puedo compartir códigos de acceso en el chat. La "
+              "oficina puede ayudarle.",
+    },
+    "q_renewal_card": {
+        "en": "I can't see your lease dates or renewal options here; the leasing team handles renewals. Your {what} "
+              "is still open below. When you're done with it, tap \"Renewal question\" and I'll prepare a note for "
+              "the leasing team.",
+        "es": "Aquí no veo las fechas de su contrato ni las opciones de renovación; eso lo atiende el equipo de "
+              "arrendamiento. Su {what} sigue abierta abajo. Cuando termine, toque \"Pregunta de renovación\" y "
+              "prepararé una nota para ellos.",
+    },
+    "q_name": {
+        "en": "No, you don't need to give your name here. This prototype doesn't collect names or contact details "
+              "in chat.",
+        "es": "No, no necesita darme su nombre. Este prototipo no recoge nombres ni datos de contacto en el chat.",
+    },
+    "q_budget": {
+        "en": "Your budget is on the card: {value}. I can't quote prices or say what's available.",
+        "es": "Su presupuesto está en la tarjeta: {value}. No puedo dar precios ni decir qué hay disponible.",
+    },
+    "q_budget_none": {
+        "en": "I haven't noted a budget yet. Tell me your monthly maximum and I'll add it for the leasing team.",
+        "es": "Todavía no anoté un presupuesto. Dígame su máximo mensual y lo agrego para el equipo.",
+    },
+    "q_parked": {
+        "en": "Not yet. Your {what} is kept as a draft: after you send or skip this note, I'll bring it back so you "
+              "can send it too.",
+        "es": "Todavía no. Su {what} queda guardada como borrador: cuando envíe u omita esta nota, la traigo de "
+              "vuelta para que también pueda enviarla.",
+    },
+    "q_unknown_card": {
+        "en": "I don't have an answer for that here, so I won't guess.",
+        "es": "No tengo una respuesta para eso aquí, así que no voy a adivinar.",
+    },
+    "meta_sorry": {
+        "en": "Sorry, you did tell me. I've got it now.",
+        "es": "Perdón, sí me lo dijo. Ya lo tengo.",
+    },
+    "tap_send": {
+        "en": "Your {what} is ready below. Tap Send to pass it on (or say \"send it\").",
+        "es": "Su {what} está lista abajo. Pulse Enviar para mandarla (o diga \"envíelo\").",
+    },
+    "restored_missing": {
+        "en": "Here it is again, unchanged. {ask}",
+        "es": "Aquí está otra vez, sin cambios. {ask}",
+    },
+    "declined_status": {
+        "en": "You chose not to send your {what}, so nothing was sent and nobody is coming because of it. Say "
+              "\"send it after all\" to bring it back.",
+        "es": "Eligió no enviar su {what}, así que no se envió nada y nadie vendrá por eso. Diga \"envíelo\" para "
+              "recuperarla.",
+    },
+    "parked_note": {
+        "en": " Your {what} is also kept as a draft: after you send or skip this note, I'll bring it back so you "
+              "can send it too.",
+        "es": " Su {what} también queda como borrador: cuando envíe u omita esta nota, la traigo de vuelta.",
+    },
+    "parked_back": {
+        "en": " Your unsent {what} is back below, so you can send it too.",
+        "es": " Su {what} no enviada está de nuevo abajo, para que también pueda enviarla.",
+    },
+    "budget_noted": {
+        "en": "I've noted your budget ({value}) for the leasing team. I can't quote prices or say what's available.",
+        "es": "Anoté su presupuesto ({value}) para el equipo. No puedo dar precios ni decir qué hay disponible.",
+    },
+    "note_added": {
+        "en": "Added to the card: {value}.",
+        "es": "Agregado a la tarjeta: {value}.",
+    },
+    "contact_updated": {
+        "en": "Updated: Contact preference → {value}.",
+        "es": "Actualizado: preferencia de contacto → {value}.",
+    },
+    "followup_existing": {
+        "en": "That sounds like {title} ({ref}), which is already open, so I won't start a duplicate. A request "
+              "that's already sent can't be edited here, so I've prepared a follow-up note for the office that "
+              "cites {ref}. Send it when you're ready. In this prototype nobody is notified automatically.",
+        "es": "Parece ser {title} ({ref}), que ya está abierta, así que no abro otra. Una solicitud enviada no se "
+              "puede editar aquí, así que preparé una nota de seguimiento para la oficina que menciona {ref}. "
+              "Envíela cuando quiera. En este prototipo no se avisa a nadie automáticamente.",
+    },
+    "questions_note": {
+        "en": "I've put your questions ({value}) in a note for the leasing team. Send it when you're ready. In this "
+              "prototype nobody is notified automatically.",
+        "es": "Puse sus preguntas ({value}) en una nota para el equipo de arrendamiento. Envíela cuando quiera. En "
+              "este prototipo no se avisa a nadie automáticamente.",
+    },
+    "ask_plain_issue": {
+        "en": "What's wrong? A short description is fine, like \"the dishwasher won't drain.\"",
+        "es": "¿Qué pasa? Basta una descripción corta, por ejemplo \"el lavaplatos no desagua\".",
+    },
+    "ask_plain_location": {
+        "en": "Which room is it in?",
+        "es": "¿En qué parte del apartamento es?",
+    },
+    "ask_plain_area": {
+        "en": "Which city or McKinley community would you like to see?",
+        "es": "¿Qué ciudad o comunidad de McKinley quiere ver?",
     },
     "tour_recheck": {
         "en": "Check it over before you send it.",
@@ -788,16 +943,17 @@ DIY_ADVICE: dict[str, dict[Lang, str]] = {
 # I-16 drafts). They state the real outcome and never promise timing.
 CONFIRM: dict[str, dict[Lang, str]] = {
     "maintenance_request": {
-        "en": "Request {id} is saved for staff review. A team member reviews it before anything is scheduled. You "
-              "can ask me for its status anytime.",
+        "en": "Request {id} is saved for staff review. A team member reviews it before anything is scheduled. In "
+              "this prototype nobody is notified automatically. You can ask me for its status anytime.",
         "es": "La solicitud {id} quedó guardada para revisión del personal. Un miembro del equipo la revisa antes de "
-              "programar algo. Puede preguntarme por su estado cuando quiera.",
+              "programar algo. En este prototipo no se avisa a nadie automáticamente. Puede preguntarme por su estado "
+              "cuando quiera.",
     },
     "tour_request": {
         "en": "Tour request {id} is saved for the leasing team. It isn't a booking yet: the team picks a time from "
-              "your preferences.",
+              "your preferences. In this prototype nobody is notified automatically.",
         "es": "La solicitud de visita {id} quedó guardada para el equipo de arrendamiento. Todavía no es una cita: el "
-              "equipo elige una hora según sus preferencias.",
+              "equipo elige una hora según sus preferencias. En este prototipo no se avisa a nadie automáticamente.",
     },
     "staff_handoff": {
         "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself. In this "

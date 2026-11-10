@@ -15,7 +15,10 @@ This describes what the code does today. Pipeline order and safety: [overview.md
 
 `planner_memory` carries the turn-to-turn facts the planner needs:
 - the unproductive-turn streak, and the per-question ask counts;
-- whether a tour was already offered, and the last saved reference.
+- whether a tour was already offered, and the last saved reference;
+- a language pin (`lang_pin`) set only by an explicit request for English or Spanish;
+- normalised tour preferences a prospect gave before any card existed (`lead`: city, beds, pets, budget). These are
+  extracted values, never message text.
 
 It rides on the previous turn's gate-log row (`store.last_gate`) and is rewritten each turn.
 
@@ -33,6 +36,11 @@ message or the model. **This is not authentication.** Any caller can send any `p
 5. **Workflow selection and triage.** Maintenance triage, lead profile, renewal assessment.
 6. **`plan_turn`**, an ordered list of checks where the **order is the specification**. It returns a template
    and/or a card and/or records, plus `skip_model`.
+   - Step **1c-acts** (Sprint 5.1) classifies the message with `app/dialogue.classify_turn` into typed dialogue acts
+     (ANSWER, CORRECTION, NEW_DETAIL, QUESTION, CANCEL, RESTORE, META, NEW_ISSUE, SMALL_TALK) before anything can
+     change the open card. It runs after the safety, identity, injection and contact-privacy steps.
+   - Only ANSWER, CORRECTION and NEW_DETAIL change fields. A QUESTION (who sees it, what Send does, cost, priority,
+     timing, a phone number, a gate code, renewal, a name, the budget) gets an honest answer and the card stays.
 7. **Generate.** One model call only when the plan needs free text; otherwise the approved template is used. The
    reply source is recorded (`model`, `template`, `template_after_validation`, `template_after_model_error`).
 8. **Validate.** Output checks: no invented commitments, prices or dispatch.
@@ -58,10 +66,19 @@ stateDiagram-v2
   end note
 ```
 
-- **Only Send saves.** A card is never submitted by the model or by a reply, and green appears only after the
-  backend returns a saved record.
+- **Only Send saves.** A record is written only by the Send button or an explicit typed instruction ("send it",
+  "yes send it", "submit it", "envíelo"). A bare "yes", "ok", "sure" or "sí" on a ready card gets "Tap Send to pass
+  it on" and the card stays. A card is never submitted by the model, and green appears only after the backend
+  returns a saved record.
+- **Cancel and restore:** "never mind, don't send it" cancels even inside a longer sentence. A bare "no" to the
+  entry question means "contact me first", never cancel. "Undo", "I pressed the wrong button", "send it after all"
+  bring back the same card with its fields; an incomplete restored card asks its missing question.
+- **Parking (still one open card):** a second need while a card is open (a manager note, a renewal note asked twice)
+  parks the first card inside the note. It comes back after the note is sent or skipped, and the reply says so.
 - **Corrections:**
-  - A correction updates the open card and says what changed.
+  - A correction updates the open card and says what changed ("change what's wrong to: X" replaces with X).
+  - A problem that matches a request already open (sent in this chat, or open on the record) becomes a follow-up
+    note citing its reference, never a duplicate. A sent request can't be edited here.
   - A second community for a tour reuses the days and time already given.
   - A new detail for an already-sent request becomes a change note with that reference, not a duplicate.
 - **Questions asked at most twice:** if a detail is still unanswered after two asks, the card leaves it for staff
@@ -90,7 +107,12 @@ tour pitch is offered at most once per session.
   - Issue, location and entry permission are collected.
   - A bare "ok" to the entry question gets a confirmation.
   - "Text me first" replaces the profile's contact preference.
-  - Repeat issues (English and Spanish phrases) raise the priority.
+  - Repeat issues raise the priority. A repeat from the record needs a history item about the same thing; a repeat
+    the person states needs a named problem ("the thing again" is not one). The response model is told the
+    planner's repeat decision and may not claim history otherwise.
+  - Entry and contact wording ("text me, don't call", "contact me first") goes to its fields, never into "What's
+    wrong". Pets and "keep the door shut" go to "Notes for the visit".
+  - Common-area repairs (front gate, parking lot, lobby) need no room and no entry permission.
   - Lock or entry-door repairs offer Front door first and are high priority.
   - Two issues in one message: one card at a time (a known P1).
 - **Status:** shows the person's open requests. "The one for the sink leak" answers about that request.
@@ -102,8 +124,9 @@ tour pitch is offered at most once per session.
   - Every note says that nobody is notified automatically.
 - **Renewal / lease break:** renewal concerns go to the renewal note. Early move-out and lease break have their own
   wording and go to leasing, never "renewal".
-- **Language:** Spanish is detected per message. A conversation that started in Spanish stays in Spanish (the
-  Spanish strings are drafts).
+- **Language:** an explicit request for English or Spanish switches and sticks. Otherwise a clearly English or
+  Spanish message is answered in that language, and an unclear one ("no", "sí", "leak") keeps the conversation's
+  language. The Spanish strings are drafts.
 
 ## What the model may and may not do
 - **May:**
@@ -122,6 +145,6 @@ provider-independent gateway ([../deployment/gemini.md](../deployment/gemini.md)
 
 ## Known gaps
 - No authentication: the persona comes from the client.
-- One open card per conversation.
+- One open card per conversation (a second card is parked inside a note, not shown side by side).
 - No real external confirmation of anything.
 - The safety recall gaps are release-blocking ([../evaluation/SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).

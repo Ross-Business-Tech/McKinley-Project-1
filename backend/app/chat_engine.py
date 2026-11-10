@@ -89,7 +89,8 @@ def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
         return baseline_prompt()
     bundle = load_aware_prompt(settings.prompt_path)
     suffix = "+ctx" if mode == "aware" else "+noctx"
-    return PromptBundle(system=bundle.system, version=f"{bundle.version}+{WORKFLOW_VERSION}{suffix}")
+    return PromptBundle(system=bundle.system,
+                        version=f"{bundle.version}+{WORKFLOW_VERSION}+{PLAN_SECTION_VERSION}{suffix}")
 
 
 def context_signals(ctx: SafeContext) -> list[PolicySignal]:
@@ -142,6 +143,29 @@ CHANNEL_RULES = {
 }
 
 
+# Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
+PLAN_SECTION_VERSION = "plan-s51"
+
+
+def card_instructions(plan: TurnPlan) -> list[str]:
+    """L-2 / L-5: what the model must say about the card on screen. The card IS the request."""
+    a = plan.action
+    if not a:
+        return []
+    if a.stage == "submitted":
+        return [f"The {a.title} was saved in the prototype (reference shown on the card). Nobody is notified "
+                "automatically; do not promise a call, a visit or a time."]
+    out = [f"A {a.title} card is open on screen and is NOT sent yet. That card is the request: never say you can't "
+           "create or file it, never tell the person to submit a request somewhere else, and never offer to write a "
+           "note or request that is already on screen."]
+    if a.stage == "collecting" and a.missing:
+        out.append(f"Still needed on the card: {', '.join(a.missing)}. Ask only for {a.missing[0]}, with the "
+                   "question the draft reply asks; do not skip it and do not ask for anything else.")
+    else:
+        out.append("The card is ready: tell the person to check it and press Send. Typing 'yes' does not send it.")
+    return out
+
+
 def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
     """Trusted backend facts for the response model: the next step, and a draft reply it must stay faithful to."""
     lines = [
@@ -155,6 +179,10 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")
+    lines += card_instructions(plan)
+    # F-4: repeat / history claims only as the planner established them
+    lines += plan.facts or ["Do not say a problem is a repeat or mention earlier requests unless the draft reply "
+                            "says so."]
     lines.append(f"<backend_draft_reply>{plan.template}</backend_draft_reply>")
     return "\n".join(lines)
 
@@ -327,7 +355,9 @@ def run_turn(
     # 8. validate (model output is untrusted)
     raw_reply = out.reply.strip()
     allowed_text = " ".join(f.value for f in ctx.fields)
-    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None)
+    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None,
+                                              user_text=" ".join([*said_ever, msg]),
+                                              nothing_sent=not (plan and plan.records))
     checks.append(OutputCheck(
         code="structured_output",
         passed=result.parse_mode != "text_fallback",

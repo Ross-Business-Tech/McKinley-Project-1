@@ -196,7 +196,10 @@ def test_stale_card_is_shown_again_before_sending(client):  # C P1-7
     chat(client, "how is the weather", persona="R003", session="stale")
     r = chat(client, "ok", persona="R003", session="stale")
     assert r["records_created"] == [] and r["action"]["stage"] == "ready"
+    # Sprint 5.1 W-3: a bare "yes" no longer saves; only Send or an explicit "send it" does
     r = chat(client, "yes", persona="R003", session="stale")
+    assert r["records_created"] == [] and "Tap Send" in r["reply"] and r["action"]["stage"] == "ready"
+    r = chat(client, "send it", persona="R003", session="stale")
     assert r["records_created"]
 
 
@@ -342,7 +345,8 @@ def test_every_backend_template_passes_output_checks():  # F N8
                                                                 step="Your note is ready below.", label="entry",
                                                                 missing="entry permission", saved="Where: Kitchen",
                                                                 route="through your profile", value="Saturday",
-                                                                status="Open", detail="the fan"),
+                                                                status="Open", detail="the fan", flag="",
+                                                                note="High priority", ask="Which room is it in?"),
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 
@@ -357,7 +361,9 @@ def test_off_topic_question_is_not_added_to_the_repair(client):  # F N7
 def test_spanish_draft_stays_spanish(client):  # F N9
     chat(client, "Mi cocina gotea, necesito ayuda", session="es2")
     chat(client, "pueden entrar si no estoy", session="es2")
-    r = chat(client, "sí", session="es2")
+    r = chat(client, "sí", session="es2")  # Sprint 5.1 W-3: a bare "sí" asks for Send, still in Spanish
+    assert r["records_created"] == [] and "Pulse Enviar" in r["reply"]
+    r = chat(client, "sí, envíelo", session="es2")
     assert r["records_created"] and "guardada" in r["reply"]
 
 
