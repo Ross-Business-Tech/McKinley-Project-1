@@ -1004,6 +1004,80 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I can only see one problem on this request. Tell me the other problem and I'll make it its own request.",
         "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
     },
+    # ---- Sprint 7 (all NEEDS McKINLEY REVIEW) ----
+    "exposure_note": {  # NEEDS McKINLEY REVIEW: no heat / no AC with a vulnerable person at home
+        "en": "Urgent: no heating or cooling with a vulnerable person at home",
+        "es": "Urgente: sin calefacción o aire con una persona vulnerable en casa",
+    },
+    "exposure_lead": {  # NEEDS McKINLEY REVIEW: calm, no promise; the care line is shown by the safety layer
+        "en": "With someone vulnerable at home, this repair request is marked urgent for the team to review.",
+        "es": "Como hay una persona vulnerable en casa, esta solicitud de reparación queda marcada como urgente para "
+              "que el equipo la revise.",
+    },
+    "multi_issue_named": {  # NEEDS McKINLEY REVIEW: two problems in one message, the second named and queued
+        "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}. Waiting "
+              "as its own request, after this one: {items}.",
+        "es": "Mencionó {n} problemas distintos, así que cada uno tendrá su propia solicitud. Empecemos con: {first}. "
+              "En espera como solicitud aparte, después de esta: {items}.",
+    },
+    "queued_other": {  # NEEDS McKINLEY REVIEW: a second, different need in the same message (kept, not lost)
+        "en": " You also asked for the office to contact you about: \"{topic}\". I've kept that: after you send or "
+              "skip this request, I'll prepare that note so you can send it too.",
+        "es": " También pidió que la oficina le contacte sobre: \"{topic}\". Lo guardé: después de enviar u omitir "
+              "esta solicitud, preparo esa nota para que también la pueda enviar.",
+    },
+    "queued_other_next": {  # NEEDS McKINLEY REVIEW
+        "en": " Next, your note for the office about \"{topic}\" is ready below. Send it when it looks right.",
+        "es": " Ahora, su nota para la oficina sobre \"{topic}\" está lista abajo. Envíela cuando esté correcta.",
+    },
+    "note_tour_added": {  # NEEDS McKINLEY REVIEW: tour details while a note for the leasing team is open
+        "en": "Your tour interest ({detail}) is now part of the note for the leasing team, so nothing is lost. After "
+              "you send the note, the tour request card comes next, ready for you to check. Nothing is booked yet.",
+        "es": "Agregué su interés en una visita ({detail}) a la nota para el equipo de arrendamiento, así no se pierde "
+              "nada. Después de enviar la nota, preparo también la solicitud de visita. Todavía no hay nada reservado.",
+    },
+    "tour_after_note": {  # NEEDS McKINLEY REVIEW
+        "en": " Your tour request is ready below with what you told me. It isn't a booking; send it when it looks "
+              "right.",
+        "es": " Su solicitud de visita está lista abajo con lo que me dijo. No es una reserva; envíela cuando esté "
+              "correcta.",
+    },
+    "date_readback_alt": {  # NEEDS McKINLEY REVIEW: "3/4" can be read two ways
+        "en": "I've written {value}. If you meant {detail}, just tell me.",
+        "es": "Anoté {value}. Si quiso decir {detail}, dígamelo.",
+    },
+    "date_readback": {  # NEEDS McKINLEY REVIEW: "tmrw" written as a date the person can check
+        "en": "I've written that as {value}. Tell me if that's not the day you meant.",
+        "es": "Lo anoté como {value}. Dígame si no es el día que quería.",
+    },
+    "near_duplicate": {  # NEEDS McKINLEY REVIEW: the same repair as one already saved in this chat
+        "en": "This looks like the same repair as {ref}, which is already saved, so I didn't save it again. If it's a "
+              "different problem, say \"save it as a new request\" and then tap Send.",
+        "es": "Parece la misma reparación que {ref}, que ya está guardada, así que no la guardé otra vez. Si es otro "
+              "problema, diga \"guardar como nueva solicitud\" y luego pulse Enviar.",
+    },
+    "dup_ok": {  # NEEDS McKINLEY REVIEW
+        "en": "Okay, I'll treat this as a separate request. Tap Send when it looks right.",
+        "es": "De acuerdo, la trato como una solicitud aparte. Pulse Enviar cuando esté correcta.",
+    },
+    "confused_card": {  # NEEDS McKINLEY REVIEW: "I don't understand" with a card open
+        "en": "Sorry, let me put it more simply. {step}",
+        "es": "Perdón, se lo digo más sencillo. {step}",
+    },
+    "confused_none": {  # NEEDS McKINLEY REVIEW: "I'm confused" with nothing open
+        "en": "No problem. I can help you report a repair, check on your requests, answer a question, or pass a note "
+              "to the office. Just tell me in your own words what you need, or tap one of the options below.",
+        "es": "No se preocupe. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, responder una "
+              "pregunta o pasar una nota a la oficina. Dígame con sus palabras qué necesita, o elija una opción abajo.",
+    },
+    "frustrated_again": {  # NEEDS McKINLEY REVIEW: frustration a second time: no repeated apology, the human path
+        "en": "I hear you. Rather than go around again, your note for the office is below with everything you've told "
+              "me. Send it and a team member will read it; in this prototype nobody is notified, so if it's urgent "
+              "please contact the office directly too.",
+        "es": "Le entiendo. En lugar de dar más vueltas, su nota para la oficina está abajo con todo lo que me dijo. "
+              "Envíela y un miembro del equipo la leerá; en este prototipo no se avisa a nadie, así que si es urgente "
+              "comuníquese también con la oficina.",
+    },
     "issue_dropped": {  # NEEDS McKINLEY REVIEW: "never mind the smoke detector, only the faucet"
         "en": "Okay, I've taken {detail} off. This request is now: \"{issue}\".",
         "es": "Listo, quité {detail}. Esta solicitud ahora es: \"{issue}\".",

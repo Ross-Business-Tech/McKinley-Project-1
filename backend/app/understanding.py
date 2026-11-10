@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app import utterance as utt
 from app.dialogue import Act, TurnAct, classify_turn
 from app.intake import (
     asks_for_person,
@@ -147,6 +148,12 @@ class Understanding(BaseModel):
     saved_question: bool = False  # "what have you saved so far?"
     staff_complaint: bool = False  # "the tech was rude": a note for the office, not a repair
     accepts_offer: bool = False  # "ok sure" / "yeah send them my questions" (the planner checks what was offered)
+    # Sprint 7: the shared structural analysis (app/utterance.py), computed once per message
+    asks_visit: bool = False  # "so is someone actually coming?", "what happens now?" (about a visit / follow-up)
+    asks_open_requests: bool = False  # "list my open maintenance requests", "tengo solicitudes abiertas?"
+    confused: bool = False  # "I don't understand", "huh?", "what do you mean?": explain the step, never a handoff
+    segments: list[tuple[str, str]] = Field(default_factory=list)  # (clause, workflow) when 2+ workflows are asked
+    utterance: Any = Field(default=None, exclude=True)
 
     def has(self, act: DialogueAct) -> bool:
         return act in self.acts
@@ -230,6 +237,31 @@ _HUMAN_FRAMES_2 = [
                r"management)\b", re.I),
     re.compile(r"\b(?:quiero|necesito|puedo) (?:hablar|comunicarme) con (?:una persona|alguien|un gerente|el gerente|"
                r"la oficina|un humano)\b|\bque me llame (?:alguien|un gerente|la oficina)\b", re.I),
+    # Sprint 7: more frames of the same act (a person + reach/handle; a bare "manager please"; Spanish "que alguien me
+    # llame"). Each is a grammar slot, not a sentence.
+    re.compile(rf"\b(?:can|could|will|would)\s+(?:a |an |some )?(?:real |actual |live )?(?:human|person|manager|"
+               rf"supervisor|staff member|team member|representative|someone (?:from|in|at|"
+               rf"on) {_TEAM})\s+(?:please\s+)?"
+               rf"(?:just\s+)?(?:take a look at (?:my|this) (?:situation|case|account|issue)|look into (?:this|my "
+               rf"situation)|handle this|deal with this|take (?:care of|over) this|help me)\b", re.I),
+    re.compile(rf"\b(?:get|put|patch|transfer|send|pass)\s+me\s+(?:through\s+)?(?:to|over to|on to)\s+{_TEAM}\b", re.I),
+    re.compile(rf"\b{_WHO}\s+(?:please\s+)?(?:give|gimme)\s+(?:me|us)\s+a\s+(?:ring|call|buzz)\b", re.I),
+    re.compile(r"(?:^|[.,;!?]\s*|\b(?:bot|this|chat|ai)\W+)(?:(?:a|an|the)\s+)?(?:real\s+|actual\s+|live\s+)?"
+               r"(?:human|person|manager|agent|representative|supervisor|staff|office|operator|human being)"
+               r"(?:\s+(?:please|pls|now|asap))?\s*[.!]*\s*$", re.I),
+    re.compile(r"\b(?:human|manager|real person|supervisor|agent|office|representative)\s*,?\s+(?:please|pls|now)\b",
+               re.I),
+    re.compile(r"\b(?:some(?:one|body)|a person|a human|the office|a manager|leasing|staff)\s+(?:please\s+)?"
+               r"(?:call|text|contact|e-?mail|ring|phone)\s+me\b(?!\s+(?:first|before|ahead))", re.I),
+    re.compile(r"\btransfer me\b|\bi give up\W+(?:human|person|manager)\b", re.I),
+    re.compile(r"\b(?:can|could|will|would|is|please)\s+(?:some(?:one|body)|any(?:one|body))\s+(?:(?:please|just|"
+               r"actually|going to|gonna)\s+)*help\b|\bplease,?\s+(?:some(?:one|body)|any(?:one|body))\s+help\b|"
+               r"\b(?:por favor\s+)?ay[uú]denme\b|\bque alguien me ayude\b", re.I),
+    re.compile(r"\b(?:necesito|quiero|pueden|puede)\s+que\s+(?:alguien|una persona|la oficina|un gerente|el gerente)"
+               r"(?:\s+de la oficina)?\s+me\s+(?:llame|contacte|escriba|atienda|ayude)\b|"
+               r"\bque\s+(?:alguien|una persona|la oficina|un gerente)(?:\s+de la oficina)?\s+me\s+(?:llame|"
+               r"contacte)\b|"
+               r"\bquiero (?:una persona|un humano|un gerente|hablar con alguien)\b", re.I),
 ]
 _HUMAN_ENTRY = re.compile(r"\b(?:first|before (?:they |you |anyone )?(?:come|coming|enter\w*|go(?:ing)? in)|"
                           r"to (?:fix|repair|come (?:in|over|by|fix)|look at the|check the))\b", re.I)
@@ -330,7 +362,14 @@ _FRUSTRATION_ASSISTANT = re.compile(
     r"done with this|losing (?:my )?patience)\b|\b(?:i'?ve|i have) had enough\b|"
     r"\bwhy is this so (?:hard|difficult|complicated)\b|\bdo you (?:even|actually) (?:understand|listen)\b|"
     r"\bcan you (?:even|actually) (?:understand|help)\b|\bhow many times (?:do i|must i|have i)\b|"
-    r"\bstop (?:asking|repeating)\b", re.I)
+    r"\bstop (?:asking|repeating)\b|"
+    # Sprint 7: frustration about having to repeat, with no problem named ("I've told you three times")
+    r"\b(?:i'?ve |i have |i )?(?:told|asked) you (?:\w+ ){0,2}(?:times|twice)\b|\basked (?:over and over|"
+    r"again and again|"
+    r"\w+ times|so many times|already)\b|\b(?:tired|sick) of (?:asking|explaining|repeating)\b|\bkeep (?:explaining|"
+    r"asking|repeating myself|telling you)\b|\bthis is the (?:second|third|fourth|fifth|\d+(?:st|nd|rd|th)) time i'?m "
+    r"asking\b|\b(?:nobody|no one|no-one) (?:helps|is helping|will help|wants to help|ever helps)\b|\bwhy is (?:nobody|"
+    r"no one) helping\b|\bnadie me (?:ayuda|hace caso)\b|\bya (?:lo )?(?:ped[ií]|dije) (?:varias|muchas) veces\b", re.I)
 _FRUSTRATION_FEELING = re.compile(r"\b(?:i'?m|i am|i feel|feeling|getting) (?:so |really |very |extremely |pretty |"
                                   r"beyond )?(?:frustrated|annoyed|fed up|upset|irritated|exasperated|angry|mad)\b|"
                                   r"\b(?:so|really) (?:frustrating|annoying)\b|\b(?:ugh|argh)+\b", re.I)
@@ -612,15 +651,25 @@ _ENTRY_ASK_FIRST = re.compile(
     r"going) in| entering| they enter| anyone (?:comes|enters))?|ahead)\b|\b(?:can ?not|cannot|can'?t|shouldn'?t|"
     r"should not|don'?t|dont|do not) (?:just )?(?:come|go|walk|let themselves) in\b|\bnot (?:just )?(?:come|walk) "
     r"in\b|\bonly (?:when|if) i'?m (?:home|there|in)\b|\bi (?:want|need|have) to be (?:home|there)\b|"
-    r"\b(?:me )?llamen antes|\bme avisen antes|\bavis(?:ar|en)me antes|\bantes de entrar\b|\bno entren\b", re.I)
+    r"\b(?:me )?llamen antes|\bme avisen antes|\bavis(?:ar|en)me antes|\bantes de entrar\b|\bno entren\b|"
+    # Sprint 7: presence required, said in other words ("I'd rather be home", "only if I'm there", "not without me")
+    r"\b(?:i'?d|i would) (?:rather|prefer to) be (?:home|there|present|around)\b|\bonly if i'?m (?:home|there|present|"
+    r"around|in)\b|\bi (?:want|need|have|would like) to be (?:present|around)\b|\b(?:please )?(?:don'?t|do not|dont) "
+    r"(?:enter|come in|go in)\b|\bwithout me\b|\bsin m[ií]\b|\bno (?:pueden|puede|deben) (?:entrar|pasar)\b|"
+    r"\bquiero estar (?:presente|ah[ií]|en casa)\b", re.I)
 _ENTRY_MAY = re.compile(
     r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
     r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
     r"\blet (?:themselves|yourselves) in\b|"
     r"\b(?:enter|come in|go in)\s+(?:whenever|any ?time|when(?:ever)? (?:you|they) (?:need|want)(?: to)?|"
     r"while i'?m (?:out|away|gone|at work))\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
-    r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)",
-    re.I)
+    r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)|"
+    # Sprint 7: permission said in other words ("use the key", "fine by me if they go in", "que entren")
+    r"\buse (?:the|your|a|their|my) (?:spare |master )?key\b|\b(?:fine|ok|okay|alright|no problem)\b[^.?!]{0,25}\b"
+    r"(?:if|for) (?:them|they|you|maintenance|the tech\w*)\b[^.?!]{0,12}\b(?:to )?(?:go|come|enter)\w*\b|"
+    r"\b(?:they|you|maintenance|the tech\w*) can (?:just )?(?:come|go) in\b|\benter if i'?m (?:out|not (?:home|there)|"
+    r"away|at work)\b|\b(?:ok|okay|fine) to (?:come|go) in\b|\bno need to wait for me\b|\bque entren\b|"
+    r"\bpueden pasar\b", re.I)
 _ROOM_FIELD = re.compile(r"^\W*(?:where|room|location|place|d[oó]nde)\s*[:=-]\s*(?P<v>.{2,40}?)\W*$", re.I)
 _INSIDE_UNIT = re.compile(r"\b(?:inside|in) (?:my|our|the) (?:apt|apartment|unit|place|home|own (?:apt|apartment|"
                           r"unit))\b|\bnot (?:in )?(?:a |the )?(?:common area|hallway outside|building hallway)\b|"
@@ -807,9 +856,26 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
         if v and not any(c.field == f for c in out):
             out.append(Correction(field=f, value=v[:200]))  # type: ignore[arg-type]
 
+    # Sprint 7: ONE field-reference resolver (app/utterance.py) for every card kind, before and after Send: a message
+    # that NAMES a field ("the location is wrong, it's the garage", "change the tour date to Friday", "la ubicación
+    # está mal, es el baño") changes that field to a value of its type.
+    named = dict(utt.field_corrections(msg, kind))
+    ut = utt.analyze(msg)
     if kind == "maintenance_request":
-        if (iv := _issue_edit(msg, card)) and _fval(card, "issue") and iv.lower() != _fval(card, "issue").lower():
+        cur_loc = _fval(card, "location")
+        loc = named.get("location")
+        if not loc and not (ut.objects - utt.things(_fval(card, "issue"))) and not (ut.symptom and ut.objects) and \
+                not _ROOM_FIELD.match(msg) and not _INSIDE_UNIT.search(msg):
+            loc = utt.room_swap(msg, cur_loc or None)  # "no, not kitchen — bathroom", "it's the bathroom one, my bad"
+        if loc and loc != cur_loc and loc != extract_location(cur_loc or ""):  # "Hall bathroom" is already a bathroom
+            add("location", loc)
+        iv = _issue_edit(msg, card) or named.get("issue")
+        if iv and any(c.field == "location" for c in out) and not utt.has_symptom(iv):
+            iv = None  # "sorry I meant the bathroom sink": the room changed, the problem did not
+        if iv and _fval(card, "issue") and iv.lower() != _fval(card, "issue").lower():
             add("issue", iv)
+        if (cv := named.get("contact")) and cv not in _fval(card, "contact").lower():
+            add("contact", cv)
         for c in clauses:
             entryish = bool(_ENTRY_WORDS.search(c))
             ev = _entry_value(c) if entryish or extract_entry(c) else None
@@ -830,8 +896,10 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
             tms = [tm for tm in _TIME_VALUE.finditer(c) if not _OLD_MARK.search(c[:tm.start()]) and not re.match(
                 r"\s*(?:don'?t|dont|doesn'?t|do not|no longer|won'?t|are out|is out|aren'?t good)\b", c[tm.end():],
                 re.I)]
-            if tms and _VISIT_TIME_WORDS.search(msg) and not _channel_edits(c) and (
-                    signal or re.search(r"\bbest time\b|\bvisits?\b", c, re.I)):
+            bare_time = bool(tms) and not re.sub(r"\b(?:only|please|pls|just|solo|s[oó]lo|por favor|works?|best|ok|"
+                                                 r"is fine)\b|\W", "", _TIME_VALUE.sub("", c), flags=re.I)
+            if tms and (_VISIT_TIME_WORDS.search(msg) or bare_time) and not _channel_edits(c) and (
+                    signal or bare_time or re.search(r"\bbest time\b|\bvisits?\b|\bcome\b", c, re.I)):
                 v = tms[0].group("v").strip()
                 if v.lower() not in _fval(card, "entry_window").lower():
                     add("entry_window", _cap(v))
@@ -839,19 +907,27 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
         inside = _INSIDE_UNIT.search(msg)
         if m or inside:
             src = m.group("v") if m else msg
-            room = extract_location(re.sub(r"\bnot (?:in )?(?:a |the )?(?:common area|hallway outside|building "
+            room = utt.room_in(re.sub(r"\bnot (?:in )?(?:a |the )?(?:common area|hallway outside|building "
                                            r"hallway)\b|\bnot outside\b", " ", src, flags=re.I)) or \
                 (re.search(r"\bhall(?:way)?\b", src, re.I) and "Hallway")
             if inside and room in (None, "Outside or common area") and re.search(r"\bhall(?:way)?\b", src, re.I):
                 room = "Hallway"
             if room and room != _fval(card, "location"):
                 add("location", room)
-    elif kind == "tour_request" and signal:
+    elif kind == "tour_request" and any(f in named for f in ("area", "days", "time")):
+        for f in ("area", "days", "time"):
+            if (v := named.get(f)) and not _fval(card, f).lower().startswith(v.lower()):
+                add(f, v)
+    elif kind == "tour_request" and (signal or _REMOVE_CUE.search(msg)):
         # the place asked for, never the one ruled out ("ypsilanti instead of ann arbor", "nvm heron lake. actually
-        # no, fernhill" -> the last one named)
-        kept = re.sub(r"\b(?:instead of|not|rather than)\s+(?:the\s+|in\s+)?[A-Za-z]+(?:\s+[A-Za-z]+)?", " ", msg,
+        # no, fernhill" -> the last one named). Sprint 7: a place next to a removal cue ("never mind Heron Lake, just
+        # Sandpiper Pointe", "scratch Heron Lake — Sandpiper Pointe", "no heron lake, sandpiper pointe") is ruled out.
+        kept = re.sub(r"\b(?:instead of|not|rather than|no)\s+(?:the\s+|in\s+)?[A-Za-z]+(?:\s+[A-Za-z]+)?", " ", msg,
                       flags=re.I)
-        parts = [p for p in re.split(r"[.;!?]|\bactually\b|\bno\b", kept, flags=re.I) if p.strip()]
+        parts = [p for p in re.split(r"[.;!?,—–]|\s-\s|\bactually\b|\bno\b|\bjust\b|\binstead\b", kept, flags=re.I)
+                 if p.strip()]
+        parts = [p for p in parts if not re.search(r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|scratch|skip|"
+                                                   r"drop|cancel|not|no)\b", p, re.I)] or parts
         place = next((n for p in reversed(parts) for n in [community_in(p) or city_in(p)] if n), None)
         if place and not _fval(card, "area").lower().startswith(place.lower()):
             add("area", place)
@@ -878,9 +954,51 @@ def asks_split(msg: str) -> tuple[bool, str | None]:
     return True, target
 
 
-def partial_cancel(msg: str) -> tuple[str | None, str | None]:
-    """(drop, keep): 'never mind the smoke detector, only the faucet' -> ('smoke detector', 'faucet'). A thing must be
-    named; 'never mind', 'forget it', 'cancel the request' name none (those are whole-card cancels)."""
+_REMOVE_CUE = re.compile(
+    r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|drop|skip|scratch|remove|leave (?:out|off)|leave\b[^.?!]{1,30}"
+    r"\bout\b|take (?:out|off)|ignore|cancel|cut|lose|delete|no need for|don'?t need|dont need|not needed|"
+    r"isn'?t needed|"
+    r"aren'?t needed|not necessary|no longer|forget|not the|no more|olv[ií]d(?:e|a|ese|ate)|quit(?:e|a|ar)|sin|"
+    r"borr(?:e|a)|"
+    r"ya no)\b|^\W*no\s+(?:the\s+|el\s+|la\s+)?[a-zà-ÿ]+", re.I)
+_PART_STOP = {"the", "my", "and", "also", "is", "are", "it", "its", "it's", "not", "a", "an", "of", "in", "on", "to",
+              "with", "that", "this", "el", "la", "los", "las", "del", "de", "mi", "y", "kitchen", "bathroom",
+              "bedroom", "room", "one", "part", "thing", "bit", "request", "issue", "problem", "stuck", "broken",
+              "leaking", "leaks", "drips", "dripping", "working", "won't", "doesn't", "lock", "door"}
+
+
+def card_parts(card: dict[str, Any] | None) -> list[str]:
+    """The separate problems written on a repair card's 'What's wrong' (the queued ones are separate)."""
+    issue = _fval(card, "issue")
+    parts = [p.strip(" ,.;") for p in re.split(r"\s+Also:\s+|;\s*|\.\s+|,?\s*\b(?:and also|also|plus|as well as|"
+                                                r"y tambi[eé]n|adem[aá]s)\b|,?\s+and\s+(?=(?:the|my|our)\b)", issue,
+                                                flags=re.I) if p and p.strip(" ,.;")]
+    out: list[str] = []
+    for p in parts:
+        if out and not (utt.things(p) - utt.things(out[-1])):
+            out[-1] = f"{out[-1]}, {p}"
+        else:
+            out.append(p)
+    return out
+
+
+def _part_keys(part: str) -> set[str]:
+    """What identifies one problem: its object nouns plus its distinctive content words ('mailbox', 'buzón')."""
+    words = {w for w in re.findall(r"[a-zà-ÿ]{4,}", part.lower()) if w not in _PART_STOP}
+    return utt.things(part) | words
+
+
+def part_matches(part: str, phrase: str) -> bool:
+    """Does `phrase` (what the person named) refer to this problem? Shared objects or a shared distinctive word."""
+    pk, qk = _part_keys(part), _part_keys(phrase)
+    return bool(pk & qk) or bool(utt.things(part) & utt.things(phrase))
+
+
+def partial_cancel(msg: str, card: dict[str, Any] | None = None) -> tuple[str | None, str | None]:
+    """(drop, keep): 'never mind the smoke detector, only the faucet' -> ('smoke detector', 'faucet'). Sprint 7: the
+    named part is resolved against what is ON THE CARD (its problems and the queued ones), not a fixed noun list, so
+    'drop the mailbox part', 'leave the mailbox out of it', 'quite lo del buzón' work for any problem written there.
+    A whole-card cancel ('never mind', 'forget it') names no part and stays a cancel."""
     drop = keep = None
     for m in _PARTIAL_CANCEL.finditer(msg):
         x = m.group("x").strip()
@@ -891,6 +1009,23 @@ def partial_cancel(msg: str) -> tuple[str | None, str | None]:
     if k := _KEEP_ONLY.search(msg):
         if things_in(k.group("x")):
             keep = k.group("x").strip()
+    parts = (card_parts(card) + [q for q in (card or {}).get("queued") or [] if q]) if card else []
+    if len(parts) >= 2:
+        named = [p for p in parts if part_matches(p, msg)]
+        kept_m = _KEEP_ONLY.search(msg)
+        keep_phrase = kept_m.group("x") if kept_m else None
+        if keep_phrase:
+            keep = keep or next((keep_phrase.strip() for p in parts if part_matches(p, keep_phrase)), None)
+        for p in named:
+            # the part named next to a removal cue ("drop the mailbox", "not the mailbox", "mailbox isn't needed")
+            for w in sorted(_part_keys(p) & _part_keys(msg), key=len, reverse=True):
+                i = msg.lower().find(w)
+                window = msg[max(0, i - 40):i + len(w) + 25] if i >= 0 else msg
+                if _REMOVE_CUE.search(window) and not (keep_phrase and part_matches(p, keep_phrase)):
+                    drop = drop if drop and part_matches(p, drop) else w
+                    break
+            if drop:
+                break
     return drop, keep
 
 
@@ -973,6 +1108,28 @@ def budget_range(msg: str) -> str | None:
     return f"${a:,} to ${b:,}"
 
 
+_CONFUSED = re.compile(
+    r"^\W*(?:(?:sorry|um+|uh+|wait|hm+|ok)\W+)*(?:huh|what|que|qu[eé]|eh)\W*\??\W*$|\b(?:i )?(?:don'?t|do not|dont) "
+    r"(?:understand|get it|get what|follow|know what (?:you mean|you'?re asking|to (?:say|do|answer)))\b|"
+    r"\bwhat do you mean\b|\bwhat (?:are|r) (?:you|u) asking\b|\bi'?m (?:so |a bit |kind of |kinda )?(?:confused|"
+    r"lost)\b|"
+    r"\bconfus(?:ed|ing)\b|\bnot sure what you (?:need|want|mean)\b|\bwhat am i supposed to (?:do|say|answer)\b|"
+    r"\b(?:can you )?explain(?: that| please| again)?\W*$|\bsorry,? what\b|\bno entiendo\b|\bno entend[ií]\b|"
+    r"\bc[oó]mo as[ií]\b|\bqu[eé] quiere decir\b|\bestoy confundid[oa]\b|\bwhat now\b", re.I)
+
+
+def is_confused(msg: str) -> bool:
+    """'I don't understand', 'huh?', 'what do you mean?', 'no entiendo': the person needs the step explained."""
+    return bool(_CONFUSED.search(msg)) and len(msg.split()) <= 12 and not is_issue_description(msg)
+
+
+def _workflow_segments(msg: str) -> list[tuple[str, str]]:
+    """The clauses of a message that ask for 2+ DIFFERENT workflows (a repair and a callback), else []."""
+    segs = utt.segments(msg, requests_human)
+    kinds = {s.workflow for s in segs} - {"other", "question"}
+    return [(s.text, s.workflow) for s in segs] if len(kinds) >= 2 else []
+
+
 # ---- the rules pass --------------------------------------------------------------------------------------------
 
 
@@ -993,16 +1150,18 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
 
     if _EMERGENCY_HINT.search(msg):
         add(DialogueAct.REPORT_POSSIBLE_EMERGENCY)
-    human = requests_human(msg)
+    human = requests_human(msg) and not is_explicit_send(msg)  # "yes, send the note" is consent, not a new request
     if human:
         add(DialogueAct.REQUEST_HUMAN)
-    if (draft and draft.get("declined") and (ta.has(Act.RESTORE) or resumes(msg))) or (not draft and resumes(msg)
+    if (draft and draft.get("declined") and (ta.has(Act.RESTORE) or resumes(msg) or is_explicit_send(msg))) or (
+            not draft and resumes(msg)
                                                                                          and not human):
         add(DialogueAct.RESUME_TASK)
     if live and not (ta.slot == "entry" and ta.value and ta.value.startswith("Contact") and len(msg.split()) <= 3):
         if (ta.has(Act.CANCEL) or cancels(msg)) and not _CANCEL_NEG.search(msg):
             add(DialogueAct.CANCEL)
-    if checks_status(msg):
+    ut = utt.analyze(msg)
+    if checks_status(msg) or (ut.asks_open_requests and not ut.asks_history):
         add(DialogueAct.CHECK_STATUS)
     target = frustration(msg)
     if target or ta.has(Act.META):
@@ -1013,7 +1172,7 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
     elif is_affirmative(msg) and len(msg.split()) <= 4:
         add(DialogueAct.CONFIRM)  # a bare "yes": the state machine turns it into "tap Send", never a save
     question = ta.question
-    if asks_history(msg):
+    if asks_history(msg) or (ut.asks_history and not (live and ut.problem)):
         question = "history"
     if question or (msg.strip().endswith("?") and not ta.has(Act.ANSWER)):
         add(DialogueAct.ASK_QUESTION)
@@ -1039,13 +1198,13 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
     if corr:
         add(DialogueAct.CORRECT_INFORMATION)
     split_ask, split_target = asks_split(msg) if live and kind == "maintenance_request" else (False, None)
-    drop, keep = partial_cancel(msg) if live and kind == "maintenance_request" else (None, None)
-    if drop and not (things_in(_fval(live, "issue")) - things_in(drop) or (live or {}).get("queued")):
+    drop, keep = partial_cancel(msg, live) if live and kind == "maintenance_request" else (None, None)
+    if drop and not (card_parts(live)[1:] or (live or {}).get("queued")):
         drop = None  # the only problem on the card: that is a whole-card cancel
     hold = bool(live) and holds(msg)
     lead_cancel = bool(re.match(r"^\W*(?:nvm|never ?mind|nah|no+|actually|wait)\b", msg, re.I)) and \
         not re.search(r"\b(?:cancel|don'?t send|dont send|do not send|forget it|scrap)\b", msg, re.I)
-    if DialogueAct.CANCEL in acts and (hold or drop or (edits and lead_cancel)):
+    if DialogueAct.CANCEL in acts and (hold or drop or (edits and (lead_cancel or kind == "tour_request"))):
         acts.remove(DialogueAct.CANCEL)  # "dont send yet", "never mind the smoke detector", "nvm switch it to X"
 
     if ta.has(Act.ANSWER) or ta.extra:
@@ -1108,7 +1267,9 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
         needs_clarification=vague, confidence=0.8 if known else 0.5, question_topic=question,
         frustration_target=target, explicit_send=is_explicit_send(msg), source="rules", turn=ta,
         edits=edits, split_request=split_ask, split_target=split_target, drop_issue=drop, keep_issue=keep, hold=hold,
-        saved_question=asks_saved(msg), staff_complaint=complains_about_staff(msg), accepts_offer=accepts_offer(msg))
+        saved_question=asks_saved(msg), staff_complaint=complains_about_staff(msg), accepts_offer=accepts_offer(msg),
+        asks_visit=ut.asks_visit, asks_open_requests=ut.asks_open_requests and not ut.asks_history,
+        confused=is_confused(msg), segments=_workflow_segments(msg), utterance=ut)
 
 
 # ---- the optional model pass -----------------------------------------------------------------------------------

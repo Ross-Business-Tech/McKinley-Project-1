@@ -21,7 +21,11 @@ _ES_WORDS = re.compile(
     r"reportar|reparaci[oó]n|solicitudes|una|oficina|ver|env[ií]elo|"
     r"agua|luz|renta|contrato|cuándo|cuando|quiero|hablar|persona|apartamento|horno|fuga|gotea|olor|"
     r"mantenimiento|solicitud|estado|sí|usted|español|espanol|el|la|los|las|refrigerador|enfría|enfria|"
-    r"funciona|lavaplatos|ba[ñn]era|ducha|calefacci[oó]n|aire|luz|puede|pueden|entrar|hay|muy|también)\b",
+    r"funciona|lavaplatos|ba[ñn]era|ducha|calefacci[oó]n|aire|luz|puede|pueden|entrar|hay|muy|también|"
+    # Sprint 7: prospects' Spanish ("busco un apartamento de 1 recámara", "me gustaría visitar ... el sábado")
+    r"busco|buscando|interesa|rec[aá]maras?|departamento|gustar[ií]a|visitar|visita|recorrido|barato|rentar|"
+    r"cu[aá]nto|cuesta|precio|mascotas|dep[oó]sito|d[oó]nde|ubicados|s[aá]bado|domingo|lunes|martes|mi[eé]rcoles|"
+    r"jueves|viernes|tarde|noche|un|una|de|del|con|para|que|es|agendar|disponibles?|lugar|pr[oó]ximo|mes|ba[ñn]os)\b",
     re.IGNORECASE)
 
 
@@ -789,6 +793,15 @@ def is_noise_complaint(message: str) -> bool:
         return False
     if _BUILDING_NOISE.search(message) and not _NEIGHBOR.search(message):
         return False
+    # Sprint 7 (judge H-6): a sound IN the person's own home or from a thing ("a weird noise in my unit", "a clicking
+    # noise in my bathroom", "un ruido raro en mi apartamento") is a repair unless a neighbour or people are named
+    from app.utterance import things
+
+    if not _NEIGHBOR.search(message) and (things(message) or re.search(
+            r"\b(?:in|inside|from|coming from) (?:my|our|the) (?:unit|apartment|apt|place|kitchen|bathroom|bedroom|"
+            r"wall|walls|ceiling|floor|closet|vents?|living room)\b|\ben (?:mi|el) (?:apartamento|depa|departamento|"
+            r"ba[ñn]o|cocina|cuarto)\b|\b(?:weird|strange|odd|funny|raro|extra[ñn]o)\b", message, re.I)):
+        return False
     return bool(_NOISE.search(message))
 
 
@@ -849,7 +862,11 @@ def split_issues(message: str) -> list[str]:
                                                            re.I)):
             if all(thing != t for _, t in out):
                 out.append((p, thing))
-    return [p for p, _ in out] if len(out) >= 2 else [message]
+    if len(out) >= 2:
+        return [p for p, _ in out]
+    from app.utterance import split_problems  # Sprint 7: the structural split (object + symptom per clause)
+
+    return split_problems(message)
 
 
 def frustration_only(message: str) -> bool:
@@ -1038,8 +1055,11 @@ _WITHHOLD = re.compile(r"withh[oe]ld(?:ing)? (?:my |the )?rent|(?:not|won'?t|sto
 _ACCOMMODATION = re.compile(r"accommodat|disab|wheelchair|service (?:animal|dog)|support animal|\besa\b|ramp|grab bar|"
                             r"hearing|deaf|blind\b|mobility|discapacidad|silla de ruedas", re.I)
 _OTHER_PERSON = re.compile(
-    r"\b(?:this is (?:actually |not )?(?:\w+ )?(?:from|in) (?:unit|apt|apartment) \w+|(?:using|on|borrowed) (?:my "
-    r"|her |his |their )?(?:\w+'s )?(?:phone|account|login)|let me use (?:her|his|their|my \w+'s) (?:phone|"
+    # Sprint 7: "on" needs someone else's device ("on her phone"); "anything still open on my account?" is a status
+    # question by the account holder
+    r"\b(?:this is (?:actually |not )?(?:\w+ )?(?:from|in) (?:unit|apt|apartment) \w+|(?:using|borrowed) (?:my "
+    r"|her |his |their )?(?:\w+'s )?(?:phone|account|login)|\bon (?:her |his |their |my \w+'s |\w+'s )(?:phone|"
+    r"account|login)|let me use (?:her|his|their|my \w+'s) (?:phone|"
     r"account|login)|this isn'?t my account|not (?:my|the) account holder|i'?m not (?:the person|the resident|the "
     r"account holder)|(?:her|his|their|my \w+'s) (?:account|phone|login),? (?:not mine|but))", re.I)
 
@@ -1559,8 +1579,23 @@ _ES_SEND = re.compile(r"^\W*(?:s[ií]|ok|vale|claro)?[\s,.!]*"
                       r"[\s.!]*$", re.I)
 
 
+# Sprint 7: ONE consent vocabulary for every card kind. The whole message must be a command to send what is on
+# screen ("yes please send it", "sure, send it over", "you can send it", "send the note now", "just send whatever you
+# need to send"), so the command never becomes a field value and "send me the pool hours" is not consent.
+_SEND_COMMAND = re.compile(
+    r"^\W*(?:(?:yes|yeah|yep|yup|ok(?:ay)?|sure|alright|all right|fine|please|pls|go ahead(?: and)?|you can|you may|"
+    r"wait|no|oh|um+|hmm+|on second thought|"
+    r"can you|could you|just|and|then|actually|now|great|perfect|s[ií]|vale|claro|por favor|ya)\W+)*"
+    r"(?:send|submit|file|env[ií]e(?:lo|la|las|los)?|env[ií]al[oa]s?|m[aá]nd(?:e|a)(?:lo|la|las|los)?)"
+    r"(?:\s+(?:it|that|this|them|the (?:note|request|repair(?: request)?|tour(?: request)?|message|card|form|"
+    r"one|thing)|my (?:note|request)|over|in|through|along|now|right now|already|off|please|pls|por favor|ya|"
+    r"ahora|thanks|thank you|whatever (?:you need|is needed|you have)(?: to send)?|it all|everything|"
+    r"to (?:the )?(?:office|team|leasing(?: team)?|maintenance)|ahead))*\W*$", re.I)
+
+
 def is_explicit_send(message: str) -> bool:
-    return (is_affirmative(message) and bool(_EXPLICIT_SEND.search(message))) or bool(_ES_SEND.match(message))
+    return (is_affirmative(message) and bool(_EXPLICIT_SEND.search(message))) or bool(_ES_SEND.match(message)) or \
+        bool(_SEND_COMMAND.match(message)) and len(message.split()) <= 12
 
 
 # A-2 / C-3: complaints about the assistant itself ("I already told you", "why do you keep asking", "like i said").

@@ -293,5 +293,38 @@ def duplicate_of(records: list[dict[str, Any]], kind: str, draft: dict[str, Any]
     return None
 
 
+def _fvals(fields: Any) -> dict[str, str]:
+    if isinstance(fields, dict):
+        return {k: str((v or {}).get("value") or "") for k, v in fields.items()}
+    return {f.get("key"): str(f.get("value") or "") for f in fields or [] if f.get("key")}
+
+
+def near_duplicate_of(records: list[dict[str, Any]], kind: str, draft: dict[str, Any],
+                      persona_id: str | None) -> dict[str, Any] | None:
+    """Sprint 7: a repair about the SAME thing in the SAME place as one already saved in this session, worded
+    differently ("kitchen sink leaking" then "the sink under the kitchen cabinet drips"). Not saved again unless the
+    person says it is a different problem (`draft["dup_ok"]`). Other kinds: only the exact fingerprint counts."""
+    if kind != "maintenance_request" or draft.get("dup_ok"):
+        return None
+    from app.utterance import room_in, things
+
+    mine = _fvals(draft.get("fields", {}))
+    parts = {"cabinet", "floor", "pipe", "wall"}  # around a fixture: the same repair
+    objs = things(mine.get("issue", "")) - parts or things(mine.get("issue", ""))
+    room = room_in(mine.get("location", "") or mine.get("issue", ""))
+    if not objs:
+        return None
+    for r in records:
+        if r.get("kind") != kind or (r.get("persona_id") or None) != (persona_id or None) or \
+                r.get("status") == "urgent_queued":
+            continue
+        theirs = _fvals(r.get("fields") or [])
+        r_room = room_in(theirs.get("location", "") or theirs.get("issue", ""))
+        r_objs = things(theirs.get("issue", "")) - parts or things(theirs.get("issue", ""))
+        if r_objs == objs and (room is None or r_room is None or r_room == room):
+            return r
+    return None
+
+
 __all__ = ["WState", "Event", "Effect", "Snapshot", "Transition", "TRANSITIONS", "derive", "event_for", "apply",
-           "fingerprint", "duplicate_of"]
+           "fingerprint", "duplicate_of", "near_duplicate_of"]
