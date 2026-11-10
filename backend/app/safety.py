@@ -186,7 +186,10 @@ _NUM_WORD = r"(?:\d|one|two|three|four|five|single|double|a one|a two)"
 _UNIT_NOUN = (r"(?:apartments?|units?|homes?|floor ?plans?|layouts?|options?|places?|flats?|condos?|townhomes?|"
               r"houses?|rentals?)")
 _BANNED_TERMS = re.compile(
-    rf"\b{_NUM_WORD}[\s-]?bed[\s-]?rooms?\b|\bbed\s?rooms?\s+(?:and \w+ baths?\s+)?{_UNIT_NOUN}\b|"
+    rf"\b{_NUM_WORD}[\s-]?bed[\s-]?rooms?\b|\bbed\s?rooms?\s+(?:and \w+ baths?\s+)?{_UNIT_NOUN}\b(?<!units)(?<!unit)|"
+    # "bedroom unit" is the AC/heater unit in the bedroom unless a size word precedes it (caught above) or it is
+    # leasing phrasing ("bedroom units available", "bedroom unit for rent")
+    r"\bbed\s?rooms? units? (?:available|for (?:rent|lease)|options?|pric\w*|floor ?plans?|open|left|in stock)\b|"
     r"\bhow many bed\s?rooms\b|\bbed\s?rooms? (?:available|do you need|are you looking)|"
     r"\bunit\s?types?\b|\b[1-4]\s?BR\b|\bstudio unit type\b", re.IGNORECASE)
 _APOS = "['\u2019]"  # straight or curly apostrophe
@@ -254,7 +257,10 @@ _PENDING_PROMISE = re.compile(
     r"passing|sending|submitting|filing|logging|handing)\b(?! (?:you|over the (?:steps|options)))",
     re.IGNORECASE)
 _CONDITIONAL = re.compile(r"\b(?:once|after|when|if|as soon as)\s+(?:you|it|this|that|the (?:note|request|card))\b|"
-                          r"\bwould you like\b|\bdo you want\b|\bshall i\b|\bif you(?:'d| would)? like\b", re.I)
+                          r"\bwould you like\b|\bdo you want\b|\bshall i\b|\bif you(?:'d| would)? like\b|"
+                          # approved after-send wording: "In the real service the team would follow up"
+                          r"\bin (?:the|a) real (?:service|deployment|system)\b|\b(?:team|staff|office|manager|"
+                          r"someone|leasing|maintenance)(?: member)?s? would\b", re.I)
 
 
 def _pending_promise(reply: str) -> str | None:

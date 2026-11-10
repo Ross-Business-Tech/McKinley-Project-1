@@ -314,3 +314,64 @@ def test_indirect_co_conversation_gets_the_co_notice_not_a_heating_repair(client
     assert "fresh air" in (r.get("safety_notice") or "")
     assert (r.get("action") or {}).get("kind") != "maintenance_request"
     assert "thermostat" not in (r.get("reply") or "").lower()
+
+
+# ---- uppercase "CO" without an alarm word + a person unwell -------------------------------------------------
+
+UPPER_CO_POS = ["it says CO on it. and my roommate has a headache and is kind of out of it",
+                "CO is flashing and my son feels dizzy", "it reads C.O. and grandma seems confused",
+                "the screen shows CO, my husband fainted", "CO!! my partner is sick and sleepy"]
+UPPER_CO_NEG = ["I'm moving to CO next month and have a headache about it",
+                "Denver, CO 80202 - feeling sick of the wait", "the co-op laundry gave me a headache",
+                "send it c/o my roommate, she's sick", "Acme Co. sent the invoice, I am dizzy from the stairs",
+                "the CO2 tank for my soda maker is empty and I have a headache",
+                "I have a headache from work, CO-signer paperwork", "my roommate has a headache"]
+
+
+@pytest.mark.parametrize("msg", UPPER_CO_POS)
+def test_uppercase_co_with_unwell_person_is_co(msg):
+    assert kind(msg) == "co", msg
+
+
+@pytest.mark.parametrize("msg", UPPER_CO_NEG)
+def test_uppercase_co_negatives(msg):
+    assert kind(msg) is None, msg
+
+
+def test_co_alert_fires_while_a_repair_draft_is_open(client):
+    r0 = chat(client, "my bedroom AC isn't cooling", "eco-mid")
+    assert (r0.get("action") or {}).get("kind") == "maintenance_request"
+    chat(client, "the alarm thing on the wall keeps beeping", "eco-mid")
+    r = chat(client, "it says CO on it. and my roommate has a headache and is kind of out of it", "eco-mid")
+    assert "fresh air" in (r.get("safety_notice") or "")
+    assert (r.get("action") or {}).get("kind") != "maintenance_request"
+    r2 = chat(client, "she doesnt want to leave", "eco-mid")
+    assert "fresh air" in (r2.get("reply") or "") + (r2.get("safety_notice") or "")
+
+
+# ---- "bedroom unit" = the AC unit in the bedroom; approved after-send wording ---------------------------------
+
+@pytest.mark.parametrize("reply", ["the bedroom unit isn't cooling", "Is it the bedroom unit or the living room one?",
+                                   "your bedroom AC unit", "my bedroom unit (AC) is loud"])
+def test_bedroom_unit_as_equipment_is_allowed(reply):
+    assert codes(reply)["terminology"], reply
+
+
+@pytest.mark.parametrize("reply", ["a 2 bedroom unit", "two-bedroom unit", "one bedroom unit",
+                                   "bedroom units available",
+                                   "bedroom unit for rent"])
+def test_bedroom_unit_as_size_is_banned(reply):
+    assert not codes(reply)["terminology"], reply
+
+
+@pytest.mark.parametrize("reply", ["In the real service the team would follow up with you.",
+                                   "In the real service the leasing team would follow up to confirm a time."])
+def test_approved_after_send_wording_is_not_a_false_claim(reply):
+    assert codes(reply, nothing_sent=True)["no_false_action_claim"], reply
+
+
+def test_approved_after_send_template_passes():
+    from app.templates import t
+    text = t("after_send_saved", "en", what="Your repair request", ref="DEMO-1", team="the maintenance team",
+             saved="kitchen sink")
+    assert codes(text, nothing_sent=True)["no_false_action_claim"]

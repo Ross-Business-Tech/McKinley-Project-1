@@ -686,8 +686,27 @@ def _indirect_co(text: str) -> bool:
     return bool(_HEAT_SOURCE.search(text) or _SEVERAL.search(sym))
 
 
+# Sprint 5.1 (judge re-score): an UPPERCASE standalone "CO" / "C.O." (as an alarm display shows it) plus a person
+# feeling unwell = carbon monoxide, even without "alarm" in the same message. Case-sensitive on purpose: "co-op",
+# "c/o", "Co." (company), "CO2", Colorado ("Denver, CO", "moving to CO") are excluded.
+_CO_UPPER = re.compile(r"(?<![\w/.&-])(?:CO|C\.O\.?)(?![\w/&'-]|\.\s*[A-Z]|\.\w)")
+_COLORADO = re.compile(r"(?:\b(?:in|to|from|near|visiting|out of|moving to|denver|boulder|springs|aurora|"
+                       r"lakewood|fort collins)\W{1,2}|,\s?)CO\b(?!\W+(?:on|is|says|reading|level|alarm|detector))|"
+                       r"\bCO\s?\d{5}\b", re.I)
+_UNWELL_CUE = re.compile(_CO_SYMPTOM.pattern + r"|out of it|faint\w*|passed out|confus\w*|sick\b(?! of)|"
+                         r"not (?:feeling|acting) (?:right|well|herself|himself)|can'?t wake", re.I)
+
+
+def _abbrev_co(text: str) -> bool:
+    if not _CO_UPPER.search(text) or _COLORADO.search(text):
+        return False
+    return bool(_UNWELL_CUE.search(_SYMPTOM_ELSEWHERE.sub(" ", text)))
+
+
 def _kind_of(text: str) -> str | None:
     """Layer-1 + concept match on prepared text (no framing)."""
+    if _abbrev_co(text):
+        return "co"
     if re.search(r"(smoke|co|fire) (alarm|detector)", text, re.I) and re.search(
             r"dizz|headache|nause|head hurts|sick", _SYMPTOM_ELSEWHERE.sub(" ", text), re.I):
         return "co"  # alarm + symptoms = treat as carbon monoxide
