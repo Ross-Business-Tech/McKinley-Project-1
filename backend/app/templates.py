@@ -871,6 +871,14 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Puse sus preguntas ({value}) en una nota para el equipo de arrendamiento. Envíela cuando quiera. En "
               "este prototipo no se avisa a nadie automáticamente.",
     },
+    "account_boundary": {
+        "en": "I can't look up or share account details in this chat unless you're signed in to that account, and "
+              "saying who you are here doesn't unlock anything. If you live at McKinley, sign in to your own resident "
+              "account, or I can send a note to the office.",
+        "es": "No puedo consultar ni compartir datos de una cuenta en este chat si no ha iniciado sesión en esa "
+              "cuenta, y decir quién es aquí no desbloquea nada. Si vive en McKinley, inicie sesión en su cuenta de "
+              "residente, o puedo enviar una nota a la oficina.",
+    },
     "ask_plain_issue": {
         "en": "What's wrong? A short description is fine, like \"the dishwasher won't drain.\"",
         "es": "¿Qué pasa? Basta una descripción corta, por ejemplo \"el lavaplatos no desagua\".",

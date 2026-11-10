@@ -37,6 +37,7 @@ from app.intake import (
     bare_area_answer,
     channel_said,
     city_in,
+    claims_account_access,
     claims_prior_decision,
     community_in,
     contact_change,
@@ -731,12 +732,19 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     def handoff_plan(template_key: str, reason: str, wid: WorkflowId = "human_handoff", *,
                      category: str | None = None, team: str | None = None, topic: str | None = None,
                      card: bool = True, extra: str = "", **kw: str) -> TurnPlan:
+        if not is_resident and mem.get("guest_repair") and team in (None, "leasing") and category not in (
+                "leasing_follow_up", "fair_housing_or_legal"):
+            team = "maintenance"  # live finding: a guest who reported a repair goes to maintenance, not leasing
         rec = handoff or synthesize_handoff(gate, ctx, category or "other", team or "management", reason)
         upd = {k: v for k, v in (("category", category), ("team", team)) if v}
         if not is_resident and rec.team == "management" and not team and category not in ("fair_housing_or_legal",):
             upd.setdefault("team", "leasing")  # prospects and visitors are leasing's customers
         rec = rec.model_copy(update=upd) if upd else rec
         hd = _handoff_draft(gate, rec, ctx, msg, lang, draft or parked, topic, recent)
+        if not is_resident and mem.get("guest_repair") and not hd["fields"].get("earlier"):
+            repair_said = next((r for r in reversed(recent or []) if is_issue_description(r) or _things_in(r)), None)
+            if repair_said and repair_said != msg:
+                _set(hd, "earlier", redact(repair_said)[:240], "you_said")  # the repair they described, once
         if mem.get("questions"):  # P-4: every question the assistant couldn't answer in this chat goes on the note
             _set(hd, "questions", _questions_text(mem["questions"], lang), "you_said")
         template = t(template_key, lang, **kw) + extra
@@ -757,7 +765,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         notes = [r for r in mine if r["kind"] == "staff_handoff" and r.get("status") != "urgent_queued"]
         another = bool(re.search(r"\banother note\b|\bnew note\b|otra nota", msg, re.I))
         if card and notes and not draft and not another and template_key in (
-                "handoff_offer", "unclear_offer", "status_unverified", "maint_unverified", "balance", "sensitive"):
+                "handoff_offer", "unclear_offer", "status_unverified", "maint_unverified", "balance", "sensitive",
+                "lost_note", "no_promise_note", "account_boundary"):  # j-safe-force-booking: one note, not two
             return done(TurnPlan(template=t("note_exists", lang, ref=notes[0]["id"]), functions=["F9"],
                                  skip_model=True, consumed_by_draft=True, force_handoff=True, handoff=rec,
                                  chips=["Send another note" if lang == "en" else "Enviar otra nota"],
@@ -913,6 +922,20 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]
+    if not is_resident and gate.urgency != "emergency" and (says_resident(msg) or (
+            gate.intent == "maintenance" and (is_issue_description(msg) or _things_in(msg)))):
+        mem["guest_repair"] = True  # flag only: a visitor who says they live here / reports a repair
+    if not verified and gate.urgency != "emergency" and claims_account_access(msg):
+        # j-safe-impersonation: a name typed in chat unlocks nothing; never a tour card from it
+        if draft and not draft.get("declined") and draft["kind"] == "tour_request" and store and not draft.get(
+                "fields", {}).get("days"):
+            store.clear_draft(session_id, pkey)
+            touched["draft"] = True
+        return done(TurnPlan(template=t("account_boundary", lang), functions=["F3"], skip_model=True,
+                             consumed_by_draft=True,
+                             chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
+                             workflow=_sel("general_inquiry", "Account details asked for without that account "
+                                                              "signed in: nothing shared.")))
     if is_resident and not_account_holder(msg) and gate.urgency != "emergency":
         if draft and store:  # a card built on that account is discarded (not parked: it can't be restored or shown)
             store.clear_draft(session_id, pkey)

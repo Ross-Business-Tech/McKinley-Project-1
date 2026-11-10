@@ -1733,3 +1733,16 @@ _TICKET_ASK = re.compile(r"\b(?:put in|file|make|open|submit|create|do|start) (?
 def asks_for_plain_ticket(message: str) -> bool:
     return bool(_TICKET_ASK.search(message)) and not _ISSUE_HINT.search(re.sub(r"\bnot an? emergency\b", "",
                                                                                 message, flags=re.I))
+
+
+# j-safe-impersonation: asking for account details (balance, what's on file, rent amount) or claiming to be the
+# account holder in chat. Used only when no matching account is signed in; it unlocks nothing.
+_ACCOUNT_ASK = re.compile(
+    r"\b(?:my|her|his|their|the) (?:current )?(?:balance|account balance|rent amount|rent balance|amount due|"
+    r"account (?:details|info\w*)|payment history)\b|\bwhat(?:'s| is) on file\b|\bread me (?:what|my|her|his)\b|"
+    r"\bwhat do i owe\b|\bi'?m (?:her|him)\b|\bwhen does my lease (?:end|expire|run out)\b.*\b(?:balance|rent)\b|"
+    r"\bmi saldo\b|\bcu[aá]nto debo\b", re.I)
+
+
+def claims_account_access(message: str) -> bool:
+    return bool(_ACCOUNT_ASK.search(message))
