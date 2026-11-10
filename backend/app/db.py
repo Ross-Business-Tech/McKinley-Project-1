@@ -310,6 +310,55 @@ class Store:
             self._q("DELETE FROM action_drafts WHERE session_id=? AND persona_id=?",
                                (session_id, persona_id))
 
+    # ---- synthetic reference data (tables from migration 0002; see app/seed_synthetic.py) ----
+    def has_reference_tables(self) -> bool:
+        """True when migration 0002 has been applied (the app never creates these tables itself)."""
+        try:
+            with self._lock:
+                self._q("SELECT COUNT(*) AS n FROM residents").fetchone()
+            return True
+        except Exception:
+            if self._pg_url:  # a failed statement must not leave the connection unusable
+                self._conn = self._connect_pg()
+            return False
+
+    def replace_reference(self, communities: list[tuple[str, str]], residents: list[dict[str, Any]],
+                          interactions: list[dict[str, Any]], meta: dict[str, str]) -> None:
+        """Replace all synthetic reference rows in one transaction (a reload never leaves a half-loaded set)."""
+        with self._lock, self._tx():
+            for table in ("interactions", "residents", "communities", "dataset_meta"):
+                self._q(f"DELETE FROM {table}")
+            self._qmany("INSERT INTO communities(name, region, synthetic) VALUES (?,?,?)",
+                        [(n, r, True) for n, r in communities])
+            self._qmany("INSERT INTO residents(resident_id, community, first_name, preferred_language, data, "
+                        "synthetic) VALUES (?,?,?,?,?,?)",
+                        [(r["resident_id"], r.get("community") or None, r.get("first_name", ""),
+                          r.get("preferred_language", ""), json.dumps(r), True) for r in residents])
+            self._qmany('INSERT INTO interactions(interaction_id, resident_id, "timestamp", channel, category, '
+                        "subject, full_text, status, resolved_date, follow_up_needed, synthetic) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        [(i["interaction_id"], i["resident_id"], i.get("timestamp", ""), i.get("channel", ""),
+                          i.get("category", ""), i.get("subject", ""), i.get("full_text", ""), i.get("status", ""),
+                          i.get("resolved_date", ""), bool(i.get("follow_up_needed")), True) for i in interactions])
+            self._qmany("INSERT INTO dataset_meta(key, value) VALUES (?,?)", list(meta.items()))
+
+    def reference_rows(self) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, str]] | None:
+        """(resident rows, interaction rows, meta) as the workbook loader expects them, or None if not loaded."""
+        if not self.has_reference_tables():
+            return None
+        with self._lock:
+            res = [json.loads(r["data"]) for r in self._q("SELECT data FROM residents ORDER BY resident_id")]
+            inter = [dict(r) for r in self._q(
+                'SELECT interaction_id, resident_id, "timestamp" AS timestamp, channel, category, subject, '
+                "full_text, status, resolved_date, follow_up_needed FROM interactions ORDER BY interaction_id")]
+            meta = {r["key"]: r["value"] for r in self._q("SELECT key, value FROM dataset_meta")}
+        if not res:
+            return None
+        for i in inter:
+            i["follow_up_needed"] = "Y" if i["follow_up_needed"] in (1, True, "1", "Y") else "N"
+            i.update({k: ("" if v is None else str(v)) for k, v in i.items() if k != "follow_up_needed"})
+        return [{k: str(v) for k, v in r.items()} for r in res], inter, meta
+
     # ---- prototype records ----
     def add_record(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                    data: dict[str, Any]) -> dict[str, Any]:

@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     db_path: Path = Path("data/mckinley_demo.sqlite3")
     # Optional Postgres connection string (for example Supabase). When set it replaces the SQLite file above.
     database_url: SecretStr | None = None
+    # Where synthetic resident data comes from: auto = the workbook file if present, else the database tables
+    # loaded by `python -m app.seed_synthetic` (a hosted backend has no git-ignored XLSX); file; database.
+    resident_data_source: Literal["auto", "file", "database"] = "auto"
     prompt_path: Path = REPO_DIR / "prompts" / "mckinley_system_prompt.md"
     eval_results_path: Path = REPO_DIR / "evals" / "actual_results.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"

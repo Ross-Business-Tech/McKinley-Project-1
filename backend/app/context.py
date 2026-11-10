@@ -127,6 +127,27 @@ def load_workbook(path: Path) -> Workbook:
     r_header, r_rows = _sheet_rows(wb, "Residents", REQUIRED_RESIDENT)
     i_header, i_rows = _sheet_rows(wb, "Interactions", REQUIRED_INTERACTION)
     wb.close()
+    return build_workbook(r_rows, i_rows, path.name, r_header, i_header, warnings)
+
+
+def workbook_readme(path: Path) -> str:
+    """Text of the workbook's README sheet (used to confirm the data is marked synthetic before seeding)."""
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        if "README" not in wb.sheetnames:
+            return ""
+        return "\n".join(" ".join(str(c) for c in row if c) for row in wb["README"].iter_rows(values_only=True))
+    finally:
+        wb.close()
+
+
+def workbook_from_rows(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], source: str) -> Workbook:
+    """Same Workbook as load_workbook, from rows stored in the database (synthetic reference tables)."""
+    return build_workbook(r_rows, i_rows, source, list(r_rows[0]) if r_rows else [], INTERACTION_COLUMNS, [])
+
+
+def build_workbook(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], source: str, r_header: list[str],
+                   i_header: list[str], warnings: list[str]) -> Workbook:
     for col in set(RESIDENT_COLUMNS) - set(r_header):
         warnings.append(f"Residents column '{col}' absent; treated as missing")
     for col in set(INTERACTION_COLUMNS) - set(i_header):
@@ -169,7 +190,7 @@ def load_workbook(path: Path) -> Workbook:
         residents=residents,
         interaction_count=len(i_rows),
         warnings=warnings,
-        source=path.name,
+        source=source,
     )
 
 
