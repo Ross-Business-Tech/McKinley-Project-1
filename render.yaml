@@ -1,0 +1,26 @@
+# Render Blueprint: the Python backend (FastAPI). See docs/development/deploy-vercel-render-supabase.md.
+# Secrets are never stored here: Render asks for the "sync: false" values when the Blueprint is first applied.
+services:
+  - type: web
+    name: mckinley-backend
+    runtime: python
+    plan: free              # the free plan sleeps when idle; the first request after a pause can take about a minute
+    rootDir: backend
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: LLM_PROVIDER      # the built-in rules responder, not a language model; no AI key needed
+        value: mock
+      - key: LLM_MODEL
+        value: mock-deterministic-v1
+      - key: GATE_OVERRIDE_ENABLED   # staff-only override stays off on any shared deployment
+        value: "false"
+      - key: DATABASE_URL      # Supabase connection string (Session pooler URI); set in Render, never commit it
+        sync: false
+      - key: CORS_ORIGINS      # the Vercel website address, e.g. https://your-project.vercel.app
+        sync: false
+      - key: STAFF_API_TOKEN   # Render makes up a long random value
+        generateValue: true

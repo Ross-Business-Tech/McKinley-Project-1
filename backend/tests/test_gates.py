@@ -360,6 +360,17 @@ def test_qa_issue_is_not_a_lawsuit():
     assert "fair_housing_or_legal" in classify_rules("I'm going to sue you", RESIDENT).risk_flags
 
 
+@pytest.mark.parametrize("msg", ["I'll take you to court", "I'm taking this to small claims",
+                                 "I will take legal action", "I want to press charges"])
+def test_legal_threat_phrasings_route_to_staff(msg):
+    assert "fair_housing_or_legal" in classify_rules(msg, RESIDENT).risk_flags, msg
+
+
+@pytest.mark.parametrize("msg", ["The tennis court light is out", "My faucet is still broken"])
+def test_repair_mentions_are_not_legal_threats(msg):
+    assert "fair_housing_or_legal" not in classify_rules(msg, RESIDENT).risk_flags, msg
+
+
 @pytest.mark.parametrize("msg", ["I use a wheelchair, can you add grab bars?",
                                  "Can I have a support dog? I have anxiety",
                                  "Necesito una adaptación por discapacidad"])

@@ -34,7 +34,8 @@ def build_state(settings: Settings | None = None, gateway: LLMGateway | None = N
         except WorkbookError as e:
             data_error = str(e)
             log.warning("workbook unavailable: %s", e)
-    store = store or Store(settings.resolve(settings.db_path))
+    db_url = settings.database_url.get_secret_value().strip() if settings.database_url else ""
+    store = store or Store(settings.resolve(settings.db_path), database_url=db_url or None)
     deps = EngineDeps(settings=settings, llm=gateway or LLMGateway(settings), store=store, workbook=workbook)
     return AppState(deps=deps, store=store, data_error=data_error)
 
