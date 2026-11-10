@@ -279,3 +279,38 @@ def test_follow_up_check_is_off_by_default():  # the existing recommendation wor
 def test_renewal_draft_still_uses_the_account_for_the_holder(client):  # control for the test above
     r = chat(client, "can I renew my lease for 12 months?", "e4rc")
     assert _on_file(r)
+
+
+# ---- indirect CO: an alarm sounding + heat source or several people + symptoms (no "CO" word) ----------------
+
+INDIRECT_CO_POS = ["the alarm by the furnace keeps beeping and we all feel foggy",
+                   "something is beeping near the water heater and my wife and I are dizzy",
+                   "a detector is going off in the basement, everyone has a headache",
+                   "our alarm keeps going off and the kids are sleepy and nauseous",
+                   "the beeping thing near the boiler won't stop and I feel out of it",
+                   "there's a loud beeping in the utility closet and i'm groggy and my head is pounding",
+                   "the alarm in the hallway is screeching, me and my roommate feel woozy"]
+INDIRECT_CO_NEG = ["the smoke alarm beeps when I cook, also I have a headache from work",
+                   "the furnace is noisy and I feel sick of this",
+                   "I have a cold and the detector is beeping low battery", "the alarm is beeping and I'm tired",
+                   "my alarm clock went off and I have a headache from work",
+                   "the microwave beeps and the furnace is loud", "the car alarm outside keeps going off, so annoying",
+                   "the car alarm keeps going off and we all have headaches from it",
+                   "everyone in the building is sick of the fire drills"]
+
+
+@pytest.mark.parametrize("msg", INDIRECT_CO_POS)
+def test_indirect_co_without_the_word(msg):
+    assert kind(msg) == "co", msg
+
+
+@pytest.mark.parametrize("msg", INDIRECT_CO_NEG)
+def test_indirect_co_negatives(msg):
+    assert kind(msg) is None, msg
+
+
+def test_indirect_co_conversation_gets_the_co_notice_not_a_heating_repair(client):
+    r = chat(client, "the alarm by the furnace keeps beeping and we all feel foggy", "eco")
+    assert "fresh air" in (r.get("safety_notice") or "")
+    assert (r.get("action") or {}).get("kind") != "maintenance_request"
+    assert "thermostat" not in (r.get("reply") or "").lower()

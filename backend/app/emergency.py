@@ -160,7 +160,8 @@ _FUMES = (r"mix\w* (?:the )?(?:bleach|cleaners|chemicals)\W+(?:\w+\W+){0,4}(?:an
           r"another|other)|bleach and ammonia|(?:fumes|chemical smell)\W+(?:\w+\W+){0,10}(?:cough\w*|can'?t breathe|"
           r"eyes (?:burn|sting)|dizz\w*)")
 _SYMPTOM = (r"head ?aches?|head (?:hurts|is (?:pounding|killing))|pounding head|dizz\w*|light-?headed|nause\w*|"
-            r"throwing up|vomit\w*|drows\w*|sleepy|confus\w*|faint\w*|letharg\w*|feel (?:sick|weird|off)|"
+            r"throwing up|vomit\w*|drows\w*|sleepy|confus\w*|faint\w*|letharg\w*|"
+            r"feel (?:sick(?! of| and tired)|weird|off)|"
             r"mare\w*|dolor de cabeza|n[aá]use\w*|v[oó]mit\w*|somnolien\w*")
 _HEAT = (r"furnace|heater|heat(?:ing)?(?:'s| is| was| has)?(?: been)? (?:on|running|blasting|cranked)|turned (?:the"
          r" )?heat (?:on|up)|boiler|"
@@ -476,7 +477,7 @@ _DISTRESS = re.compile(
     r"everything is falling apart|nothing matters|it doesn'?t matter anyway|tired of (?:living|everything|life)|"
     r"ya no puedo m[aá]s|no aguanto m[aá]s|feels? (?:so |really |completely )?hopeless|so stressed (?:that )?i "
     r"can'?t (?:sleep|eat|breathe)|panic attacks?|" + _OVERWHELM, re.I)
-_UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick|weird|off)|", "")
+_UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick(?! of| and tired)|weird|off)|", "")
                      + r"|can'?t breathe well|short of breath", re.I)
 _NEGATED_SELF_HARM = re.compile(
     r"(?:not|never been|i'?m not|im not) (?:really )?suicidal|not (?:going|gonna|trying) to (?:hurt|kill) myself|"
@@ -649,10 +650,46 @@ def _strip_negated(text: str) -> str:
     return _NEGATED.sub(" ", text)
 
 
+# Sprint 5.1 (journey j-safe-indirect-co): an alarm sounding + (a heat source OR several people) + symptoms = CO, even
+# without the words "CO" / "carbon monoxide". Symptoms the person puts down to something else ("a headache from
+# work", "sick of this") are not counted.
+_SYMPTOM_ELSEWHERE = re.compile(
+    r"(?:head ?aches?|head hurts|dizz\w*|nause\w*|sick|tired|foggy)\W+(?:\w+\W+){0,2}(?:from|because of|after) "
+    r"(?:work|school|class|stress|studying|my (?:job|shift|boss|workout)|the gym|drinking|last night|crying|the "
+    r"screen)|\bhangover|sick of\b|sick and tired|\b(?:a|my) cold\b|the flu\b|allerg\w*", re.I)
+_ALARM_SOUNDING = re.compile(
+    r"(?:\balarms?\b|detector|sensor|monitor|something|thing|it)\W+(?:\w+\W+){0,4}(?:beep\w*|going off|went off|"
+    r"goes off|sounding|blar\w*|screech\w*|shriek\w*|ringing|won'?t stop)|\bbeep(?:ing|s|ed)?\b(?! (?:when|while|"
+    r"whenever|every time) (?:i|we) (?:cook|shower))", re.I)
+_NOT_A_HOME_ALARM = re.compile(r"\b(?:car|clock|phone|microwave|oven timer|timer|watch|security system) ?alarms?\b|"
+                               r"alarm clock|microwave|timer|my phone", re.I)
+_SEVERAL = re.compile(
+    r"\bwe(?:'re| are)? (?:all|both)\b|\ball of us\b|\b(?:everyone|everybody)\b(?! in the building)|\bthe (?:whole )?"
+    r"family\b|\bboth\b|\b(?:the|my|our) (?:kids|children|roommates|parents)\b|\b(?:\w+ )?(?:and|&) (?:i|me)\b|"
+    r"\bme and\b|\b(?:wife|husband|partner|roommate|kid|son|daughter|mom|dad|baby)\W+(?:\w+\W+){0,6}(?:too|also|"
+    r"as well)\b|\b(?:wife|husband|partner|roommate|son|daughter|mom|dad) and (?:my |our |the )?(?:wife|husband|"
+    r"partner|roommate|son|daughter|kids?|mom|dad|baby)\b", re.I)
+_CO_SYMPTOM = re.compile(_SYMPTOM + r"|fogg\w*|brain fog|out of it|groggy|woozy|spacey|loopy|feel(?:s|ing)? weird|"
+                         r"head (?:is )?(?:pounding|throbbing)", re.I)
+_HEAT_SOURCE = re.compile(_HEAT + r"|space heater|heat(?:ing)? (?:unit|system)|basement|utility (?:room|closet)",
+                          re.I)
+_REAL_FIRE = re.compile(r"\bsmok(?:e|ing|y)\b(?! ?(?:alarm|detector))|\bflames?\b|\bfire\b(?! ?(?:alarm|"
+                        r"detector))|\bburning\b", re.I)
+
+
+def _indirect_co(text: str) -> bool:
+    sym = _SYMPTOM_ELSEWHERE.sub(" ", text)
+    if not (_ALARM_SOUNDING.search(text) and _CO_SYMPTOM.search(sym)) or _REAL_FIRE.search(text):
+        return False
+    if _NOT_A_HOME_ALARM.search(text) and not re.search(r"detector|sensor", text, re.I):
+        return False
+    return bool(_HEAT_SOURCE.search(text) or _SEVERAL.search(sym))
+
+
 def _kind_of(text: str) -> str | None:
     """Layer-1 + concept match on prepared text (no framing)."""
-    if re.search(r"(smoke|co|fire) (alarm|detector)", text, re.I) and re.search(r"dizz|headache|nause|head hurts|sick",
-                                                                          text, re.I):
+    if re.search(r"(smoke|co|fire) (alarm|detector)", text, re.I) and re.search(
+            r"dizz|headache|nause|head hurts|sick", _SYMPTOM_ELSEWHERE.sub(" ", text), re.I):
         return "co"  # alarm + symptoms = treat as carbon monoxide
     text = _strip_negated(_strip_figurative(text))
     if _POLICY_OR_FIGURATIVE.search(text):
@@ -665,6 +702,8 @@ def _kind_of(text: str) -> str | None:
         return None
     if _BENIGN_CHIRP.search(text) and not _CHIRP_BUT_DANGER.search(text):
         return None
+    if _indirect_co(text):
+        return "co"
     for kind, pat in KINDS:
         if pat.search(text):
             return kind
