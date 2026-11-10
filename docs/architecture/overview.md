@@ -22,8 +22,9 @@ work-order system; "submitted" means saved to the labelled prototype store in SQ
 | Planner | `backend/app/actions.py` (`plan_turn`, `confirm`) | F2–F9 behaviour: questions, read-back cards, notes, status; ordered checks (the order is the spec) |
 | Detectors and text | `intake.py`, `templates.py`, `content/knowledge_base.json`, `workflows.py`, `handoff.py` | Message detectors, approved/draft wording, FAQ content, workflow selection, handoff recommendations |
 | Context | `context.py`, `personas.py` | Workbook adapter, allowlisted SAFE_CONTEXT, demo identity; "not the account holder" rule |
-| Providers | `backend/app/llm/` | OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
-| Persistence | `db.py` (SQLite) | chat turns, gate log (no message text), drafts, prototype records, eval runs |
+| Providers | `backend/app/llm/` | Gemini (intended for deployments), OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
+| Persistence | `db.py`, `migrations/` (Alembic), `seed_synthetic.py` | SQLite locally or Postgres/Supabase (`DATABASE_URL`); chat turns, gate log (no message text), drafts, prototype records, eval runs, synthetic residents/communities/interactions; RLS on in Postgres |
+| Deployment | `render.yaml`, `frontend/vercel.json` | Render backend (`APP_ENV=hosted` refuses unsafe settings), Vercel static site; [DEPLOYMENT_READINESS](../DEPLOYMENT_READINESS.md) |
 | Evaluation | `evals.py`, `gate_evals.py`, `journey_evals.py`, `usability/`, `live_eval/` | Five cases, gate scenarios, journeys, persona suite, live A/B/C runner ([evaluation](../evaluation/README.md)) |
 
 ## Endpoints
@@ -61,7 +62,7 @@ that send the header.
 Before any routing or generation, `risk.pipeline.assess` combines the deterministic rules (`risk/detect.py`, which
 wraps `emergency.scan`: keywords, meaning-level concepts, framing, negation, a 3-turn window) with an optional
 semantic classifier (`risk/classifier.py`, structured output through the gateway; runs only when a key exists and the
-target is not the mock). `risk/policy.decide` applies rules R1–R9e: the semantic layer can only add caution, failure
+target is not the mock). `risk/policy.decide` applies rules R1–R9e: the semantic layer never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8); failure
 marks the turn `degraded`, never "safe". `risk/responses.select` picks fixed team-draft text (911 / 988 / Poison Help /
 maintenance line). A full alert forces the gate to `emergency` and the planner saves one urgent prototype note per
 hazard (nobody is paged). Other layers still apply: input redaction and tag stripping, pre-model policy gates

@@ -62,9 +62,11 @@ export function toIdentities(personas: Persona[]): Identity[] {
 /** I-01 draft: AI disclosure on the first message. Wording still needs McKinley approval. */
 export function greeting(identity: Identity): string {
   if (identity.lang === "es") {
-    return `Hola, ${identity.firstName ?? ""}. Soy el asistente virtual de McKinley. Soy una IA; si prefiere hablar con una persona, dígamelo y preparo una nota para nuestro equipo. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
+    return `Hola, ${identity.firstName ?? ""}. Soy el asistente automático de McKinley, no una persona. Si prefiere hablar con alguien del equipo, dígamelo y preparo una nota. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
   }
-  const intro = "I'm McKinley's virtual assistant. I'm an AI. If you'd rather talk to a person, just say so and I'll prepare a note for our team.";
+  // I-01 AI disclosure (team draft, McKinley approves). "Automated, not a person" is true for the fixed-rule demo
+  // responder and for a live AI model, and it is short enough for a 320px screen.
+  const intro = "I'm McKinley's automated assistant, not a person. Want a person instead? Just say so and I'll prepare a note for our team.";
   switch (identity.kind) {
     case "resident":
       return `Hi ${identity.firstName ?? "there"}. ${intro} I can help you report a repair, check your open requests, ask about your renewal, or reach the office.`;
@@ -115,7 +117,7 @@ export const UI = {
     reference: "Reference",
     assistantSaid: "Assistant said:",
     youSaid: "You said:",
-    placeholder: "Type your message",
+    youChose: "You pressed:",
     previewPlaceholder: "Typing is off in this preview",
     replying: "The assistant is replying…",
     failed: "Not sent",
@@ -126,7 +128,8 @@ export const UI = {
     noEmergencyLine: "Your community's emergency maintenance number isn't connected in this prototype.",
     openRequests: "Your open requests",
     followUpOwed: "Follow-up owed",
-    footer: "Prototype with made-up data. In an emergency, call 911.",
+    replyMock: "Replies here come from fixed rules, not an AI model.",
+    replyAi: "Replies are written by an AI model and checked by fixed safety rules; it can make mistakes.",
     staffLink: "Staff and demo console",
     message: "Message the assistant",
     send: "Send message",
@@ -152,6 +155,15 @@ export const UI = {
     afterDecline: ["Send it after all", "Report a repair"],
     talkToPerson: "Talk to a person",
     gasCall: "Get outside, then call 911",
+    newChat: "Start over",
+    newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
+    prototype: "Prototype with made-up data.",
+    emergencyLead: "Emergency?",
+    emergencyCall: "Emergency: call 911",
+    demoButton: "Demo",
+    demoTitle: "About this demo",
+    demoSignIn: "Demo sign-in",
+    demoClose: "Close",
     safetyInfo: "If that happens",
   },
   es: {
@@ -166,7 +178,7 @@ export const UI = {
     reference: "Referencia",
     assistantSaid: "El asistente dijo:",
     youSaid: "Usted dijo:",
-    placeholder: "Escriba su mensaje",
+    youChose: "Usted pulsó:",
     previewPlaceholder: "En esta vista previa no se puede escribir",
     replying: "El asistente está respondiendo…",
     failed: "No enviado",
@@ -177,7 +189,8 @@ export const UI = {
     noEmergencyLine: "El número de emergencias de mantenimiento de su comunidad no está conectado en este prototipo.",
     openRequests: "Sus solicitudes abiertas",
     followUpOwed: "Seguimiento pendiente",
-    footer: "Prototipo con datos ficticios. En una emergencia, llame al 911.",
+    replyMock: "Las respuestas aquí vienen de reglas fijas, no de un modelo de IA.",
+    replyAi: "Las respuestas las escribe un modelo de IA y las revisan reglas de seguridad fijas; puede equivocarse.",
     staffLink: "Consola del personal",
     message: "Escriba al asistente",
     send: "Enviar mensaje",
@@ -191,6 +204,15 @@ export const UI = {
     afterSend: ["Ver mis solicitudes", "Reportar una reparación"],
     afterDecline: ["Envíelo", "Reportar una reparación"],
     talkToPerson: "Hablar con una persona",
+    newChat: "Empezar de nuevo",
+    newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
+    prototype: "Prototipo con datos ficticios.",
+    emergencyLead: "¿Emergencia?",
+    emergencyCall: "Emergencia: llame al 911",
+    demoButton: "Demo",
+    demoTitle: "Sobre esta demo",
+    demoSignIn: "Inicio de sesión de demo",
+    demoClose: "Cerrar",
     gasCall: "Salga y luego llame al 911",
     safetyInfo: "Si eso pasa",
     whatItSaid: "Lo que decía",
@@ -213,7 +235,7 @@ export function formatDate(iso: string, lang: Lang): string {
   const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+    : d.toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ---- customer session restore (live mode only; same tab, sessionStorage) ----

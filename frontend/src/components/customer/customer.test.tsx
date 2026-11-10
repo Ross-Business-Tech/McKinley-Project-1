@@ -83,6 +83,35 @@ describe("CustomerApp", () => {
     await screen.findByText(/Submitted, waiting for staff review/);
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
+    // the press is shown as the person's own turn, so the saved message reads as the reply to it
+    expect(screen.getByTestId("choice")).toHaveTextContent("Send repair request");
+    // a resident who sent a repair is offered its status and another repair
+    expect(screen.getByRole("button", { name: "Check its status" })).toBeInTheDocument();
+  });
+
+  it("announces the outcome of Send once, with its reference", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    await screen.findByText(/Submitted, waiting for staff review/);
+    const region = document.querySelector('[aria-live="polite"]');
+    await waitFor(() => expect(region).toHaveTextContent(/Assistant said:.*DEMO-WO-/));
+  });
+
+  it("puts focus in the message box after Start over", async () => {
+    live(() => resp({ reply: "Got it." }));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "hello{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    await waitFor(() => expect(screen.getByLabelText("Message the assistant")).toHaveFocus());
+    expect(screen.queryByText("Got it.")).not.toBeInTheDocument();
   });
 
   it("gives emergencies a tap-to-call 911 link", async () => {
@@ -116,7 +145,7 @@ describe("CustomerApp", () => {
     const user = userEvent.setup();
     render(<CustomerApp />);
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R012");
-    expect(screen.getByText(/Soy el asistente virtual de McKinley/)).toBeInTheDocument();
+    expect(screen.getByText(/Soy el asistente automático de McKinley, no una persona/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Escriba al asistente"), "el horno no calienta{Enter}");
     const reply = await screen.findByText("¿En qué parte del apartamento es?");
     expect(reply.closest("[lang]")).toHaveAttribute("lang", "es");
@@ -148,6 +177,55 @@ describe("CustomerApp", () => {
     expect(within(note).getByText("If that happens")).toBeInTheDocument();
     expect(within(note).queryByRole("link")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("says plainly whether replies come from fixed rules or an AI model", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: true }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
+  });
+
+  it("labels live model replies as AI-written", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: false, provider: "gemini", reply_source: "model" }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model/)).toBeInTheDocument();
+  });
+
+  it("keeps a tap-to-call 911 link and an honest 'not a person' greeting on screen", async () => {
+    live(() => resp({ reply: "Got it." }));
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    expect(screen.getByRole("link", { name: "Emergency: call 911" })).toHaveAttribute("href", "tel:911");
+    expect(screen.getByText(/automated assistant, not a person/)).toBeInTheDocument();
+    expect(screen.queryByText(/I'm an AI/)).not.toBeInTheDocument();
+  });
+
+  it("opens and closes 'About this demo' from the keyboard and returns focus", async () => {
+    live(() => resp({ reply: "Got it." }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    const toggle = screen.getByRole("button", { name: "About this demo" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByTestId("about-demo");
+    expect(within(panel).getByRole("link", { name: "Staff and demo console" })).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: /Close/ }));
+    await user.click(toggle);
+    await user.keyboard("{Tab}{Escape}");
+    expect(screen.queryByTestId("about-demo")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
   });
 
   it("always offers a way to talk to a person", async () => {

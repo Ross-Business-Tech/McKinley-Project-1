@@ -25,7 +25,7 @@ flowchart TB
   SEM -->|"ok / timeout / error /<br/>bad_output / unavailable / mock"| POL
   PRIOR[("Urgent notes already saved<br/>in this session")] --> POL
   subgraph L3["Layer 3: risk/policy.py (explicit rules R1-R9, R9e)"]
-    POL["decide(): semantic may only ADD caution;<br/>failure = degraded, never 'safe'"]
+    POL["decide(): semantic never removes a rules alert<br/>(may drop only the broad 911 line, R7);<br/>failure = degraded, never 'safe'"]
   end
   POL --> RESP["risk/responses.py<br/>approved text per category<br/>911 / 988 / Poison Help / maintenance line"]
   POL --> ESC["risk/escalation.py<br/>handoff recommendation (not sent)"]

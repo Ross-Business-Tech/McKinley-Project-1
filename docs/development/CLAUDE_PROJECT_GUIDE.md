@@ -17,6 +17,12 @@ Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`
 (`actions.plan_turn`) → generate (one model call, often skipped) → validate → handoff → persist. Details:
 [`architecture/overview.md`](../architecture/overview.md), [`diagrams/`](../diagrams/).
 
+## Deployment stack (prepared, not deployed)
+Website on **Vercel** (static export of `frontend/`), backend on **Render** (`render.yaml`, `APP_ENV=hosted`),
+database on **Supabase** Postgres (`DATABASE_URL`; SQLite locally), replies from **Gemini** (`LLM_PROVIDER=gemini`).
+Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.md). The here.now preview
+(`npm run publish:preview`) stays the team's default until Vercel is validated.
+
 ## Conventions
 - **Python:** `uv` only (`uv sync`, `uv add`, `uv run …`); Pydantic models for every request/response; one error
   envelope `{"error": {code, message, retryable}}` (raise `HTTPException(detail={"code": …, "message": …})`);
@@ -27,19 +33,26 @@ Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`
   place, never reorder silently; add a test that pins the new behaviour.
 - **Detectors and safety regexes** (`emergency.py`, `intake.py`): extend, don't merge similar-looking patterns; each
   change needs positive and negative tests.
+- **Database:** schema changes only through a new Alembic migration in `backend/migrations/versions/` with raw SQL
+  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_migrations.py` (and
+  `TEST_DATABASE_URL` on a throwaway Postgres). Only the synthetic workbook may be seeded (`app.seed_synthetic`).
 - **Wording:** customer-facing text lives in `templates.py` / `customer.ts`; never split template strings to reuse
   part of them — add a key.
 
 ## LLM providers and secrets
-- Provider-agnostic gateway (`app/llm/`); configure with `LLM_PROVIDER`, `LLM_MODEL`, `OPENROUTER_API_KEY` in
-  `backend/.env` (git-ignored). Never print, log, commit or copy keys; check presence as booleans only.
+- Provider-agnostic gateway (`app/llm/`): Gemini (deployments), OpenRouter, Ollama, Anthropic, Mock; configure with
+  `LLM_PROVIDER`, `LLM_MODEL` / `GEMINI_MODEL` and the provider key in `backend/.env` (git-ignored) or Render
+  secrets. Never print, log, commit or copy keys or `DATABASE_URL`; check presence as booleans only. Never put any
+  key, database URL or Supabase service-role key in the website (`NEXT_PUBLIC_*` values are public).
+- Do not change the model ID silently: one fixed `provider:model` per evaluation; verify with
+  `python -m app.live_eval.preflight`; live Gemini runs need `--allow-paid` and a small `--max-calls`.
 - Never silently switch models (`MODEL_SWITCHED`), never fall back to the mock without labelling it, never call the
   mock or a template "live".
 - Free hosted models may log prompts: synthetic data only. The resident workbook is git-ignored; never commit
   real personal data, `.env` files or databases. The repository is public.
 
 ## Safety-critical changes (`app/risk`, `emergency.py`, safety templates, staff guard, identity rules)
-- The semantic layer may only add caution; a failed classifier is never "safe"; safety text is fixed and approved
+- The semantic layer never removes a rules alert (the one thing it may remove is the broad 911 care line, R7, at confidence >= 0.8); a failed classifier is never "safe"; safety text is fixed and approved
   wording, never model-written; never claim anyone was dispatched or notified.
 - Every change: unit tests for the rule plus the policy table (`tests/test_risk_policy_table.py`), run the full
   suite, and ask for an **independent** review (a reviewer or subagent that did not write the change).
@@ -59,6 +72,16 @@ Tests are offline: an autouse fixture removes provider keys and staff tokens fro
 WCAG 2.2 AA (keyboard, visible focus, 44 px targets, live regions announce once, reflow at 320 px); customer UI stays
 simple — diagnostics belong in `/staff/`; read-back before any save; say plainly what was and was not sent. Check
 real screenshots at 375, 390, 768 and 1440 px for visible changes.
+- **Brand:** McKinley blue `#4e6f92` and Barlow headings, through the `mk-*` tokens only. Status colours are not
+  the brand: green means saved, amber means a person should help, red means emergency. Each status also has an
+  icon and words. See [`docs/design/BRAND_SYSTEM.md`](../design/BRAND_SYSTEM.md).
+- **Phones first:**
+  - The composer stays pinned on every phone height, keyboard open or not (it scrolls with the page only at extreme zoom, 280px tall or less).
+  - The tap-to-call 911 link and "Talk to a person" are always visible.
+  - Run `frontend/e2e/mobile-acceptance.mjs` (Chromium and WebKit, 7 sizes, keyboard stand-in) before a UI PR; see
+    [`docs/design/MOBILE_UX_AUDIT.md`](../design/MOBILE_UX_AUDIT.md).
+- **Honesty:** never claim the public phone requirement is met until a deployed URL passes on a real phone
+  ([`docs/INTERACTIVE_DEMO_READINESS.md`](../INTERACTIVE_DEMO_READINESS.md)).
 
 ## Docs and diagrams
 - Update the docs your change makes untrue, in the same PR: README status, `docs/workflows/traceability.md`,

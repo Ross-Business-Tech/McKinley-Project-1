@@ -8,7 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-barlow), var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -54,7 +54,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #1d5c45; /* = mk-brand: one accent across customer and staff views (UI review A4) */
+  --primary: #4e6f92; /* = mk-brand (McKinley blue): one accent across customer and staff views */
   --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -65,7 +65,7 @@
   --destructive: oklch(0.5 0.2 27.325); /* darkened for 4.5:1 badge text (E-7) */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: #1d4f91; /* = mk-focus, used solid (>= 3:1) */
+  --ring: #1f3a56; /* = mk-focus, used solid (>= 3:1) */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -127,28 +127,34 @@
     @apply font-sans;
   }
 }
-/* ---- McKinley customer + staff tokens (see docs/evaluation/ux-review.md, "Colour tokens") ----
-   Every status colour is paired with text and an icon; none carries meaning alone.
-   Contrast (WCAG 2.2 AA) was checked for each text/background pair listed in docs/evaluation/accessibility-review.md. */
+/* ---- McKinley design system (docs/design/BRAND_SYSTEM.md) ----
+   Brand blue #4e6f92 is McKinley's own (mckinley.com stylesheet: "bg-style-blue", "font-color-blue", and the app
+   icon). Status colours are independent of the brand: green = saved, amber = a person should help, red = emergency.
+   Every status is also carried by text and an icon; colour only reinforces it. Contrast (WCAG 2.2 AA) for each pair
+   is listed in BRAND_SYSTEM.md. */
 @theme {
-  --color-mk-ink: #14231c;        /* body text: 15.2:1 on paper */
-  --color-mk-muted: #4b5d54;      /* secondary text: 6.5:1 on paper, 7.0:1 on white */
-  --color-mk-paper: #f6f7f5;      /* page */
-  --color-mk-surface: #ffffff;    /* messages, cards */
-  --color-mk-line: #d9e1dc;       /* dividers (non-text) */
-  --color-mk-line-strong: #7c8d84; /* input borders: 3.4:1 on white (non-text contrast) */
-  --color-mk-brand: #1d5c45;      /* evergreen: primary action, 7.9:1 with white */
-  --color-mk-brand-hover: #164a37;
-  --color-mk-brand-soft: #e6f0eb; /* user bubbles, selected */
-  --color-mk-sent: #1d4f91;       /* "sent / saved" status text: 7.2:1 on its tint */
-  --color-mk-sent-soft: #eaf1fb;
-  --color-mk-attention: #7a4206;  /* "a person should help" text: 7.3:1 on its tint */
+  --font-heading: var(--font-barlow), var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --color-mk-ink: #1c2530;        /* body text: 14.3:1 on paper, 15.5:1 on white */
+  --color-mk-muted: #5c6369;      /* McKinley's grey; secondary text: 5.6:1 on paper, 6.1:1 on white */
+  --color-mk-paper: #f5f6f8;      /* page */
+  --color-mk-surface: #ffffff;    /* cards, assistant surfaces */
+  --color-mk-line: #dde3ea;       /* dividers (non-text) */
+  --color-mk-line-strong: #7a8796; /* input borders: 3.7:1 on white, 3.4:1 on paper */
+  --color-mk-brand: #4e6f92;      /* McKinley blue: header band, primary buttons (white text 5.2:1) */
+  --color-mk-brand-hover: #3f5b79; /* hover / pressed (white text 7.0:1); also brand-coloured text and links */
+  --color-mk-brand-strong: #2b4660; /* deep blue for small brand text on tints (9.8:1 on white) */
+  --color-mk-brand-soft: #e8eef4; /* your messages, selected rows, hover (ink 13.2:1) */
+  --color-mk-sent: #2b4660;       /* calm information notes (care notes): 8.5:1 on its tint */
+  --color-mk-sent-soft: #eaf0f6;
+  --color-mk-done: #2d6a44;       /* saved / submitted records: 5.6:1 on its tint */
+  --color-mk-done-soft: #e7f2ea;
+  --color-mk-attention: #7a4206;  /* "a person should help": 7.3:1 on its tint */
   --color-mk-attention-soft: #fff3e0;
-  --color-mk-danger: #a3241c;     /* emergency text: 6.5:1 on its tint, 7.4:1 under white */
+  --color-mk-danger: #a3241c;     /* emergency: 6.5:1 on its tint, 7.4:1 under white */
   --color-mk-danger-soft: #fdeceb;
-  --color-mk-draft: #4b5d54;
-  --color-mk-draft-soft: #eef1ef;
-  --color-mk-focus: #1d4f91;
+  --color-mk-draft: #5c6369;
+  --color-mk-draft-soft: #eef1f4;
+  --color-mk-focus: #1f3a56;      /* focus ring: 10.8:1 on paper; white ring on the blue band */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -167,4 +173,12 @@ input[type="checkbox"], input[type="radio"] {
 .mk-focus:focus-visible {
   outline: 3px solid var(--color-mk-focus);
   outline-offset: 2px;
+}
+/* On the blue band a dark ring would disappear: use white there. */
+.mk-band .mk-focus:focus-visible {
+  outline-color: #ffffff;
+}
+/* Keep the on-screen keyboard from hiding the composer (iOS reports the keyboard via visualViewport). */
+:root {
+  --mk-kb: 0px;
 }

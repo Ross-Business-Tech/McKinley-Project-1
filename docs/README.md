@@ -4,6 +4,16 @@ Start here: [`../README.md`](../README.md) (what it is, status, setup) → [`PRO
 (current state and next steps) → [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md) (how
 to work here). The project is a **prototype, not production ready**.
 
+## Deployment (Vercel + Render + Supabase + Gemini; prepared, not deployed)
+- [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) — status, missing access, checklist, blockers
+- [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) — can a phone open a public link and chat? (not yet)
+- [design/BRAND_SYSTEM.md](design/BRAND_SYSTEM.md) — McKinley colours, type, components, contrast
+- [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) — viewport matrix, findings, fixes, open issues
+- [design/TASTE_SKILL_REVIEW.md](design/TASTE_SKILL_REVIEW.md) — which design skills were used and how
+- [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md) — what changed in each sprint and what was tested
+- [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
+  [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
+
 ## Architecture
 - [architecture/overview.md](architecture/overview.md) — components, endpoints, providers, context, safety, security
 - [architecture/decisions.md](architecture/decisions.md) — ADR-001…011 (modes, gate, pipeline, static demo, safety, store)
@@ -36,6 +46,7 @@ to work here). The project is a **prototype, not production ready**.
 - [development/CLAUDE_PROJECT_GUIDE.md](development/CLAUDE_PROJECT_GUIDE.md) — conventions, tests, Definition of Done
 - [development/engineering-rules.md](development/engineering-rules.md) — rules imported by `backend/` and `frontend/` CLAUDE.md
 - [development/CLAUDE_MD_PROPOSED_PATCH.md](development/CLAUDE_MD_PROPOSED_PATCH.md) — proposed addition to the Ross IT root `CLAUDE.md` (not applied)
+- [development/deploy-vercel-render-supabase.md](development/deploy-vercel-render-supabase.md) — put the typeable version online (Vercel + Render + Supabase)
 - [development/codegraph.md](development/codegraph.md) — optional local code index
 
 ## Archive
