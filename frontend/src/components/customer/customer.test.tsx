@@ -85,6 +85,31 @@ describe("CustomerApp", () => {
     expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
   });
 
+  it("announces the outcome of Send once, with its reference", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    await screen.findByText(/Submitted, waiting for staff review/);
+    const region = document.querySelector('[aria-live="polite"]');
+    await waitFor(() => expect(region).toHaveTextContent(/Assistant said:.*DEMO-WO-/));
+  });
+
+  it("puts focus in the message box after Start over", async () => {
+    live(() => resp({ reply: "Got it." }));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "hello{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    await waitFor(() => expect(screen.getByLabelText("Message the assistant")).toHaveFocus());
+    expect(screen.queryByText("Got it.")).not.toBeInTheDocument();
+  });
+
   it("gives emergencies a tap-to-call 911 link", async () => {
     live(() => resp({
       reply: "Leave now. Call 911.", safety_notice: "Leave now.", emergency_kind: "gas",

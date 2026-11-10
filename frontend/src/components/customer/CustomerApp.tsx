@@ -147,6 +147,7 @@ export function CustomerApp() {
     setJourney(null);
     setStep(0);
     setDraft("");
+    requestAnimationFrame(() => inputRef.current?.focus()); // the Start over button disappears: never leave focus on <body>
   }, []);
 
   // Scrolling after each message. First screen: stay at the top (brand, sign-in, the "not a person" greeting).
@@ -337,7 +338,7 @@ export function CustomerApp() {
       if (!journey || nextStep?.kind !== "confirm" || nextStep.action_kind !== kind) return;
       const result = nextStep.result;
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
-      setAnnouncement(""); // focus moves to the new message, which is read once
+      setAnnouncement(`${t.assistantSaid} ${result.message}`);
       setTurns((t) => [...t, { confirm: kind, result }]);
       setStep(step + 1);
       requestAnimationFrame(() => lastAssistantRef.current?.focus());
@@ -347,7 +348,9 @@ export function CustomerApp() {
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
-      setAnnouncement("");
+      // The outcome and its reference, said once (focus also moves to the new message).
+      const ref = result.action?.record?.id;
+      setAnnouncement(`${t.assistantSaid} ${result.message}${ref && !result.message.includes(ref) ? ` ${t.reference} ${ref}.` : ""}`);
       setTurns((t) => [...t, { confirm: kind, result }]);
     } catch {
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: t.notSaved, lang }]);
@@ -364,7 +367,7 @@ export function CustomerApp() {
       const result = await api.cancelAction(sessionId, identity.id || null, kind);
       const text = result.ok ? t.declinedMsg : result.message;
       setMessages((m) => [...m, { id: mid(), role: "assistant", text, lang, cleared: result.ok ? kind : undefined }]);
-      setAnnouncement("");
+      setAnnouncement(`${t.assistantSaid} ${text}`);
     } catch {
       setMessages((m) => [...m, { id: mid(), role: "assistant", text: t.cancelFailed, lang }]);
     } finally {
@@ -423,8 +426,8 @@ export function CustomerApp() {
   return (
     <Frame
       demoStrip={
-        <div className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-0">
+        <section aria-label={t.demoButton} lang={lang} className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-4">
             <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
               {t.demoSignIn}
             </label>
@@ -457,6 +460,9 @@ export function CustomerApp() {
               aria-expanded={aboutOpen}
               aria-controls={aboutId}
               onClick={() => setAboutOpen((v) => !v)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setAboutOpen(false);
+              }}
               className="mk-focus ml-auto inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md text-mk-brand-hover hover:bg-mk-brand-soft aria-expanded:bg-mk-brand-soft sm:px-3"
             >
               <Info aria-hidden className="size-5" />
@@ -464,17 +470,17 @@ export function CustomerApp() {
             </button>
           </div>
           {aboutOpen && (
-            <section
+            <div
               id={aboutId}
+              role="group"
               aria-label={t.demoTitle}
-              lang={lang}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   setAboutOpen(false);
                   aboutBtnRef.current?.focus();
                 }
               }}
-              className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pb-3 sm:px-0"
+              className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pb-3 sm:px-4"
               data-testid="about-demo"
             >
               <div className="rounded-lg bg-mk-paper p-4">
@@ -498,9 +504,9 @@ export function CustomerApp() {
                   </button>
                 </div>
               </div>
-            </section>
+            </div>
           )}
-        </div>
+        </section>
       }
     >
       {preview && (
@@ -525,7 +531,7 @@ export function CustomerApp() {
         </p>
       )}
 
-      <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-[max(1rem,env(safe-area-inset-left))] py-5 sm:px-0">
+      <section aria-labelledby={`${inputId}-conv`} className="mx-auto w-full max-w-2xl flex-1 px-[max(1rem,env(safe-area-inset-left))] py-5 sm:px-4">
         <h2 id={`${inputId}-conv`} className="sr-only" lang={lang}>
           {t.conversation}
         </h2>
@@ -589,9 +595,9 @@ export function CustomerApp() {
         ref={composerRef}
         style={{ bottom: "var(--mk-kb, 0px)" }}
         data-typing={typing || undefined}
-        className="group/composer sticky bottom-0 z-10 border-t border-mk-line bg-mk-paper"
+        className="group/composer sticky bottom-0 z-10 border-t border-mk-line bg-mk-paper [@media(max-height:280px)]:static"
       >
-        <div className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-0 [@media(max-height:480px)]:pt-1.5 [html[data-mk-short]_&]:pt-1.5">
+        <div className="mx-auto w-full max-w-2xl px-[max(1rem,env(safe-area-inset-left))] pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 [@media(max-height:480px)]:pt-1.5 [html[data-mk-short]_&]:pt-1.5">
           {chips.length > 0 && (
             <div
               role="group"
@@ -639,7 +645,7 @@ export function CustomerApp() {
                   void send(draft);
                 }
               }}
-              placeholder={preview ? t.previewPlaceholder : t.placeholder}
+              placeholder={preview ? t.previewPlaceholder : t.message}
               maxLength={4000}
               className="max-h-40 min-h-12 flex-1 resize-none rounded-xl border border-mk-line-strong bg-mk-surface px-4 py-3 text-base [field-sizing:content] placeholder:text-mk-muted focus-visible:border-mk-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-mk-focus disabled:bg-mk-draft-soft [@media(max-height:480px)]:max-h-24"
             />
@@ -736,7 +742,7 @@ function Frame({ children, demoStrip }: { children: React.ReactNode; demoStrip?:
     <div className="flex min-h-dvh flex-col">
       <div className="sm:sticky sm:top-0 sm:z-20 [@media(max-height:480px)]:static">
         <header className="mk-band bg-mk-brand text-white">
-          <div className="mx-auto flex w-full max-w-2xl items-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 sm:px-0">
+          <div className="mx-auto flex w-full max-w-2xl items-center px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 sm:px-4">
             <h1 className="flex min-w-0 flex-wrap items-baseline gap-x-3 leading-tight">
               <span className="font-heading text-[1.4rem] font-semibold tracking-[-0.01em]">McKinley</span>
               <span className="font-heading text-base font-medium">Resident and leasing help</span>

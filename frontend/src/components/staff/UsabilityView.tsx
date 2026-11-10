@@ -91,10 +91,10 @@ export function UsabilityView() {
         success means a record was saved in the prototype store, not in Yardi.
       </p>
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2">
+        <label className="flex min-w-0 max-w-full items-center gap-2">
           <span>Run</span>
           <select
-            className="mk-focus min-h-11 rounded-md border border-mk-line-strong bg-mk-surface px-2"
+            className="mk-focus min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-mk-line-strong bg-mk-surface px-2"
             value={runIdx}
             onChange={(e) => setRunIdx(Number(e.target.value))}
           >
