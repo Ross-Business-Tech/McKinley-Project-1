@@ -22,7 +22,10 @@ flowchart TD
   OP -- yes --> OPA["No account details / refuse instructions /<br/>after-hours line / what this chat actually saved"]
   OP -- no --> AS{"Question about something<br/>already sent, or 'send it' again?"}
   AS -- yes --> ASA["Plain answer with the reference:<br/>nobody notified, no time set"]
-  AS -- no --> LF{"Lost or frustrated with the chat,<br/>or 2 unproductive turns in a row?"}
+  AS -- no --> DA{"Card open? classify the turn<br/>(app/dialogue.py TurnAct: ANSWER, CORRECTION,<br/>NEW_DETAIL, QUESTION, CANCEL, RESTORE, META)"}
+  DA -- "QUESTION (who sees it, cost, Send,<br/>status, renewal, number…)" --> DAQ["Honest answer; card re-shown unchanged<br/>(never written into a field)"]
+  DA -- "bare yes/ok/sure on a ready card" --> DAY["'Tap Send…' (only Send or 'send it' saves)"]
+  DA -- "ANSWER / CORRECTION / NEW_DETAIL /<br/>CANCEL / RESTORE / no card" --> LF{"Lost or frustrated with the chat,<br/>or 2 unproductive turns in a row?"}
   LF -- "first time, card open" --> LFA["One apology + the single next step<br/>+ 'Talk to a person'"]
   LF -- "again / no card" --> H
   LF -- no --> R{"Card ready and<br/>person says yes / no?"}

@@ -1,5 +1,26 @@
 # Implementation changelog
 
+## Sprint 5.1: live OpenRouter, customer-journey simulation, workflow fixes (2026-11-10)
+Branch `feat/live-conversation-workflows`. Report: [evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md](evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md).
+
+- **Live calls:**
+  - 46 real OpenRouter calls on one fixed model, `nvidia/nemotron-3.5-super-vl:free`, with no rate limits.
+  - A central call budget and a metadata-only ledger.
+  - `OPENROUTER_REASONING_EFFORT=none` made the slowest reply 48 s → 3.4 s.
+  - 16 TypeSafe/Jev calls; the adapter now matches the official contract.
+- **Conversation:** a typed dialogue-act step (`app/dialogue.py`) runs before any card changes. Only Send or an
+  explicit "send it" saves. Corrections, side questions, undo, changes after Send and language switching are all
+  reworked.
+- **Safety:** CO, poisoning, fall, door-handle and welfare detection; a session-long non-holder disclaimer;
+  validator fixes for the live model.
+- **UI:** failed Send, the status list, Spanish labels, clearer card wording, landscape scroll and focus.
+- **Tests:**
+  - a 35-journey adaptive suite (`--suite journeys`): 21/9/5 → 27/8/0 (PASS/WARN/FAIL);
+  - judge F mean per reply 2.91 → 3.89;
+  - backend 1315 passed, 9 skipped; frontend 49; phone test 14/14;
+  - holdout full alert 50/63 → 50/63, any guidance 53/63 → 54/63.
+- **Verdict:** a supervised demo only. Release-blocking safety and privacy gaps remain.
+
 ## Sprint 5: conversation workflows, provider contracts, Gemini readiness (2026-11-10)
 Branch `feat/live-conversation-workflows`. Full report: [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md).
 

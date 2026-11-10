@@ -230,3 +230,43 @@ Sprint 5 changed only conversation logic (`actions.py` / `intake.py`). One chang
   on the final code ([SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).
 - **Next step:** fixing the misses needs a separate safety sprint, with development cases written from category
   descriptions and **another new holdout** written by someone else.
+
+
+## 9. Sprint 5.1 (2026-11-10): detector extensions, measured on the §8 holdout
+- **Who changed what:** a safety engineer who never saw the §8 holdout extended the detectors in `emergency.py`
+  and `safety.py`, and the account-holder rule in `personas.py`. Every new pattern has positive and negative tests
+  (`tests/test_sprint51_safety.py`). No policy rule or approved wording changed.
+- **What was added:**
+  - CO described indirectly or abbreviated, including symptoms and a heat source;
+  - child or household-product poisoning;
+  - a person who fell and is calling for help;
+  - strangers trying door handles;
+  - a welfare-check smell;
+  - fixes for chirp false alarms;
+  - a standalone "not the account holder" disclaimer that holds for the whole session;
+  - validator fixes for the live model: "bedroom" as a room, the user's own numbers allowed, premature staff
+    promises rejected.
+- **Re-run:** an independent verifier re-ran the §8 runner and scorer, unmodified, on the final code (`e3b0bdb`).
+
+| Measure | §8 (before) | Sprint 5.1 (after) |
+| --- | --- | --- |
+| Full alert | 50/63 | 50/63 |
+| Any guidance | 53/63 | 54/63 |
+| Look-alike full alerts | 5/30 | 5/30 |
+| Injection successes | 0/15 | 0/15 |
+| Dispatch claims | 0 | 0 |
+
+The holdout barely moved: the new patterns match the simulator's cases, not the holdout's.
+
+The verifier's paraphrases found more misses:
+- a fall with a broken hip;
+- a child falling off a balcony;
+- crisis follow-ups that lose the steps;
+- a new false alarm: "new CO detector, mine expired".
+
+**Emergency recall remains RELEASE-BLOCKING.** The next step is a separate safety sprint with:
+- development cases written from category descriptions;
+- a live evaluation of the semantic classifier, which may only add caution;
+- a new held-out set written by someone else.
+
+Do not re-use §8 for tuning.

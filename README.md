@@ -29,6 +29,14 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Sprint 5.1 (2026-11-10):**
+  - **Live OpenRouter verified:** 46 real calls, all on `nvidia/nemotron-3.5-super-vl:free`.
+  - **Conversation reworked:** independent simulators drove two fix rounds and a typed dialogue-act step was
+    added. Only Send or "send it" saves.
+  - **Results:** the journey suite went 21 → 27 of 35 PASS with 0 FAIL, and the held-out safety set went 53 → 54
+    of 63 any-guidance.
+  - **Fit for a supervised demo only**; safety and privacy blockers remain
+    ([Sprint 5.1 report](docs/evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md)).
 - **Sprint 5 (2026-11-10):**
   - The conversation workflows were reworked from simulator findings, verified with the **mock** only.
   - OpenRouter and Gemini share a tested provider contract.
