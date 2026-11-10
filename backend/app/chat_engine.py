@@ -129,7 +129,8 @@ def resolve_target(deps: EngineDeps, target_key: str | None) -> Target:
 # Runtime model failures where the customer gets the backend template instead of an error. Configuration
 # errors (missing key, unknown target, auth) still surface as errors so staff notice them.
 FALLBACK_CODES = {"MODEL_API_ERROR", "MODEL_CONNECTION_ERROR", "MODEL_TIMEOUT", "MODEL_RATE_LIMITED",
-                  "MODEL_EMPTY_RESPONSE", "MODEL_BAD_RESPONSE", "MODEL_TRUNCATED", "MODEL_REFUSAL"}
+                  "MODEL_EMPTY_RESPONSE", "MODEL_BAD_RESPONSE", "MODEL_TRUNCATED", "MODEL_REFUSAL",
+                  "LLM_BUDGET_EXHAUSTED"}  # approved template, labelled template_after_model_error (never the mock)
 # Failed checks that make a model reply unsafe to show (fabrication, false completion, leakage, unsafe advice).
 REPLACE_ON_FAIL = CRITICAL_CHECKS | {"no_invented_price", "no_invented_time", "terminology"}
 

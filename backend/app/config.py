@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     # Thinking depth, pinned so a server-side default change can't silently alter evaluations. Empty = the model's
     # default (recorded as such). Levels per Google's thinking guide; verify which ones the model accepts.
     gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
+    # OpenRouter unified `reasoning` parameter. Empty = the model's default (not sent). "none" turns reasoning off;
+    # the other values set its effort. Recorded on every call; never changes the model.
+    openrouter_reasoning_effort: Literal["", "none", "minimal", "low", "medium", "high"] = ""
+    # Central live-call budget: 0 = unlimited. Counted across processes when LLM_CALL_LEDGER is set (one JSON line
+    # per real model call, metadata only: no prompts, no replies, no keys). Mock calls are never counted.
+    llm_call_budget: int = 0
+    llm_call_ledger: Path | None = None
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 
     # ---- evaluation targets offered in the dashboard: "provider:model" comma-separated ----

@@ -11,7 +11,9 @@ from app.llm.http import map_status, post_json
 class OpenRouterProvider:
     name = "openrouter"
 
-    def __init__(self, api_key: str | None, base_url: str, app_title: str, client: httpx.Client | None = None):
+    def __init__(self, api_key: str | None, base_url: str, app_title: str, client: httpx.Client | None = None,
+                 reasoning_effort: str | None = None):
+        self._reasoning = reasoning_effort  # None = model default (parameter not sent)
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._app_title = app_title
@@ -36,6 +38,8 @@ class OpenRouterProvider:
         }
         if cfg.temperature is not None:
             payload["temperature"] = cfg.temperature
+        if self._reasoning:
+            payload["reasoning"] = {"enabled": False} if self._reasoning == "none" else {"effort": self._reasoning}
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "X-Title": self._app_title,
@@ -81,5 +85,5 @@ class OpenRouterProvider:
             parse_mode=mode,
             estimated_cost_usd=usage.get("cost") if isinstance(usage.get("cost"), (int, float)) else None,
             extra={"content": content, "thinking_tokens": thinking, "answer_tokens": answer,
-                   "schema_name": schema_name},
+                   "schema_name": schema_name, "reasoning": self._reasoning or "model default"},
         )
