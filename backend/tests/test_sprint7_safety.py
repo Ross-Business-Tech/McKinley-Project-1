@@ -759,3 +759,31 @@ def test_an_object_that_collapsed_is_a_repair(msg):
 ])
 def test_people_and_structures_that_collapse_still_alert(msg):
     assert full(msg), msg
+
+
+# ---- 19. Spanish falls and Spanish objects ------------------------------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "mi abuela se cayó y no se levanta", "mi papá se cayó y no puede moverse",
+    "se cayó mi hijo de la litera y no reacciona", "mi mamá se cayó en la tina y no se mueve",
+    "se cayó mi esposo en la escalera y no puede levantarse", "mi abuelito se resbaló y no se para",
+    "se le cayó la repisa encima a mi hijo", "se cayó el mueble sobre mi hija",
+])
+def test_spanish_person_fell_and_cannot_get_up_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "medical", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "se cayó la repisa", "la puerta del closet se cayó", "se cayó el toallero", "se desprendió la manija",
+    "se rompió la bisagra del gabinete", "se cayeron las persianas", "el espejo del baño se cayó",
+    "se soltó la perilla de la puerta",
+])
+def test_spanish_object_fell_is_a_repair(msg):
+    r = d(msg)
+    assert r.response == "none" or (r.response != "full_alert" and r.care != "danger"), (msg, r.response, r.care)
+
+
+@pytest.mark.parametrize("msg", ["se cayó mi abuela", "mi hijo se cayó del columpio", "se cayó la vecina en el pasillo",
+                                 "mi papá se resbaló"])
+def test_spanish_fall_alone_keeps_at_least_the_care_line(msg):
+    assert d(msg).response in ("care_line", "full_alert"), msg

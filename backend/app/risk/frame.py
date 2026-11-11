@@ -155,9 +155,12 @@ WEAK = re.compile(
     r"\b(?:on|in) the (?:\w+ )?(?:floor|ground) (?:and |, )?(?:not|wont|cant)\b|"
     r"\b(?:hes|shes|theyre|is|are|esta|still) (?:\w+ )?(?:on|in) the (?:\w+ )?(?:floor|ground)\b|"
     r"\b(?:tirad[oa]|acostad[oa]|caid[oa]) en (?:el|la) (?:piso|suelo|bano|ducha|cocina)\b|"
-    r"\bjust (?:dropped|fell over|went down)\b|\b(?:fell|fallen|se cayo|se cayeron|tripped|slipped)\b|\bdropped (?:to "
+    r"\bjust (?:dropped|fell over|went down)\b|\b(?:fell|fallen|se cayo|se cayeron|tripped|slipped|se resbalo|se trope"
+    r"zo|resbalo|tropezo)\b|\bdropped (?:to "
     r"the floor|like a)\b|\bwent down\b|"
-    r"\bcant get up\b|\bcant stand\b|\bno se (?:puede|pueda) (?:levantar|parar|mover)\b|\bwheez\w*|"
+    r"\bcant get up\b|\bcant stand\b|\bwont get up\b|\bno se (?:levanta|para|mueve|incorpora)\b|"
+    r"\bno (?:puede|pueda) (?:levantarse|pararse|moverse|caminar)\b|\bno se (?:puede|pueda) (?:levantar|parar|mover)\b"
+    r"|\bwheez\w*|"
     r"\bpale\b|\bpalid[oa]\b|\bclammy\b|\bsweaty\b|\bsweating\b|\bsudando\b|\bgr[ae]y\b|\bgris\b|"
     r"\bshaking (?:really |so |very )?(?:hard|badly|uncontrollably)\b|\btemblando\b|\btiembla\b|"
     r"\bwont (?:respond|answer) to (?:me|us|anything)\b|\bcant feel (?:his|her|their|my) (?:arm|leg|face|legs|arms)\b")
@@ -325,8 +328,19 @@ _NOT_FIRE_ES = re.compile(r"\b(?:zoo\w*|granja|farm|alpacas?|animal\w*|peluche|l
                           r"(?:tu|usted) (?:me )?llamas|llamas (?:a|al|por telefono|mas tarde|manana))\b")
 
 
+# Something heavy fell / collapsed ON a person ("se le cayó la repisa encima a mi hijo", "the dresser fell on her")
+FELL_ON_PERSON = re.compile(
+    rf"\b(?:fell|collapsed|came down|toppled|tipped (?:over )?)\s+(?:on|onto|on top of)\s+"
+    rf"(?:my |the |his |her |a |our )?"
+    rf"(?:\w+ )?(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})s?\b|\bse (?:le |les |me )?(?:cay[oó]|cayeron|vino abajo|"
+    rf"desplom[oó])\b(?:\W+\w+){{0,5}}?\W+(?:encima|sobre)\b(?:\W+\w+){{0,4}}?\W+(?:{_CHILD}|{_ELDER}|{_ADULT}|"
+    rf"[eé]l|ella)\b")
+
+
 def _hazard(s: str) -> tuple[str, str] | None:
     """Property / intruder hazards composed from a source, a sign and an extent."""
+    if FELL_ON_PERSON.search(s):
+        return "medical", "something heavy fell on a person"
     if _FIRE_ES.search(s) and not _NOT_FIRE_ES.search(s):
         return "fire_smoke", "flames (Spanish) in a fire context"
     if all(p.search(s) for p in WATER_ELEC) and re.search(r"\b(?:water|agua|leak\w*|puddle|drip\w*|"

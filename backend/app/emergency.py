@@ -804,11 +804,25 @@ _OBJECT_FELL = re.compile(
     r"rompi[oó]))\b(?!\s+(?:on|onto|over|on top of|encima|sobre)\b)", re.I)
 
 
+# Spanish word order: the verb first ("se cayó la repisa", "se desprendió la manija") or the object with a "del ..."
+# complement ("la puerta del closet se cayó"). Kept when it fell ON someone ("se le cayó la repisa encima a mi hijo").
+_OBJ_ES = (r"repisas?|estantes?|gabinetes?|puertas?|manijas?|perillas?|cortineros?|toalleros?|espejos?|cuadros?|"
+           r"muebles?|sillas?|mesas?|caj[oó]n|cajones|persianas?|cortinas?|ganchos?|tapas?|rejillas?|lamparas?|l[aá]mparas?|"
+           r"ventiladores?|bisagras?|jaladeras?|barras?|tablas?|literas?")
+_OBJECT_FELL_ES = re.compile(
+    rf"\bse (?:cay[oó]|cayeron|desprendi[oó]|desprendieron|despeg[oó]|rompi[oó]|zaf[oó]|solt[oó]|vino abajo)"
+    rf"\s+(?:el|la|"
+    rf"los|las|un|una|mi|mis)\s+((?:{_OBJ_ES}))\b(?![^.?!]{{0,40}}\b(?:encima|sobre|a mi|al ni[nñ]o|a la ni[nñ]a|a mi "
+    rf"\w+))|\b((?:{_OBJ_ES}))(?:\s+(?:del?|de la)\s+\w+)?\s+se (?:cay[oó]|cayeron|desprendi[oó]|despeg[oó]|"
+    rf"rompi[oó]|zaf[oó]|solt[oó])\b(?![^.?!]{{0,40}}\b(?:encima|sobre|a mi))", re.I)
+
+
 def _clean(text: str) -> str:
     """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
     replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
     text = _HARDWARE_COMPOUND.sub(lambda m: m.group(1), text)
     text = _OBJECT_FELL.sub(lambda m: m.group(1) + " broke", text)
+    text = _OBJECT_FELL_ES.sub(lambda m: (m.group(1) or m.group(2)) + " roto", text)
     return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
 
 
