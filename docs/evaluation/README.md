@@ -7,6 +7,8 @@ record was saved to the prototype store, not to Yardi.
 
 | Suite | Latest result | Model | Data | Command (from `backend/`) |
 | --- | --- | --- | --- | --- |
+| **Sprint 7 safety holdout** (independent, frozen before implementation: 216 danger turns, 79 look-alikes, 47 ES/mixed) | 88.1% full alert, 90.7% any guidance, 10/79 look-alike full alerts; **20 turns with no guidance** (release-blocking) | rules only | not committed; results and miss IDs in [SPRINT7_GENERALIZATION.md](SPRINT7_GENERALIZATION.md) §4 | — |
+| Sprint 7 live smoke | 21 OpenRouter calls through the pipeline, 0 errors | **live** (`nvidia/nemotron-3.5-super-vl:free`) | `evals/live/sprint7-live.json` (metadata only) | — |
 | **Sprint 6 safety holdout** (independent, frozen before implementation: 109 danger, 42 look-alikes, 41 security) | 76% full alert, 85% any guidance, 14% look-alike full alerts, 41/41 attacks blocked at the data layer; **16 release-blocking misses** | rules only (live semantic layer rate-limited) | not committed; results and miss IDs in [SPRINT6_RESULTS.md](SPRINT6_RESULTS.md) §4 | — |
 | Customer journeys, adaptive (Sprint 5.1 / 6) | 29 PASS / 6 WARN / 0 FAIL of 35 | mock | `evals/usability/journeys-s6-after.{json,md}` | `uv run python -m app.usability.run --suite journeys --label <name>` |
 | **Safety holdout** (independent, fresh 150 items) | 64.5% full alert, 78.5% any guidance, 10% benign false alerts; **release-blocking misses** | rules only (semantic layer not live) | not committed (held by the independent evaluator); method and verbatim failures in [safety-evaluation.md](../safety/safety-evaluation.md) | — |

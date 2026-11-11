@@ -144,3 +144,34 @@ applied in one place (`plan_turn` step 1c-edit):
 - Steps 5 to 13 of `plan_turn` still route on their own; the table drives consent, cancel, restore and switch-topic.
 - Model quality has not been evaluated beyond the 5-call sanity check. Use `rules` until a held-out paraphrase set
   written by someone else shows a benefit.
+
+## Sprint 7: structural analysis instead of per-step keyword lists
+The Sprint 7 audit found that the Sprint 6 layer mostly wrapped keyword regexes in a schema. Independent detectors
+were checked first-match-wins, several object lexicons covered the same things, there was no shared field resolver,
+questions and statements were told apart late, and each message had one intent. What changed
+([../evaluation/SPRINT7_GENERALIZATION.md](../evaluation/SPRINT7_GENERALIZATION.md)):
+
+```mermaid
+flowchart LR
+  M["message"] --> N["utterance.normalize<br/>(abbreviations, capped at 600 chars)"]
+  N --> A["utterance.analyze: mood, problem objects<br/>(landmarks excluded), symptom, markers"]
+  N --> F["field resolver: EN + ES synonyms<br/>for every card field"]
+  N --> S["segments: clause → workflow<br/>(repair, callback, tour, question)"]
+  A --> U["understanding (status, history, addition,<br/>drop, correction, consent)"]
+  F --> U
+  S --> U
+  U --> P["plan_turn (ordered checks; new branches<br/>at documented positions)"]
+  R["RiskDecision.person_danger"] --> P
+```
+
+- `app/utterance.py`: one analysis per message, used by the status, history, addition, new-problem and drop
+  decisions instead of separate lists. "Next to the fridge" is a landmark, not a new problem.
+- A single EN + ES field-reference resolver serves corrections before and after Send.
+- Two workflows in one message are both kept: the repair card comes first, and the callback note is named and
+  queued.
+- The cancel target is the object of the cancel verb, and "keep / just / only X" names what stays.
+- After Send, a detail or correction becomes a change note citing the reference. A typed reference is cited only if
+  it is the caller's own record, and change notes target the original request.
+- A question never edits a card (`utterance.ends_as_question`).
+- No repair card is opened while a person may be in danger in this turn (`RiskDecision.person_danger`).
+- Invariant and metamorphic tests: `tests/test_sprint7_invariants.py`, `test_sprint7_workflow*.py`.

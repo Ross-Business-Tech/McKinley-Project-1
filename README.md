@@ -31,6 +31,24 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Sprint 7 (2026-11-10):**
+  - **Safety:**
+    - Emergencies are now detected by structure (who, what state, what hazard, whether it is happening now) instead of
+      single phrases.
+    - Adding words like "lol", "I think" or "my neighbour smokes" to a real emergency can never weaken the response.
+    - The AI layer can no longer remove safety guidance. This policy is a DRAFT for McKinley approval.
+  - **Safety holdout:** on a new independent test set of 216 emergency turns, full alerts went 81% → 88% and any
+    guidance 84% → 91%; Spanish full alerts went 75% → 100%. **20 emergencies still get no guidance, which is
+    release-blocking.**
+  - **Conversation:** one structural reading of each message, corrections by field name, two different requests in
+    one message both kept, changes after Send as notes, and randomised rule tests. Customer journeys went 30 → 40 of
+    45.
+  - **Privacy:** customers no longer receive staff diagnostics; the hosted version issues its own session ids. 0 leaks
+    in 2,200+ attacks.
+  - **Live OpenRouter:** 21 calls through the real pipeline, all valid.
+  - **Merge state:** the first Sprint 7 candidate was merged to `development` early (PR #4) with known safety
+    regressions; the fixes are on `feat/s7-safety-regression-fixes`.
+  - Fit for a supervised demo only ([Sprint 7 report](docs/evaluation/SPRINT7_GENERALIZATION.md)).
 - **Sprint 6 (2026-11-10):**
   - **Conversation:** each message is understood once into a typed object, and an explicit state machine decides
     what may change. Corrections replace the field that was named, a side question never corrupts the open
