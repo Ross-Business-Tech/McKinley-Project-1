@@ -22,9 +22,16 @@ Contacts (labels in app/emergency.CONTACT_LABEL, NEEDS McKINLEY REVIEW; links ar
   | flood, electrical                                | maintenance line (info); Call 911 if anyone is in danger   |
   | also_988 on any alert                            | + Call 988; Text 988                                       |
 
-  concern: distress line -> 988 call + text; R10q / R5c -> the incident's / question's category contacts; R9 -> 911
-  (988 after self-harm); a danger / unwell line from a person sign (decision.person_danger) -> Call 911; everything
-  else (plain safety info, broad hazard vocabulary with no person) -> no contacts.
+  concern (fix round: never empty; the contacts match the line shown):
+    distress line            -> 988 call + text
+    R10q quiet incident turn -> the incident's category contacts
+    safety info (R5 / R5c)   -> the category's contacts; fire / electrical / flood / structural information gets
+                                "911 if anyone is in danger" + the maintenance line (info)
+    R9, or a person sign     -> Call 911
+    unwell line              -> "Call 911 if anyone feels very unwell or it gets worse"
+    broad danger line        -> "Call 911 if anyone is in danger" + the maintenance line (info)
+  Pending conditional (app/risk/incident.py): after R5 / R5c, a "yes" or a description of the sign in the next
+  PENDING_TURNS turns becomes the full alert (rule R5f).
 """
 
 from typing import Any
@@ -33,7 +40,7 @@ from app.emergency import CONTACT_LABEL
 from app.risk.models import RiskDecision
 
 _HREF = {"call_911": "tel:911", "call_911_gas": "tel:911", "call_911_poison": "tel:911", "call_911_self": "tel:911",
-         "call_911_if_danger": "tel:911", "call_988": "tel:988", "text_988": "sms:988",
+         "call_911_if_danger": "tel:911", "call_911_if_worse": "tel:911", "call_988": "tel:988", "text_988": "sms:988",
          "poison_help": "tel:18002221222", "gas_company": None, "maintenance_line": None}
 _KIND = {"text_988": "text", "gas_company": "info", "maintenance_line": "info"}
 _BY_CATEGORY: dict[str, list[str]] = {
@@ -45,6 +52,11 @@ _BY_CATEGORY: dict[str, list[str]] = {
     "structural": ["call_911", "maintenance_line"],
 }
 _988 = ["call_988", "text_988"]
+# safety information (a question, a past or controlled event): the same help, worded "if"
+_INFO: dict[str, list[str]] = {
+    "fire_smoke": ["call_911_if_danger", "maintenance_line"], "electrical": ["maintenance_line", "call_911_if_danger"],
+    "flood": ["maintenance_line", "call_911_if_danger"], "structural": ["call_911_if_danger", "maintenance_line"],
+}
 
 
 def _contact(key: str, lang: str) -> dict[str, Any]:
@@ -68,18 +80,19 @@ def safety_ui(decision: RiskDecision, *, alert_shown: bool, care_kind: str | Non
         kind = d.kind if d.response == "full_alert" else None
         keys = contact_keys(kind if kind != "other" else None, d.also_988)
     elif care_kind:
+        # fix round: a concern turn is never empty: its contacts always match the line it shows
         if care_kind == "distress":
             keys = _988
         elif d.rule == "R10q" and d.incident:
             keys = contact_keys(d.incident)
         elif care_kind == "info":
-            keys = contact_keys(d.kind) if d.conditional_danger and d.kind else []
-        elif d.rule == "R9":
+            keys = _INFO.get(d.kind or "", contact_keys(d.kind)) if d.kind else ["call_911_if_danger"]
+        elif d.rule == "R9" or d.person_danger:
             keys = ["call_911"]
-        elif d.person_danger:
-            keys = ["call_911"]
-        else:
-            keys = []
+        elif care_kind == "unwell":
+            keys = ["call_911_if_worse"]
+        else:  # the broad 911 + maintenance line, no person named
+            keys = ["call_911_if_danger", "maintenance_line"]
         return "concern", [_contact(k, lang) for k in keys]
     else:
         return "normal", []

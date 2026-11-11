@@ -1083,6 +1083,8 @@ CONTACT_LABEL: dict[str, dict[str, str]] = {
     "text_988": {"en": "Text 988", "es": "Enviar un mensaje al 988"},
     "call_911_self": {"en": "Call 911 if you're in immediate danger", "es": "Llamar al 911 si está en peligro ahora"},
     "call_911_if_danger": {"en": "Call 911 if anyone is in danger", "es": "Llamar al 911 si alguien corre peligro"},
+    "call_911_if_worse": {"en": "Call 911 if anyone feels very unwell or it gets worse",
+                          "es": "Llamar al 911 si alguien se siente muy mal o empeora"},
     "maintenance_line": {"en": "Your community's emergency maintenance line (this prototype doesn't have the number)",
                          "es": "La línea de emergencias de mantenimiento de su comunidad (este prototipo no tiene el "
                                "número)"},

@@ -305,10 +305,93 @@ def _call(decision: RiskDecision, inc: Incident, rule: str, conflict: str) -> Ri
                                        "sources": list(dict.fromkeys([*decision.sources, "incident"]))})
 
 
+# ---- fix round (P0-1): pending conditional ----------------------------------------------------------------------
+# After safety information for a question (R5 / R5c: "if my dad can't breathe, what should I do?") the reply asks
+# whether it is happening now. For PENDING_TURNS turns a "yes", a short "he is / she isn't" answer, or any description
+# of a sign becomes the full alert of that kind (rule R5f, an incident is opened, the planner writes the urgent note).
+# "No, just asking" clears it. Stored as its own row (mode PENDING_MODE): kind and turn only, never text.
+PENDING_MODE = "safety_pending"
+PENDING_TURNS = 2
+_AFFIRM = re.compile(
+    r"^\W*(?:yes|yeah|yea|yep|yup|ya|uh-?huh|it is|its happening|it'?s happening|it is happening|"
+    r"happening (?:right )?now|"
+    r"right now|correct|exactly|that'?s right|thats it|i think so|please help|help|s[ií]|asi es|así es|claro|"
+    r"est[aá] pasando|ahora mismo|ayuda|por favor)\b|"
+    r"^\W*(?:he|she|they|it|we|i|my \w+|el|él|ella|mi \w+)\s*(?:is|are|am|was|isn'?t|is not|aren'?t|can'?t|cannot|"
+    r"won'?t|does|doesn'?t|did|didn'?t|has|hasn'?t|'s|'re|'m|s|esta|está|no)\b", re.I)
+_DENY = re.compile(
+    r"^\W*(?:no|nope|nah|not (?:right )?now|not happening|nothing like that|just (?:asking|curious|wondering|in case)|"
+    r"only asking|hypothetical\w*|asking for (?:a friend|the future)|solo (?:pregunt\w*|por si acaso)|por si acaso|"
+    r"nada de eso|no est[aá] pasando)\b|\b(?:fine|ok|okay|safe|alright|all right|doing good|bien|tranquil[oa])\b",
+    re.I)
+
+
+def _pending(store: Any, session_id: str, persona_key: str) -> dict[str, Any] | None:
+    if store is None:
+        return None
+    try:
+        row = store.last_gate(session_id, PENDING_MODE, persona_key)
+    except Exception:
+        return None
+    return row if row and row.get("kind") else None
+
+
+def _set_pending(store: Any, session_id: str, persona_key: str, data: dict[str, Any]) -> None:
+    if store is None:
+        return
+    try:
+        store.log_gate(session_id, PENDING_MODE, persona_key, data)
+    except Exception:
+        pass  # only the follow-up escalation is lost; this turn's safety text is unaffected
+
+
+def confirms_pending(message: str, risk: RiskAssessment) -> bool:
+    """A "yes" / "he is" / "she isn't" answer, or any sign described, after a safety question."""
+    det = risk.deterministic
+    fr = det.frame or {}
+    sign = bool(det.kind or det.care or det.mentioned_kind or fr.get("states") or fr.get("hazards")
+                or scan(message)[0] or possible_risk(message))
+    if sign:
+        return True
+    return bool(_AFFIRM.search(message.strip())) and not _DENY.search(message)
+
+
 def step(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
          turn: int) -> RiskAssessment:
     """Apply the incident state machine to this turn's assessment and persist the new state. Never lowers the
-    policy's decision: it only re-issues the alert (R10) or keeps a calm line (R10q)."""
+    policy's decision: it only re-issues the alert (R10 / R5f) or keeps a calm line (R10q)."""
+    risk = _apply_pending(store, session_id, persona_key, message, risk, turn)
+    return _step(store, session_id, persona_key, message, risk, turn)
+
+
+def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
+                   turn: int) -> RiskAssessment:
+    d = risk.decision
+    pend = _pending(store, session_id, persona_key)
+    if pend and pend.get("open") and turn - int(pend.get("turn", 0)) <= PENDING_TURNS:
+        if d.response == "full_alert":
+            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "alert"})
+        elif confirms_pending(message, risk):
+            from app.risk.category import refine
+            kind, reason = refine(pend["kind"], message)
+            nd = d.model_copy(update={
+                "response": "full_alert", "kind": kind, "detected_kind": pend["kind"], "notice_reason": reason,
+                "care": None, "needs_human": True, "escalation_priority": "urgent", "rule": "R5f",
+                "person_danger": True, "conditional_danger": False,
+                "sources": list(dict.fromkeys([*d.sources, "pending_conditional"])),
+                "conflict": f"confirmed after safety information for a {pend['kind']} question: full alert"})
+            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "confirmed"})
+            return risk.model_copy(update={"decision": nd})
+        elif _DENY.search(message):
+            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "denied"})
+    if d.response == "safety_info" and d.kind and risk.deterministic.framing == "hypothetical":
+        _set_pending(store, session_id, persona_key, {"kind": d.kind, "turn": turn, "open": True,
+                                                     "rule": d.rule})
+    return risk
+
+
+def _step(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
+          turn: int) -> RiskAssessment:
     d = risk.decision
     inc = load(store, session_id, persona_key)
     now = now_iso()

@@ -48,7 +48,17 @@ def _rank(d: DeterministicRisk) -> int:
 
 
 _NEVER_LOWERED_BY_SPANS = {"self_harm", "personal_safety"}
-_LIVE_REST = re.compile(r"\b(?:now|right now|still|currently|again|just did|just happened|is happening|"
+# fix round (P1-1): a separate present-tense symptom of a person next to the question keeps it live ("is it bad if my
+# daughter swallowed bleach? she's coughing")
+_SYMPTOM_REST = re.compile(
+    r"\b(?:he|she|they|it|my \w+|mi \w+|est[aá]|esta|i'?m|i am|estoy)\b(?:\W+\w+){0,4}?\W+(?:cough\w*|vomit\w*|"
+    r"throwing "
+    r"up|threw up|drows\w*|sleepy|dizzy|choking|gasping|wheez\w*|crying|screaming|bleeding|shaking|pale|limp|"
+    r"confused|drooling|tosiendo|tose|vomit\w*|mare\w*|dormid[oa]|llorando|sangrando|temblando|ahog\w*)\b", re.I)
+_LIVE_REST = re.compile(r"\b(?:now|right now|still|currently|again|just did|just happened|is happening|just now|"
+                        r"(?:he|she|they|it|we|i) (?:did|has|have|is|was)\b(?:\W+\w+){0,2}?\W+(?:ago|now|minutes?|"
+                        r"mins?)|(?:a few|an?|about|\d+|ten|five|twenty|thirty) (?:min\w*|seconds|hours?) ago|"
+                        r"hace (?:un|una|unos|unas|\d+|poco|rato)\b|reci[eé]n|acaba de|"
                         r"happening|ahora|ahorita|todav[ií]a|sigue|otra vez|me est[aá] pasando|est[aá] pasando)\b",
                         re.I)
 
@@ -62,7 +72,7 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     window alert / a possible deliberate poisoning; a conditional or recovered span lowers only to nothing-left."""
     full = _detect(message, recent)
     sp = spans(message)
-    if not sp.reasons and sp.hypothetical is None and sp.recovered is None:
+    if not sp.reasons and sp.hypothetical is None and sp.recovered is None and not sp.controlled:
         return full
     if full.kind in _NEVER_LOWERED_BY_SPANS or full.via_window or full.self_harm_intent or (
             full.care == "distress"):
@@ -75,7 +85,7 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     if sp.hypothetical is not None:
         lite = _detect(sp.hypothetical, recent)
         live_rest = bool(_LIVE_REST.search(sp.hypothetical) or _SAME_MSG_NOW.search(sp.hypothetical)
-                         or _HAPPENING_NOW.search(sp.hypothetical))
+                         or _HAPPENING_NOW.search(sp.hypothetical) or _SYMPTOM_REST.search(sp.hypothetical))
         if _rank(lite) == 0 and not live_rest:  # "what do you do if an outlet sparks? mine is right now" stays live
             kind, clause_alert = cur.kind or cur.mentioned_kind, False
             for clause in sp.clauses:
@@ -95,7 +105,25 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
                 (cur.kind or cur.mentioned_kind) not in _NEVER_LOWERED_BY_SPANS:
             cur = DeterministicRisk(framing="past", frame={**(full.frame or {}),
                                                             "neutralized": [*sp.reasons, "past and recovered"]})
+    if sp.controlled and cur.kind in _CONTROLLABLE and not full.via_window:
+        fr = full.frame or {}
+        if not (fr.get("states") and any(w not in ("self", "pet") for w in fr.get("who") or [])):
+            # "small grease fire, I put it out, everyone is fine": the approved steps as calm info, no incident
+            cur = DeterministicRisk(mentioned_kind=cur.kind, framing="past", frame={
+                **(full.frame or {}), "neutralized": [*sp.reasons, "controlled in this message"]})
     return cur
+
+
+# gas and carbon monoxide stay alerts even when the source is off: the air is still unsafe until checked
+_CONTROLLABLE = {"fire_smoke", "flood", "electrical"}
+_MINOR_SHOCK = re.compile(
+    r"\b(?:got|get|getting|felt|feel) (?:a |an )?(?:little |small |tiny |mild |slight |quick )?(?:shock|shocked|zap|"
+    r"zapped|jolt)\b|\b(?:shocked|zapped) me\b|\bme (?:dio|da|dieron) (?:un |una )?(?:peque[nñ]o |pequeña |leve )?"
+    r"(?:toque|choque|descarga|calambre)\b|\bme (?:dio|da) corriente\b", re.I)
+_SELF_QUANTITY = re.compile(
+    r"\b(?:i|i'?ve|i just|me)\b(?:\W+\w+){0,3}?\W+(?:swallowed|took|taken|ate|drank|downed|tom[eé]|me tom[eé]|"
+    r"tragu[eé])\b(?:\W+\w+){0,2}?\W+(?:a |an |the |my )?(?:whole|entire|full|all (?:of )?(?:my|the)|handful|"
+    r"bunch of|todas (?:mis|las)|toda la|un frasco entero|un pu[nñ]ado|[1-9]\d|\d{3})\b", re.I)
 
 
 def _detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
@@ -155,6 +183,12 @@ def _detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
                 out.kind, out.framing, out.via_window = "poison", "report", True
                 break
     _combine(out, fr, message)
+    if not out.kind and not out.mentioned_kind and _MINOR_SHOCK.search(message):
+        # "i got a little shock when i touched the outlet": the electrical steps as calm info (don't touch it; smoke,
+        # sparks or heat: leave and call 911), never silence
+        out.mentioned_kind, out.framing = "electrical", "past"
+    if out.kind == "poison" and _SELF_QUANTITY.search(message):
+        out.self_harm_intent = True  # "i just swallowed a whole bottle of my sleeping pills": 988 with the alert
     if out.kind == "poison" and (intent_to_self_harm(message) or any(intent_to_self_harm(m) for m in prev)):
         out.self_harm_intent = True
     return out

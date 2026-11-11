@@ -22,6 +22,7 @@ Everything else keeps its detected kind. The original kind is kept on the decisi
 import re
 
 from app.risk.concepts import HARM, MECHANISM, PERSON
+from app.risk.frame import SUBSTANCE, normalize
 
 _ELEVATOR = re.compile(r"\b(?:elevator|elevators|lift|lifts|ascensor|elevador)\b", re.I)
 _ATTACK = re.compile(
@@ -48,7 +49,11 @@ _INGESTION = re.compile(r"\b(?:swallow\w*|ate|eaten|drank|drunk|took|taken|poppe
                         r"naloxone|fentanyl|opioid\w*|heroin|drugs?|alcohol|se (?:trag|tom|comi|bebi)\w*|pastillas|"
                         r"cloro|veneno|sobredosis|fumes|bug spray|pesticide|beb[ií][oó]|trag[oó]|ingiri[oó]|"
                         r"(?:tom[oó]|comi[oó]|got into) (?:algo|something)|got into (?:the |my |some )?\w+|"
-                        r"cleaning (?:stuff|products?|supplies|spray)|detergent|lye|antifreeze)\b|\bsomething\b", re.I)
+                        r"cleaning (?:stuff|products?|supplies|spray)|detergent|lye|antifreeze|lighter fluid|"
+                        r"gasoline|gasolina|thinner|acetone|raticida|mouthwash)\b|"
+                        # fix round: "something" only as the object of an ingestion verb (was any "something")
+                        r"\b(?:swallowed|ate|drank|took|got into|se tom\w*|tom[oó]|comi[oó]|beb[ií][oó]|trag[oó])\s+"
+                        r"(?:\w+\s+)?(?:something|algo)\b", re.I)
 _ASSAULT = re.compile(r"\b(?:he|she|they|my (?:ex|partner|husband|wife|boyfriend|girlfriend|roommate|dad|mom|son|"
                       r"brother)|someone|somebody|a (?:man|guy|stranger)|the (?:man|guy))\s+(?:is |are |keeps |was |"
                       r"started |just |'s |'re )?(?:chok|strangl|hit|beat|punch|kick|stab|shoot|smother)\w*\s+(?:me|us"
@@ -71,7 +76,7 @@ def refine(kind: str | None, text: str) -> tuple[str | None, str | None]:
     """(notice kind, reason) for a detected kind in the context of the message text."""
     if not kind or kind == "other":
         return kind, None
-    if kind == "poison" and not _INGESTION.search(text):
+    if kind == "poison" and not (_INGESTION.search(text) or SUBSTANCE.search(normalize(text))):
         return "medical", "a body sign with no ingestion named (medical notice)"
     if kind == "medical" and _ASSAULT.search(text):
         return "personal_safety", "a person is hurting someone (personal safety notice)"

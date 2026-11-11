@@ -68,11 +68,14 @@ def test_spanish_labels_on_spanish_turns():
 @pytest.mark.parametrize("kw,hrefs", [
     ({"care": "distress", "rule": "R6"}, ["tel:988", "sms:988"]),
     ({"care": "danger", "rule": "R7", "person_danger": True}, ["tel:911"]),
-    ({"care": "danger", "rule": "R7", "person_danger": False}, []),  # broad hazard words, no person: no button
-    ({"care": "unwell", "rule": "R6", "person_danger": False}, []),
+    # fix round (lead): a concern turn is never empty; its contacts match the line shown
+    ({"care": "danger", "rule": "R7", "person_danger": False}, ["tel:911", None]),  # 911 if danger + maintenance info
+    ({"care": "unwell", "rule": "R6", "person_danger": False}, ["tel:911"]),  # "911 if it gets worse"
     ({"care": "danger", "rule": "R9"}, ["tel:911"]),
     ({"care": "danger", "rule": "R10q", "incident": "gas"}, ["tel:911", None]),
-    ({"care": "info", "rule": "R5", "kind": "co"}, []),  # an educational question: information, no button
+    ({"care": "info", "rule": "R5", "kind": "co"}, ["tel:911"]),
+    ({"care": "info", "rule": "R5", "kind": "electrical"}, [None, "tel:911"]),
+    ({"care": "info", "rule": "R5", "kind": "fire_smoke"}, ["tel:911", None]),
     ({"care": "info", "rule": "R5c", "kind": "medical", "conditional_danger": True}, ["tel:911"]),
 ])
 def test_concern_contacts(kw, hrefs):
@@ -250,7 +253,6 @@ def test_self_harm_timing_near_misses(msg):
     "if my son isn't waking up should i call someone",  # moved from sprint 7 (was a full alert)
     "qué hago si mi mamá no respira",  # moved from sprint 7 (was a full alert)
     "If my grandfather won't wake up, who do I call?",
-    "if my baby's lips are blue what do we do",
     "si mi papá no reacciona, ¿qué hago?",
     "if my husband is unconscious, should I move him?",
     "what should we do if my daughter can't catch her breath",
@@ -270,6 +272,7 @@ def test_conditional_about_a_specific_person_is_r5c(msg):
     "i don't know if my dad is breathing",
     "not sure if she's breathing, she won't wake up",
     "no sé si respira",
+    "if my baby's lips are blue what do we do",  # fix round (P1-1): an observed appearance is live (was R5c)
 ])
 def test_conditional_with_a_live_sign_stays_an_alert(msg):
     assert rank(msg) == 3, (msg, d(msg).rule)
@@ -280,12 +283,13 @@ def test_conditional_with_a_live_sign_stays_an_alert(msg):
     "si alguna vez hay un incendio, ¿por dónde salimos?", "in case someone faints in the gym, is there an AED?",
     "what if a toddler swallows a magnet?", "if my son ever drinks bleach what do we do",
 ])
-def test_generic_hypotheticals_are_information_without_contacts(msg):
+def test_generic_hypotheticals_are_information_not_an_incident(msg):
+    # fix round (lead): the information still carries its category contacts ("concern is never empty")
     r = d(msg)
     assert r.response in ("safety_info", "care_line", "none") and not r.conditional_danger, (msg, r.rule)
     state, contacts = safety_ui(r, alert_shown=False, care_kind="info" if r.response == "safety_info" else
                                 ("danger" if r.response == "care_line" else None))
-    assert state in ("concern", "normal") and not any(c["href"] for c in contacts)
+    assert state in ("concern", "normal") and (state == "normal" or contacts)
 
 
 # ---- 5. look-alikes: titles, fiction, training, devices, idioms, activities, past + recovered -----------------------

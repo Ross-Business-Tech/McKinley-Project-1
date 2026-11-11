@@ -101,17 +101,77 @@ _ACTIVITY = re.compile(
     r"(?:the|his|her|my) (?:\w+ )?(?:floor|ground|mat)\b|"
     r"\b(?:on|in) the (?:\w+ )?(?:floor|ground|mat) (?:doing|playing|stretching|fixing) (?:\w+ ?){0,3}", _F)
 
+# fix round: a small amount of water contained in or under one appliance, and "is that a flood?" about it, is a repair
+_APPLIANCE = (r"dishwasher|washer|washing machine|fridge|refrigerator|freezer|ice maker|ac|a/c|air conditioner|drip "
+              r"pan|tray|water heater pan|tub|sink|lavavajillas|lavaplatos|lavadora|refri\w*|nevera|congelador|"
+              r"fregadero|lavabo")
+_CONTAINED = re.compile(
+    rf"\b(?:a little|a bit of|some|a small (?:amount|puddle) of|a small puddle|a puddle of|a few drops(?: of)?|a "
+    rf"little puddle(?: of)?|un poco de|poquita|algo de|un charquito de)\s+(?:standing |pooled |leftover |clean )?"
+    rf"(?:water|agua)\b[^.?!]{{0,40}}?\b(?:{_APPLIANCE})\b(?:[^.?!]{{0,30}}?\b(?:after (?:it )?(?:runs|a cycle)|"
+    rf"(?:at|in) the bottom))?|\b(?:{_APPLIANCE})\b[^.?!]{{0,30}}?\b(?:has|had|is|with|tiene) (?:a little|a bit of|"
+    rf"some|un poco de) (?:standing |pooled )?(?:water|agua)\b[^.?!]{{0,30}}", _F)
+_CONTAINED_Q = re.compile(r"\b(?:is|was) (?:that|this|it) (?:a |an )?(?:flood\w*|leak\w*|normal|bad|a problem|"
+                          r"emergency|dangerous|serious)\b\??|\b(?:es|ser[aá]) (?:una )?(?:inundaci[oó]n|fuga|normal|"
+                          r"grave|peligroso)\b\??", _F)
+_EXTENT = re.compile(r"\b(?:gushing|pouring|spraying|everywhere|all over|won'?t stop|wont stop|keeps (?:coming|rising)|"
+                     r"rising|spreading|outlets?|electrical|wires?|ceiling|inches|ankle|into the (?:hall|hallway|"
+                     r"bedroom|living)|por todas partes|no para|enchufe|techo|"
+                     # never near an ingestion: "drank some of the drano under the sink" is a poisoning
+                     r"drank|drink\w*|swallow\w*|ate|took|bebi\w*|tom[oó]|trag\w*|kid|child|baby|son|daughter|"
+                     r"toddler|year old|hij[oa]|beb[eé]|niñ[oa])\b", _F)
+
+
 # a conditional clause: hypothetical unless a live marker sits inside it
 _COND_START = re.compile(
-    r"(?<!\bas )(?<!\beven )(?<!\bonly )(?<!\bknow )(?<!\bsure )(?<!\bcheck )(?<!\bsee )(?<!\btell )"
+    r"(?<!\bas )(?<!\beven )(?<!\bonly )(?<!\bsure )(?<!\bcheck )(?<!\bsee )"
     r"(?<!\bwonder )(?<!\bwondering )(?<!\bse )(?<!\bsé )(?<!\bsaber )(?<!\bver )(?<!\bchecking )(?<!\bunclear )"
     r"\b(?:what if|in case|if|en caso de que|en caso de|y si|si)\b(?=\s+\w)", _F)
+# fix round: every whitespace-led alternative starts at the beginning of a whitespace run ((?<!\s)), so a long run of
+# spaces is scanned once (linear), not once per position
 _COND_END = re.compile(
-    r"[,.;!?¿]|\s+(?:what (?:do|should|would|can)|who (?:do|should)|should (?:i|we)|do (?:i|we)|can (?:i|we)|"
+    r"[,.;!?¿]|(?<!\s)\s+(?:what (?:do|should|would|can)|who (?:do|should)|should (?:i|we)|do (?:i|we)|can (?:i|we)|"
     r"how (?:do|should|can)|is it|que (?:hago|debo|hacemos)|qué (?:hago|debo|hacemos)|debo|debemos|a qui[eé]n|"
     r"c[oó]mo (?:le|lo|la)|then|entonces)\b", _F)
 _LIVE = re.compile(r"\b(?:now|right now|still|currently|again|at the moment|as we speak|ahora|ahorita|todav[ií]a|"
-                   r"sigue|otra vez|en este momento)\b", _F)
+                   r"sigue|otra vez|en este momento|just now|"
+                   r"(?:a few|an?|\d+|ten|five|twenty|thirty) (?:min\w*|seconds|hours?) (?:ago|now)|for (?:a few|\d+|"
+                   r"several|the (?:last|past)) \w+|hace (?:un|una|unos|unas|\d+|poco|rato) ?\w*|reci[eé]n|"
+                   r"acaba de|acabo de)\b", _F)
+# fix round (P1-1): inside "is it bad / what do i do if ...", a COMPLETED event about a specific person, an
+# observed appearance or a duration is a live report ("if my kid swallowed a magnet", "if my neighbor collapsed",
+# "what if my husband's lips are blue", "if my roommate's been unresponsive"). Ability statives ("if my dad can't
+# breathe") stay conditional (rule R5c).
+_COMPLETED = re.compile(
+    r"\b(?:swallowed|drank|ate|took|taken|has taken|got into|inhaled|overdosed|od'?d|collapsed|fell|fainted|passed "
+    r"out|blacked out|hit (?:his|her|their) head|stopped breathing|cut (?:himself|herself|themselves)|(?:has|have|'s|"
+    r"s) been|se (?:trag[oó]|tom[oó]|comi[oó]|bebi[oó]|cay[oó]|desmay[oó]|golpe[oó])|tom[oó]|bebi[oó]|trag[oó]|"
+    r"comi[oó])\b|\b(?:lips?|skin|face|fingers|labios|piel|cara)\b(?:\W+\w+){0,2}?\W+(?:are|is|look|looks|went|turned|"
+    r"turning|est[aá]n?|se ven?) (?:\w+ )?(?:blue|purple|gr[ae]y|azul\w*|morad\w*)\b", _F)
+_NOT_KNOWING = re.compile(r"\b(?:don'?t|do not|didn'?t|can'?t|cannot|not|no|never|unable to)\s+(?:\w+\s+)?"
+                          r"(?:know|tell|s[eé]|saber|figure out)\s*$", _F)
+# a general question about a hazard's properties, nobody named, nothing perceived ("is carbon monoxide dangerous?")
+_GENERAL_Q = re.compile(
+    r"^\s*¿?\s*(?:how (?:dangerous|bad|toxic|deadly|harmful|flammable)|qu[eé] tan (?:peligros|t[oó]xic|grave|"
+    r"mortal)\w*)\b[^.?!]*\?|"
+    r"^\s*¿?\s*(?:is|are|can|could|does|do|what happens|es|son|puede|qu[eé] pasa)\b[^.?!]*\b(?:dangerous|toxic|"
+    r"deadly|harmful|poisonous|flammable|safe|bad for (?:you|kids|pets|babies)|explode|kill|peligros[oa]s?|"
+    r"t[oó]xic[oa]s?|mortal(?:es)?|venenos[oa]s?)\b[^.?!]*\?", _F | re.M)
+_PERCEIVED = re.compile(r"\b(?:smell\w*|hear\w*|see|seeing|beep\w*|going off|in here|right now|my|our|i have|we "
+                        r"have|i'?m|we'?re|huele|escucho|veo|tengo|mi|nuestr[oa])\b", _F)
+# fix round: a small hazard the resident reports already controlled in the same message ("small grease fire, I put it
+# out, everyone is fine"): calm safety info, no incident, the repair can follow
+_CONTROLLED = re.compile(
+    r"(?<!tried to )(?<!try to )(?<!couldnt )(?<!couldn't )(?<!cant )(?<!can't )(?<!cannot )"
+    r"\b(?:(?:i|we|he|she|they) (?:already |just )?"
+    r"(?:put (?:it|the fire|the flames) out|put out (?:the )?(?:fire|flames?)|smothered it|extinguished it|shut (?:it |"
+    r"the (?:gas|water|valve|main|breaker) )?off|turned (?:it |the (?:gas|water|valve|burner|stove|breaker) )?off)|"
+    r"(?:the )?(?:fire|flames?) (?:is|are|went) (?:all )?out\b|it'?s (?:all )?out now|(?:the )?(?:water|leak) "
+    r"(?:has )?stopped|apagu[eé] (?:el fuego|las llamas|la estufa|el gas)|lo apagu[eé]|ya (?:se )?apag[oó]|ya est[aá] "
+    r"apagad[oa]|cerr[eé] (?:la llave|el gas|el agua))", _F)
+_STILL_LIVE = re.compile(r"\b(?:still|spreading|again|keeps?|won'?t|can'?t|cannot|out of control|everywhere|getting "
+                         r"(?:worse|bigger)|hurt|burn(?:ed|t) (?:my|his|her)|smoke (?:is )?(?:everywhere|filling)|"
+                         r"sigue|otra vez|se extiende|no (?:puedo|se apaga))\b", _F)
 _SPECIFIC = re.compile(r"\b(?:my|our|his|her|mi|mis|nuestr[oa]|su)\s+(?:\w+\s+)?\w+|\b(?:he|she|they|him|her|"
                        r"them|[eé]l|ella)\b", _F)
 _GENERIC = re.compile(r"\b(?:someone|somebody|anyone|anybody|a (?:person|kid|child|baby|toddler|resident|tenant)|"
@@ -131,7 +191,7 @@ _RECOVERED = re.compile(
     r"(?:now)?|\b(?:the |her |his |our )?doctors? (?:said|says|told)\b[^.;!?]*|\bno big deal\b|\ball good(?: now)?\b|"
     r"\bfully recovered\b|\bwas just (?:dehydrat\w*|a scare|a bruise)\b|\bya (?:est[aá]n?|estoy|estamos) bien\b|"
     r"\bya pas[oó]\b|\best[aá] bien (?:ahora|ya)\b|\bse recuper[oó]\b|\bel (?:doctor|m[eé]dico) dijo\b[^.;!?]*", _F)
-_CLAUSE = re.compile(r"[,.;!?¿¡]+|\s+(?:but|and|though|although|pero|y|aunque|anyway|anyways|so)\s+", _F)
+_CLAUSE = re.compile(r"[,.;!?¿¡]+|\b(?:but|and|though|although|pero|y|aunque|anyway|anyways|so)\b", _F)
 
 
 @dataclass
@@ -142,6 +202,7 @@ class Spans:
     clauses: list[str] = field(default_factory=list)  # the conditional clauses removed (without "if")
     conditional_specific: bool = False  # a conditional clause names a specific person (not "someone", not "ever")
     recovered: str | None = None  # remainder after also removing past clauses + recovery statements
+    controlled: bool = False  # a small hazard reported already under control in this message
 
 
 def _sub(pat: re.Pattern[str], text: str, why: str, reasons: list[str]) -> str:
@@ -170,8 +231,11 @@ def _conditionals(text: str) -> tuple[str, list[str], bool]:
         end = _COND_END.search(text, m.end())
         stop = end.start() if end else len(text)
         clause = text[m.end():stop]
-        if _LIVE.search(clause):
-            continue  # "if he can't breathe right now": a live report inside a conditional
+        if _NOT_KNOWING.search(text[max(0, m.start() - 40):m.start()]):
+            continue  # "i don't know if he's breathing": a live, uncertain report
+        if _LIVE.search(clause) or (_SPECIFIC.search(clause) and not _GENERIC.search(clause)
+                                    and _COMPLETED.search(clause)):
+            continue  # "if he can't breathe right now", "if my kid swallowed a magnet": a live report
         out.append(text[pos:m.start()])
         pos = stop
         removed.append(clause)
@@ -195,9 +259,16 @@ def spans(message: str) -> Spans:
     t = _sub(_DEVICE, t, "device", reasons)
     t = _sub(_IDIOM, t, "idiom", reasons)
     t = _sub(_ACTIVITY, t, "activity", reasons)
+    if _CONTAINED.search(t) and not _EXTENT.search(t):
+        t = _sub(_CONTAINED, _sub(_CONTAINED_Q, t, "contained", reasons), "contained appliance water", reasons)
     out = Spans(benign=t, reasons=reasons)
     hyp, removed, specific = _conditionals(t)
+    for m in _GENERAL_Q.finditer(hyp):
+        if not _PERCEIVED.search(m.group(0)):  # "is carbon monoxide dangerous?" (not "is the smell in here dangerous?")
+            removed.append(m.group(0))
+            hyp = hyp.replace(m.group(0), " , ")
     if removed:
         out.hypothetical, out.conditional_specific, out.clauses = hyp, specific, removed
     out.recovered = _recovered(t)
+    out.controlled = bool(_CONTROLLED.search(t) and not _STILL_LIVE.search(_CONTROLLED.sub(" ", t)))
     return out
