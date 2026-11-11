@@ -353,8 +353,10 @@ _OTHER_TOPIC = re.compile(
     r"apartment|unit|move|pet|noise|appointment|tomorrow|morning|afternoon|anytime|any time|reparar|arreglar|roto|"
     r"tapad[oa]|gotea|visita|oficina|horario|renta|pago|estacionamiento|entrar|llave|mantenimiento|cita|mañana)\b",
     re.I)
-_NEUTRAL = re.compile(r"^\W*(?:ok(?:ay)?|k|thanks?|thank you|hmm+|wait|one sec(?:ond)?|hold on|gracias|espera|"
-                      r"un momento)\W*$", re.I)
+_NEUTRAL = re.compile(r"^\W*(?:ok(?:ay)?|k|thanks?|thank you|h+m+|um+|uh+|wait|one sec(?:ond)?|a sec(?:ond)?|just a "
+                      r"(?:sec(?:ond)?|minute|moment)|hold on|hang on|brb|sorry(?:,? my phone)?|sorry,? (?:one sec|"
+                      r"hold on)|my phone|gracias|espera|un momento|un segundo|perd[oó]n|disculpa)\W*$", re.I)
+MAX_FILLERS = 2  # filler turns ("one sec", "hold on") that keep the question open
 
 
 def _pending(store: Any, session_id: str, persona_key: str) -> dict[str, Any] | None:
@@ -396,7 +398,7 @@ def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True)
 def pending_open(store: Any, session_id: str, persona_key: str, turn: int) -> bool:
     """For the planner: a safety question ("is anything like that happening right now?") is waiting for an answer."""
     pend = _pending(store, session_id, persona_key)
-    return bool(pend and pend.get("open") and turn - int(pend.get("turn", 0)) <= PENDING_TURNS)
+    return bool(pend and pend.get("open") and turn - int(pend.get("last", pend.get("turn", 0))) <= PENDING_TURNS)
 
 
 def step(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
@@ -411,8 +413,10 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
                    turn: int) -> RiskAssessment:
     d = risk.decision
     pend = _pending(store, session_id, persona_key)
-    if pend and pend.get("open") and turn - int(pend.get("turn", 0)) <= PENDING_TURNS:
-        gap = turn - int(pend.get("turn", 0))
+    last = int(pend.get("last", pend.get("turn", 0))) if pend else 0
+    if pend and pend.get("open") and turn - last <= PENDING_TURNS:
+        # final round (P1-B): a filler turn keeps the question open, and the affirmative right after it still counts
+        gap = turn - last
         if d.response == "full_alert":
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "alert"})
         elif confirms_pending(message, risk, next_turn=gap == 1):
@@ -426,9 +430,12 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
                 "conflict": f"confirmed after safety information for a {pend['kind']} question: full alert"})
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "confirmed"})
             return risk.model_copy(update={"decision": nd})
-        elif not _NEUTRAL.search(message):
+        elif _NEUTRAL.search(message) and int(pend.get("fillers", 0)) < MAX_FILLERS:
+            _set_pending(store, session_id, persona_key, {**pend, "last": turn,
+                                                         "fillers": int(pend.get("fillers", 0)) + 1})
+        else:
             # a denial, or a turn about anything else (a repair, a tour, the office, an answer to another question)
-            # closes it; only "ok" / "wait" / "thanks" keep it open for the second turn
+            # closes it
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "other turn"})
     if d.response == "safety_info" and d.kind and risk.deterministic.framing == "hypothetical":
         _set_pending(store, session_id, persona_key, {"kind": d.kind, "turn": turn, "open": True,

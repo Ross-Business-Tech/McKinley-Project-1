@@ -320,8 +320,10 @@ def test_confirmations_still_escalate(turns):
     assert run_turns(turns)[-1].response == "full_alert"
 
 
-def test_a_bare_yes_two_turns_later_does_not_escalate():
-    assert run_turns([Q, "ok", "yes"])[-1].response != "full_alert"
+def test_a_bare_yes_after_another_topic_does_not_escalate():
+    # last round (lead, P1-B): a FILLER ("ok", "one sec") keeps the question open, so [Q, "ok", "yes"] now escalates
+    # (see test_a_filler_keeps_the_question_open); a different topic in between still closes it
+    assert run_turns([Q, "my AC is broken", "yes"])[-1].response != "full_alert"
 
 
 def test_the_planner_can_see_an_open_question():
@@ -464,3 +466,121 @@ def test_a_flood_reported_shut_off_is_concern(turns):
 ])
 def test_a_flood_not_controlled_stays_active(turns):
     assert run_turns(turns)[-1].response == "full_alert"
+
+
+# ==== last targeted round ==========================================================================================
+# P0-A: the "won't wake up for school" idiom never silences an infant, feeding, or a danger sign
+INFANT_D = ["the baby won't wake up for feeding", "my baby is hot and won't wake up for her bottle",
+            "my newborn won't wake up to nurse", "the infant won't wake up for his feed",
+            "mi bebé no se despierta para comer", "my toddler won't wake up and he's burning up",
+            "the baby won't wake up for her bottle and she's pale", "my son won't wake up for school and he's limp"]
+
+
+@pytest.mark.parametrize("msg", INFANT_D)
+def test_wake_idiom_never_silences_an_infant_or_a_danger_sign(msg):
+    assert rank(msg) == 3, (msg, d(msg).rule)
+
+
+@pytest.mark.parametrize("msg", INFANT_D)
+def test_decorations_never_lower_infant_reports(msg):
+    from tests.test_sprint7_safety_invariants import POST, PRE
+    worse = [v for v in [f"{p} {msg}" for p in PRE] + [f"{msg} {s}" for s in POST] if rank(v) < 3]
+    assert not worse, worse
+
+
+@pytest.mark.parametrize("msg", ["my son won't wake up for school, any tips?", "my teen never gets up on time",
+                                 "my husband won't wake up for work lol", "mi hijo no se levanta para la escuela"])
+def test_wake_idiom_near_misses_stay_calm(msg):
+    assert rank(msg) < 3, msg
+
+
+# P1-B: a filler keeps the question open; a bare "help" gets the calm 911 line
+@pytest.mark.parametrize("turns", [
+    [Q, "one sec", "yes"], [Q, "sorry my phone", "yes please help"], [Q, "hmm", "help"],
+    [Q, "hold on", "yes it's happening"], [Q, "ok", "yes"], ["si mi papá no respira, ¿qué hago?", "un segundo", "sí"],
+    ["qué hago si mi abuela no reacciona", "espera", "ayuda"], [Q, "brb", "yeah"],
+])
+def test_a_filler_keeps_the_question_open(turns):
+    assert run_turns(turns)[-1].response == "full_alert"
+
+
+@pytest.mark.parametrize("turns", [[Q, "ok", "ok", "ok", "yes"], [Q, "one sec", "my AC is broken", "yes"]])
+def test_fillers_do_not_keep_it_open_forever(turns):
+    assert run_turns(turns)[-1].response != "full_alert"
+
+
+@pytest.mark.parametrize("msg", ["help", "help me", "HELP", "please help", "someone help", "ayuda", "ayúdame",
+                                 "socorro", "help please!!"])
+def test_a_bare_help_gets_the_911_line(msg):
+    r = d(msg)
+    assert r.response in ("care_line", "full_alert") and r.person_danger, (msg, r.rule)
+    assert any(c["href"] == "tel:911" for c in ui(r)[1])
+
+
+@pytest.mark.parametrize("msg", ["help me with my lease", "can you help me find the pool hours?",
+                                 "ayuda con mi renta", "i need help paying rent"])
+def test_help_with_a_task_is_normal(msg):
+    assert d(msg).response == "none", msg
+
+
+# pre-existing P0: one-sided paralysis, facial droop + arm weakness, a feverish lethargic infant (EN + ES)
+@pytest.mark.parametrize("msg", [
+    "my mom suddenly can't move the right side of her body", "my husband's smile is crooked and he can't raise both "
+    "arms", "he can't move his left side", "her smile looks uneven and her words are slurred",
+    "mi papá no puede mover el lado izquierdo", "mi abuela tiene la sonrisa chueca y no habla bien",
+    "mi bebé tiene mucha fiebre y está muy decaído, no quiere comer", "my baby has a high fever and is lethargic",
+    "the newborn is feverish and won't feed", "mi bebé está aletargado y con fiebre alta",
+])
+def test_stroke_and_infant_fever_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "medical", (msg, r.rule)
+
+
+@pytest.mark.parametrize("msg", ["the picture frame is crooked", "my kid can't raise his arms above his head in gym",
+                                 "the baby has a little fever but is playing and eating fine",
+                                 "mi sonrisa es chueca jaja"])
+def test_stroke_and_fever_near_misses(msg):
+    assert rank(msg) < 3, msg
+
+
+# over-alert: an ordinary small dose for an ordinary reason is normal; overdoses still alert
+@pytest.mark.parametrize("msg", ["I took 2 tylenol this morning for my headache", "I took 2 advil for my back",
+                                 "i took a couple ibuprofen for my cramps",
+                                 "me tomé dos pastillas para el dolor de cabeza",
+                                 "i just took one benadryl for my allergies", "tomé una pastilla para la fiebre"])
+def test_routine_dose_is_normal(msg):
+    assert d(msg).response == "none", (msg, d(msg).rule)
+
+
+@pytest.mark.parametrize("msg", ["I took 20 tylenol for my headache", "i took a whole bottle of advil for my back",
+                                 "my son took 2 advil for his fever", "i took 2 tylenol for my headache and now i'm "
+                                 "throwing up blood", "I took 2 tylenol for my headache, i want to die",
+                                 "me tomé todas las pastillas para el dolor"])
+def test_overdoses_and_danger_signs_still_alert(msg):
+    assert rank(msg) == 3, (msg, d(msg).rule)
+
+
+# simulators: broken appliance hardware is a repair; water by an outlet alerts; a shock with an injury sign
+@pytest.mark.parametrize("msg", ["the dishwasher door latch snapped, it won't stay closed", "the cabinet hinge broke",
+                                 "la manija del refri se rompió", "the oven knob cracked", "the fridge shelf snapped",
+                                 "el cajón de la cocina se rompió", "the microwave handle came off",
+                                 "water all over the bottom of my dishwasher"])
+def test_broken_hardware_and_water_inside_are_repairs(msg):
+    assert d(msg).response == "none", (msg, d(msg).rule)
+
+
+@pytest.mark.parametrize("msg", ["the oven door handle came off and i cut my hand badly",
+                                 "the shelf fell off onto my daughter's head and she's bleeding a lot",
+                                 "dishwasher water leaking onto the floor by the outlet",
+                                 "water from the washer is leaking right by the power strip"])
+def test_hardware_and_water_near_misses_stay_alerts(msg):
+    assert rank(msg) == 3, (msg, d(msg).rule)
+
+
+@pytest.mark.parametrize("msg", ["little shock and now my hand is numb and tingling",
+                                 "i got a small shock from the outlet and my arm hurts",
+                                 "me dio un toque y me duele la mano"])
+def test_a_shock_with_an_injury_sign_is_a_person_danger_line(msg):
+    r = d(msg)
+    assert r.response in ("care_line", "full_alert") and r.person_danger, (msg, r.rule)
+    assert any(c["href"] == "tel:911" for c in ui(r)[1])

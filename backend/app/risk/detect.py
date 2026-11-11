@@ -74,13 +74,16 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     sp = spans(message)
     if not sp.reasons and sp.hypothetical is None and sp.recovered is None and not sp.controlled:
         return full
-    if full.kind in _NEVER_LOWERED_BY_SPANS or full.via_window or full.self_harm_intent or (
+    routine = "routine dose" in sp.reasons and not intent_to_self_harm(sp.benign) and not (
+        _SELF_QUANTITY.search(message))  # "i took 2 tylenol for my headache": the dose alone set the 988 hint
+    if full.kind in _NEVER_LOWERED_BY_SPANS or full.via_window or (full.self_harm_intent and not routine) or (
             full.care == "distress"):
         return full
     cur = full
     if sp.reasons:
         lite = _detect(sp.benign, recent)
-        if _rank(lite) < _rank(cur):
+        # a routine dose lowers only to nothing-left ("...and now i'm throwing up blood" keeps the alert)
+        if _rank(lite) < _rank(cur) and not ("routine dose" in sp.reasons and _rank(lite) > 0):
             cur = lite.model_copy(update={"frame": {**(lite.frame or {}), "neutralized": list(sp.reasons)}})
     if sp.hypothetical is not None:
         lite = _detect(sp.hypothetical, recent)
@@ -147,7 +150,14 @@ _ACCIDENT = re.compile(r"\b(?:cooking|chopping|cutting (?:onions|vegetables|brea
                        r"ent|"
                        r"accident\w*|shaving|opening|broken glass|glass broke|on the (?:can|glass|fence|counter)|while|"
                        r"sin querer|por accidente|cocinando|picando|rasur\w*|accidente)\b", re.I)
+_BARE_HELP = re.compile(r"^\W*(?:please\W+)?(?:help|help me|help us|help please|i need help|we need help|someone "
+                        r"help(?: me| us)?|sos|ayuda|ay[uú]dame|ay[uú]denme|ayuda por favor|socorro|auxilio)\W*"
+                        r"(?:please|plz|por favor|now|ya|ahora)?\W*$", re.I)
+_SHOCK_INJURY = re.compile(r"\b(?:numb\w*|tingl\w*|burn(?:ed|t|ing|s)?|hurts?|pain\w*|dizz\w*|chest|heart|racing|can'"
+                           r"?t "
+                           r"(?:feel|move)|weak|entumid\w*|hormigue\w*|quemad\w*|duele|dolor|mare\w*|pecho)\b", re.I)
 _MINOR_SHOCK = re.compile(
+    r"\b(?:a )?(?:little|small|tiny|mild|slight|quick) (?:electric(?:al)? )?(?:shock|jolt|zap)\b|"
     r"\b(?:got|get|getting|felt|feel) (?:a |an )?(?:little |small |tiny |mild |slight |quick )?(?:shock|shocked|zap|"
     r"zapped|jolt)\b|\b(?:shocked|zapped) me\b|\bme (?:dio|da|dieron) (?:un |una )?(?:peque[nñ]o |pequeña |leve )?"
     r"(?:toque|choque|descarga|calambre)\b|\bme (?:dio|da) corriente\b", re.I)
@@ -224,7 +234,13 @@ def _detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
         # a detector or alarm sounding now, source unknown: at least the calm 911 line, as a person-danger line (the
         # planner opens no ordinary repair while it shows)
         out.care, out.concern = "danger", True
-    if not out.kind and not out.mentioned_kind and _MINOR_SHOCK.search(message):
+    if not out.kind and out.care is None and _BARE_HELP.search(message):
+        out.care, out.concern = "danger", True  # final round (P1-B): a bare "help" / "ayuda" gets the calm 911 line
+    if not out.kind and _MINOR_SHOCK.search(message) and _SHOCK_INJURY.search(message):
+        # "a little shock and now my hand is numb and tingling": an injury sign after a shock is a person-danger line
+        # (911 if it gets worse), not the property steps
+        out.care, out.concern, out.mentioned_kind, out.framing = "danger", True, None, "none"
+    elif not out.kind and not out.mentioned_kind and _MINOR_SHOCK.search(message):
         # "i got a little shock when i touched the outlet": the electrical steps as calm info (don't touch it; smoke,
         # sparks or heat: leave and call 911), never silence
         out.mentioned_kind, out.framing, out.happened = "electrical", "past", True

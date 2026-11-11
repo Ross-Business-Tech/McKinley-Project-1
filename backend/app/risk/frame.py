@@ -143,7 +143,9 @@ CRITICAL = re.compile(
     r"morad[oa])\b|\bmottled\b|\b(?:is|are|looks?|went|esta|se ve) (?:\w+ (?:and )?){0,2}(?:blue|purple|"
     r"azul|morad[oa])\b|"
     r"\b(?:choking|chokes|se esta ahogando|ahogandose)\b|"
-    r"\b(?:face|mouth|smile|cara|boca)\b(?:\W+\w+){0,3}\W+(?:droop\w*|lopsided|caid[oa]|torcid[oa])\b|"
+    r"\b(?:face|mouth|smile|cara|boca|sonrisa)\b(?:\W+\w+){0,3}\W+(?:droop\w*|lopsided|crooked|uneven|caid[oa]|"
+    r"torcid[oa]|chuec[oa])\b|\bcrooked (?:smile|face|mouth)\b|"
+    r"\b(?:cant|cannot|unable to) (?:raise|lift) both (?:of )?(?:his |her |their |my )?arms\b(?! (?:above|over))|"
     r"\b(?:one side|un lado)\b(?:\W+\w+){0,4}\W+(?:droop\w*|numb|limp|cay[oa]|caido)\b|\bslurr\w*|"
     r"\bbleeding (?:\w+ )?(?:a lot|badly|heavily|everywhere|so much|nonstop|wont stop|like crazy)\b|"
     r"\b(?:wont|doesnt|isnt) stop bleeding\b|\bblood (?:is )?(?:everywhere|spurting|pouring|gushing|soaking)\b|"
@@ -183,6 +185,7 @@ WEAK = re.compile(
     r"\bno (?:puede|pueda) (?:levantarse|pararse|moverse|caminar)\b|\bno se (?:puede|pueda) (?:levantar|parar|mover)\b"
     r"|\bwheez\w*|"
     r"\bpale\b|\bpalid[oa]\b|\bclammy\b|\bsweaty\b|\bsweating\b|\bsudando\b|\bgr[ae]y\b|\bgris\b|"
+    r"\b(?:decaid[oa]|aletargad[oa]|sin fuerzas|lethargic|listless)\b|"
     r"\bshaking (?:really |so |very )?(?:hard|badly|uncontrollably)\b|\btemblando\b|\btiembla\b|"
     r"\bwont (?:respond|answer) to (?:me|us|anything)\b|\bcant feel (?:his|her|their|my) (?:arm|leg|face|legs|arms)\b")
 BODY = re.compile(
@@ -191,7 +194,8 @@ BODY = re.compile(
     r"\b(?:not|isnt|stopped|quit|no longer) sweating\b|\bno (?:esta )?suda\w*|\bdry (?:and hot|hot) skin\b|"
     r"\b(?:skin is (?:\w+ )?(?:hot and )?dry|dry skin)\b|\bnodding off\b|\bkeeps? (?:falling asleep|passing out)\b|"
     r"\bflushed\b|\b(?:hasnt|not|no) (?:peed|peeing|wet (?:a )?diapers?)\b|\bstopped making sense\b|"
-    r"\bfeverish\b|\bhigh fever\b|\bfiebre (?:muy )?alta\b|"
+    r"\bfeverish\b|\bhigh fever\b|\bfiebre (?:muy )?alta\b|\bmucha fiebre\b|\bno (?:quiere )?(?:comer|tomar|"
+    r"beber|mamar|lactar)\b|"
     r"\b(?:confused|dizzy|weak) and (?:very |so |really )?(?:hot|cold)\b|\bhot to the touch\b|\bburning (?:hot|up)\b|"
     r"\b(?:hes|shes|he feels|she feels|skin|forehead|body) (?:is |feels )?"
     r"(?:so |"
@@ -223,8 +227,11 @@ _UNSURE_ALIVE = re.compile(r"\b(?:dont|do not|cant|cannot|not sure|unsure|no se|
                            r"pulso)\b")
 # final round (pre-existing P0): stroke signs. A numb / weak / dead limb or face WITH a companion sign (suddenly,
 # can't lift it, one side, drooping, slurred, confused); "my arm went numb from sleeping on it" is not one.
-_LIMB_NUMB = re.compile(r"\b(?:cant|cannot|can no longer) feel (?:my|his|her|their) (?:\w+ )?(?:arm|leg|hand|face|sid"
-                        r"e)\b|"
+_LIMB_NUMB = re.compile(r"\b(?:cant|cannot|can no longer) feel (?:my|his|her|their) (?:\w+ )?(?:arm|leg|hand|face|"
+                        r"side)\b|"
+                        r"\b(?:cant|cannot|unable to) (?:move|feel|use|lift) (?:the |his |her |my |their )?(?:left |r"
+                        r"ight "
+                        r"|one )side\b|\bno (?:puede|puedo) mover (?:el|su|mi) lado\b|"
                         r"\bno (?:siento|siente) (?:el|la|mi|su) (?:brazo|pierna|mano|cara)\b|"
                         r"\b(?:arm|leg|hand|face|side|brazo|pierna|mano|cara|lado)s?\b(?:\W+\w+){0,3}?\W+(?:numb|dead|"
                         r"limp|weak|heavy|droopy|tingly|dormid[oa]|entumid[oa]|adormecid[oa]|debil|pesad[oa]|caid[oa]"
@@ -241,6 +248,19 @@ _TOOK_QTY = re.compile(r"\b(?:took|taken|popped|downed|swallowed|tomo|tome|me to
                        r"\W+(?:[1-9]\d+(?!\s?(?:mg|ml|mcg|milligrams?|miligramos?)\b)|a handful|handful|whole|all (?:"
                        r"of )?(?:my|the|her|his)|too many|entire|a bunch|"
                        r"double|triple|todas|toda la|un punado|demasiad[oa]s)\b")
+# last round (pre-existing P0): an infant with a fever AND lethargy / limpness / not feeding is a medical alert
+_INFANT = re.compile(r"\b(?:baby|babies|babys|infant|newborn|preemie|\d+ ?(?:month|week|day)s?[- ]old|bebe|recien nac"
+                     r"id[oa]|"
+                     r"nene|nena)\b")
+_FEVER = re.compile(r"\b(?:fever\w*|feverish|burning up|hot to the touch|temperature of|temp (?:of|is)|1(?:0[0-9])(?:"
+                    r"\.\d)? ?"
+                    r"(?:f|degrees)?|3[89](?:\.\d)? ?(?:c|grados)?|fiebre|calentura|ardiendo)\b")
+_INFANT_SIGN = re.compile(r"\b(?:lethargic|listless|limp|floppy|wont (?:feed|eat|drink|nurse|take (?:a|her|his|the) "
+                          r"bottle)|not (?:feeding|eating|nursing|drinking)|hard to wake|wont wake|barely (?:moving|a"
+                          r"wake)|"
+                          r"decaid[oa]|aletargad[oa]|no (?:quiere )?(?:comer|mamar|tomar|lactar|come|toma)|no se desp"
+                          r"ierta|"
+                          r"sin fuerzas|flojit[oa]|no reacciona)\b")
 _LIMB_BENIGN = re.compile(r"\b(?:slept on|sleeping on|from sleeping|from the cold|from typing|after (?:the gym|working "
                           r"out|lifting|yoga)|dormi encima|por dormir|dentist|novocaine|anesthesia|anestesia)\b")
 _MENTAL = re.compile(r"\b(?:confus\w*|out of it|not making sense|disoriented|confundid[oa]|desorientad[oa])\b"
@@ -416,7 +436,7 @@ FABRIC_FIRE = [_near_re(_FABRIC, _IGNITE, 3), _near_re(_IGNITE, _HEAT_SRC, 5)]
 WATER_ELEC = [_near_re(r"water|agua|leak\w*|puddle|drip\w*|gotea\w*", r"reaching|touching|getting (?:close )?to|"
                        r"close to|"
                         r"next to|near|around|onto|into|under|behind|toward|towards|heading for|llegando a|llega a|"
-                        r"cerca de|hacia|junto a|al lado de|pegad[oa] a|en", 4),
+                        r"cerca de|hacia|junto a|al lado de|pegad[oa] a|by|beside|en", 4),
               re.compile(r"\b(?:outlets?|plugs?|power ?strips?|cords?|extension cords?|wires?|wiring|electrical panel|"
                          r"panel|breaker\w*|fuse ?box|enchufes?|tomacorrientes?|cables?|regletas?)\b")]
 
@@ -509,8 +529,9 @@ def _hazard(s: str) -> tuple[str, str] | None:
                                                           r"gotea\w*)\b(?:\W+\w+)"
                                                           r"{0,6}?\W+(?:reaching|touching|getting|close|next|near|"
                                                           r"around|onto|into|under|behind|toward|towards|heading|"
-                                                          r"llegando|llega|cerca|hacia|junto|lado|pegad[oa]|en)\b"
-                                                          r"(?:\W+\w+){0,3}?\W+(?:outlets?|plugs?|power ?strips?|cords"
+                                                          r"llegando|llega|cerca|hacia|junto|lado|pegad[oa]|by|"
+                                                          r"beside|en)\b"
+                                                          r"(?:\W+\w+){0,4}?\W+(?:outlets?|plugs?|power ?strips?|cords"
                                                           r"?|"
                                                           r"wires?|wiring|panel|breaker\w*|fuse ?box|enchufes?|"
                                                           r"tomacorrientes?|cables?|regletas?)\b", s):
@@ -832,6 +853,8 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
                 SUBSTANCE.search(s) or _PET_TOXIC.search(s)):
             cand.append((1, "poison", "a pet swallowed something harmful (calm line; the notices are for people)"))
         mild = all(re.match(r"vitamin|vitamina|gummy|melatonin", x) for x in SUBSTANCE.findall(s))
+        if _INFANT.search(s) and _FEVER.search(s) and _INFANT_SIGN.search(s):
+            cand.append((3, "medical", "an infant with a fever and lethargy or not feeding"))
         if _TOOK_QTY.search(s) and SUBSTANCE.search(s) and (person or "self" in roles) and not (
                 mild and not re.search(r"\b(?:[1-9]\d+|whole|entire|bottle|frasco|bote)\b", s)):
             # ("i took all my vitamins" is a daily routine; a whole bottle of them is not)

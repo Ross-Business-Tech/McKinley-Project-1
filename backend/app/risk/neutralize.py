@@ -79,8 +79,13 @@ _IDIOM = re.compile(
     r"\blaugh\w* so hard (?:that )?(?:i|we) (?:can'?t|couldn'?t) breathe?\b|\b(?:dying|died|dead) (?:of|from|with) "
     r"(?:laugh\w*|embarrassment|boredom|cuteness)\b|\bme muero de (?:risa|verg[uü]enza|aburrimiento)\b|"
     r"\bno puedo respirar de la risa\b|"
-    r"\b(?:won'?t|wont|doesn'?t|never|can'?t get (?:him|her|them) to) (?:\w+ )?(?:wake up|get up) (?:for|in time for|"
-    r"on time|in the mornings?|early|before (?:noon|\d))(?:\s+(?:school|work|class|church|the bus|practice))?\b|"
+    # final round (P0-A): only an ordinary schedule ("for school", "on time"), never "for feeding / her bottle"; infants
+    # and anyone else in danger are excluded in _idiom_sub
+    r"\b(?:won'?t|wont|doesn'?t|never|can'?t get (?:him|her|them) to) (?:\w+ )?(?:wake up|get up) (?:(?:for|in time f"
+    r"or) "
+    r"(?:school|work|class|church|the bus|practice|his shift|her shift|the alarm)|on time|in the mornings?|early|befo"
+    r"re "
+    r"(?:noon|\d))\b|"
     r"\bno se (?:quiere )?(?:despierta|levanta|despertar|levantar) (?:para|a tiempo)(?: (?:la escuela|el trabajo|"
     r"clase))?\b|"
     r"\b(?:out of breath|winded|sin aliento) (?:from|after|by|de|despu[eé]s de) (?:the |climbing |walking |running |"
@@ -100,6 +105,28 @@ _ACTIVITY = re.compile(
     r"napping|sleeping|resting|haciendo (?:yoga|ejercicio)|jugando|durmiendo)\b(?:\W+\w+){0,3}?\W+(?:on|in) "
     r"(?:the|his|her|my) (?:\w+ )?(?:floor|ground|mat)\b|"
     r"\b(?:on|in) the (?:\w+ )?(?:floor|ground|mat) (?:doing|playing|stretching|fixing) (?:\w+ ?){0,3}", _F)
+
+# final round: an ordinary small dose the speaker took for an ordinary reason ("i took 2 tylenol this morning for my
+# headache"); a bottle, "too many", 15+ or "todas" never matches (only 1-3 / a couple), and someone else never matches
+_MEDS = (r"tylenol|advil|aleve|motrin|aspirin|ibuprofen|acetaminophen|paracetamol|excedrin|benadryl|claritin|zyrtec|"
+         r"midol|pills?|tablets?|capsules?|gel ?caps?|pastillas?|tabletas?|pastilla")
+_ROUTINE_DOSE = re.compile(
+    rf"\b(?:i|i'?ve|yo|me)\s+(?:just\s+|already\s+)?(?:took|had|take|taken|tom[eé]|tomo|me tom[eé])\s+(?:a|an|one|two|"
+    rf"three|1|2|3|a couple(?: of)?|un par de|una?|dos|tres)\s+(?:\w+\s+){{0,2}}?(?:{_MEDS})\b[^.?!]{{0,40}}?\b(?:for|"
+    rf"para)\s+(?:my|a|the|el|la|mi|un|una)?\s*(?:bad |little |slight |)?(?:headache|back(?: pain)?|pain|fever|cold|"
+    rf"cramps|period|toothache|migraine|allerg\w*|sleep|knee|neck|shoulder|sore throat|hangover|dolor(?: de \w+)?|"
+    rf"fiebre|grip[ae]|cabeza|espalda|muelas|alergias?|resfriado)\b", _F)
+# final round: a broken piece of hardware on an appliance or furniture ("the dishwasher door latch snapped") is a repair
+_HARDWARE = re.compile(
+    r"\b(?:door (?:latch|hinge|handle|seal|spring)|latch|hinge|handle|knob|lid|rack|tray|drawer|shelf|seal|gasket|"
+    r"button|dial|spring|clip|hook|bisagra|manija|perilla|tapa|caj[oó]n|seguro|pestillo|jaladera)s?\b"
+    r"(?:\W+\w+){0,2}?\W+(?:snapped|broke|is broken|broken|cracked|came off|fell off|split|popped off|se rompi[oó]|"
+    r"se quebr[oó]|se zaf[oó]|se cay[oó]|est[aá] rot[oa])\b(?:[^.?!]{0,30}?\b(?:won'?t (?:stay )?(?:closed|close|shut|"
+    r"latch)|no cierra))?", _F)
+_ON_SOMEONE = re.compile(r"\b(?:onto|on top of|pinned|trapped|crushed|landed on|fell on|encima|aplast\w*|atrap\w*|"
+                         r"cut|bleed\w*|sangr\w*)\b|\bon (?:my|his|her|their|the) (?:\w+ )?(?:son|daughter|kid|child|"
+                         r"baby|head|foot|hand|leg|mom|dad|wife|husband|grand\w+)\b", _F)
+
 
 # fix round: a small amount of water contained in or under one appliance, and "is that a flood?" about it, is a repair
 _APPLIANCE = (r"dishwasher|washer|washing machine|fridge|refrigerator|freezer|ice maker|ac|a/c|air conditioner|drip "
@@ -224,6 +251,26 @@ def _sub(pat: re.Pattern[str], text: str, why: str, reasons: list[str]) -> str:
     return out
 
 
+_INFANT_OR_DANGER = re.compile(
+    r"\b(?:baby|babies|infant|newborn|toddler|preemie|bebe|beb[eé]|reci[eé]n nacid[oa]|feed\w*|bottle|nurs\w*|breastf"
+    r"e\w*|"
+    r"formula|diaper|mamila|biber[oó]n|pecho|hot|fever\w*|burning up|limp|floppy|blue|pale|breath\w*|not breathing|"
+    r"unresponsive|seiz\w*|fiebre|ardiendo|morad[oa]|p[aá]lid[oa]|respir\w*)\b", _F)
+_WAKE = re.compile(r"\b(?:wake|get) up\b|\bdespi?ert|\blevant", _F)
+
+
+def _idiom_sub(text: str, reasons: list[str]) -> str:
+    """The idiom spans, except a wake-up idiom in a message about an infant or with any danger / feeding sign."""
+    def repl(m: re.Match[str]) -> str:
+        if _WAKE.search(m.group(0)) and _INFANT_OR_DANGER.search(text):
+            return m.group(0)
+        return " , "
+    out = _IDIOM.sub(repl, text)
+    if out != text:
+        reasons.append("idiom")
+    return out
+
+
 def _titles(text: str, reasons: list[str]) -> str:
     out = text
     for pat in (_QUOTED, _CALLED, _IS_FAV, _FAV_IS):
@@ -269,8 +316,11 @@ def spans(message: str) -> Spans:
     t = _sub(_FICTION, t, "fiction", reasons)
     t = _sub(_TRAINING, t, "training", reasons)
     t = _sub(_DEVICE, t, "device", reasons)
-    t = _sub(_IDIOM, t, "idiom", reasons)
+    t = _idiom_sub(t, reasons)
     t = _sub(_ACTIVITY, t, "activity", reasons)
+    t = _sub(_ROUTINE_DOSE, t, "routine dose", reasons)
+    if not _ON_SOMEONE.search(t):
+        t = _sub(_HARDWARE, t, "broken hardware", reasons)
     if _CONTAINED.search(t) and not _EXTENT.search(t):
         t = _sub(_CONTAINED, _sub(_CONTAINED_Q, t, "contained", reasons), "contained appliance water", reasons)
     out = Spans(benign=t, reasons=reasons)
