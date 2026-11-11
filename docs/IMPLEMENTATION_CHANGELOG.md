@@ -1,5 +1,25 @@
 # Implementation changelog
 
+## Sprint 8: emergency UX, context-aware maintenance, safe quick fixes (2026-11-11)
+Branch `feat/emergency-ux-maintenance-enhancements` (depends on `feat/s7-safety-regression-fixes`). Report:
+[evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
+
+- **UI:** no persistent 911 control. Normal / concern / active states come from the backend `safety_state` and
+  `safety_contacts`, and the links sit straight under the alert heading. axe 0; phone test 14/14.
+- **Safety:**
+  - `ui_state.py` and the benign-span neutraliser;
+  - R5c conditional questions with a 2-turn confirmation (R5f);
+  - live markers inside questions;
+  - household chemicals, hot cars, stroke and infant signs;
+  - 988 for self-injury and deliberate overdoses;
+  - whitespace runs collapsed before detection.
+- **Maintenance:** `maintenance_history.py` builds repair-only counts and windows from the resident's own records.
+  Follow-ups need the same room, fixture, pest and symptom, and cross-session duplicates become follow-up notes. Notes
+  carry history and a manager-review marker.
+- **Quick fixes:** `quickfix.py` and `content/quickfix_drafts.py` hold the four drafts, behind `QUICKFIX_CONTENT_MODE`
+  with a hosted fail-closed. A failed classifier means no tips. The legacy checks are renamed and gated.
+- **Tests:** backend 3,500 → 4,582; frontend 54 → 72.
+
 ## Sprint 7: generalization, safety reliability, adversarial journeys (2026-11-10)
 Branches `feat/generalization-safety-journeys` (merged early as PR #4) and `feat/s7-safety-regression-fixes`. Report:
 [evaluation/SPRINT7_GENERALIZATION.md](evaluation/SPRINT7_GENERALIZATION.md).

@@ -27,6 +27,12 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 - Sprint 6 (`feat/robust-workflow-safety-auth`): structured understanding layer, workflow state machine, server-side
   principal with deny-by-default data access, concept-based safety with persistent incident state
   ([evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md)).
+- Sprint 8 (`feat/emergency-ux-maintenance-enhancements`, on top of `feat/s7-safety-regression-fixes`): no persistent
+  911 control; backend `safety_state` + category-specific `safety_contacts` (normal / concern / active); R5c
+  conditional questions with a confirmation escalation (R5f); repeat-issue history with community-manager review
+  metadata; draft quick-fix tips behind `QUICKFIX_CONTENT_MODE` (default approved_only = none shown; hosted never
+  drafts) ([evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md),
+  [design/EMERGENCY_UX_REVIEW.md](design/EMERGENCY_UX_REVIEW.md), [workflows/QUICKFIX_DRAFT_KB.md](workflows/QUICKFIX_DRAFT_KB.md)).
 - Sprint 7 (`feat/s7-safety-regression-fixes`, on top of `development` / PR #4): compositional risk frame with a
   monotone "decorations never lower" invariant, structural utterance analysis and a shared field resolver, a
   customer view without diagnostics, server-issued sessions, and property-based invariant tests
@@ -50,7 +56,9 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 | P1 | One open card per conversation; Spanish multi-issue merge; Spanish wording unreviewed; ~10% false safety alerts | [evaluation/ux-review.md](evaluation/ux-review.md) |
 | P1 | No real-device test (iPhone/Android, screen reader) and no public URL: the phone requirement is unmet | [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) |
 | P1 | Live OpenRouter verified on one fixed model (46 real calls, Sprint 5.1); Gemini still never called; no A/B/C real-model comparison yet | [evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md](evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md) |
-| P0 | Emergency recall: Sprint 7 independent holdout 88.1% full alert, 90.7% any guidance (rules only); **20 emergency turns get no guidance** (release-blocking); 4 cases worse than before Sprint 7; crisis wording and the R7 draft policy need McKinley review | [evaluation/SPRINT7_GENERALIZATION.md](evaluation/SPRINT7_GENERALIZATION.md) §4, §9 |
+| P0 | Emergency recall: Sprint 8 independent holdout 89.5% full alert, 91.7% any guidance (rules only); critical cases with no full alert remain (release-blocking); a few cases worse than before Sprint 7; crisis wording, contact labels and the R7 draft policy need McKinley review | [evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md) |
+| P0 | No persistent 911 control (product-owner decision): a missed emergency now gets only the plain-text footer line; keep or remove that line is a product decision | [design/EMERGENCY_UX_REVIEW.md](design/EMERGENCY_UX_REVIEW.md) |
+| P1 | Quick-fix tips and the legacy checks are drafts: nothing is shown in real modes until McKinley approves entries | [workflows/QUICKFIX_DRAFT_KB.md](workflows/QUICKFIX_DRAFT_KB.md) |
 | P1 | `development` (PR #4) has the first Sprint 7 candidate with known safety regressions until `feat/s7-safety-regression-fixes` is merged | [evaluation/SPRINT7_GENERALIZATION.md](evaluation/SPRINT7_GENERALIZATION.md) |
 | P0 | Semantic safety layer and model understanding not evaluated live in Sprint 6 (OpenRouter free tier rate-limited, HTTP 429) | [evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md) §6 |
 | P1 | Policy decision: the semantic layer may still remove the broad R7 care line; the Sprint 6 brief says it may never suppress | [evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md) §8 |

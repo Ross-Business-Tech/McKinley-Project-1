@@ -31,6 +31,20 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
   Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+- **Sprint 8 (2026-11-11):**
+  - **Calmer screen:** the always-visible 911 button is gone.
+    - Normal chats show nothing safety-related.
+    - Worrying or "what if" messages get a calm note with the right contact.
+    - Real emergencies get a clear alert with labelled "Call 911 / 988 / Poison Help" links that never dial by
+      themselves.
+    - One plain-text 911 line stays in the footer.
+  - **Repeat repairs:** the reply names the real count and time span from the resident's own history, and the request
+    is marked for community-manager review. Nobody is notified in this demo.
+  - **Quick-fix tips:** draft tips for a breaker, a GFCI outlet, a disposal and a slow drain. They are pending
+    McKinley approval, off by default, never on hosted, and safety checks run first.
+  - **Safety holdout:** full alerts 88.1% → 89.5%, any guidance 90.7% → 91.7%; unsafe tips 2 → 0 of 40. **Missed
+    emergencies remain release-blocking.**
+  - [Sprint 8 report](docs/evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
 - **Sprint 7 (2026-11-10):**
   - **Safety:**
     - Emergencies are now detected by structure (who, what state, what hazard, whether it is happening now) instead of
