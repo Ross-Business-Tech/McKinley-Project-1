@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # pass may only add acts/entities; it never mutates state, grants access or confirms a save.
     understanding_provider: Literal["rules", "model", "auto"] = "rules"
     understanding_timeout_seconds: float = 5.0
+    # Sprint 8 quick-fix tips before a repair request (app/quickfix.py, content in app/content/quickfix_drafts.py).
+    # off = never offer tips | approved_only (default) = only entries whose status is "approved" by McKinley (none yet,
+    # so nothing is shown) | demo_drafts = also the team DRAFT tips, labelled as drafts, on APP_ENV=local only. A hosted
+    # backend refuses demo_drafts at startup (hosted_problems) and is forced to approved_only (fail closed).
+    quickfix_content_mode: Literal["off", "approved_only", "demo_drafts"] = "approved_only"
 
     # ---- default target used by /api/chat ----
     llm_provider: ProviderName = "openrouter"
@@ -148,6 +153,9 @@ class Settings(BaseSettings):
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
+        if self.quickfix_content_mode == "demo_drafts":
+            out.append("QUICKFIX_CONTENT_MODE must not be demo_drafts: draft tips are not "
+                       "McKinley-approved and are for a local demo only")
         if self.demo_personas_enabled:
             out.append("DEMO_PERSONAS_ENABLED must be false: demo personas are not authentication, so a shared "
                        "deployment must not let anyone act as a resident account")
