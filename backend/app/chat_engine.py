@@ -87,8 +87,13 @@ class EngineDeps:
             self.risk = SemanticRiskClassifier(self.settings, self.llm)
 
 
+_SPACE_RUN = re.compile(r"[ \t\u00a0]{2,}")
+
+
 def clean_message(message: str) -> str:
-    return redact(_TAG.sub("", normalize_for_matching(message))).strip()
+    # Sprint 8 (verifier): runs of spaces collapse to one before any pattern sees the text (a 2,000-char message of
+    # mostly spaces took ~53 s through the detectors); line breaks are kept.
+    return _SPACE_RUN.sub(" ", redact(_TAG.sub("", normalize_for_matching(message)))).strip()
 
 
 def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
@@ -235,7 +240,7 @@ def run_turn(
     deps: EngineDeps, message: str, mode: Mode, persona_id: str | None, session_id: str | None,
     use_history: bool = True, target: Target | None = None, gate_provider: str | None = None,
     channel: Channel = "web_chat", enforce_validation: bool = True, fallback_on_model_error: bool = False,
-    principal: Principal | None = None,
+    principal: Principal | None = None, local_request: bool = True,
 ) -> ChatResponse:
     """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net).
     `principal` is derived by the API layer (app/auth.py); without one it is derived here from the settings."""
@@ -378,7 +383,7 @@ def run_turn(
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          person_danger=bool(getattr(rd, "person_danger", False)),  # Agent A: no repair intake now
                          full_alert=rd.response == "full_alert", danger_rule=rd.rule,
-                         risk=rd, quickfix_mode=quickfix_effective_mode(settings),  # Sprint 8 (D)
+                         risk=rd, quickfix_mode=quickfix_effective_mode(settings, local_request),  # Sprint 8 (D)
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
                          understanding_hint=hint)
