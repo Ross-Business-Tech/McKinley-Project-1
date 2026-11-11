@@ -1,7 +1,45 @@
-# Render Blueprint: the Python backend (FastAPI). Guide: docs/deployment/render.md (and docs/DEPLOYMENT_READINESS.md).
+# Render Blueprint: the website (static) and the Python backend (FastAPI), both on Render.
+# Guide: docs/development/deploy-render-supabase.md. Sign-in design: docs/security/SUPABASE_AUTH.md.
 # Secrets are never stored here: Render asks for the "sync: false" values when the Blueprint is first applied.
 # This is a PROTOTYPE on synthetic data, not a production service (see README "Status").
 services:
+  # ------------------------------------------------------------------------------------------------ the website
+  - type: web
+    name: mckinley-site
+    runtime: static
+    rootDir: frontend
+    # Static export of the Next.js app into out/. The three NEXT_PUBLIC_* values are PUBLIC by design and are baked
+    # in at build time: change one, then redeploy the site. Never put a secret key in a NEXT_PUBLIC_* value.
+    buildCommand: npm ci && NEXT_STATIC_EXPORT=1 npm run build
+    staticPublishPath: out
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_BASE_URL            # the backend's address, e.g. https://mckinley-backend.onrender.com
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL            # the Supabase project address, e.g. https://abcdefgh.supabase.co
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  # Supabase's publishable (anon) key. Public. NOT the secret key.
+        sync: false
+    routes:
+      - type: rewrite                            # /staff and /staff/ both open the staff console
+        source: /staff
+        destination: /staff/index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+
+  # ---------------------------------------------------------------------------------------------- the backend
   - type: web
     name: mckinley-backend
     runtime: python
@@ -19,13 +57,11 @@ services:
         value: only-system
       - key: APP_ENV               # hosted: startup refuses wildcard/localhost CORS, a missing staff token, etc.
         value: hosted
-      - key: LLM_PROVIDER          # Gemini writes replies; set to "mock" (and LLM_MODEL=mock-deterministic-v1)
-        value: gemini              # until a key exists, otherwise model turns answer NEEDS_API_KEY
-      - key: GEMINI_MODEL          # stable model in Google's list (checked 2026-11-10); verify with preflight
-        value: gemini-3.6-flash
-      - key: GEMINI_API_KEY        # from Google AI Studio; backend only, never in the website
-        sync: false
-      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs on Gemini (one extra call per turn)
+      - key: LLM_PROVIDER          # the built-in rules responder (not a language model): works with no key. To use
+        value: mock                # Gemini later: LLM_PROVIDER=gemini, delete LLM_MODEL, add GEMINI_API_KEY (docs).
+      - key: LLM_MODEL
+        value: mock-deterministic-v1
+      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs when a real model is configured
         value: auto
       - key: GATE_OVERRIDE_ENABLED # staff-only override stays off on any shared deployment
         value: "false"
@@ -33,7 +69,9 @@ services:
         value: database
       - key: DATABASE_URL          # Supabase Session pooler URI; set in Render, never commit it
         sync: false
-      - key: CORS_ORIGINS          # the exact Vercel website address, e.g. https://your-project.vercel.app
+      - key: SUPABASE_URL          # same project address as the website's; turns on real sign-in (invite list)
         sync: false
-      - key: STAFF_API_TOKEN       # Render makes up a long random value
+      - key: CORS_ORIGINS          # the exact website address, e.g. https://mckinley-site.onrender.com (no slash)
+        sync: false
+      - key: STAFF_API_TOKEN       # Render makes up a long random value (for scripts; people use staff sign-in)
         generateValue: true

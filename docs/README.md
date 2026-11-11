@@ -4,7 +4,7 @@ Start here: [`../README.md`](../README.md) (what it is, status, setup) → [`PRO
 (current state and next steps) → [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md) (how
 to work here). The project is a **prototype, not production ready**.
 
-## Deployment (Vercel + Render + Supabase + Gemini; prepared, not deployed)
+## Deployment (Render + Supabase, Gemini later; prepared, not deployed)
 - [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) — status, missing access, checklist, blockers
 - [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) — can a phone open a public link and chat? (not yet)
 - [design/BRAND_SYSTEM.md](design/BRAND_SYSTEM.md) — McKinley colours, type, components, contrast
@@ -16,7 +16,7 @@ to work here). The project is a **prototype, not production ready**.
 - [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md) — conversation state, card lifecycle, tour states
 - [development/GEMINI_ACCEPTANCE_CHECKLIST.md](development/GEMINI_ACCEPTANCE_CHECKLIST.md) — what to run the moment a Gemini key exists
 - [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
-  [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
+  [deployment/render.md](deployment/render.md) · [security/SUPABASE_AUTH.md](security/SUPABASE_AUTH.md) (sign-in)
 
 ## Architecture
 - [architecture/overview.md](architecture/overview.md) — components, endpoints, providers, context, safety, security
@@ -50,7 +50,7 @@ to work here). The project is a **prototype, not production ready**.
 - [development/CLAUDE_PROJECT_GUIDE.md](development/CLAUDE_PROJECT_GUIDE.md) — conventions, tests, Definition of Done
 - [development/engineering-rules.md](development/engineering-rules.md) — rules imported by `backend/` and `frontend/` CLAUDE.md
 - [development/CLAUDE_MD_PROPOSED_PATCH.md](development/CLAUDE_MD_PROPOSED_PATCH.md) — proposed addition to the Ross IT root `CLAUDE.md` (not applied)
-- [development/deploy-vercel-render-supabase.md](development/deploy-vercel-render-supabase.md) — put the typeable version online (Vercel + Render + Supabase)
+- [development/deploy-render-supabase.md](development/deploy-render-supabase.md) — put the typeable, signed-in version online (Render + Supabase)
 - [development/codegraph.md](development/codegraph.md) — optional local code index
 
 ## Archive

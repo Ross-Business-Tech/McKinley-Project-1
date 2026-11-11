@@ -1,7 +1,11 @@
 # Supabase (Postgres) database
 
-**Status: code and migrations ready; never run against a real Supabase or Postgres** (no access, and no local
-Postgres was available). SQLite paths are tested.
+> Sign-in (Supabase Auth) is separate from the database: see [../security/SUPABASE_AUTH.md](../security/SUPABASE_AUTH.md).
+> The invite list is the `user_profiles` table (migration 0005), managed with `uv run python -m app.manage_users`.
+
+**Status: code and migrations ready. Tested on SQLite and on a throwaway local Postgres 16 (the shared Store checks,
+migrations, invite list, row-level security, and an end-to-end browser journey); never run against a real Supabase
+project** (no access).
 
 ## How the backend uses it
 - `DATABASE_URL` set → the Store (`backend/app/db.py`) uses Postgres through psycopg; empty → the local SQLite file

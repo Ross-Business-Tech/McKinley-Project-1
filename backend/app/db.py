@@ -92,6 +92,16 @@ CREATE TABLE IF NOT EXISTS session_account_revocations (
   created_at TEXT NOT NULL,
   PRIMARY KEY (session_id, persona_id)
 );
+-- Invite list for Supabase sign-in (migration 0005). Real email addresses live ONLY here, never in the repository.
+-- A signed-in person is a resident (linked to one SYNTHETIC resident id) or staff; nobody off this list is let in.
+CREATE TABLE IF NOT EXISTS user_profiles (
+  email TEXT PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('resident','staff')),
+  persona_id TEXT,
+  user_id TEXT,
+  disabled INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
 """
 
 MAX_HISTORY_TURNS = 6
@@ -142,7 +152,8 @@ class Store:
             with self._lock:
                 self._conn.execute(_postgres_schema())
                 self._conn.execute(AUTH_SCHEMA + "ALTER TABLE session_bindings ENABLE ROW LEVEL SECURITY;\n"
-                                   "ALTER TABLE session_account_revocations ENABLE ROW LEVEL SECURITY;\n")
+                                   "ALTER TABLE session_account_revocations ENABLE ROW LEVEL SECURITY;\n"
+                                   "ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;\n")
                 self._conn.execute("ALTER TABLE prototype_records ADD COLUMN IF NOT EXISTS session_key TEXT")
                 self._conn.execute(_RECORD_KEY_INDEX)
         else:
@@ -263,6 +274,53 @@ class Store:
             row = self._q("SELECT principal_kind, persona_id FROM session_bindings WHERE session_id=?",
                           (session_id,)).fetchone()
         return (row["principal_kind"], row["persona_id"]) if row else None
+
+    # ---- invite list for Supabase sign-in (app/identity.py, app/manage_users.py) ----
+    @staticmethod
+    def _profile(row: Any) -> dict[str, Any]:
+        return {"email": row["email"], "role": row["role"], "persona_id": row["persona_id"],
+                "user_id": row["user_id"], "disabled": bool(row["disabled"]), "created_at": row["created_at"]}
+
+    def profile_for_email(self, email: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._q("SELECT * FROM user_profiles WHERE email=?", (email.strip().lower(),)).fetchone()
+        return self._profile(row) if row else None
+
+    def claim_profile(self, email: str, user_id: str) -> bool:
+        """Remember which Supabase account first signed in as this invited email. Later sign-ins must be the same
+        account: if the account was deleted and recreated (a new id), an admin has to re-invite on purpose."""
+        with self._lock, self._tx():
+            row = self._q("SELECT user_id FROM user_profiles WHERE email=?", (email.strip().lower(),)).fetchone()
+            if row is None:
+                return False
+            if row["user_id"] is None:
+                self._q("UPDATE user_profiles SET user_id=? WHERE email=? AND user_id IS NULL",
+                        (user_id, email.strip().lower()))
+                return True
+            return row["user_id"] == user_id
+
+    def upsert_profile(self, email: str, role: str, persona_id: str | None) -> None:
+        """Invite (or change) one person. Changing the email's role/persona clears the remembered Supabase account."""
+        with self._lock, self._tx():
+            self._q("INSERT INTO user_profiles(email, role, persona_id, user_id, disabled, created_at) "
+                    "VALUES (?,?,?,NULL,0,?) ON CONFLICT(email) DO UPDATE SET role=excluded.role, "
+                    "persona_id=excluded.persona_id, user_id=NULL, disabled=0",
+                    (email.strip().lower(), role, persona_id, now_iso()))
+
+    def set_profile_disabled(self, email: str, disabled: bool) -> bool:
+        with self._lock, self._tx():
+            cur = self._q("UPDATE user_profiles SET disabled=? WHERE email=?",
+                          (1 if disabled else 0, email.strip().lower()))
+            return cur.rowcount > 0
+
+    def remove_profile(self, email: str) -> bool:
+        with self._lock, self._tx():
+            return self._q("DELETE FROM user_profiles WHERE email=?", (email.strip().lower(),)).rowcount > 0
+
+    def profiles(self) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._q("SELECT * FROM user_profiles ORDER BY role, email").fetchall()
+        return [self._profile(r) for r in rows]
 
     # ---- sticky "not the account holder" (authorization, see ScopedStore.without_account_access) ----
     def revoke_account_access(self, session_id: str, persona_key: str) -> None:

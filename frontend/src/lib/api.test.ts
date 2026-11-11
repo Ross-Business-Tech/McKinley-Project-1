@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, api, demoSignInAvailable, loadDemoSnapshot, parseError } from "./api";
+import { ApiError, api, demoSignInAvailable, loadDemoSnapshot, parseError, setTokenProvider } from "./api";
 import type { Health, Persona } from "./types";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  setTokenProvider(null);
+});
 
 describe("api client", () => {
   it("maps backend error envelopes", async () => {
@@ -89,5 +92,27 @@ describe("demo sign-in availability (backend decides)", () => {
     expect(demoSignInAvailable([persona], health(true))).toBe(true);
     expect(demoSignInAvailable([persona], health(undefined))).toBe(true);
     expect(demoSignInAvailable([persona], null)).toBe(true);
+  });
+});
+
+describe("sign-in token", () => {
+  const ok = () => vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "anonymous" }), { status: 200 }));
+
+  it("is added to backend calls when someone is signed in", async () => {
+    const fetchMock = ok();
+    vi.stubGlobal("fetch", fetchMock);
+    setTokenProvider(async () => "abc.def.ghi");
+    await api.me();
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer abc.def.ghi");
+  });
+
+  it("is left out when nobody is signed in, or when the lookup fails", async () => {
+    for (const provider of [null, async () => null, async () => Promise.reject(new Error("x"))]) {
+      const fetchMock = ok();
+      vi.stubGlobal("fetch", fetchMock);
+      setTokenProvider(provider);
+      await api.me();
+      expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Authorization");
+    }
   });
 });

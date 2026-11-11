@@ -547,3 +547,12 @@ export interface RiskAssessment {
   semantic: SemanticResult;
   decision: RiskDecision;
 }
+
+/** GET /api/me: what the backend makes of this browser's sign-in (mirrors backend app/api/me.py). */
+export type MeStatus = "no_auth" | "anonymous" | "invalid_token" | "auth_unavailable" | "not_invited" | "signed_in";
+export interface Me {
+  auth_enabled: boolean;
+  status: MeStatus;
+  role: "resident" | "staff" | null;
+  persona_id: string | null;
+}

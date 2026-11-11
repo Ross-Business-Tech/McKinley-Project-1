@@ -13,6 +13,7 @@ from app.auth import (
     with_session_state,
 )
 from app.db import ScopedStore
+from app.identity import resolve_identity
 from app.models import ActionConfirmRequest, ActionResult, PrototypeRecord
 from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.safety import redact
@@ -26,7 +27,8 @@ def _authorized(req: ActionConfirmRequest, request: Request, state: AppState) ->
     another session or persona can never be confirmed or cancelled from here."""
     try:
         principal = derive_principal(state.deps.settings, req.persona_id, req.session_id, state.deps.workbook,
-                                     local_request=request_is_local(request))
+                                     local_request=request_is_local(request),
+                                     identity=resolve_identity(request, state))
         check_session_binding(state.store, principal)  # read-only: confirm/cancel never bind a session
     except AuthError as e:
         raise HTTPException(status_code=e.status, detail=e.detail()) from None

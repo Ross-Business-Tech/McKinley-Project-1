@@ -74,15 +74,17 @@ Notes
 
 ```mermaid
 flowchart LR
-  P["Phone / browser"] --> V["Vercel<br/>static export of frontend/ (out/)<br/>NEXT_PUBLIC_API_BASE_URL only"]
-  V -->|"HTTPS, CORS: exact Vercel origin"| R["Render web service<br/>FastAPI + uvicorn, APP_ENV=hosted<br/>alembic upgrade head on start"]
+  P["Phone / browser"] --> V["Render static site<br/>static export of frontend/ (out/)<br/>public NEXT_PUBLIC_* settings only"]
+  P -->|"emailed one-time code"| A["Supabase Auth<br/>invite-only, no passwords"]
+  V -->|"HTTPS + sign-in token, CORS: exact website origin"| R["Render web service<br/>FastAPI + uvicorn, APP_ENV=hosted<br/>checks token + invite list<br/>alembic upgrade head on start"]
   R -->|"DATABASE_URL (Session pooler), backend only"| S[("Supabase Postgres<br/>RLS on every table, no policies<br/>synthetic residents via seed")]
   R -->|"GEMINI_API_KEY, backend only"| G["Gemini Developer API<br/>replies + optional gate / safety classifier"]
   H["here.now (team preview)<br/>static replay, no backend"] -.-> P
 ```
 
-Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`) live only in Render's settings. The browser never
-talks to Supabase or Gemini. Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
+Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`, a legacy `SUPABASE_JWT_SECRET`) live only in Render's
+settings. The browser talks to Supabase **only** to sign in (public project address and publishable key) and never to
+Supabase's database or to Gemini. The backend decides who someone is ([../security/SUPABASE_AUTH.md](../security/SUPABASE_AUTH.md)). Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
 
 
 ## What the customer page shows (no silent substitution)

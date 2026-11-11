@@ -13,7 +13,7 @@ and there is no Gemini key ([DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md)).
 | --- | --- | --- | --- |
 | 1. Interactive frontend, **mock** replies | Type and send on a phone-sized browser; the local FastAPI backend answers with fixed rules (labelled "fixed rules, not an AI model") | **VERIFIED (local, MOCK ONLY)** | [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md): 14/14 engine×size runs pass; resident/prospect simulations (Agent D) |
 | 2. Live **Gemini** conversation | The same, with Gemini writing replies | **BLOCKED**: no `GEMINI_API_KEY`; never called | [deployment/gemini.md](deployment/gemini.md) |
-| 3. **Public** end-to-end | An outside phone opens a public Vercel URL → Render backend → Gemini → Supabase | **BLOCKED**: nothing deployed; no accounts or credentials | [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) |
+| 3. **Public** end-to-end | An outside phone opens a public Render URL → Render backend → rules responder (or Gemini) → Supabase (+ sign-in) | **BLOCKED**: nothing deployed; no accounts or credentials | [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) |
 
 The **here.now preview link** is a static showcase. It replays conversations recorded from the prototype, with
 typing turned off, and says so on screen. It is kept as the fallback and is **not** evidence for level 1, 2 or 3.
@@ -45,8 +45,8 @@ node frontend/e2e/mobile-acceptance.mjs frontend/out /tmp/mk-shots
 
 ## What must happen before the requirement is met
 1. Deploy the backend on Render with Supabase and Gemini (checklist in [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md)).
-2. Deploy the website on Vercel with `NEXT_PUBLIC_API_BASE_URL` set to the Render address. Add the Vercel address to
-   `CORS_ORIGINS`.
+2. Deploy the website on Render (the Blueprint's static site) with `NEXT_PUBLIC_API_BASE_URL` set to the backend
+   address. Add the website address to `CORS_ORIGINS`.
 3. Run `frontend/e2e/mobile-acceptance.mjs` against the **public** URL (it accepts a URL), and on at least one real
    iPhone (Safari) and one real Android phone (Chrome): open the link, type a question, get a reply, send a second
    message, report a repair through to Send, use Talk to a person, and refresh.

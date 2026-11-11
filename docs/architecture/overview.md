@@ -24,12 +24,15 @@ work-order system; "submitted" means saved to the labelled prototype store in SQ
 | Context | `context.py`, `personas.py` | Workbook adapter, allowlisted SAFE_CONTEXT, demo identity; "not the account holder" rule |
 | Providers | `backend/app/llm/` | Gemini (intended for deployments), OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
 | Persistence | `db.py`, `migrations/` (Alembic), `seed_synthetic.py` | SQLite locally or Postgres/Supabase (`DATABASE_URL`); chat turns, gate log (no message text), drafts, prototype records, eval runs, synthetic residents/communities/interactions; RLS on in Postgres |
-| Deployment | `render.yaml`, `frontend/vercel.json` | Render backend (`APP_ENV=hosted` refuses unsafe settings), Vercel static site; [DEPLOYMENT_READINESS](../DEPLOYMENT_READINESS.md) |
+| Deployment | `render.yaml` | Render backend (`APP_ENV=hosted` refuses unsafe settings) and Render static site; [DEPLOYMENT_READINESS](../DEPLOYMENT_READINESS.md) |
+| Sign-in | `supabase_auth.py`, `identity.py`, `api/me.py`, `manage_users.py`; `frontend/src/lib/auth.ts`, `useAuth.ts`, `components/auth/` | Supabase token check, invite list (`user_profiles`), the sign-in form; [SUPABASE_AUTH](../security/SUPABASE_AUTH.md) |
 | Evaluation | `evals.py`, `gate_evals.py`, `journey_evals.py`, `usability/`, `live_eval/` | Five cases, gate scenarios, journeys, persona suite, live A/B/C runner ([evaluation](../evaluation/README.md)) |
 
 ## Endpoints
 
-Customer (open; identity is the demo `persona_id`, not authentication): `POST /api/chat`,
+Customer (open; identity is the demo `persona_id` where demo personas are on, or an invited Supabase sign-in sent as
+`Authorization: Bearer <token>` — see [security/SUPABASE_AUTH.md](../security/SUPABASE_AUTH.md)): `GET /api/me` (what the backend makes of
+the sign-in; never returns a token), `POST /api/chat`,
 `POST /api/actions/confirm`, `POST /api/actions/cancel`, `GET /api/personas`, `GET /api/health`, `GET /api/models`,
 `GET /api/gates/config`.
 

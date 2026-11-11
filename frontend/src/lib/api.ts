@@ -13,6 +13,7 @@ import type {
   EvalRunResponse,
   EvalSummary,
   Health,
+  Me,
   Mode,
   ModelTarget,
   Persona,
@@ -32,6 +33,13 @@ export const API_BASE = (
 ).replace(/\/$/, "");
 // Render's free plan can take about a minute to wake up; give up after this instead of waiting forever.
 const REQUEST_TIMEOUT_MS = 90_000;
+
+/** The sign-in token (a Supabase access token) is added to every backend call when someone is signed in. The backend
+ * checks it and the invite list; the website never decides who a person is. Set once by lib/useAuth. */
+let tokenProvider: (() => Promise<string | null>) | null = null;
+export function setTokenProvider(fn: (() => Promise<string | null>) | null): void {
+  tokenProvider = fn;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -73,11 +81,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const token = tokenProvider ? await tokenProvider().catch(() => null) : null;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
       signal: init?.signal ?? controller.signal,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
     });
   } catch {
     throw new ApiError("BACKEND_UNREACHABLE", `Cannot reach the backend at ${API_BASE}.`, true);
@@ -90,6 +103,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<Health>("/api/health"),
+  me: () => request<Me>("/api/me"),
   models: () => request<ModelTarget[]>("/api/models"),
   personas: () => request<Persona[]>("/api/personas"),
   contextPreview: (persona_id: string | null, message: string) =>

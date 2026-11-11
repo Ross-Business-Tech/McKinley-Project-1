@@ -9,7 +9,8 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
   branch `claude/epic-brahmagupta-f1jrlx`: Supabase storage, Vercel/Render setup, legal-threat routing). Older
   branches `feat/workflow-customer-experience`, `feat/context-aware-ai-assistant`, `feat/agentic-workflow-gates` and
   `sprint3/live-eval` are fully merged and can be deleted by the owner.
-- **Target hosting (prepared, not deployed):** Vercel + Render + Supabase + Gemini — see
+- **Target hosting (prepared, not deployed):** Render (website + backend) + Supabase (database + sign-in); replies
+  from the rules responder now, Gemini later (Ross IT approved hosting on Render) — see
   [`DEPLOYMENT_READINESS.md`](DEPLOYMENT_READINESS.md) for status, missing access and the checklist.
 - **Verdict:** a working **prototype on synthetic data; NOT production ready.**
 
@@ -22,7 +23,8 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 - Staff console: saved requests, live conversations with needs-action markers, inspector, coverage, usability,
   A/B/C comparison, five-case evaluation.
 - Deployment code (offline-tested): Gemini provider, Alembic migrations + synthetic seed, residents from the
-  database, `APP_ENV=hosted` safety checks, Render Blueprint, Vercel config, live/mock labels in both views.
+  database, `APP_ENV=hosted` safety checks, Render Blueprint (website + backend), Supabase sign-in (token check, invite list,
+  sign-in form; tested against a stand-in, never against a real Supabase project), live/mock labels in both views.
 - Evaluation tooling: five cases, gate scenarios, 17 journeys, 48-scenario persona suite, live A/B/C runner.
 - Sprint 6 (`feat/robust-workflow-safety-auth`): structured understanding layer, workflow state machine, server-side
   principal with deny-by-default data access, concept-based safety with persistent incident state
@@ -36,7 +38,7 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 | --- | --- | --- |
 | P0 | Missed emergencies: fresh independent holdout 64.5% full alert / 78.5% any guidance; 14 immediate-danger misses listed verbatim for human review | [safety/safety-evaluation.md](safety/safety-evaluation.md) §6 |
 | P0 | Semantic safety classifier never run on a real model (no key) | [evaluation/live-llm.md](evaluation/live-llm.md) |
-| P0 | No real sign-in: the demo persona is chosen in the browser. Since Sprint 6 a server-side principal, session binding and a deny-by-default store limit what it reaches, and hosted mode turns it off; staff boundary is loopback / token only | [security/AUTHORIZATION_BOUNDARIES.md](security/AUTHORIZATION_BOUNDARIES.md) |
+| P0 | Sign-in is built (Supabase emailed code, invite list, staff sign-in) but **never run against a real Supabase project or real email delivery**; the demo persona is still chosen in the browser wherever demo personas are on, and hosted mode turns it off. Real resident data must stay disconnected | [security/SUPABASE_AUTH.md](security/SUPABASE_AUTH.md), [security/AUTHORIZATION_BOUNDARIES.md](security/AUTHORIZATION_BOUNDARIES.md) |
 | P0 | Emergency and safety scripts (I-17/I-18) are team drafts, not McKinley-approved; nobody is paged | [workflows/traceability.md](workflows/traceability.md) |
 | P1 | No Yardi / CRM / work-order / messaging integration (prototype store only) | README |
 | P1 | No live-model evaluation since one sprint-1 run; all later results are mock | [evaluation/README.md](evaluation/README.md) |
@@ -53,7 +55,8 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 ## Recommended next priorities
 1. Follow [`DEPLOYMENT_READINESS.md`](DEPLOYMENT_READINESS.md): Gemini key → preflight → a small live A/B/C run
    (`--allow-paid --max-calls 30`) and a `--with-safety-classifier` run; human review of the records; Supabase
-   migrations + seed; Postgres tests (`TEST_DATABASE_URL`); Render; Vercel.
+   migrations + seed; Postgres tests (`TEST_DATABASE_URL`); Render (website and backend); then check Supabase sign-in
+   end to end on a real project ([development/deploy-render-supabase.md](development/deploy-render-supabase.md)).
 2. Have a separate person write a **fresh** safety holdout and measure the semantic classifier on the real target;
    McKinley risk/legal reviews every failure and the safety scripts.
 3. Decide production identity (server-side session binding) and whether diagnostics leave the API for customers.

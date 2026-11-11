@@ -25,8 +25,10 @@ import type {
   StaffConversation,
   StaffConversationDetail,
 } from "@/lib/types";
+import { AuthButton, AuthForm, NotInvitedNote } from "@/components/auth/AuthPanel";
 import { StatusPill, statusTone } from "@/components/customer/StatusPill";
 import { UsabilityView } from "@/components/staff/UsabilityView";
+import { useAuth } from "@/lib/useAuth";
 
 interface Boot {
   live: boolean;
@@ -108,15 +110,29 @@ const COVERAGE_TONE: Record<CoverageStatus, { tone: StateTone; text: string }> =
 
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
-  // On a hosted backend the staff routes refuse browsers (no staff sign-in yet): use the recorded demo there.
-  const staffTools = Boolean(state?.live && state.health?.app_env !== "hosted");
+  const auth = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  const authAnchorRef = useRef<HTMLDivElement>(null);
+  // On a hosted backend the staff routes refuse anonymous browsers: a signed-in, invited staff member (checked by the
+  // backend, not by this page) gets the live tools; everyone else sees the recorded demo there.
+  const staffTools = Boolean(state?.live && (state.health?.app_env !== "hosted" || auth.role === "staff"));
   const [error, setError] = useState<string | null>(null);
 
+  // Load once sign-in has settled, and again whenever who is signed in changes (the tools depend on it).
   useEffect(() => {
+    if (!auth.ready) return;
+    let cancelled = false;
     boot()
-      .then(setState)
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "The console could not load."));
-  }, []);
+      .then((b) => {
+        if (cancelled) return;
+        setError(null);
+        setState(b);
+      })
+      .catch((e: unknown) => !cancelled && setError(e instanceof ApiError ? e.message : "The console could not load."));
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.ready, auth.key]);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -127,10 +143,23 @@ export function StaffConsole() {
             <span className="rounded-md bg-white px-2 py-0.5 font-heading text-sm font-semibold text-mk-brand-strong">Staff</span>
             <span className="font-heading text-base font-medium">Demo console</span>
           </h1>
-          <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
-            Open the customer view
-          </Link>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <div ref={authAnchorRef} className="min-w-0">
+              <AuthButton auth={auth} open={authOpen} onToggle={() => setAuthOpen((v) => !v)} tone="band" />
+            </div>
+            <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
+              Open the customer view
+            </Link>
+          </div>
         </div>
+        {authOpen && auth.status === "signedOut" ? (
+          <AuthForm
+            auth={auth}
+            onClose={() => setAuthOpen(false)}
+            onReturnFocus={() => authAnchorRef.current?.querySelector("button")?.focus()}
+          />
+        ) : null}
+        <NotInvitedNote auth={auth} />
       </header>
       <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-[max(1rem,env(safe-area-inset-left))] py-4 md:px-6">
         <p className="text-mk-muted">What the assistant decided behind each reply, what it saved, and what is still simulated. Made-up data only.</p>

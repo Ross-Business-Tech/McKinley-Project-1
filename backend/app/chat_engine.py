@@ -278,10 +278,12 @@ def run_turn(
         # draft slots too, so no later step can list them whatever it asks for (data layer, not just the context)
         deps = replace(deps, store=deps.store.without_account_access())
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
+    how_identified = ("signed in with Supabase and invited" if principal.is_authenticated
+                      else "demo persona = synthetic demo account, NOT authentication")
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
               f"principal={principal.kind} ({principal.source}), audience={full_ctx.audience}, "
               f"{'session belonged to another sign-in: new conversation started, ' if rebound else ''}"
-              f"identity_verified={verified} (demo persona = synthetic demo account, NOT authentication)")
+              f"identity_verified={verified} ({how_identified})")
 
     # 2b. safety: deterministic rules -> semantic classifier -> conservative policy. Runs before routing and before
     # any response generation; nothing later (model, user instructions, retrieved records) can lower it.

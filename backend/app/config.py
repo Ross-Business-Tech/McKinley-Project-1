@@ -109,6 +109,15 @@ class Settings(BaseSettings):
     eval_results_path: Path = REPO_DIR / "evals" / "actual_results.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # ---- Supabase Auth: real sign-in (emailed one-time code; see docs/security/SUPABASE_AUTH.md) ----
+    # SUPABASE_URL, e.g. https://abcdefgh.supabase.co. Setting it turns on sign-in: a request that carries a valid
+    # Supabase access token is matched to an invited person in the `user_profiles` table (resident or staff). Empty =
+    # no sign-in (local demo personas only). Public by design; it is not a secret.
+    supabase_url: str | None = None
+    # Only for LEGACY Supabase projects, whose tokens are signed with one shared secret (HS256). New projects sign
+    # with keys published at <url>/auth/v1/.well-known/jwks.json, which needs no secret. A secret: Render settings only.
+    supabase_jwt_secret: SecretStr | None = None
+
     @model_validator(mode="after")
     def _provider_default_model(self) -> "Settings":
         """LLM_PROVIDER=gemini without an explicit LLM_MODEL uses GEMINI_MODEL (one model per run, chosen up front)."""
@@ -121,6 +130,16 @@ class Settings(BaseSettings):
 
     def resolve(self, p: Path) -> Path:
         return p if p.is_absolute() else BACKEND_DIR / p
+
+    @property
+    def supabase_origin(self) -> str | None:
+        """SUPABASE_URL without a trailing slash, or None when sign-in is not configured."""
+        value = (self.supabase_url or "").strip().rstrip("/")
+        return value or None
+
+    @property
+    def supabase_auth_enabled(self) -> bool:
+        return self.supabase_origin is not None
 
     @property
     def demo_personas_allowed(self) -> bool:
@@ -138,7 +157,7 @@ class Settings(BaseSettings):
         if not origins or any(o == "*" or "*" in o for o in origins):
             out.append("CORS_ORIGINS must list the exact website address(es); wildcards are not allowed")
         elif not all(re.fullmatch(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", o) for o in origins):
-            out.append("each CORS_ORIGINS entry must be a bare origin like https://site.vercel.app (no path)")
+            out.append("each CORS_ORIGINS entry must be a bare origin like https://site.onrender.com (no path)")
         if any(o.startswith(("http://localhost", "http://127.0.0.1")) for o in origins):
             out.append("CORS_ORIGINS must not include localhost addresses on a hosted backend")
         if any(o.startswith("http://") for o in origins if not o.startswith(("http://localhost", "http://127."))):
@@ -153,6 +172,9 @@ class Settings(BaseSettings):
                        "deployment must not let anyone act as a resident account")
         if not (self.database_url and self.database_url.get_secret_value().strip()):
             out.append("DATABASE_URL must be set (a hosted backend's local SQLite file is lost on every restart)")
+        origin = self.supabase_origin
+        if origin and not re.fullmatch(r"https://[A-Za-z0-9.-]+", origin):
+            out.append("SUPABASE_URL must be a bare https:// address like https://abcdefgh.supabase.co (no path)")
         return out
 
     @property

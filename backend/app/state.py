@@ -8,6 +8,7 @@ from app.config import Settings, get_settings
 from app.context import Workbook, WorkbookError, load_workbook, workbook_from_rows
 from app.db import Store
 from app.llm import LLMGateway
+from app.supabase_auth import SupabaseVerifier
 
 log = logging.getLogger("mckinley")
 
@@ -17,6 +18,8 @@ class AppState:
     deps: EngineDeps
     store: Store
     data_error: str | None
+    # Checks Supabase sign-in tokens; None when SUPABASE_URL is not set (no sign-in on this deployment).
+    verifier: SupabaseVerifier | None = None
 
 
 _state: AppState | None = None
@@ -56,7 +59,8 @@ def build_state(settings: Settings | None = None, gateway: LLMGateway | None = N
     if workbook is None:
         workbook, data_error = load_residents(settings, store)
     deps = EngineDeps(settings=settings, llm=gateway or LLMGateway(settings), store=store, workbook=workbook)
-    return AppState(deps=deps, store=store, data_error=data_error)
+    verifier = SupabaseVerifier(settings) if settings.supabase_auth_enabled else None
+    return AppState(deps=deps, store=store, data_error=data_error, verifier=verifier)
 
 
 def set_state(state: AppState) -> None:

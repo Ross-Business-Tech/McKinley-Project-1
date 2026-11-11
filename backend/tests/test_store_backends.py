@@ -22,9 +22,10 @@ def store(request, tmp_path):
         yield Store(tmp_path / "t.sqlite3")
         return
     s = Store(database_url=PG_URL)
-    s._q(f"TRUNCATE {', '.join(_TABLES)} RESTART IDENTITY CASCADE")
+    wipe = f"TRUNCATE {', '.join(_TABLES)}, user_profiles RESTART IDENTITY CASCADE"
+    s._q(wipe)
     yield s
-    s._q(f"TRUNCATE {', '.join(_TABLES)} RESTART IDENTITY CASCADE")
+    s._q(wipe)
 
 
 def test_chat_history_round_trip(store):
@@ -106,3 +107,21 @@ def test_literal_percent_and_odd_text_survive(store):
     text = "100% sure it's \"leaking\"; DROP TABLE chat_turns; --"
     store.append_turns("s1", "aware|x", "p1", text, "ok")
     assert store.history("s1", "aware|x", "p1")[0]["content"] == text
+
+
+def test_invite_list(store):
+    """The sign-in invite list behaves the same on SQLite and Postgres, including NULL handling and row counts."""
+    assert store.profile_for_email("a@example.com") is None
+    store.upsert_profile("A@Example.com", "resident", "R001")
+    p = store.profile_for_email("a@EXAMPLE.com")
+    assert (p["email"], p["role"], p["persona_id"], p["user_id"], p["disabled"]) == ("a@example.com", "resident",
+                                                                                      "R001", None, False)
+    assert store.claim_profile("a@example.com", "u1") and store.claim_profile("a@example.com", "u1")
+    assert not store.claim_profile("a@example.com", "u2") and not store.claim_profile("nobody@example.com", "u1")
+    store.upsert_profile("a@example.com", "resident", "R003")  # re-inviting clears the remembered account
+    assert store.profile_for_email("a@example.com")["user_id"] is None
+    store.upsert_profile("s@example.com", "staff", None)
+    assert store.set_profile_disabled("a@example.com", True) and not store.set_profile_disabled("x@example.com", True)
+    assert [(r["email"], r["disabled"]) for r in store.profiles()] == [("a@example.com", True),
+                                                                       ("s@example.com", False)]
+    assert store.remove_profile("a@example.com") and not store.remove_profile("a@example.com")

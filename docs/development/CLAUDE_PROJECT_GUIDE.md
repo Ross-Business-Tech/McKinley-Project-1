@@ -18,10 +18,12 @@ Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`
 [`architecture/overview.md`](../architecture/overview.md), [`diagrams/`](../diagrams/).
 
 ## Deployment stack (prepared, not deployed)
-Website on **Vercel** (static export of `frontend/`), backend on **Render** (`render.yaml`, `APP_ENV=hosted`),
-database on **Supabase** Postgres (`DATABASE_URL`; SQLite locally), replies from **Gemini** (`LLM_PROVIDER=gemini`).
+Website (static export of `frontend/`) and backend both on **Render** (`render.yaml`, `APP_ENV=hosted`),
+database on **Supabase** Postgres (`DATABASE_URL`; SQLite locally), replies from the rules responder (`LLM_PROVIDER=mock`),
+Gemini later.
 Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.md). The here.now preview
-(`npm run publish:preview`) stays the team's default until Vercel is validated.
+(`npm run publish:preview`) stays the team's default until the Render site is validated. Sign-in is **Supabase**
+(emailed code, invite list in `user_profiles`, `app/identity.py`; [security/SUPABASE_AUTH.md](../security/SUPABASE_AUTH.md)).
 
 ## Conventions
 - **Python:** `uv` only (`uv sync`, `uv add`, `uv run …`); Pydantic models for every request/response; one error

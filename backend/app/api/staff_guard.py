@@ -1,9 +1,11 @@
 """Demo-only boundary for staff, evaluation and diagnostics routes. NOT authentication for real users.
 
-- If STAFF_API_TOKEN is set, these routes need the header ``X-Staff-Token: <token>``.
-- If it is not set (local demo default), they answer only requests from this machine (loopback). Behind a reverse
-  proxy every request looks local, so any shared deployment MUST set a token (and real staff sign-in is still a
-  deployment blocker; see docs/archive/sprint2/sprint2-review-report.md).
+- A signed-in, invited STAFF member (Supabase sign-in, app/identity.py) is always allowed. This is the real staff
+  sign-in; the browser console sends the access token as ``Authorization: Bearer <token>``.
+- If STAFF_API_TOKEN is set, a request with the header ``X-Staff-Token: <token>`` is also allowed (operations,
+  scripts).
+- With no token and no staff sign-in (local demo default), they answer only requests from this machine (loopback).
+  Behind a reverse proxy every request looks local, so a shared deployment MUST set a token.
 Customer routes (/api/chat, /api/personas, /api/actions/*) are not guarded here; the chat ``target`` override is.
 """
 
@@ -11,6 +13,7 @@ import hmac
 
 from fastapi import Depends, HTTPException, Request
 
+from app.identity import resolve_identity
 from app.state import AppState, get_state
 
 _LOOPBACK = {"127.0.0.1", "::1", "testclient"}  # "testclient" = FastAPI's in-process test client only
@@ -37,11 +40,17 @@ def request_is_local(request: Request) -> bool:
 
 
 def staff_allowed(request: Request, state: AppState) -> bool:
-    token = state.deps.settings.staff_api_token
-    if token is not None and token.get_secret_value():
+    settings = state.deps.settings
+    token = settings.staff_api_token
+    has_token = token is not None and bool(token.get_secret_value())
+    if has_token:
         given = request.headers.get("x-staff-token", "")
-        return hmac.compare_digest(given.encode(), token.get_secret_value().encode())
-    if state.deps.settings.app_env == "hosted":
+        if given and hmac.compare_digest(given.encode(), token.get_secret_value().encode()):
+            return True
+    identity = resolve_identity(request, state)  # a signed-in, invited staff member (needs a valid Supabase token)
+    if identity is not None and identity.role == "staff":
+        return True
+    if has_token or settings.app_env == "hosted":
         return False  # a hosted backend never falls back to "loopback = staff" (startup also requires a token)
     return request_is_local(request)
 
@@ -49,5 +58,6 @@ def staff_allowed(request: Request, state: AppState) -> bool:
 def require_staff(request: Request, state: AppState = Depends(get_state)) -> None:
     if not staff_allowed(request, state):
         raise HTTPException(status_code=403, detail={"code": "STAFF_ONLY",
-                                                     "message": "Staff and demo tools are only available locally "
-                                                                "or with a staff token.", "retryable": False})
+                                                     "message": "Staff and demo tools are only available to signed-in "
+                                                                "staff, locally, or with a staff token.",
+                                                     "retryable": False})

@@ -55,6 +55,32 @@ def test_upgrade_creates_tables_and_downgrade_round_trips(db):
     assert store.has_reference_tables()
 
 
+def _has_table(store, name):
+    if store.dialect == "postgres":
+        return store._q("SELECT to_regclass(?) AS t", (f"public.{name}",)).fetchone()["t"] is not None
+    return store._q("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
+def test_invite_list_migration_round_trips_and_matches_the_startup_schema(db):
+    import re
+
+    from app import db as app_db
+    target, cfg, store = db
+    assert _has_table(store, "user_profiles")
+    command.downgrade(cfg, "0004")
+    assert not _has_table(store, "user_profiles")
+    command.upgrade(cfg, "head")
+    assert _has_table(store, "user_profiles")
+    # the table the app creates at startup and the one the migration creates must be the same definition
+    source = (BACKEND / "migrations" / "versions" / "0005_user_profiles.py").read_text()
+
+    def squash(text):
+        return re.sub(r"\s+", "", text)
+    startup = re.search(r"CREATE TABLE IF NOT EXISTS user_profiles \(.*?\n\);", app_db.AUTH_SCHEMA, re.S).group(0)
+    migration = re.search(r"CREATE TABLE IF NOT EXISTS user_profiles \(.*?\n\)", source, re.S).group(0)
+    assert squash(startup).rstrip(";") == squash(migration)
+
+
 def test_baseline_adopts_a_database_the_app_already_created(tmp_path):
     path = tmp_path / "existing.sqlite3"
     Store(path)  # app startup creates the six core tables itself

@@ -13,6 +13,7 @@ from app.auth import (
     with_session_state,
 )
 from app.chat_engine import resolve_target, run_turn
+from app.identity import resolve_identity
 from app.llm import LLMError
 from app.models import ChatRequest, ChatResponse, ContextPreviewRequest, ErrorBody, Persona, SafeContext
 from app.personas import build_context, list_personas
@@ -56,8 +57,11 @@ def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state
         session_id = new_session_id()
     try:
         # The principal is derived here, server-side; the persona id is only the demo selector (app/auth.py).
+        # A signed-in, invited resident (Supabase token) is the authenticated principal for their one linked resident
+        # id and the browser's persona is ignored. A bad or expired token never blocks a message (emergencies must
+        # always be answered): the caller is simply anonymous.
         principal = derive_principal(state.deps.settings, req.persona_id, session_id, state.deps.workbook,
-                                     local_request=local)
+                                     local_request=local, identity=resolve_identity(request, state))
         principal = with_session_state(state.store, principal)  # sticky "not the account holder"
         target = resolve_target(state.deps, req.target)
         # Interactive chat: a provider-reported model mismatch is surfaced as an error, never hidden.

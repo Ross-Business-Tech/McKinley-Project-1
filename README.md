@@ -23,9 +23,11 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 - **Safety:** on a fresh, independent test set the emergency rules gave a full alert for 64.5% of emergencies and
   some guidance for 78.5%; 14 immediate-danger messages got nothing. This is release-blocking
   ([safety evaluation](docs/safety/safety-evaluation.md)). McKinley has not approved the emergency scripts.
-- **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication. Since Sprint 6
-  the server decides what a caller may see (deny by default), binds each conversation to one persona, and turns
-  demo sign-in off in hosted mode (public information only).
+- **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication, and hosted mode
+  turns it off (public information only). Real sign-in by an emailed code through Supabase (invite-only residents,
+  each linked to ONE synthetic resident id, and staff) is built and tested against a stand-in for Supabase, but has
+  **never been run against a real Supabase project** ([docs/security/SUPABASE_AUTH.md](docs/security/SUPABASE_AUTH.md)).
+  The server decides what a caller may see (deny by default) and binds each conversation to one principal.
 - **No integrations:** no Yardi, CRM, work orders, paging, SMS/email or calendar. Nobody is ever notified.
 - **Models:** exactly one historical run used a real model (2026-11-01, sprint-1 pipeline). Everything since is the
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
@@ -55,7 +57,7 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   - OpenRouter and Gemini share a tested provider contract.
   - **No live model call was made**, because there is no key. See [Sprint 5 report](docs/evaluation/SPRINT5_LIVE_CONVERSATION.md).
   - A new independent safety holdout found **10/63 immediate-danger messages with no guidance**, which is release-blocking.
-- **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
+- **Deployment:** Render (website and backend) + Supabase (database and sign-in) are prepared but **not deployed**
   ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
 - **Static preview:** the here.now link has no backend; it replays recorded conversations (see below). It is not
   interactive.
@@ -139,9 +141,9 @@ npm run dev            # Next.js on http://localhost:3000  (customer /, staff /s
 
 **Interactive mode** = both running locally; the page origin must be listed in `CORS_ORIGINS`.
 
-**Deployed interactive mode** (prepared, not deployed) = website on Vercel, backend on Render, database on
-Supabase, replies from Gemini: [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md) and the walkthrough
-[docs/development/deploy-vercel-render-supabase.md](docs/development/deploy-vercel-render-supabase.md).
+**Deployed interactive mode** (prepared, not deployed) = website and backend on Render, database and sign-in on
+Supabase, replies from the rules responder (Gemini later): [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
+and the walkthrough [docs/development/deploy-render-supabase.md](docs/development/deploy-render-supabase.md).
 Database tables come from migrations (`cd backend && uv run alembic upgrade head`); a hosted backend reads the
 synthetic residents from the database after `uv run python -m app.seed_synthetic`.
 

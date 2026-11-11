@@ -4,10 +4,12 @@ Who can read which data, where identity comes from, and what stops one caller se
 describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `chat_engine.py` step 2,
 `api/*.py`). Tests: `backend/tests/test_sprint6_auth.py`, `backend/tests/test_sprint6_auth_fix.py`.
 
-> **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list.
-> Anyone who can reach a demo-enabled backend can act as any synthetic persona. That is acceptable only because
-> every persona is synthetic. On a hosted backend (`APP_ENV=hosted`) demo personas are off and cannot be turned
-> on, so every customer request is anonymous and no resident data can be reached.
+> A "demo persona" is **not** authentication: it is a synthetic account picked from a list, and anyone who can reach
+> a demo-enabled backend can act as any synthetic persona. That is acceptable only because every persona is
+> synthetic. On a hosted backend (`APP_ENV=hosted`) demo personas are off and cannot be turned on, so a request is
+> anonymous unless it carries a valid **Supabase sign-in** for an invited person
+> ([SUPABASE_AUTH.md](SUPABASE_AUTH.md): built and tested against a stand-in, never run against a real Supabase
+> project). Nobody else can reach resident data.
 
 ## 1. Principal model (`app/auth.py`)
 
@@ -15,8 +17,8 @@ describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `cha
 |---|---|---|
 | `anonymous` | The default. No persona id; an unknown persona id; offline tooling with demo personas off. | No |
 | `demo_persona` | Only on a deployment that allows demo personas (`Settings.demo_personas_allowed`), and only for a **known** demo persona id (fictional prospect, unmatched resident, the injection fixture, or a workbook/database resident). | Only that exact persona's synthetic record (`can_read_resident_data` is true for resident personas only) |
-| `authenticated_resident` | **Never.** The type exists for a future real sign-in; no code path creates it. | n/a |
-| `staff` | Only behind `require_staff` (loopback without a token, or `X-Staff-Token` = `STAFF_API_TOKEN`), plus offline staff tooling (`auth.TOOLING`: eval runs, gate evals, journey evals, the demo exporter, tests). Never for `/api/chat` or `/api/actions/*`. | Any synthetic persona |
+| `authenticated_resident` | Only for a valid Supabase sign-in token **and** an invite-list entry (`user_profiles`) with role resident, linked to ONE resident id that exists in the synthetic data (`identity.py` → `derive_principal`). The browser's persona selector is then ignored. | Only that exact resident's synthetic record |
+| `staff` | Only behind `require_staff` (an invited **staff** sign-in; or, with no token and not hosted, loopback; or `X-Staff-Token` = `STAFF_API_TOKEN`), plus offline staff tooling (`auth.TOOLING`: eval runs, gate evals, journey evals, the demo exporter, tests). Never for `/api/chat` or `/api/actions/*`. | Any synthetic persona |
 
 Rules:
 
@@ -49,7 +51,7 @@ Rule: **a prototype record belongs to the principal + persona that wrote it, not
 authorised demo persona can read its own records in any later conversation ("any update on the leak under my sink?",
 "status of DEMO-WO-1001"), so it is not invited to file a duplicate. Chat history stays per session.
 
-| `ScopedStore` read | Authorised persona (`demo_persona`; future `authenticated_resident`) | Anonymous (guest, hosted) | After "not the account holder" |
+| `ScopedStore` read | Authorised persona (`demo_persona` or `authenticated_resident`) | Anonymous (guest, hosted) | After "not the account holder" |
 |---|---|---|---|
 | `records()` / `records(persona_id=<own>)` (status lists, history matching) | Own persona's records from **every** session | This session's guest records only (guests share the key `none`, so never across sessions) | `[]` |
 | `records(session_id=<this session>)` (in-conversation state: duplicates, "send it", emergency follow-ups) | This session's records by this persona | Same | Same (the person's own actions in this chat) |
@@ -67,6 +69,7 @@ Deny by default: a `ScopedStore` built without `principal_kind` is session-only.
 | `GET /api/personas` | none | Synthetic persona labels (id, first name, community) | Empty list when demo personas are off (hosted) |
 | `GET /api/health` | none | Counts, provider, `app_env`, `demo_personas_enabled` (no records, no secrets) | Public by design |
 | `GET /api/models` | none | Configured `provider:model` targets (no keys or URLs) | Public by design |
+| `GET /api/me` | Bearer token (optional) | Only a status (`anonymous`, `signed_in`, `not_invited`, `invalid_token`, …), a role and the synthetic resident id: never the token or an email | Public by design |
 | `POST /api/chat` → step 2 `build_context` | Server-derived principal (client `persona_id` is the demo selector only) | Allowlisted context fields, as `source_context_fields` and in the model prompt | `may_access_persona`. Hosted: 403 for any persona id. |
 | `POST /api/chat` → history (`history`, `user_messages`, `last_gate`) | `session_id` (a client-generated random UUID, the bearer) + principal key | Earlier turns, given to the model and the planner | `ScopedStore` + session binding |
 | `POST /api/chat` → status lookups (`status_items`, typed `DEMO-WO-…` reference, "the one for the sink", hurry/frustration) | Principal → scoped store + `resident_for` | References, short subjects, statuses, opened dates of this persona's own items | Records: this persona's own, any session (§2a); none after a non-holder statement. History items: own synthetic record only, verified resident context only. |
@@ -104,9 +107,11 @@ Protected:
 
 Not protected (known gaps):
 
-1. **No real authentication.** In a demo-enabled (local) deployment, anyone can choose any synthetic persona. This
-   is by design for the demo and must never hold real data. A real deployment needs real resident sign-in that
-   produces `authenticated_resident`. It is not built.
+1. **Demo personas are not authentication.** In a demo-enabled (local) deployment, anyone can choose any synthetic
+   persona. This is by design for the demo and must never hold real data. Real sign-in
+   ([SUPABASE_AUTH.md](SUPABASE_AUTH.md)) now produces `authenticated_resident` and staff, but it has never been run
+   against a real Supabase project or real email delivery, has no multi-factor step, and links residents to
+   synthetic records only.
 2. **The session id is a bearer secret.** Whoever has a session id *and* uses the same persona continues that
    conversation (the model sees its history). Session ids are random UUIDs generated in the browser and stored in
    `sessionStorage`. They are not signed or server-issued, except after a mismatch.

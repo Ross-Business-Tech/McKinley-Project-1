@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import actions, chat, evals, gates
+from app.api import actions, chat, evals, gates, me
 from app.api.errors import http_error_response
 from app.api.staff_guard import request_is_local, staff_allowed
 from app.auth import demo_personas_enabled
@@ -40,7 +40,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.cors_origin_list,
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -53,6 +53,7 @@ app.include_router(chat.router)
 app.include_router(evals.router)
 app.include_router(gates.router)
 app.include_router(actions.router)
+app.include_router(me.router)
 
 
 @app.get("/api/health", response_model=HealthWithAuth)

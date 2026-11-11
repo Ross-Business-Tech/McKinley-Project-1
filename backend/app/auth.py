@@ -9,8 +9,9 @@ start otherwise), so every customer request is anonymous and no resident data is
 Rules (see docs/security/AUTHORIZATION_BOUNDARIES.md):
 - anonymous by default; never derived from conversation text, the model, or audience classification.
 - demo_persona only for a KNOWN demo persona id, only when the deployment allows demo personas.
-- authenticated_resident is defined for the future and never produced (no real auth exists).
-- staff only via the existing staff guard (loopback / STAFF_API_TOKEN), see app/api/staff_guard.py.
+- authenticated_resident only for a request with a valid Supabase sign-in token whose email is on the invite list
+  as a RESIDENT linked to one synthetic resident id (app/identity.py). The browser's persona selector is then ignored.
+- staff via the staff guard (loopback / STAFF_API_TOKEN / a signed-in invited staff member), see app/api/staff_guard.py.
 - data access (context, resident record, records, history, drafts) is allowed only by `may_access_persona`.
 - fail closed (Sprint 7): demo personas are honoured only for requests that reach the backend directly from this
   machine (no proxy/tunnel headers, local Host), unless DEMO_PERSONAS_ENABLED=true is set explicitly on a local
@@ -26,9 +27,12 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, replace
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from app.config import Settings
+
+if TYPE_CHECKING:  # only for type hints: app/identity.py imports this module
+    from app.identity import Identity
 
 PrincipalKind = Literal["anonymous", "demo_persona", "authenticated_resident", "staff"]
 
@@ -40,7 +44,7 @@ class Principal:
     source: str  # how it was derived, for traces and docs ("default", "demo_persona_selector", "staff_guard", ...)
     persona_id: str | None = None
     can_read_resident_data: bool = False  # a resident record (fixture / workbook / database) may be read
-    is_authenticated: bool = False  # True only for authenticated_resident, which is never produced
+    is_authenticated: bool = False  # True only for authenticated_resident (a verified Supabase sign-in)
     # False once this (session, persona) said it is not the account holder (persisted, see app/db.py): the persona
     # context is then built with no account data. Never True again for that session.
     account_access: bool = True
@@ -116,12 +120,22 @@ def _persona_kind(persona_id: str, workbook: Any) -> str | None:
 
 
 def derive_principal(settings: Settings, persona_id: str | None, session_id: str | None, workbook: Any, *,
-                     strict: bool = True, local_request: bool = True) -> Principal:
+                     strict: bool = True, local_request: bool = True, identity: Identity | None = None) -> Principal:
     """The customer principal for one request. `persona_id` is the demo selector value the browser sent; it is
     honoured only when the deployment allows demo personas and the id is a known demo persona.
 
+    `identity` is a signed-in, invited person (app/identity.py). A resident is the authenticated_resident for their ONE
+    linked resident id, whatever persona the browser sent. Staff keep the normal customer path here (they use the
+    staff tools for staff access), so a staff sign-in never lets chat act as a resident.
+
     strict=True (API requests): a persona id on a deployment without demo personas is refused (AuthError), so a
     caller learns it was not used. strict=False (offline tooling): it is silently dropped (anonymous)."""
+    if identity is not None and identity.role == "resident":
+        linked = (identity.persona_id or "").strip()
+        if linked and _persona_kind(linked, workbook) == "resident":
+            return Principal(kind="authenticated_resident", session_id=session_id, source="supabase_sign_in",
+                             persona_id=linked, can_read_resident_data=True, is_authenticated=True)
+        return anonymous(session_id, "signed_in_without_resident_record")  # nothing to read; never fall to a persona
     pid = (persona_id or "").strip() or None
     if pid is None:
         return anonymous(session_id)
@@ -145,14 +159,15 @@ def staff_principal(session_id: str | None = None, persona_id: str | None = None
 
 
 def may_access_persona(principal: Principal | None, persona_id: str | None) -> bool:
-    """Deny by default. Staff may read any synthetic persona; a demo_persona only its own exact id."""
+    """Deny by default. Staff may read any synthetic persona; a demo_persona or authenticated_resident only its own
+    exact id."""
     if principal is None or not persona_id:
         return False
     if principal.kind == "staff":
         return True
-    if principal.kind == "demo_persona":
+    if principal.kind in ("demo_persona", "authenticated_resident"):
         return principal.persona_id == persona_id
-    return False  # anonymous; authenticated_resident is never produced
+    return False  # anonymous
 
 
 def session_bound_to(store: Any, principal: Principal) -> bool:

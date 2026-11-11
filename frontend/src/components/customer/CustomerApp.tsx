@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { ApiError, LIVE_BACKEND_CONFIGURED, api, demoSignInAvailable, loadDemoSnapshot } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import {
   GUEST,
   type Identity,
@@ -23,6 +24,7 @@ import {
   starters,
   toIdentities,
 } from "@/lib/customer";
+import { AuthButton, AuthForm, NotInvitedNote } from "@/components/auth/AuthPanel";
 import { newSessionId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ActionKind, ActionResult, ChatResponse, Journey, ProposedAction, StatusItem } from "@/lib/types";
@@ -98,7 +100,7 @@ export function CustomerApp() {
     return () => window.clearTimeout(id);
   }, [state.mode]);
   const [attempt, setAttempt] = useState(0);
-  const [identity, setIdentity] = useState<Identity>(GUEST);
+  const [picked, setPicked] = useState<Identity>(GUEST); // the demo-sign-in choice (not real sign-in)
   const [sessionId, setSessionId] = useState(() => newSessionId());
   const [messages, setMessages] = useState<Msg[]>([]);
   const [turns, setTurns] = useState<StoredTurn[]>([]);
@@ -110,6 +112,15 @@ export function CustomerApp() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [typing, setTyping] = useState(false); // the message box has focus: on a short screen show only the essentials
   const aboutBtnRef = useRef<HTMLButtonElement>(null);
+  const auth = useAuth();
+  // Real sign-in wins over the demo picker: an invited resident IS that resident (the backend checks the token).
+  const signedInIdentity = useMemo<Identity | null>(
+    () => (auth.role === "resident" ? { ...GUEST, kind: "resident", group: "Residents", label: auth.email ?? "Signed in" } : null),
+    [auth.role, auth.email],
+  );
+  const identity = signedInIdentity ?? picked;
+  const [authOpen, setAuthOpen] = useState(false);
+  const authAnchorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!announcement) return;
     const id = window.setTimeout(() => setAnnouncement(""), 6000); // read once, then gone from the page
@@ -134,7 +145,7 @@ export function CustomerApp() {
       const who = saved && b.mode === "live" ? b.identities.find((i) => i.id === saved.identityId) : undefined;
       if (saved?.v === 1 && who && saved.messages.length) {
         counter = Math.max(counter, ...saved.messages.map((m) => Number(m.id.slice(1)) || 0));
-        setIdentity(who);
+        setPicked(who);
         setSessionId(saved.sessionId);
         setMessages(saved.messages.filter((m) => !m.error).map((m) => ({ ...m, restored: true })));
         setTurns(saved.turns);
@@ -149,7 +160,7 @@ export function CustomerApp() {
 
   const reset = useCallback((next: Identity) => {
     clearSession();
-    setIdentity(next);
+    setPicked(next);
     setSessionId(newSessionId());
     setMessages([{ id: mid(), role: "assistant", text: greeting(next), lang: next.lang }]);
     setTurns([]);
@@ -159,6 +170,22 @@ export function CustomerApp() {
     setAnnouncement("");
     requestAnimationFrame(() => inputRef.current?.focus()); // the Start over button disappears: never leave focus on <body>
   }, []);
+
+  // Real sign-in (Supabase). The backend decides who someone is from the token; the page only follows. Signing in or out
+  // starts a fresh conversation (a new person must never see the previous chat). The first settled state after a
+  // page load is adopted silently, so reloading while signed in keeps the restored conversation.
+  const authSeen = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.mode !== "live" || auth.key === null) return;
+    const first = authSeen.current === null;
+    const changed = !first && authSeen.current !== auth.key;
+    authSeen.current = auth.key;
+    if (first) return;
+    if (changed) {
+      reset(signedInIdentity ?? GUEST);
+      setAnnouncement(auth.status === "signedIn" ? "Signed in. Started a new conversation." : "Signed out. Started a new conversation.");
+    }
+  }, [state.mode, auth.key, auth.status, signedInIdentity, reset]);
 
   // Scrolling after each message. First screen: stay at the top (brand, sign-in, the "not a person" greeting).
   // A new assistant message taller than the space above the composer (a long reply, a card to check before
@@ -467,8 +494,8 @@ export function CustomerApp() {
       subtitle={t.subtitle}
       demoStrip={
         <section aria-label={t.demoButton} lang={lang} className="border-b border-mk-line bg-mk-surface [@media(max-height:480px)]:static">
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-4">
-            {state.mode === "preview" || state.demoSignIn ? (
+          <div className="mx-auto flex w-full max-w-2xl flex-wrap items-center gap-x-2 px-[max(1rem,env(safe-area-inset-left))] py-1.5 sm:px-4">
+            {state.mode === "preview" || (state.demoSignIn && auth.status !== "signedIn") ? (
               <>
                 <label htmlFor={`${inputId}-who`} className="shrink-0 text-sm font-medium text-mk-muted">
                   {t.demoSignIn}
@@ -497,11 +524,16 @@ export function CustomerApp() {
                   {t.signInHint}
                 </span>
               </>
-            ) : (
+            ) : state.mode === "live" && auth.status !== "off" ? null : (
               <p data-testid="guest-only" className="min-h-11 py-2.5 text-sm font-medium text-mk-muted">
                 {t.guestOnly}
               </p>
             )}
+            {state.mode === "live" && auth.status !== "off" ? (
+              <div ref={authAnchorRef} className="min-w-0 flex-1">
+                <AuthButton auth={auth} open={authOpen} onToggle={() => setAuthOpen((v) => !v)} />
+              </div>
+            ) : null}
             <button
               ref={aboutBtnRef}
               type="button"
@@ -517,6 +549,14 @@ export function CustomerApp() {
               <span className="sr-only sm:not-sr-only sm:font-medium" lang={lang}>{t.demoTitle}</span>
             </button>
           </div>
+          {authOpen && state.mode === "live" && auth.status === "signedOut" ? (
+            <AuthForm
+              auth={auth}
+              onClose={() => setAuthOpen(false)}
+              onReturnFocus={() => authAnchorRef.current?.querySelector("button")?.focus()}
+            />
+          ) : null}
+          {state.mode === "live" ? <NotInvitedNote auth={auth} /> : null}
           {aboutOpen && (
             <div
               id={aboutId}
