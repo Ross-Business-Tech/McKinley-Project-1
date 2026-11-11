@@ -46,7 +46,9 @@ _TRAUMA = re.compile(r"chest pain|heart attack|bleed\w*|fell|fallen|broken|seizu
 _INGESTION = re.compile(r"\b(?:swallow\w*|ate|eaten|drank|drunk|took|taken|popped|ingest\w*|overdos\w*|od'?d|pills?|"
                         r"meds|medic\w*|tablets?|bleach|cleaner|chemical\w*|poison\w*|pods?|batter\w*|narcan|"
                         r"naloxone|fentanyl|opioid\w*|heroin|drugs?|alcohol|se (?:trag|tom|comi|bebi)\w*|pastillas|"
-                        r"cloro|veneno|sobredosis|fumes|bug spray|pesticide)\b", re.I)
+                        r"cloro|veneno|sobredosis|fumes|bug spray|pesticide|beb[ií][oó]|trag[oó]|ingiri[oó]|"
+                        r"(?:tom[oó]|comi[oó]|got into) (?:algo|something)|got into (?:the |my |some )?\w+|"
+                        r"cleaning (?:stuff|products?|supplies|spray)|detergent|lye|antifreeze)\b|\bsomething\b", re.I)
 _ASSAULT = re.compile(r"\b(?:he|she|they|my (?:ex|partner|husband|wife|boyfriend|girlfriend|roommate|dad|mom|son|"
                       r"brother)|someone|somebody|a (?:man|guy|stranger)|the (?:man|guy))\s+(?:is |are |keeps |was |"
                       r"started |just |'s |'re )?(?:chok|strangl|hit|beat|punch|kick|stab|shoot|smother)\w*\s+(?:me|us"

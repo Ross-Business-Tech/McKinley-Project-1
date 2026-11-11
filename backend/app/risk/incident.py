@@ -294,8 +294,10 @@ def _save(store: Any, session_id: str, persona_key: str, inc: Incident) -> None:
 _OTHER_PERSON = re.compile(
     r"\b(?:my|our|the|a|his|her) (?:\w+ )?(?:grand\w+|mom|mum|mother|dad|father|husband|wife|partner|roommate|"
     r"neighbou?r|kid|kids|son|daughter|baby|child|toddler|infant|friend|boyfriend|girlfriend|brother|sister|cousin|"
-    r"man|woman|guy|lady|boy|girl|dog|cat|pet)\b|\b(?:he|she|they|him|her|them|someone|somebody)\b|"
-    r"\bmi (?:esposo|esposa|hij[oa]|mam[aá]|pap[aá]|abuel[oa]|vecin[oa]|beb[eé]|amig[oa])\b", re.I)
+    r"man|woman|guy|lady|boy|girl|dog|cat|pet|aunt|uncle|nephew|niece|co-?worker|colleague|boss|guest|visitor|"
+    r"patient|cousin|fianc[eé]e?)\b|\b(?:he|she|they|him|her|them|someone|somebody)\b|"
+    r"\bmi (?:esposo|esposa|hij[oa]|mam[aá]|pap[aá]|abuel[oa]|vecin[oa]|beb[eé]|amig[oa]|t[ií][oa]|sobrin[oa]|"
+    r"prim[oa]|herman[oa]|nieto|nieta|suegr[oa]|novi[oa]|pareja)\b", re.I)
 
 
 def _call(decision: RiskDecision, inc: Incident, rule: str, conflict: str) -> RiskDecision:

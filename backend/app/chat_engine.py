@@ -41,12 +41,14 @@ from app.models import (
 )
 from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
+from app.quickfix import effective_mode as quickfix_effective_mode
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
 from app.risk.classifier import SemanticRiskClassifier
 from app.risk.incident import prior_hazards as incident_prior_hazards
 from app.risk.incident import step as incident_step
 from app.risk.pipeline import assess
+from app.risk.ui_state import safety_ui
 from app.safety import (
     CRITICAL_CHECKS,
     contains_pii,
@@ -376,6 +378,7 @@ def run_turn(
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          person_danger=bool(getattr(rd, "person_danger", False)),  # Agent A: no repair intake now
                          full_alert=rd.response == "full_alert", danger_rule=rd.rule,
+                         risk=rd, quickfix_mode=quickfix_effective_mode(settings),  # Sprint 8 (D)
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
                          understanding_hint=hint)
@@ -451,6 +454,8 @@ def run_turn(
     care_note = st.care_note if care_kind else None
     if care_kind:
         trace.add("8_validate", "warn", f"safety policy {rd.rule}: calm {care_kind} line added")
+    # sprint 8: the UI safety state follows exactly what is shown (app/risk/ui_state.py)
+    safety_state, safety_contacts = safety_ui(rd, alert_shown=bool(safety_notice), care_kind=care_kind, lang=lang)
     failed = [c.code for c in checks if not c.passed]
     unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
@@ -528,6 +533,8 @@ def run_turn(
         care_note=care_note,
         risk=risk,
         safety_heading=emergency_heading(ekind, lang) if safety_notice else None,
+        safety_state=safety_state,  # type: ignore[arg-type]
+        safety_contacts=safety_contacts,  # type: ignore[arg-type]
         mode=mode,
         audience=audience,  # type: ignore[arg-type]
         recommended_handoff=recommended,

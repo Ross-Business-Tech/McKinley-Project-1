@@ -795,7 +795,8 @@ _HARDWARE_COMPOUND = re.compile(r"\b(?:balcony|patio|deck|porch|closet|stair(?:w
 # shelf collapsed", "the cabinet handle fell off"). Kept when it fell / collapsed ON someone; ceilings, roofs, floors,
 # balconies are not in the list and stay structural.
 _OBJECT_FELL = re.compile(
-    r"\b((?:shelf|shelves|shelving|rack|cabinet|cupboard|closet door|door|handle|knob|curtain rod|rod|blinds?|tv|mirro"
+    r"\b((?:shelf|shelves|shelving|rack|cabinet|cupboard|closet door|(?<!next )door|handle|knob|curtain rod|rod|"
+    r"blinds?|tv|mirro"
     r"r|"
     r"picture|frame|towel (?:bar|rack)|hook|light fixture|fixture|ceiling fan|table|chair|bed ?frame|bunk|couch|tent|"
     r"boxes|box|pile|stack|organizer|bracket|drawer|lid|cover|vent cover|grab bar|toilet seat|repisa|estante|"
@@ -827,7 +828,10 @@ _NOUN_SUBJECT_VERB = re.compile(
     r"gave out|gave way)\b(?!\s+(?:on|onto|over|on top of)\b)", re.I)
 _PERSONISH = re.compile(_PERSON + r"|\b(?:i|me|we|us)\b|\b(?:grand\w+|mom|mum|dad|wife|husband|son|daughter|kid|baby|"
                         r"child|toddler|friend|roommate|neighbou?r|tenant|man|woman|guy|lady|boy|girl|brother|sister|"
-                        r"uncle|aunt|cousin|partner|boyfriend|girlfriend|someone|somebody|person|dog|cat)'?s?\b", re.I)
+                        r"uncle|aunt|cousin|partner|boyfriend|girlfriend|someone|somebody|person|dog|cat|"
+                        # sprint 8: more people nouns ("my coworker collapsed" is a person, not a broken object)
+                        r"co-?workers?|colleagues?|boss|nephew|niece|patient|classmate|teammate|elderly|senior|"
+                        r"visitor|guest|stranger|caregiver|nurse|teacher|student|fianc[eé]e?|husband)'?s?\b", re.I)
 _BUILDING_PART = re.compile(r"\b(?:ceilings?|roofs?|floors?|balcon(?:y|ies)|stairs|staircase|stairway|steps|"
                             r"walls?|decks?|"
                             r"porch|building|foundation|beams?|joists?|garage|parking (?:deck|garage|structure)|"
@@ -1060,6 +1064,29 @@ _ASKS_LINE = re.compile(
 def asks_emergency_line(message: str) -> bool:
     """'I don't have the emergency number' / 'what's the maintenance line?' (fix round P1)."""
     return bool(_ASKS_LINE.search(_prepare(message)))
+
+
+# Sprint 8, NEEDS McKINLEY REVIEW: labels of the explicit contact links the website shows under a safety alert or a
+# concern line (ChatResponse.safety_contacts, chosen in app/risk/ui_state.py). A link is only ever a labelled tel:/sms:
+# link the person taps themselves; nothing is dialled, sent or notified. The prototype has no community emergency
+# maintenance number, so that entry is plain information with no link.
+CONTACT_LABEL: dict[str, dict[str, str]] = {
+    "call_911": {"en": "Call 911", "es": "Llamar al 911"},
+    "call_911_gas": {"en": "Call 911 once you're outside", "es": "Llamar al 911 cuando esté afuera"},
+    "gas_company": {"en": "Or call your gas company's emergency line (it's on your gas bill)",
+                    "es": "O llame a la línea de emergencias de su compañía de gas (está en su factura)"},
+    "call_911_poison": {"en": "Call 911 if they're hard to wake or not breathing",
+                        "es": "Llamar al 911 si no despierta bien o no respira"},
+    "poison_help": {"en": "Call Poison Help 1-800-222-1222",
+                    "es": "Llamar a Poison Help 1-800-222-1222 (hay ayuda en español)"},
+    "call_988": {"en": "Call 988", "es": "Llamar al 988"},
+    "text_988": {"en": "Text 988", "es": "Enviar un mensaje al 988"},
+    "call_911_self": {"en": "Call 911 if you're in immediate danger", "es": "Llamar al 911 si está en peligro ahora"},
+    "call_911_if_danger": {"en": "Call 911 if anyone is in danger", "es": "Llamar al 911 si alguien corre peligro"},
+    "maintenance_line": {"en": "Your community's emergency maintenance line (this prototype doesn't have the number)",
+                         "es": "La línea de emergencias de mantenimiento de su comunidad (este prototipo no tiene el "
+                               "número)"},
+}
 
 
 QUEUE_NOTE = {

@@ -1,7 +1,7 @@
 """Pydantic API contracts shared by the chat, persona and eval endpoints."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -224,6 +224,12 @@ class PrototypeRecord(BaseModel):
     team: str | None = None
     priority: str | None = None
     system: Literal["prototype"] = "prototype"
+    # Sprint 8 (agent C, staff view): repeat-request history and the manager review flag saved with a repair. Stored
+    # by app/actions.py; returned by the staff /api/prototype/records route. app/api/views.customer_record removes
+    # them from anything a non-staff caller gets.
+    repeat_history: dict[str, Any] | None = None
+    manager_review: bool | None = None
+    review_queue: str | None = None
 
 
 class StatusItem(BaseModel):
@@ -250,6 +256,18 @@ class ActionResult(BaseModel):
     action: ProposedAction | None = None
     record: PrototypeRecord | None = None
     error_code: str | None = None
+
+
+SafetyState = Literal["normal", "concern", "active"]
+
+
+class SafetyContact(BaseModel):
+    """Sprint 8: one explicit, labelled contact the website may show (never auto-dialled). Chosen by
+    app/risk/ui_state.py from the final safety decision; the label is fixed text from app/emergency.CONTACT_LABEL."""
+
+    label: str
+    href: Literal["tel:911", "tel:988", "sms:988", "tel:18002221222"] | None = None
+    kind: Literal["call", "text", "info"] = "call"
 
 
 class ChatResponse(BaseModel):
@@ -302,6 +320,10 @@ class ChatResponse(BaseModel):
     care_kind: Literal["distress", "unwell", "danger", "info"] | None = None
     care_note: str | None = None
     risk: RiskAssessment | None = None  # layered safety result (rules, semantic classifier, policy): staff view
+    # Sprint 8 UI safety state (app/risk/ui_state.py): active = an alert is shown this turn; concern = a calm line or
+    # safety info is shown; normal = no safety text. Contacts are category-specific and empty for normal.
+    safety_state: SafetyState = "normal"
+    safety_contacts: list[SafetyContact] = Field(default_factory=list)
 
 
 class ErrorBody(BaseModel):

@@ -1045,6 +1045,30 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Gracias por avisarme, me alegra que todo esté bien. No cambié nada más y la nota urgente queda para que "
               "el personal la cierre. ¿Le ayudo con algo más?",
     },
+    # ---- Sprint 8 (D) quick-fix tips before a repair request. NEEDS McKINLEY REVIEW (all four keys) ----
+    "quickfix_offer": {
+        "en": "Before I start a repair request, here are a few quick things that often fix this:\n{items}\n\nDid that "
+              "fix it? Reply yes, or say \"send a request\" and I'll start the repair request.",
+        "es": "Antes de empezar una solicitud de reparación, aquí hay unas cosas rápidas que muchas veces lo "
+              "resuelven:\n{items}\n\n¿Se resolvió? Responda sí, o diga \"envíen una solicitud\" y empiezo la "
+              "solicitud de reparación.",
+    },
+    "quickfix_draft_label": {
+        "en": "Draft tips for this demo, not yet approved by McKinley. If you'd rather not try them, just say "
+              "\"send a request\".",
+        "es": "Consejos en borrador para esta demostración, aún no aprobados por McKinley. Si prefiere no probarlos, "
+              "solo diga \"envíen una solicitud\".",
+    },
+    "quickfix_resolved": {
+        "en": "Glad that fixed it. I haven't sent anything to maintenance. If it stops working again, just tell me "
+              "and I'll start a repair request.",
+        "es": "Qué bueno que se resolvió. No envié nada a mantenimiento. Si vuelve a fallar, dígame y empiezo una "
+              "solicitud de reparación.",
+    },
+    "quickfix_ask_again": {
+        "en": "Did those steps fix it? Reply yes, or no and I'll start a repair request.",
+        "es": "¿Esos pasos lo resolvieron? Responda sí, o no y empiezo una solicitud de reparación.",
+    },
     "danger_no_form": {  # NEEDS McKINLEY REVIEW: no repair form while someone may be in danger
         "en": "Please follow the safety steps above first. The repair can wait: when everyone is safe, tell me about "
               "it and we can start the repair request then.",
@@ -1063,6 +1087,37 @@ T: dict[str, dict[Lang, str]] = {
         "en": "With someone vulnerable at home, this repair request is marked urgent for the team to review.",
         "es": "Como hay una persona vulnerable en casa, esta solicitud de reparación queda marcada como urgente para "
               "que el equipo la revise.",
+    },
+    # ---- Sprint 8 Workstream C: repeat-issue history (all NEEDS McKINLEY REVIEW; Spanish is a draft translation).
+    # Counts and windows come from app/maintenance_history.py (the signed-in resident's own earlier requests only; the
+    # request being written now is never counted). Never say anyone was notified; no callback, refund, rent concession
+    # or completion date.
+    "repeat_history_many": {  # NEEDS McKINLEY REVIEW
+        "en": "I found {n} related maintenance requests {window}, so I've marked this as a repeat issue. I'll include "
+              "that history in your request, so it's on the record for the community manager to review.",
+        "es": "Encontré {n} solicitudes de mantenimiento relacionadas {window}, así que la marqué como problema "
+              "repetido. Incluiré ese historial en su solicitud para que quede registrado y el gerente de la "
+              "comunidad lo revise.",
+    },
+    "repeat_history_one": {  # NEEDS McKINLEY REVIEW
+        "en": "I found 1 related maintenance request {window}, so I've marked this as a repeat issue. I'll include "
+              "it in your request, so it's on the record for the community manager to review.",
+        "es": "Encontré 1 solicitud de mantenimiento relacionada {window}, así que la marqué como problema repetido. "
+              "La incluiré en su solicitud para que quede registrada y el gerente de la comunidad la revise.",
+    },
+    "repeat_history_lead": {  # NEEDS McKINLEY REVIEW: the apology before the history line
+        "en": "I'm sorry this is happening again.",
+        "es": "Lamento que vuelva a pasar.",
+    },
+    "repeat_history_ready": {  # NEEDS McKINLEY REVIEW: card complete on the same turn
+        "en": "Check it over, then send it.",
+        "es": "Revísela y envíela.",
+    },
+    "repeat_history_saved": {  # NEEDS McKINLEY REVIEW: after Send; the prototype record holds the history
+        "en": " The related history is saved with this prototype record, marked for community manager review once "
+              "this is connected; in this demo nobody sees it yet.",
+        "es": " El historial relacionado quedó guardado con este registro de prueba, marcado para que el gerente de la "
+              "comunidad lo revise cuando esto esté conectado; en esta demo nadie lo ve todavía.",
     },
     "multi_issue_named": {  # NEEDS McKINLEY REVIEW: two problems in one message, the second named and queued
         "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}. Waiting "
@@ -1234,6 +1289,8 @@ CONFIRM_LABEL: dict[str, dict[Lang, str]] = {
 }
 
 CHIPS: dict[str, dict[Lang, list[str]]] = {
+    "quickfix": {"en": ["It's fixed", "Still not working", "Send a request"],  # NEEDS McKINLEY REVIEW (Sprint 8, D)
+                 "es": ["Ya funciona", "Sigue sin funcionar", "Envíen una solicitud"]},
     "locations": {"en": ["Kitchen", "Bathroom", "Bedroom", "Living room"],
                   "es": ["Cocina", "Baño", "Dormitorio", "Sala"]},
     "door_locations": {"en": ["Front door", "Bedroom", "Bathroom", "Balcony or patio"],

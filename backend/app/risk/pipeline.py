@@ -32,7 +32,7 @@ def assess(message: str, recent: list[str] | None, classifier: SemanticRiskClass
 
 def person_danger(decision: RiskDecision, det: DeterministicRisk | None = None) -> bool:
     """Full alert, or a care line from a person sign (concern / frame person state / distress / R9 / R10q memory)."""
-    if decision.response == "full_alert":
+    if decision.response == "full_alert" or decision.conditional_danger:
         return True
     if decision.response != "care_line":
         return False

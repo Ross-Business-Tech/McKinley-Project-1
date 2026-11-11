@@ -13,8 +13,9 @@ Sprint 7: the compositional frame (app/risk/frame.py) is combined with the phras
 import re
 
 from app.emergency import intent_to_self_harm, person_concern, possible_risk, scan
-from app.risk.frame import RiskFrame, analyse, without_lookalike
+from app.risk.frame import RiskFrame, analyse, normalize, unknown_ingestion, without_lookalike
 from app.risk.models import DeterministicRisk
+from app.risk.neutralize import spans
 
 WINDOW_TURNS = 3  # earlier user messages combined with this one
 # "It's happening now" after a hypothetical/past mention turns that mention into a report.
@@ -42,8 +43,62 @@ _LOOKALIKE_FRAMING = {"media": "quoted", "drill": "hypothetical", "policy": "hyp
                       "past": "past", "signs": "hypothetical"}
 
 
+def _rank(d: DeterministicRisk) -> int:
+    return 3 if d.kind else 2 if d.care else 1 if d.mentioned_kind else 0
+
+
+_NEVER_LOWERED_BY_SPANS = {"self_harm", "personal_safety"}
+_LIVE_REST = re.compile(r"\b(?:now|right now|still|currently|again|just did|just happened|is happening|"
+                        r"happening|ahora|ahorita|todav[ií]a|sigue|otra vez|me est[aá] pasando|est[aá] pasando)\b",
+                        re.I)
+
+
 def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
-    """`recent` = earlier user messages in this conversation (oldest first, current message excluded)."""
+    """`recent` = earlier user messages in this conversation (oldest first, current message excluded).
+
+    Sprint 8: the rules run on the message and on what is left after removing benign spans (app/risk/neutralize.py:
+    titles, fiction, training, device subjects, idioms, ordinary activities, conditional clauses, past-and-recovered
+    clauses). The result is lowered only when the remainder is lower, never for self-harm / personal safety / a
+    window alert / a possible deliberate poisoning; a conditional or recovered span lowers only to nothing-left."""
+    full = _detect(message, recent)
+    sp = spans(message)
+    if not sp.reasons and sp.hypothetical is None and sp.recovered is None:
+        return full
+    if full.kind in _NEVER_LOWERED_BY_SPANS or full.via_window or full.self_harm_intent or (
+            full.care == "distress"):
+        return full
+    cur = full
+    if sp.reasons:
+        lite = _detect(sp.benign, recent)
+        if _rank(lite) < _rank(cur):
+            cur = lite.model_copy(update={"frame": {**(lite.frame or {}), "neutralized": list(sp.reasons)}})
+    if sp.hypothetical is not None:
+        lite = _detect(sp.hypothetical, recent)
+        live_rest = bool(_LIVE_REST.search(sp.hypothetical) or _SAME_MSG_NOW.search(sp.hypothetical)
+                         or _HAPPENING_NOW.search(sp.hypothetical))
+        if _rank(lite) == 0 and not live_rest:  # "what do you do if an outlet sparks? mine is right now" stays live
+            kind, clause_alert = cur.kind or cur.mentioned_kind, False
+            for clause in sp.clauses:
+                c = _detect(clause, None)
+                fr = c.frame or {}
+                clause_alert = clause_alert or bool(c.kind)
+                kind = kind or c.kind or c.mentioned_kind or (fr.get("category") if fr.get("urgency") != "none"
+                                                              else None)
+            if kind and kind not in _NEVER_LOWERED_BY_SPANS:
+                # R5c when the condition, said as a statement, would be an alert about a specific person
+                cur = DeterministicRisk(mentioned_kind=kind, framing="hypothetical", frame={
+                    **(full.frame or {}), "neutralized": [*sp.reasons, "conditional"]},
+                    conditional_danger=bool(sp.conditional_specific and clause_alert))
+    if sp.recovered is not None and _rank(cur) > 0:
+        lite = _detect(sp.recovered, recent) if sp.recovered.strip(" ,") else DeterministicRisk()
+        if _rank(lite) == 0 and (cur.kind or cur.care or cur.mentioned_kind) and \
+                (cur.kind or cur.mentioned_kind) not in _NEVER_LOWERED_BY_SPANS:
+            cur = DeterministicRisk(framing="past", frame={**(full.frame or {}),
+                                                            "neutralized": [*sp.reasons, "past and recovered"]})
+    return cur
+
+
+def _detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     kind, framing = scan(message)
     if kind == "self_harm" and framing == "joking":
         # sprint 7 fix round: a laugh marker never lowers a disclosure ("i want to die lol" is a full self-harm alert;
@@ -90,6 +145,15 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
                 out.kind, out.framing, out.via_window = k, "report", True
             elif fr2.alert and fr2.category and fr2.category != "medical":
                 fr = fr2
+    if not out.kind and prev and fr.states and not fr.look_alike:
+        # sprint 8: "mi hijo se tomó algo" ... "ahora está muy mareado": a swallowed product or unknown substance in
+        # the last turns plus a body sign now is a poisoning report
+        for m in reversed(prev[-2:]):
+            pf = analyse(m)
+            if unknown_ingestion(normalize(m)) and pf.ongoing not in ("hypothetical", "past", "media") and \
+                    [w for w in pf.who if w != "pet"]:
+                out.kind, out.framing, out.via_window = "poison", "report", True
+                break
     _combine(out, fr, message)
     if out.kind == "poison" and (intent_to_self_harm(message) or any(intent_to_self_harm(m) for m in prev)):
         out.self_harm_intent = True

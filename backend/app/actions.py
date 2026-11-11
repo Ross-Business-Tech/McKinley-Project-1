@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from app import maintenance_history as mh
+from app import quickfix
 from app import understanding as und
 from app import utterance as utt
 from app import workflow_state as wf
@@ -172,6 +174,7 @@ LABEL: dict[str, dict[Lang, str]] = {
     "questions": {"en": "Questions to answer", "es": "Preguntas por responder"},
     "budget": {"en": "Budget (you said)", "es": "Presupuesto (según usted)"},
     "notes": {"en": "Notes for the visit", "es": "Notas para la visita"},
+    "related_history": {"en": "Related history", "es": "Historial relacionado"},  # Sprint 8 C: own earlier requests
 }
 TITLE: dict[ActionKind, dict[Lang, str]] = {
     "maintenance_request": {"en": "Repair request", "es": "Solicitud de reparación"},
@@ -382,7 +385,12 @@ def _record_data(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> dict[st
         title = draft.get("topic", "Note for the office")
     return {"status": status, "status_label": label, "title": title, "summary": draft.get("summary", title),
             "fields": fields, "team": draft.get("team"), "priority": draft.get("priority"),
-            "category": draft.get("category"), "repeat": draft.get("repeat", False), "hazard": draft.get("hazard")}
+            "category": draft.get("category"), "repeat": draft.get("repeat", False), "hazard": draft.get("hazard"),
+            # Sprint 8 C: the repeat history (prior requests only) and the manager-review marker travel with the request
+            **({"repeat_history": draft["repeat_history"]} if kind == "maintenance_request" and
+               draft.get("repeat_history") else {}),
+            **({"manager_review": True, "review_queue": "community_manager"} if kind == "maintenance_request" and
+               draft.get("manager_review") else {})}
 
 
 def _write(store: Store | None, kind: ActionKind, session_id: str, persona_id: str | None, draft: dict[str, Any],
@@ -722,6 +730,14 @@ def _repeat_of_open(resident: Resident | None, text: str) -> Any:
     return hit if (_STILL.search(text) or same_symptom) and not new_symptom else None
 
 
+def _history_line(h: mh.RepeatHistory, lang: Lang) -> str:
+    """Sprint 8 C: 'I found 3 related maintenance requests over the last 30 days, ...' from real data; '' for none."""
+    if h.count == 0:
+        return ""
+    win = h.window(lang, singular=h.count == 1) or ("en su historial" if lang == "es" else "on your record")
+    return t("repeat_history_one" if h.count == 1 else "repeat_history_many", lang, n=str(h.count), window=win)
+
+
 def _sent_match(records: list[dict[str, Any]], text: str) -> dict[str, Any] | None:
     """A request already sent in this chat about the same thing as `text`."""
     things = _things_in(text)
@@ -915,7 +931,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
               resident: Resident | None, channel: Channel, lang: Lang, recent: list[str] | None = None,
               hazard: str | None = None, care: str | None = None, memory: dict[str, Any] | None = None,
               understanding_hint: tuple[Any, str] | None = None, person_danger: bool = False,
-              full_alert: bool = False, danger_rule: str | None = None) -> TurnPlan:
+              full_alert: bool = False, danger_rule: str | None = None, risk: Any = None,
+              quickfix_mode: str = "off") -> TurnPlan:
     """`hazard` / `care` come from the safety policy (app/risk); the planner never re-derives safety itself.
     `memory` is what the previous turn's plan left (unproductive-turn streak, whether a tour was already offered);
     it holds flags and counts only, never message text. `understanding_hint` is the optional model pass for this
@@ -930,6 +947,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     draft = store.get_draft(session_id, pkey, include_declined=True) if store else None
     mem: dict[str, Any] = dict(memory or {})
     streak = int(mem.get("unproductive", 0) or 0)
+    # Sprint 8 (D): quick-fix tips offered last turn. The offer lives for exactly one turn (ids only, no text).
+    qf_pending = mem.pop(quickfix.MEM_KEY, None)
+    qf_intake = False
     # 0a. Language (D-6 / B-8 / R-9). An explicit request for English or Spanish switches and sticks ("pinned"). Without
     # a pin, a message that is clearly one language answers in it; an unclear one ("no", "sí", "leak") keeps the
     # language of the conversation so far, so one Spanish word never flips an English conversation (or vice versa).
@@ -1310,6 +1330,25 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              consumed_by_draft=True,
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Safety retraction acknowledged; nothing else changed.")))
+    # 1b-qf. Sprint 8 (D): the answer to the quick-fix tips offered last turn. Every safety step above runs first;
+    # a safety signal this turn ends the flow (quickfix.follow_up). "Fixed" closes it with no record; "no", "not sure"
+    # or "just send maintenance" continue as the repair request with the ORIGINAL issue (from the conversation
+    # history, never from planner memory); an unclear answer is asked once, then it is the repair request.
+    if qf_pending and is_resident and verified and not draft:
+        qstep, qkeep = quickfix.follow_up(qf_pending, msg, risk)
+        if qkeep:
+            mem[quickfix.MEM_KEY] = qkeep
+        if qstep.action == "close_resolved":
+            return done(TurnPlan(template=t("quickfix_resolved", lang), functions=["F6"], skip_model=True,
+                                 consumed_by_draft=True, chips=CHIPS["resident_next"][lang],
+                                 workflow=_sel("maintenance", "Quick-fix tips fixed it: no repair request.")))
+        if qstep.action == "ask_again":
+            return done(TurnPlan(template=t("quickfix_ask_again", lang), functions=["F6"], skip_model=True,
+                                 consumed_by_draft=True, chips=CHIPS["quickfix"][lang],
+                                 workflow=_sel("maintenance", "Quick-fix: asked once whether it is fixed.")))
+        if qstep.action == "intake":
+            msg = utt.normalize(quickfix.intake_message(quickfix.issue_from_recent(recent, qstep.entry_id), msg))
+            qf_intake = True
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]
     if not is_resident and gate.urgency != "emergency" and (says_resident(msg) or (
@@ -1438,7 +1477,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     problem_shape = bool(is_resident and not draft and u.utterance is not None and (u.utterance.problem or (
         u.utterance.objects and re.match(r"^\W*(?:(?:and|also|oh and|plus|y)\W+)*(?:add|include|agrega|a[ñn]ade)\b",
                                          msg, re.I))) and not u.utterance.asks and not wants_person and not status_q and
-                         not match_faq(msg))
+                         not match_faq(msg)) or (qf_intake and is_resident and not draft)  # Sprint 8 (D)
     chat_frustrated = und.frustration(msg) == "assistant"
     kinds = question_kinds(msg) + (["phone"] if is_phone_question(msg) else [])
     # Sprint 7 fix round: a short answer to the card's own question ("guest bathroom" to "which room?") is the answer,
@@ -2467,13 +2506,32 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              workflow=_sel("general_inquiry", "A person may be in danger: no repair intake now.")))
     if workflow.id == "maintenance" or gate.intent == "maintenance" and is_resident or answers_draft or \
             problem_shape or (exposure_urgent and is_resident) or (
-            injected and is_resident and is_issue_description(msg)):
+            injected and is_resident and is_issue_description(msg)) or (
+            is_resident and (qf_intake or quickfix.match_entry(msg) is not None)):  # Sprint 8 (D): see report
         if not is_resident:
             return done(TurnPlan(template=t("maint_guest", lang), functions=["F6"], chips=CHIPS["who"][lang],
                                  workflow=_sel("maintenance", "Maintenance from someone not signed in.")))
         if not verified:
             return handoff_plan("maint_unverified", "Maintenance from an unmatched resident: office takes it.",
                                 wid="maintenance", topic="Repair report (account not matched)")
+        # 8-qf. Sprint 8 (D): up to 3 quick-fix tips BEFORE a new repair request, only for an eligible low-risk issue
+        # with a negative safety finding (app/quickfix.py decides; content gate QUICKFIX_CONTENT_MODE). One round
+        # per issue; never on an open card, a repeat issue, several problems at once, or the turn that follows tips.
+        if not in_maint_draft and not draft and not qf_intake and quickfix_mode != "off" and \
+                len(split_issues(effective)) == 1:
+            qres = quickfix.check_eligibility(
+                msg, risk, mode=quickfix_mode, lang=lang, urgency=gate.urgency,  # type: ignore[arg-type]
+                repeat=bool(triage and triage.level == "repeat") or bool(
+                    {"context_repeat_issue", "repeat_with_history"} & flags) or bool(_repeat_of_open(resident, msg)),
+                used=mem.get(quickfix.USED_KEY) or [])
+            if qres.eligible:
+                quickfix.offered_memory(mem, qres)
+                tips = "\n".join(f"{i}. {s}" for i, s in enumerate(qres.tips, 1))
+                label = t("quickfix_draft_label", lang) + "\n\n" if qres.draft else ""
+                return done(TurnPlan(template=label + t("quickfix_offer", lang, items=tips), functions=["F6"],
+                                     skip_model=True, chips=CHIPS["quickfix"][lang],
+                                     workflow=_sel("maintenance", f"Quick-fix tips offered ({qres.entry_id}) "
+                                                   "before a repair request.")))
         d = draft if in_maint_draft else {"fields": {}}
         assert d is not None
         fields_before = repr(sorted((k, v.get("value")) for k, v in d.get("fields", {}).items()))
@@ -2536,9 +2594,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         updated_note = ""
         if swap:  # replace, never append; flags from the old problem no longer apply
             _set(d, "issue", swap[:200], "you_said")
-            for k in ("repeat", "repeat_acknowledged", "stated_repeat", "vague_issue"):
+            for k in ("repeat", "repeat_acknowledged", "stated_repeat", "vague_issue", "repeat_history",
+                      "manager_review"):
                 d.pop(k, None)
             d["fields"].pop("priority_note", None)
+            d["fields"].pop("related_history", None)
             d["priority"], d["team"] = "normal", "maintenance"
             triage = None
             updated_note = t("issue_updated", lang, issue=swap)
@@ -2675,8 +2735,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             _set(d, "entry_window", _window_es(window) if lang == "es" else window, "on_file")
         # D-5 / F-4: a repeat from the record needs a history item about the SAME thing (a toilet is not the kitchen
         # sink); without resident history to check, the triage decision stands.
-        triage_repeat = bool(triage and triage.level == "repeat") and (resident is None or hist is not None)
-        repeat = triage_repeat or d.get("repeat", False)
+        # Sprint 8 C: the related history is computed from AUTHORIZED data only (this verified resident's own workbook
+        # interactions and this principal's own prototype records; app/maintenance_history.py). The draft being written
+        # is not a record, so it is never counted. A repeat "from the record" needs at least one related request.
+        history = mh.related_history(
+            issue_now or effective, resident=resident if verified else None,
+            persona_id=persona_id if verified else None,
+            records=store.records(persona_id=persona_id, kind="maintenance_request", limit=200)
+            if (store and verified and persona_id) else [])
+        triage_repeat = bool(triage and triage.level == "repeat") and history.count >= 1
+        repeat = triage_repeat or (history.count >= 2 and not swap) or d.get("repeat", False)
         if triage_repeat and hist is not None:
             d["history_ref"] = f"{hist.interaction_id} \"{sanitize_field(hist.subject, 80) or 'maintenance'}\""
         frustrated = ("complaint_or_frustration" in flags and not swap) or d.get("frustrated", False)
@@ -2692,6 +2760,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         if states_repeat(msg) and not swap and not repeat and not no_issue_content(msg) and (
                 states_named_repeat(msg) or (issue_now and not d.get("vague_issue"))):
             d["stated_repeat"] = True  # J-6 / R-3: the person says a NAMED problem came back ("the thing again" isn't)
+        if not repeat and (d.get("stated_repeat") or es_repeat) and history.count >= 1:
+            repeat = True  # Sprint 8 C: what the person says is confirmed by their own record
+        if repeat and history.count >= 1:
+            d["repeat_history"] = history.to_record()
+            _set(d, "related_history", mh.summary_line(history, lang), "on_file")
+        elif not d.get("repeat"):
+            d.pop("repeat_history", None)
+            d["fields"].pop("related_history", None)
+        if repeat or d.get("stated_repeat"):
+            d["manager_review"] = True  # the existing repeat-issue manager-review flag, carried on the saved request
         vulnerable = bool(_VULNERABLE.search(msg))  # R-7: a baby at home, 85 or 50 degrees inside
         if vulnerable:
             d["vulnerable"] = True
@@ -2732,6 +2810,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         first_turn = not in_maint_draft
         if not missing:
             key = "maint_ready_repeat" if repeat and not d.get("repeat_acknowledged") else "maint_ready"
+            if key == "maint_ready_repeat" and d.get("repeat_history"):
+                key = "repeat_history_ready"
             chips: list[str] = []
         else:
             door = bool(d.get("security"))  # D-13: a lock repair offers the front (entry) door first
@@ -2741,6 +2821,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             chips = {"location": CHIPS["door_locations" if door else "locations"][lang],
                      "entry": CHIPS["entry"][lang]}.get(missing[0], [])
         template = t(key, lang)
+        hist_line = _history_line(history, lang) if repeat and d.get("repeat_history") else ""
+        if key == "repeat_history_ready":
+            template = f"{t('repeat_history_lead', lang)} {hist_line} {template}"
         if d.get("exposure") and not d.get("exposure_said"):
             template = t("exposure_lead", lang) + " " + template
             d["exposure_said"] = True
@@ -2752,7 +2835,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         elif venting:
             template = t("listening", lang) + (" " + template if missing else "")
         if repeat and missing and not d.get("repeat_acknowledged"):
-            template = t("maint_repeat_ack", lang) + " " + template
+            template = (f"{t('repeat_history_lead', lang)} {hist_line}" if hist_line else t("maint_repeat_ack", lang)) \
+                + " " + template
             d["repeat_acknowledged"] = d["frustration_acknowledged"] = True  # one apology, not two
         elif frustrated and not d.get("frustration_acknowledged"):
             template = t("frustrated_repair", lang) + " " + template
@@ -2787,6 +2871,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                          workflow=_sel("maintenance", "Maintenance intake for a verified resident."),
                          force_handoff=repeat or frustrated, handoff=handoff)
         mplan.facts.append(  # F-4: the model may state a repeat or history fact only when the planner established it
+            ("Repeat issue: YES" + (f", it matches history item {d['history_ref']}" if d.get("history_ref") else "")
+             + f". The resident's own record shows exactly {history.count} earlier related maintenance request(s) "
+             f"{history.window('en', singular=history.count == 1) or 'on record'}; state only that count and window, "
+             "do not count this request, and do not say anyone was notified.") if repeat and history.count else
             f"Repeat issue: YES, it matches history item {d['history_ref']}." if repeat and d.get("history_ref") else
             "Repeat issue: YES, history on record shows related repairs." if repeat else
             "Repeat issue: the person says it happened before (not confirmed by the record)." if d.get("stated_repeat")
@@ -3319,6 +3407,8 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
     action = _proposed(kind, taken, lang).model_copy(update={
         "stage": "submitted", "record": rec, "confirm_label": None, "missing": [], "note": PROTOTYPE_NOTE[lang]})
     message = CONFIRM[kind][lang].format(id=rec.id)
+    if kind == "maintenance_request" and (taken.get("repeat_history") or {}).get("count"):
+        message += t("repeat_history_saved", lang)  # Sprint 8 C: on the prototype record; nobody is notified
     if kind == "staff_handoff":
         tf = taken.get("fields", {})
         said = str((tf.get("message") or {}).get("value") or "")

@@ -80,13 +80,14 @@ def test_symptom_only_reports_alert(msg):
 
 
 # ---- 3. conditional / question framing ----------------------------------------------------------------------------
+# Sprint 8 (product-owner decision): "what do i do if my wife can't breathe", "if my son isn't waking up should i call
+# someone" and "qué hago si mi mamá no respira" are conditionals about a specific person: they now get the approved
+# notice as safety info with the 911 contact (rule R5c, UI "concern"), not an ongoing incident. They moved to
+# tests/test_sprint8_safety.py::test_conditional_about_a_specific_person_is_r5c. Question-shaped live reports stay here.
 @pytest.mark.parametrize("msg", [
-    "what do i do if my wife can't breathe",
-    "if my son isn't waking up should i call someone",
     "is it normal that my baby's lips are blue?",
     "how do i help her, she's not breathing",
     "my daughter swallowed a magnet, is that dangerous?",
-    "qué hago si mi mamá no respira",
     "¿es normal que mi hijo esté convulsionando?",
     "mi hija se tragó una pila, ¿qué hago?",
 ])

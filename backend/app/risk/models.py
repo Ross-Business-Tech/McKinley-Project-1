@@ -29,6 +29,7 @@ class DeterministicRisk(BaseModel):
     # template, kept separate so staff can see why; `frame_rule` = the alert came from the frame, not a phrase rule
     frame: dict[str, Any] | None = None
     frame_rule: bool = False
+    conditional_danger: bool = False  # sprint 8: a live-looking sign only inside "if ..." (see RiskDecision)
 
 
 class SemanticRisk(BaseModel):
@@ -83,6 +84,10 @@ class RiskDecision(BaseModel):
     # body state / self-harm sign). The planner must not open an ordinary repair intake while this is true. False for
     # a no-heat / no-AC exposure with no symptom (that one SHOULD become an urgent repair).
     person_danger: bool = False
+    # Sprint 8 (rule R5c): a serious sign about a SPECIFIC person, said only inside a condition ("if my dad can't
+    # breathe, what should I do?"). Shown as calm safety info with the category contacts (UI state "concern"); no
+    # incident is opened. Any present-tense sign in the same or a later message makes it a full alert.
+    conditional_danger: bool = False
 
 
 class RiskAssessment(BaseModel):
