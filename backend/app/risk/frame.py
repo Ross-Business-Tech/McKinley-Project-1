@@ -97,6 +97,7 @@ _GENERIC_RE = re.compile(rf"\b(?:{_GENERIC})\b")
 # ---- STATE (critical / weak / body) --------------------------------------------------------------------------------
 _NEG = r"(?:not|isnt|arent|wasnt|no|stopped|hasnt|havent|cant|cannot|wont|doesnt|didnt|never)"
 CRITICAL = re.compile(
+    r"\bworst headache (?:of my life|ever|ive ever had)\b|\bel peor dolor de cabeza\b|"
     r"\b(?:oxygen|o2|spo2|sats?|saturation|pulse ?ox\w*|oximeter|oximetro|oxigeno|saturacion)\b(?:\W+\w+){0,4}?\W+"
     r"(?:[1-8]\d)\b(?!\s*(?:degrees|grados|years|anos|f\b|dollars|bucks))|"
     r"\b(?:skin|piel)\b(?:\W+\w+){0,4}\W+(?:peeling off|falling off|coming off|melting|blister\w*|se (?:esta )?(?:caye"
@@ -176,7 +177,9 @@ BODY = re.compile(
     r"really |very )?hot\b|\bon fire to the touch\b|"
     r"\b(?:very|really|super|so|bright) red\b|\b(?:esta|muy) (?:roj[oa]|calient[ea]|ardiendo)\b|\bardiendo\b|"
     r"\bdizz\w*|\blight ?headed\b|\bmarea\w*|\bvomit\w*|\bthrowing up\b|\bthrew up\b|\bpuk\w*|"
-    r"\bwont (?:drink|eat|feed)\b|\bnot (?:drinking|eating|feeding)\b|\bno (?:quiere )?(?:come|toma|bebe)\b|"
+    r"\b(?:about to|going to|gonna|feel like i(?:m| am)? (?:going to|gonna)) (?:pass out|faint|black out)\b|"
+    r"\bme voy a desmayar\b|\bwont (?:drink|eat|feed)\b|\bnot (?:drinking|eating|feeding)\b|\bno (?:quiere )?(?:come|t"
+    r"oma|bebe)\b|"
     r"\b(?:so|really|very|super) (?:sleepy|drowsy|tired|weak)\b|\bcan barely (?:wake|keep|stay|stand)\b|"
     r"\bhard to wake\b|\bletharg\w*|\bsomnolient\w*|\bcold (?:to the touch|and blue|and pale)\b|"
     r"\b(?:hes|shes|is|are|feels?|felt|skin|hands|feet|body) (?:so |really |very |ice |icy |freezing )?cold\b(?! (?:in|"
@@ -216,6 +219,12 @@ UNWATCHED_IN_WATER = re.compile(rf"(?:{_UNWATCHED})\b(?:\W+\w+){{0,8}}?\W+(?:in 
                                 rf"piscina)|(?:in the (?:water|pool)|en el agua|en la piscina|fell in|se cayo)"
                                 rf"(?:\W+\w+){{0,8}}?\W+(?:{_UNWATCHED})")
 EXPOSURE = re.compile(
+    r"\b(?:ac|a/c|air|air conditioning|aircon|heat|heating|heater|furnace|cooling)\s+(?:just |completely )?(?:quit|die"
+    r"d|"
+    r"gave out|stopped working|wont turn on|isnt cooling|isnt working|is not working)\b|\bno (?:cooling|heating)\b|"
+    r"\bse (?:descompuso|averio|apago|rompio|murio)\s+(?:el|la)\s+(?:aire|calefaccion|calentador|clima|minisplit)\b|"
+    r"\b(?:aire|calefaccion|calentador|clima)\b(?:\W+\w+){0,2}?\W+(?:no (?:sirve|enfria|calienta|prende|funciona)|se "
+    r"(?:descompuso|averio|apago))\b|"
     r"\b(?:no|without) (?:ac|a/c|air|air conditioning|aircon|heat|heating|power)\b|\b(?:ac|a/c|air|air conditioning|ai"
     r"rcon|"
     r"cooling|heat|heating|heater|furnace|boiler|radiators?)(?: has| is|s| has been| was| been)? (?:\w+ )?(?:broken|"
@@ -319,22 +328,71 @@ WATER_ELEC = [_near_re(r"water|agua|leak\w*|puddle|drip\w*|gotea\w*", r"reaching
 
 
 # Spanish "llamas" = flames only in a fire context (not "you call", not the animal)
-_FIRE_ES = re.compile(r"\b(?:hay|salen|sale|saliendo|veo|vi|se ven|echando|echa|con|entre|ardiendo en|"
-                      r"en)\s+(?:unas |muchas |"
-                      r"grandes |las )?llamas\b|\bllamas\s+(?:en|de|por|saliendo|que salen|salen)\s+(?:la|el|mi|su|los|"
-                      r"las|nuestr\w+|una|un)\b|\bse (?:prendio|incendio|esta quemando)\b")
-_NOT_FIRE_ES = re.compile(r"\b(?:zoo\w*|granja|farm|alpacas?|animal\w*|peluche|lana|wool|me llamas|te llamas|"
+_ES_PLACE = (r"cocina|ventana|ventanas|puerta|sala|cuarto|recamara|habitacion|departamento|apartamento|casa|edificio|"
+             r"pasillo|balcon|techo|pared|horno|estufa|sarten|cortinas?|sofa|sillon|cama|basura|bote|enchufe|contacto|"
+             r"secadora|carro|coche|garaje|cochera|escalera|closet|bano|microondas|tostador|lavanderia|ropa|arriba|"
+             r"abajo|unidad|vecino|vecina|edificio|terraza|patio|cuarto de al lado")
+# Spanish flames / burning: a fire verb, or "llamas" WITH a place that should not burn (not "you call", the animal,
+# a toy, or a fireplace / candle burning normally). Burning a PERSON ("está ardiendo" = fever) is not a fire.
+_FIRE_ES = re.compile(
+    rf"\b(?:hay|salen|sale|saliendo|veo|vi|se ven|echando|echa|entre)\s+(?:unas |muchas |grandes |las )?llamas\s+"
+    rf"(?:en|de|del|por|desde|saliendo de)\s+(?:el |la |los |las |mi |su |un |una |nuestr\w+ )?(?:\w+ )?"
+    rf"(?:{_ES_PLACE})\b|"
+    rf"\bllamas\s+(?:en|de|del|por|saliendo de|que salen de)\s+(?:el |la |los |las |mi |su |un |una )?(?:\w+ )?"
+    rf"(?:{_ES_PLACE})\b|\b(?:{_ES_PLACE})\b(?:\W+\w+){{0,3}}?\W+(?:esta |estan )?(?:echando|con|en) llamas\b|"
+    rf"\b(?:esta|estan|se esta|se estan|sigue|siguen)\s+(?:ardiendo|incendiando|quemando)\s+(?:el|la|los|las|mi|su)\s+"
+    rf"(?:{_ES_PLACE})\b|\b(?:el|la|los|las|mi|su)\s+(?:{_ES_PLACE})\s+(?:\w+ )?(?:esta|estan|se esta|sigue)\s+"
+    rf"(?:ardiendo|incendiando|quemando)\b|\b(?:se (?:prendio|prendieron|incendio|esta quemando)|prendi\w* fuego|"
+    rf"agarr\w* fuego|se (?:le |les )?prendio fuego)\b")
+_NOT_FIRE_ES = re.compile(r"\b(?:zoo\w*|granja|farm|alpacas?|animal\w*|peluche|juguetes?|tienda|lana|wool|chimenea|"
+                          r"fogata|velas?|estufa de lena|asador|bonit\w*|me llamas|te llamas|"
                           r"nos llamas|"
                           r"(?:tu|usted) (?:me )?llamas|llamas (?:a|al|por telefono|mas tarde|manana))\b")
 
 
 # Something heavy fell / collapsed ON a person ("se le cayó la repisa encima a mi hijo", "the dresser fell on her")
 FELL_ON_PERSON = re.compile(
-    rf"\b(?:fell|collapsed|came down|toppled|tipped (?:over )?)\s+(?:on|onto|on top of)\s+"
+    rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})s?\s+(?:is |are |got |was |s )?(?:pinned|trapped|stuck|crushed)"
+    rf"(?:\s+(?:under|beneath|underneath|by|between))?\b|\b(?:pinned|trapped|stuck|crushed)\s+(?:under|beneath|"
+    rf"underneath)\b|\b(?:atrapad[oa]|aplastad[oa]|prensad[oa])s?\b|"
+    rf"\b(?:fell|falls|collapsed|came down|toppled|tipped|tipped over|toppled over|landed|crashed)\s+(?:on|onto|on top "
+    rf"of)\s+"
     rf"(?:my |the |his |her |a |our )?"
     rf"(?:\w+ )?(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})s?\b|\bse (?:le |les |me )?(?:cay[oó]|cayeron|vino abajo|"
     rf"desplom[oó])\b(?:\W+\w+){{0,5}}?\W+(?:encima|sobre)\b(?:\W+\w+){{0,4}}?\W+(?:{_CHILD}|{_ELDER}|{_ADULT}|"
     rf"[eé]l|ella)\b")
+
+
+_BP = re.compile(r"\b(?:bp|blood pressure|presion|tension|cuff|monitor)\b(?:\W+\w+){0,4}?\W+(\d{2,3})\s*(?:over|"
+                 r"/|sobre)\s*"
+                 r"(\d{2,3})\b")
+_HR = re.compile(r"\b(?:heart ?rate|pulse|hr|bpm|heartbeat|ritmo cardiaco|pulso|frecuencia cardiaca|latidos)\b"
+                 r"(?:\W+\w+){0,4}?\W+(\d{2,3})\b|\b(\d{2,3})\s*bpm\b")
+_SYMPTOM_RE = re.compile(r"\b(?:headache|dolor de cabeza|duele (?:mucho )?(?:la cabeza|el pecho)|chest|pecho|"
+                         r"dizz\w*|mare\w*|faint\w*|pass out|desmay\w*|"
+                         r"confus\w*|vision|blurry|short of breath|cant breathe|sweat\w*|nause\w*|vomit\w*|numb\w*|"
+                         r"pounding|racing|palpitat\w*)\b")
+
+
+def _vital_danger(s: str) -> bool:
+    """Sprint 7: a blood pressure >= 180 systolic (or >= 120 diastolic) or a heart rate >= 150 or <= 40."""
+    for m in _BP.finditer(s):
+        sys_, dia = int(m.group(1)), int(m.group(2))
+        if sys_ >= 180 or dia >= 120 or (sys_ <= 80 and dia <= 50):
+            return True
+    for m in _HR.finditer(s):
+        v = int(m.group(1) or m.group(2))
+        if v >= 150 or 20 <= v <= 40:
+            return True
+    return False
+
+
+_HEAD_HIT = re.compile(r"\b(?:hit|struck|bumped|banged|smacked|whacked|slammed|cracked|landed on|fell on|golpe\w*|pego|"
+                       r"se pego|se golpeo)\b(?:\W+\w+){0,4}?\W+(?:head|heads|forehead|skull|cabeza|frente)\b|"
+                       r"\b(?:head|heads|cabeza)\b(?:\W+\w+){0,3}?\W+(?:hit|injury|wound|trauma|golpe)\b")
+_HEAD_SIGN = re.compile(r"\b(?:drows\w*|sleepy|wont stay awake|keeps falling asleep|confus\w*|vomit\w*|throwing up|"
+                        r"threw up|dizzy|not making sense|unequal pupils|somnolient\w*|adormilad\w*|confundid\w*|"
+                        r"vomit\w*|mareado|mareada|sangre del oido|bleeding from (?:the|her|his) ear)\b")
 
 
 def _hazard(s: str) -> tuple[str, str] | None:
@@ -370,7 +428,8 @@ def _hazard(s: str) -> tuple[str, str] | None:
 # ---- self-harm (veiled) -------------------------------------------------------------------------------------------
 _SH_FAREWELL = re.compile(
     r"\b(?:writing|sending|this is|here is|heres) my (?:last|final) (?:message|text|note|letter|words)\b|"
-    r"\bescrib\w* (?:las |unas |mis )?cartas (?:para|a)\b|\bthis is (?:my )?(?:goodbye|farewell)\b|\b(?:my|a) (?:final"
+    r"\bescrib\w* (?:las |unas |mis )?cartas (?:para|a)\b|\b(?:carta|cartas|nota|notas|mensaje) de despedida\b|"
+    r"\bgoodbye (?:letters?|notes?)\b|\bthis is (?:my )?(?:goodbye|farewell)\b|\b(?:my|a) (?:final"
     r" |last )?goodbye\b|\b(?:said|say|saying|said all) "
     r"(?:my )?goodbyes?\b|"
     r"\b(?:wrote|written|writing|left) (?:\w+ )?(?:letters?|notes?) (?:for|to) (?:my|the|everyone)\b|"
@@ -384,7 +443,9 @@ _SH_FINAL = re.compile(
     r"\bno (?:volver a )?despertar\w*|\bdormirme y no despertar\b|\bya tengo todo listo\b|\bya no quiero seguir\b|"
     r"\bdisappear (?:tonight|forever)\b|"
     r"\bits (?:all )?over for me\b|\bthe end for me\b|\bmade my (?:plans|decision|peace)\b|\bnunca mas\b|"
-    r"\bno quiero (?:volver a )?despertar\w*|\bno puedo mas\b|\bya no puedo\b|\bdont want to wake up\b|\bafter (?:this"
+    r"\bno quiero (?:volver a )?despertar\w*|\b(?:esta noche|hoy) me voy\b|\bme voy (?:esta noche|para siempre|hoy)\b|"
+    r"\b(?:im|i am) (?:leaving|going|gone) (?:tonight|for good|forever)\b|\bno puedo mas\b|\bya no puedo\b|\bdont want"
+    r" to wake up\b|\bafter (?:this"
     r"|the) (?:weekend|week|month)\b|\b"
     r"by (?:tomorrow|morning|monday)\b|\bya no voy a estar\b|"
     r"\bno voy a estar (?:aqui|mas|manana)\b|\b(?:wont|will not|not going to) be (?:here|around|alive) (?:tomorrow|any"
@@ -648,6 +709,12 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         if "pet" in roles and INGEST.search(s) and (
                 SUBSTANCE.search(s) or _PET_TOXIC.search(s)):
             cand.append((1, "poison", "a pet swallowed something harmful (calm line; the notices are for people)"))
+        if _vital_danger(s):
+            cand.append((3 if (crit or weak or body or _SYMPTOM_RE.search(s)) else 1, "medical",
+                         "a measured vital sign in a danger range"
+                         + (" with a symptom" if (crit or weak or body) else "")))
+        if _HEAD_HIT.search(s) and (_HEAD_SIGN.search(s) or crit):
+            cand.append((3, "medical", "a head injury with drowsiness / confusion / vomiting"))
         hz = _hazard(s)
         if hz:
             cand.append((3, hz[0], hz[1]))
@@ -669,8 +736,12 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
             best = (rank, cat, framing, why, live_cond)
     if exposure:
         f.hazards.append("exposure")
-        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT})\b|\b(?:pregnant|embarazada|sick|enferm[oa]|"
-                                      rf"oxygen|oxigeno|disabled|wheelchair)\b", t):
+        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT})s?\b|\b(?:pregnant|embarazada|sick|enferm[oa]|"
+                                      rf"oxygen|oxigeno|disabled|wheelchair|ms|multiple sclerosis|copd|asthma\w*|heart "
+                                      rf"condition|medical condition|dialysis|chemo\w*|diabet\w*|recien nacid\w*|"
+                                      rf"silla de ruedas|discapacidad|asma|\d{{2}} (?:years? old|anos)|"
+                                      rf"de (?:[6-9]\d|1[01]\d)"
+                                      rf"(?: anos)?)\b", t):
             # Lead class 2: no heat / no AC with a vulnerable person and NO symptom: urgent repair + the calm
             # "unwell" line (911 if anyone feels very unwell), not the medical person-in-danger alert.
             f.category, f.urgency, f.ongoing, f.care_hint = "medical", "possible", "now", "unwell"
@@ -722,6 +793,8 @@ def _self_harm(t: str) -> tuple[str, str] | None:
                              ("giving", _SH_GIVING), ("burden", _SH_BURDEN), ("closure", _SH_CLOSURE),
                              ("injury", _SH_INJURY))
               if p.search(t)]
+    if re.search(r"\b(?:cartas?|notas?|mensajes?) de despedida\b|\bgoodbye (?:letters?|notes?)\b|\bsuicide note\b", t):
+        return "emergency", "a goodbye letter"
     if _SH_INTENT.search(t) or re.search(
             r"\b(?:im|i am|estoy)\s+(?:standing|sitting|perched|parad[oa]|sentad[oa])\s+(?:at|on|en)\s+(?:the )?(?:edg"
             r"e|"

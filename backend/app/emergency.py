@@ -817,11 +817,37 @@ _OBJECT_FELL_ES = re.compile(
     rf"rompi[oó]|zaf[oó]|solt[oó])\b(?![^.?!]{{0,40}}\b(?:encima|sobre|a mi))", re.I)
 
 
+# Final round (structural): "collapsed / fell off / came off / gave out" is a PERSON body state only when its noun
+# subject is a person; a building part (ceiling, roof, floor, balcony, stairs, wall...) stays structural; any other
+# noun subject is a broken object ("my bookcase collapsed", "the bracket in my den collapsed") = a repair. "On / onto
+# <someone>" is never rewritten.
+_NOUN_SUBJECT_VERB = re.compile(
+    r"\b(?:the|my|a|an|our|this|that|his|her|their|one of (?:the|my|our))\s+((?:[\w'-]+\s+){0,5}?)([\w'-]+)\s+"
+    r"(?:just |completely |totally |suddenly |kind of |sort of )?(collapsed|fell off|fell apart|came off|came apart|"
+    r"gave out|gave way)\b(?!\s+(?:on|onto|over|on top of)\b)", re.I)
+_PERSONISH = re.compile(_PERSON + r"|\b(?:i|me|we|us)\b|\b(?:grand\w+|mom|mum|dad|wife|husband|son|daughter|kid|baby|"
+                        r"child|toddler|friend|roommate|neighbou?r|tenant|man|woman|guy|lady|boy|girl|brother|sister|"
+                        r"uncle|aunt|cousin|partner|boyfriend|girlfriend|someone|somebody|person|dog|cat)'?s?\b", re.I)
+_BUILDING_PART = re.compile(r"\b(?:ceilings?|roofs?|floors?|balcon(?:y|ies)|stairs|staircase|stairway|steps|"
+                            r"walls?|decks?|"
+                            r"porch|building|foundation|beams?|joists?|garage|parking (?:deck|garage|structure)|"
+                            r"structure|overhang|awning|chimney|walkway|landing|railing|ceiling tiles?)\b", re.I)
+
+
+def _object_subject(m: re.Match[str]) -> str:
+    np_ = (m.group(1) or "") + m.group(2)
+    head = re.split(r"\b(?:in|on|at|of|from|by|near|under|inside|behind|next to)\b", np_, maxsplit=1, flags=re.I)[0]
+    if _PERSONISH.search(np_) or _BUILDING_PART.search(head):
+        return m.group(0)
+    return m.group(0)[: m.start(3) - m.start(0)] + "broke"
+
+
 def _clean(text: str) -> str:
     """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
     replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
     text = _HARDWARE_COMPOUND.sub(lambda m: m.group(1), text)
     text = _OBJECT_FELL.sub(lambda m: m.group(1) + " broke", text)
+    text = _NOUN_SUBJECT_VERB.sub(_object_subject, text)
     text = _OBJECT_FELL_ES.sub(lambda m: (m.group(1) or m.group(2)) + " roto", text)
     return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
 

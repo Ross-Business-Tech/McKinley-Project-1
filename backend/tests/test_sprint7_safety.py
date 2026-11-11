@@ -787,3 +787,101 @@ def test_spanish_object_fell_is_a_repair(msg):
                                  "mi papá se resbaló"])
 def test_spanish_fall_alone_keeps_at_least_the_care_line(msg):
     assert d(msg).response in ("care_line", "full_alert"), msg
+
+
+# ---- 20. final safety round ---------------------------------------------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "the bookshelf tipped over onto my son and he's pinned", "the dresser toppled onto my toddler",
+    "my dad is pinned under the fallen cabinet", "she's trapped under the bookcase", "the tv fell on my daughter",
+    "my husband is stuck under the shelving unit and can't move", "mi hijo quedó atrapado debajo del mueble",
+    "el ropero se le cayó encima a mi abuela",
+])
+def test_heavy_object_on_a_person_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("medical", "trapped"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "está ardiendo la cortina", "la cocina está ardiendo", "se está quemando la sala", "el sofá está en llamas",
+    "se prendió fuego la sartén", "la estufa agarró fuego", "salen llamas de la ventana del vecino",
+    "hay llamas en el pasillo",
+])
+def test_spanish_burning_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("fire_smoke", "electrical"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "las llamas de la chimenea del lobby son bonitas", "vi unas llamas de juguete en la tienda",
+    "el niño está ardiendo en fiebre", "prendimos la chimenea y las llamas se ven lindas",
+    "¿me llamas cuando llegue el técnico?",
+])
+def test_spanish_harmless_flames_and_fever(msg):
+    assert d(msg).kind != "fire_smoke", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "ya escribí mi carta de despedida, esta noche me voy", "dejé una nota de despedida para mi mamá, ya no puedo",
+    "this is my goodbye note, i'm leaving tonight for good", "escribí cartas de despedida para mis hijos",
+])
+def test_farewell_letter_with_finality_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "self_harm", msg
+
+
+@pytest.mark.parametrize("msg", ["esta noche me voy a la fiesta del edificio", "me voy de viaje mañana, ¿quién riega "
+                                 "las plantas?", "i'm leaving tonight for my sister's wedding"])
+def test_ordinary_leaving_is_not_self_harm(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "BP cuff reads 220 over 130, worst headache of my life", "heart rate monitor says 190, about to pass out",
+    "my blood pressure is 210/125 and my vision is blurry", "his pulse is 35 and he's dizzy",
+    "mi presión está en 200 sobre 120 y me duele mucho la cabeza",
+    "my watch says heart rate 180 and my chest is pounding",
+    "cabinet door hit my daughter's head, she's drowsy", "my son banged his head on the tub and keeps throwing up",
+])
+def test_vital_signs_and_head_injury_with_symptoms_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "medical", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my blood pressure was 120 over 80 at the doctor", "my resting heart rate is 62", "the thermostat reads 72",
+    "he bumped his head but he's totally fine and playing",
+])
+def test_normal_vitals_and_minor_bumps_do_not_alert(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "the bookshelf bracket in my den collapsed and the drywall anchor ripped out", "my bookcase collapsed",
+    "the wire shelving unit in the garage collapsed", "my desk chair fell apart", "the shower caddy fell off",
+    "the closet rod came off the wall", "our patio umbrella collapsed", "the tv mount gave out",
+])
+def test_an_object_subject_collapsing_is_a_repair(msg):
+    r = d(msg)
+    assert r.response != "full_alert", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my grandpa collapsed", "my son collapsed at practice", "she collapsed in the shower",
+    "collapsed in the shower, help",
+    "the ceiling collapsed", "the balcony gave way", "the roof of the garage collapsed",
+    "the bunk bed collapsed on my son",
+])
+def test_people_buildings_and_on_a_person_still_alert(msg):
+    assert full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "se descompuso la calefacción y vive conmigo mi abuela de 88",
+    "el aire acondicionado no sirve y tengo un recién nacido",
+    "AC quit and I'm pregnant with twins", "no cooling and my roommate has MS",
+    "the heat stopped working and my dad is on dialysis", "no heating and my mom has COPD",
+    "se averió el aire y estoy embarazada", "our furnace died and my son has asthma",
+])
+def test_exposure_with_a_vulnerable_person_gets_the_calm_line(msg):
+    r = d(msg)
+    assert r.response == "care_line" and r.care in ("unwell", "danger"), msg
