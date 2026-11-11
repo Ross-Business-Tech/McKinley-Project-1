@@ -94,8 +94,13 @@ EMERGENCY_NOTICE = (
     "This assistant cannot dispatch anyone."
 )
 
-# Approved low-risk resident troubleshooting (draft; requires McKinley approval, see WORKFLOW_REVIEW I-20).
-APPROVED_TROUBLESHOOTING: list[tuple[str, re.Pattern[str], list[str]]] = [
+# Low-risk resident checks per maintenance category. Sprint 8 fix round: these were called "approved" but McKinley has
+# NOT approved them (traceability I-20: "Draft"). They are DRAFTS and go through the same safety checks and content
+# gate as the quick-fix tips (app/quickfix.legacy_checks): with QUICKFIX_CONTENT_MODE=approved_only (default) they are
+# not shown and the model is told "Approved troubleshooting: NONE"; demo_drafts shows them labelled as drafts.
+# McKinley approval = set LEGACY_TROUBLESHOOTING_STATUS to "approved" (and record who/when in the traceability doc).
+LEGACY_TROUBLESHOOTING_STATUS = "DRAFT — Pending McKinley Approval"
+LEGACY_DRAFT_TROUBLESHOOTING: list[tuple[str, re.Pattern[str], list[str]]] = [
     ("plumbing_drip", re.compile(r"drip|faucet|tap", re.I), [
         "Make sure the faucet handle is fully turned off.",
         "Place a towel or container under the drip to limit water damage.",
@@ -158,8 +163,9 @@ def _ctx(ctx: SafeContext, name: str) -> list[str]:
 
 
 def maintenance_triage(message: str, ctx: SafeContext, d: GateDecision) -> MaintenanceTriage:
-    category = next((name for name, pat, _ in APPROVED_TROUBLESHOOTING if pat.search(message)), "other")
-    steps = next((s for name, _, s in APPROVED_TROUBLESHOOTING if name == category), [])
+    category = next((name for name, pat, _ in LEGACY_DRAFT_TROUBLESHOOTING if pat.search(message)), "other")
+    # only APPROVED steps reach the model prompt and the triage; drafts are shown by the planner, gated and labelled
+    steps = legacy_draft_steps(category) if legacy_checks_approved() else []
     if d.urgency == "emergency":
         level, steps = "emergency", []
     elif "context_repeat_issue" in d.risk_flags or "repeat_with_history" in d.risk_flags:
@@ -170,6 +176,15 @@ def maintenance_triage(message: str, ctx: SafeContext, d: GateDecision) -> Maint
         level = "routine"
     return MaintenanceTriage(level=level, category=category, approved_troubleshooting=steps,
                              entry_window_on_file=bool(_ctx(ctx, "preferred_entry_window")))
+
+
+def legacy_checks_approved() -> bool:
+    return LEGACY_TROUBLESHOOTING_STATUS == "approved"
+
+
+def legacy_draft_steps(category: str) -> list[str]:
+    """The (draft) checks for a category, for the planner's gated "a few checks" line (English only)."""
+    return list(next((s for name, _, s in LEGACY_DRAFT_TROUBLESHOOTING if name == category), []))
 
 
 def lead_profile(message: str, ctx: SafeContext) -> LeadProfile:

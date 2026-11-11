@@ -20,6 +20,12 @@ shared object lexicon in `app.utterance` (EN + ES; no separate keyword list here
   bathroom sink). Whole-home systems (AC, heat, thermostat, water heater, vents) are the same system in any room.
 Texts with no object never relate to anything (no history claim from wording alone).
 
+Counting rule (fix round): only REPAIR REQUESTS are counted, never every contact. A workbook subject counts when it
+reports a problem; a contact ABOUT an earlier repair is not a second request and is skipped: a question ("Is the AC
+getting replaced?", "When will the ceiling be fixed?"), a callback or follow-up ("Callback: HVAC vendor visit", "Pest
+follow-up"), a vendor visit or evaluation, an inspection, a notice or a reminder. Prototype records of kind
+`maintenance_request` are always requests. The wording therefore always says "maintenance requests".
+
 Inclusion rule: PRIOR requests only. The draft being written now is never a record yet, so it is never counted; any
 record id passed in `exclude` (e.g. the request just saved) is skipped too. The wording says "related maintenance
 requests", meaning earlier ones, never "including this one".
@@ -43,6 +49,14 @@ GENERIC_PARTS = frozenset({"drain", "pipe", "wall", "floor", "ceiling", "cabinet
 WHOLE_HOME = frozenset({"ac", "heat", "thermostat", "water heater", "vent"})
 _PART_OF = {"lock": "door", "doorknob": "door", "peephole": "door", "doorbell": "door", "ice maker": "fridge"}
 _SAME = {"hot water": "water heater"}
+# Spellings the shared lexicon reads under another name (kept here so grouping, not the lexicon, changes)
+_ALIASES = [(re.compile(r"\bbath ?tubs?\b", re.I), "tub")]
+# A contact ABOUT an earlier repair (see the counting rule); matched on the short subject only
+_NOT_A_REQUEST = re.compile(
+    r"\?\s*$|^\W*(?:callback|call ?back|follow[- ]?up|seguimiento|llamada|re:|status|update|estado)\b|"
+    r"\b(?:follow[- ]?up|vendor (?:visit|evaluation|appointment)|evaluation|inspection|notice|reminder|aviso|"
+    r"recordatorio|inspecci[oó]n|evaluaci[oó]n)\b|^\W*(?:when|is|are|will|can|did|has|why|cu[aá]ndo|por qu[eé])\b",
+    re.I)
 MAX_REFERENCES = 10
 
 _MONTHS = {"en": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
@@ -58,6 +72,8 @@ def current_time() -> datetime:
 
 def objects(text: str) -> set[str]:
     """The thing(s) a request is about, per the grouping rule in the module docstring."""
+    for pat, name in _ALIASES:
+        text = pat.sub(name, text or "")
     found = utt.problem_objects(text) or utt.things(text)
     found = {_SAME.get(o, o) for o in found}
     for part, whole in _PART_OF.items():
@@ -140,6 +156,11 @@ def _as_naive(v: Any) -> datetime | None:
     return None
 
 
+def is_repair_request(subject: str) -> bool:
+    """A history subject that reports a problem, not a question/callback/follow-up about one (counting rule)."""
+    return bool((subject or "").strip()) and not _NOT_A_REQUEST.search(subject.strip())
+
+
 def _record_text(r: dict[str, Any]) -> str:
     issue = next((str(f.get("value") or "") for f in r.get("fields") or [] if f.get("key") == "issue"), "")
     return issue or str(r.get("title") or "")
@@ -158,7 +179,8 @@ def related_history(issue: str, *, resident: Any = None, records: list[dict[str,
         return RepeatHistory(now=now_dt.date())
     if resident is not None:
         for i in getattr(resident, "interactions", []) or []:
-            if i.category == "maintenance" and i.interaction_id not in exclude and related(issue, i.subject or ""):
+            if i.category == "maintenance" and i.interaction_id not in exclude and \
+                    is_repair_request(i.subject or "") and related(issue, i.subject or ""):
                 found.append(RelatedRequest(i.interaction_id, "resident_history", _as_naive(i.timestamp),
                                             i.subject or ""))
     if persona_id:
@@ -194,5 +216,6 @@ def summary_line(h: RepeatHistory, lang: str = "en") -> str:
     return re.sub(r"\s+", " ", f"{head} {win} ({refs})").strip()
 
 
-__all__ = ["RepeatHistory", "RelatedRequest", "current_time", "objects", "related", "related_history",
+__all__ = ["RepeatHistory", "RelatedRequest", "current_time", "is_repair_request", "objects", "related",
+           "related_history",
            "summary_line"]

@@ -22,6 +22,9 @@ def sid():
 @pytest.fixture
 def demo(client, monkeypatch):
     monkeypatch.setattr(get_state().deps.settings, "quickfix_content_mode", "demo_drafts")
+    # fix round P1-2: tips need a non-degraded safety decision; the mock "classifier" is degraded (status "mock"),
+    # so these replays run with the semantic layer off (status "disabled": the rules alone decide)
+    monkeypatch.setattr(get_state().deps.settings, "safety_classifier", "off")
     return client
 
 

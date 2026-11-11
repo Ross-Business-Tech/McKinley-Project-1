@@ -22,7 +22,7 @@ from app import quickfix
 from app import understanding as und
 from app import utterance as utt
 from app import workflow_state as wf
-from app.context import Resident, Workbook
+from app.context import Resident, Workbook, build_resident_context
 from app.db import Store
 from app.dialogue import Act, classify_turn
 from app.handoff import build_handoff
@@ -141,7 +141,7 @@ from app.models import (
 from app.risk.policy import is_people_hazard
 from app.safety import looks_like_injection, redact, sanitize_field
 from app.templates import CHIPS, CONFIRM, CONFIRM_LABEL, DIY_ADVICE, PROTOTYPE_NOTE, Lang, t
-from app.workflows import LABELS, WORKFLOW_VERSION
+from app.workflows import LABELS, WORKFLOW_VERSION, legacy_checks_approved, legacy_draft_steps
 
 log = logging.getLogger("mckinley.actions")
 
@@ -387,10 +387,10 @@ def _record_data(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> dict[st
             "fields": fields, "team": draft.get("team"), "priority": draft.get("priority"),
             "category": draft.get("category"), "repeat": draft.get("repeat", False), "hazard": draft.get("hazard"),
             # Sprint 8 C: the repeat history (prior requests only) and the manager-review marker travel with the request
-            **({"repeat_history": draft["repeat_history"]} if kind == "maintenance_request" and
+            **({"repeat_history": draft["repeat_history"]} if kind in ("maintenance_request", "staff_handoff") and
                draft.get("repeat_history") else {}),
-            **({"manager_review": True, "review_queue": "community_manager"} if kind == "maintenance_request" and
-               draft.get("manager_review") else {})}
+            **({"manager_review": True, "review_queue": "community_manager"} if kind in (
+                "maintenance_request", "staff_handoff") and draft.get("manager_review") else {})}
 
 
 def _write(store: Store | None, kind: ActionKind, session_id: str, persona_id: str | None, draft: dict[str, Any],
@@ -566,6 +566,63 @@ def _next_step(card: dict[str, Any], lang: Lang) -> tuple[str, list[str]]:
     return t("tap_send", lang, what=WHAT[kind][lang]), []
 
 
+# Sprint 8 C fix round: a clause that only asks for someone to come ("just send maintenance", "can you send someone
+# out asap", "have someone come look at it", "manden a alguien", "que venga mantenimiento"). One grammar: an optional
+# softener + a send/come verb + a helper noun; the clause names no object and no symptom of its own.
+_SERVICE_LEAD = (r"(?:(?:just|please|pls|can you|could you|can u|would you|i need you to|i need|i want|need|so|then|"
+                 r"por favor|solo|nada m[aá]s)\s+)*(?:send|get|have|dispatch|need|want|i need|manden|mande|env[ií]en|"
+                 r"env[ií]e|necesito|quiero|que venga|que vengan|someone|somebody|alguien)\b")
+_SERVICE_ASK = re.compile(
+    r"^\W*(?:and |so |but |y |pero )?" + _SERVICE_LEAD + r"[\s\w']{0,40}?\b(?:maintenance|someone|somebody|a tech\w*|"
+    r"tech\w*|a plumber|plumber|an electrician|a person|a repair ?(?:man|person)|help|someone out|people|"
+    r"mantenimiento|alguien|un t[eé]cnico|t[eé]cnico|plomero|ayuda)\b[\s\w',]{0,40}$", re.I)
+
+
+# "can I put in a request to fix the stove burner?" -> "fix the stove burner" (the request framing is not the problem)
+_ASK_PREFIX = re.compile(
+    r"^\W*(?:(?:can|could|may|should) (?:i|we)|i (?:want|need|would like|'d like|wanna)|how (?:do|can) i)\s+"
+    r"(?:please\s+)?(?:to\s+)?(?:put in|submit|file|make|open|start|create|place|enter)\s+(?:a |an |another |one )?"
+    r"(?:new\s+)?(?:repair |maintenance |service |work )?(?:request|ticket|order|work order)\s+"
+    r"(?:to (?:get )?|for (?:the |my )?|about |because )?|^\W*¿?\s*(?:puedo|podr[ií]a|quiero|necesito)\s+"
+    r"(?:hacer|poner|abrir|levantar|meter)\s+(?:una )?(?:solicitud|orden|reporte)\s+(?:para |por |de )?", re.I)
+
+
+def _service_ask_only(clause: str) -> bool:
+    c = clause.strip(" ,.;!?-")
+    return bool(c) and bool(_SERVICE_ASK.search(c)) and not utt.things(c) and not utt.has_symptom(c)
+
+
+def _new_request_ask(msg: str) -> bool:
+    """'can I put in a request to fix the stove burner?' / '¿puedo hacer una solicitud para el horno?': asks to START a
+    repair request about a named thing (not a status question)."""
+    return bool(re.search(
+        r"\b(?:can|could|may|do|should|how do|how can)\s+(?:i|we|you)\s+(?:please\s+)?(?:put in|submit|file|make|open|"
+        r"start|create|place|enter|send|report)\b|\bi (?:want|need|would like|'d like|wanna) to (?:put in|submit|file|"
+        r"make|open|start|report)\b|\b(?:quiero|puedo|podr[ií]a|necesito) (?:hacer|poner|abrir|levantar|meter|"
+        r"reportar|enviar|mandar)\b", msg, re.I)) and bool(utt.things(msg) or utt.has_symptom(msg))
+
+
+_PRAISE = re.compile(
+    r"\b(?:was|is|'s|were|are|be|so|looks?|sounds?|felt)\s+(?:so |really |totally |super |absolutely |lowkey )?"
+    r"(?:fire|lit|killer|sick|dope|amazing|awesome|great|fantastic|incredible|the best|goated|epic|a blast|fun|"
+    r"lovely|beautiful|perfect)\b|\b(?:slaps|slapped|rocks|rocked|ate)\b|"
+    r"\b(?:love|loved|loving) (?:it|this|the|my)\b|"
+    r"\b(?:estuvo|est[aá]|es|qued[oó])\s+(?:bien |muy |s[uú]per )?(?:padre|padr[ií]sim[oa]|chid[oa]|genial|"
+    r"incre[ií]ble|buen[ií]sim[oa]|bonit[oa]|perfect[oa]|lo m[aá]ximo|brutal)\b|\bme encant[aó]\b", re.I)
+_COMPLAINT = re.compile(
+    r"\b(?:can'?t|cannot|couldn'?t) sleep|too (?:loud|much|noisy)|all night|every (?:night|day|weekend)|at \d|"
+    r"\d ?(?:am|a\.m\.)|again|still|won'?t stop|keeps?|complain\w*|annoy\w*|ugh|so loud|rude|unbearable|"
+    r"not (?:ok|okay|cool|fine)|but\b|broken|leak\w*|not working|help|please|no puedo dormir|toda la noche|otra vez|"
+    r"sigue|molest\w*|pero\b|\?", re.I)
+
+
+def _praise_only(msg: str) -> bool:
+    """Sprint 8 C fix round: a compliment in everyday slang with no complaint or request in it. The safety layer runs
+    first and is never affected (the caller checks urgency, hazard and care)."""
+    return bool(_PRAISE.search(msg)) and not _COMPLAINT.search(msg) and not utt.has_symptom(
+        _PRAISE.sub(" ", msg)) and len(msg.split()) <= 25
+
+
 def _slot_clause(clause: str) -> bool:
     """B-3 / A-10: a clause that only answers a slot (entry, contact, room), never part of "What's wrong"."""
     c = clause.strip(" ,.;!?")
@@ -582,11 +639,17 @@ def _slot_clause(clause: str) -> bool:
 
 
 def _issue_text(text: str) -> str:
-    """The problem in the person's words without the entry/contact/room clauses said in the same message."""
+    """The problem in the person's words without the entry/contact/room clauses said in the same message, and without
+    a clause that only asks for service ("just send maintenance", "manden a alguien"; Sprint 8 C)."""
     parts = re.split(r"(?<=[.!?;])\s+|,\s+(?=(?:and |but |so )?(?:text|call|email|contact|you can|they can|ok to|"
                      r"okay to|don'?t|dont|do not|please call|pls call)\b)|\s+and\s+(?=(?:text|call|email|contact|"
-                     r"you can|they can)\b)", text)
-    keep = [p.strip() for p in parts if p.strip() and not _slot_clause(p)]
+                     r"you can|they can)\b)|(?:,|\s+-|\s+(?:and|so|y|así que))\s+(?=" + _SERVICE_LEAD + r")", text,
+                     flags=re.I)
+    asked = any(p.strip() and _service_ask_only(p) for p in parts)
+    keep = [p.strip() for p in parts if p.strip() and not _slot_clause(p) and not _service_ask_only(p)]
+    if asked and keep:
+        keep[-1] = keep[-1].rstrip(" .,;-")  # "the oven doesn't heat. just send a tech" -> "the oven doesn't heat"
+    keep = [k for k in (_ASK_PREFIX.sub("", p).rstrip("? ") if _ASK_PREFIX.search(p) else p for p in keep) if k]
     out = re.sub(r"^\W*(?:and|also|but|so)\W+", "", " ".join(keep), flags=re.I).strip(" ,;")
     out = re.sub(r"^\W*(?:(?:oh|ok|okay|um+|uh+)\W+)?(?:sorry|wait|actually|oops)\W+(?:(?:it'?s|its|it is)\s+)?",
                  "", out, flags=re.I) or out  # "oh sorry its the dishwasher, it wont drain" -> "the dishwasher, …"
@@ -728,6 +791,27 @@ def _repeat_of_open(resident: Resident | None, text: str) -> Any:
     new_symptom = bool(said - subj - {"still", "again", "makin", "doing", "comin", "going", "happe", "being", "worki",
                                       "nothi", "somet", "anyth", "every", "out"})
     return hit if (_STILL.search(text) or same_symptom) and not new_symptom else None
+
+
+def _own_open_elsewhere(store: Store | None, persona_id: str | None, here: list[dict[str, Any]], text: str
+                        ) -> dict[str, Any] | None:
+    """Sprint 8 C fix round: this persona's newest OPEN prototype repair request from another session about the same
+    thing as `text` (app/maintenance_history.related), or None. ScopedStore returns only this persona's records."""
+    if store is None or not persona_id:
+        return None
+    seen = {r.get("id") for r in here}
+    for r in store.records(persona_id=persona_id, kind="maintenance_request", limit=200):
+        if r.get("id") in seen or r.get("status") != "submitted_for_review" or r.get("persona_id") != persona_id:
+            continue
+        issue = next((str(f.get("value") or "") for f in r.get("fields") or [] if f.get("key") == "issue"), "")
+        if mh.related(text, issue or str(r.get("title") or "")):
+            return r
+    return None
+
+
+def _heard_key(count: int) -> str:
+    """Sprint 8 C fix round: the empathy line scales with the real number of earlier requests."""
+    return "repeat_heard_one" if count == 1 else "repeat_heard_two" if count == 2 else "repeat_heard"
 
 
 def _history_line(h: mh.RepeatHistory, lang: Lang) -> str:
@@ -950,6 +1034,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     # Sprint 8 (D): quick-fix tips offered last turn. The offer lives for exactly one turn (ids only, no text).
     qf_pending = mem.pop(quickfix.MEM_KEY, None)
     qf_intake = False
+    qf_queue: str | None = None  # the tips' issue, kept on the card of a NEW problem raised while tips were pending
+    qf_side = {"on": False}  # a side question while tips are pending: answered normally, the offer is kept
     # 0a. Language (D-6 / B-8 / R-9). An explicit request for English or Spanish switches and sticks ("pinned"). Without
     # a pin, a message that is clearly one language answers in it; an unclear one ("no", "sí", "leak") keeps the
     # language of the conversation so far, so one Spanish word never flips an English conversation (or vice versa).
@@ -1079,6 +1165,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             plan.template = t("frustrated_again" if "frus" in locals_lead else "note_updated", lang)
             crc = zlib.crc32(plan.template.encode("utf-8"))
         mem["last_reply"] = crc
+        if qf_side["on"] and plan.action is None and quickfix.MEM_KEY in mem and \
+                t("quickfix_side_reminder", lang) not in plan.template:
+            # Sprint 8 (D) fix round: a side question during tips is answered and the tips question stays open
+            plan.template = plan.template.rstrip() + " " + t("quickfix_side_reminder", lang)
+            plan.chips = CHIPS["quickfix"][lang]
         lead = locals_lead.get("diy", "")
         if lead and not plan.template.startswith(lead):
             plan.template = lead + plan.template
@@ -1100,6 +1191,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             upd.setdefault("team", "leasing")  # prospects and visitors are leasing's customers
         rec = rec.model_copy(update=upd) if upd else rec
         hd = _handoff_draft(gate, rec, ctx, msg, lang, draft or parked, topic, recent)
+        src = draft or parked or {}
+        if src.get("kind") == "maintenance_request" and (src.get("repeat_history") or src.get("manager_review")):
+            # Sprint 8 C fix round: "you won't have to repeat yourself" holds: the repeat history and the manager-review
+            # marker of the pending repair travel with the note
+            if src.get("repeat_history"):
+                hd["repeat_history"] = src["repeat_history"]
+                if (rh := (src.get("fields") or {}).get("related_history")) and rh.get("value"):
+                    hd["fields"]["related_history"] = dict(rh)
+            if src.get("manager_review"):
+                hd["manager_review"] = True
         if (draft or {}).get("kind") == "staff_handoff" and not (draft or {}).get("declined"):
             locals_lead["merged"] = ""  # marker only: this message was merged into the note already on screen
         if not hd["fields"].get("earlier") and not (draft or parked) and not kw.pop("_unlinked", "") and (
@@ -1331,13 +1432,18 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Safety retraction acknowledged; nothing else changed.")))
     # 1b-qf. Sprint 8 (D): the answer to the quick-fix tips offered last turn. Every safety step above runs first;
-    # a safety signal this turn ends the flow (quickfix.follow_up). "Fixed" closes it with no record; "no", "not sure"
-    # or "just send maintenance" continue as the repair request with the ORIGINAL issue (from the conversation
-    # history, never from planner memory); an unclear answer is asked once, then it is the repair request.
+    # a safety signal this turn ends the flow (quickfix.follow_up). "Fixed" closes it with no record. "No", "not sure"
+    # or "just send maintenance" continue as the repair request with the ORIGINAL issue, word for word (from the
+    # conversation history, never from planner memory), plus whole clauses that add a room / entry / visit time. An
+    # unclear short answer is asked once. A side question is answered normally and the offer is kept (at most 2 turns);
+    # a NEW problem gets its own card and the tips' issue is kept on it as the next request (never dropped).
     if qf_pending and is_resident and verified and not draft:
         qstep, qkeep = quickfix.follow_up(qf_pending, msg, risk)
+        if (uq := quickfix.unsafe_question(msg)) and not unsafe_diy_kind(msg):
+            locals_lead["diy"] = t(f"quickfix_unsafe_{uq}", lang) + " "
         if qkeep:
             mem[quickfix.MEM_KEY] = qkeep
+        issue0 = quickfix.issue_from_recent(recent, qstep.entry_id) if qstep.entry_id else None
         if qstep.action == "close_resolved":
             return done(TurnPlan(template=t("quickfix_resolved", lang), functions=["F6"], skip_model=True,
                                  consumed_by_draft=True, chips=CHIPS["resident_next"][lang],
@@ -1346,9 +1452,25 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             return done(TurnPlan(template=t("quickfix_ask_again", lang), functions=["F6"], skip_model=True,
                                  consumed_by_draft=True, chips=CHIPS["quickfix"][lang],
                                  workflow=_sel("maintenance", "Quick-fix: asked once whether it is fixed.")))
+        if qstep.action == "other":
+            # not an answer: a side question (answered below, the tips question stays open) or a NEW problem (if step
+            # 8 opens a card for it, the tips' issue is queued on that card and the offer ends; never dropped)
+            qf_queue = issue0 if quickfix.match_entry(msg) != qstep.entry_id else None
+            qf_side["on"] = bool(qkeep)
         if qstep.action == "intake":
-            msg = utt.normalize(quickfix.intake_message(quickfix.issue_from_recent(recent, qstep.entry_id), msg))
+            msg = utt.normalize(quickfix.intake_message(issue0, msg))
             qf_intake = True
+        if (qstep.action == "intake" or qf_queue) and resident is not None:
+            # the context of a "no" turn was built for "no": add the on-file maintenance fields a direct request gets
+            # (entry window, open requests, staff-noted contact clause), from this verified resident only
+            have = {f.name for f in ctx.fields}
+            # (" - maintenance request" only steers the topic gate of the context builder to the repair fields)
+            extra = [f for f in build_resident_context(resident, f"{issue0 or msg} - maintenance request",
+                                                       persona_id or "").fields
+                     if f.name in ("preferred_entry_window", "open_maintenance_requests",
+                                   "staff_noted_contact_preference") and f.name not in have]
+            if extra:
+                ctx = ctx.model_copy(update={"fields": [*ctx.fields, *extra]})
     # 1c. Questions about something already sent: answer plainly, never start a new draft.
     sent = [r for r in mine if r.get("status") != "urgent_queued"]
     if not is_resident and gate.urgency != "emergency" and (says_resident(msg) or (
@@ -1470,6 +1592,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     meta_u["u"], meta_u["tr"] = u.summary(), tr.summary()
     wants_person = u.requests_human
     status_q = u.has(und.DialogueAct.CHECK_STATUS)
+    if status_q and _new_request_ask(msg):
+        status_q = False  # Sprint 8 C: "can I put in a request to fix the stove burner?" asks for a NEW repair
     if u.frustration_target == "assistant" or u.confused:
         locals_lead["frus"] = ""  # marker only (never shown): this turn repeats frustration, so no verbatim repeat
     # Sprint 7: a problem schema (an object or the person's own space + a symptom: "a weird noise in my unit", "add
@@ -1950,18 +2074,30 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                                  workflow=_sel("status_lookup", "Typed reference not found in this chat.")))
         # A-6 / B-1 / C-5: a request that is already open (sent in this chat, or open on the record) gets a follow-up
         # note citing its reference, never a duplicate work order
-        about_open = is_resident and verified and not (live and live["kind"] == "maintenance_request"
-                                                       and live.get("fields", {}).get("issue")) and (
+        # Sprint 8 C fix round: a status QUESTION about an open item ("what's the status of my AC rattling request?")
+        # is answered by the status step below, not turned into a follow-up note
+        status_only = (status_q or is_status_request(msg)) and not asks_for_priority(msg) and not re.search(
+            r"\burgent\b|\burgente\b", msg, re.I)
+        no_card_issue = not (live and live["kind"] == "maintenance_request" and live.get("fields", {}).get("issue"))
+        # Sprint 8 C fix round: an OPEN request this resident saved in an EARLIER session about the same thing gets a
+        # follow-up note citing it, never a second record ("it's a different problem" still starts a new one)
+        other_open = _own_open_elsewhere(store, persona_id, sent, msg) if (
+            is_resident and verified and no_card_issue and not status_only and not _DIFFERENT.search(msg) and (
+                is_issue_description(msg) or states_repeat(msg) or (u.utterance is not None and u.utterance.problem)))\
+            else None
+        about_open = is_resident and verified and no_card_issue and not status_only and (
             refers_to_existing(msg) or asks_for_priority(msg) or (states_repeat(msg) and _sent_match(sent, msg))
-            or _repeat_of_open(resident, msg) or bool(re.search(
+            or _repeat_of_open(resident, msg) or other_open is not None or bool(re.search(
                 r"\bmark (?:my|the) [\w/ ]{1,25}? (?:request )?(?:as )?urgent\b", msg, re.I)))
         if about_open:
-            rec0 = _sent_match(sent, msg)
+            rec0 = _sent_match(sent, msg) or other_open
             hist0 = (_repeat_of_open(resident, msg) or _history_match(resident, msg, open_only=True)) if not rec0 \
                 else None
             ref = rec0["id"] if rec0 else (hist0.interaction_id if hist0 else None)
             if ref:
                 title = (rec0.get("title") if rec0 else sanitize_field(hist0.subject, 80)) or "that request"
+                if rec0 is other_open and title[:1].isupper() and title[1:2].islower():
+                    title = title[0].lower() + title[1:]  # "the kitchen faucet is dripping", mid-sentence
                 if live and store:  # a card started for the same problem is dropped: it would be a duplicate
                     store.clear_draft(session_id, pkey)
                     touched["draft"] = True
@@ -2107,6 +2243,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     diy = unsafe_diy_kind(msg)
     if diy:
         locals_lead["diy"] = DIY_ADVICE[diy][lang] + " "
+    elif (uq := quickfix.unsafe_question(msg)) and "diy" not in locals_lead:
+        # Sprint 8 (D) fix round: "disposal jammed, can I reach in and grab it?" gets a direct "no" first (never tips)
+        locals_lead["diy"] = t(f"quickfix_unsafe_{uq}", lang) + " "
 
     # 2. The open card: consent, decline, correction, or a stale card being re-shown.
     effective = msg
@@ -2155,6 +2294,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             if store:
                 store.save_draft(session_id, pkey, draft["kind"], {**draft, "declined": True})
             touched["draft"] = True
+            parked = draft  # Sprint 8 C: the note for a person carries the pending card's details and history
             draft = None
         elif cancel:
             if store:  # kept (marked declined) so "send it after all" can bring it back once
@@ -2334,6 +2474,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                             topic="Accommodation or legal question")
     if status_q and is_resident and not verified:
         return handoff_plan("status_unverified", "Status lookup needs a verified resident (I-10/I-11 draft).")
+    if _praise_only(msg) and not draft and gate.urgency != "emergency" and not hazard and not care:
+        # Sprint 8 C fix round: "the pool party was fire, this place is killer" is a compliment, not a noise complaint
+        return done(TurnPlan(template=t("praise_ack", lang), functions=[], skip_model=True,
+                             chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
+                             workflow=_sel("general_inquiry", "Compliment or small talk: no workflow.")))
     if is_resident and verified and is_noise_complaint(msg) and (not draft or draft["kind"] == "staff_handoff"):
         return handoff_plan("noise", "Noise complaint between neighbors: community team.", topic="Noise complaint",
                             team="management")
@@ -2583,6 +2728,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             d["queued"] = [strip_greeting(redact(p))[:200] for p in parts[1:3]]
             multi_note = t("multi_issue_named", lang, n=str(len(parts)), first=clean[0].lower() + clean[1:],
                            items="; ".join(q[0].lower() + q[1:] for q in d["queued"] if q))
+        if qf_queue and not in_maint_draft:  # Sprint 8 (D): the problem the tips were for waits on this card
+            kept = strip_greeting(redact(qf_queue))[:200]
+            d["queued"] = [*(d.get("queued") or []), kept][:3]
+            mem.pop(quickfix.MEM_KEY, None)
+            qf_side["on"] = False
+            multi_note = (multi_note + " " if multi_note else "") + t(
+                "quickfix_kept_first", lang, issue=kept[0].lower() + kept[1:])
         promise = in_maint_draft and (asks_for_promise(msg) or bool(_TIMING_Q.search(msg)) or asks_for_priority(msg))
         venting = in_maint_draft and frustration_only(msg)
         issue = d["fields"].get("issue", {}).get("value")
@@ -2849,15 +3001,21 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                                   r"tech (came|was here)|already (tried|checked|did)|otra vez|de nuevo|"
                                   r"ya pas[oó] antes", msg, re.I)
         if repeat and already_tried and not d.get("repeat_heard") and missing:
-            template = t("repeat_heard", lang) + " " + template.replace("I'm sorry this is happening again. ", "") \
-                .replace("Lamento que vuelva a pasar. ", "")
+            template = t(_heard_key(history.count), lang) + " " + template.replace(
+                "I'm sorry this is happening again. ", "").replace("Lamento que vuelva a pasar. ", "")
             d["repeat_heard"] = True
-        if first_turn and triage and triage.approved_troubleshooting and not repeat and triage.level == "routine" \
-                and not hazard_words and not already_tried and not diy and lang == "en" and \
-                not d.get("stated_repeat") and not multi_note:  # R-9: the approved tips exist in English only
-            # (Sprint 6: not after a split: the triage read the WHOLE message, so its tips may be for the other problem)
-            tip = " ".join(triage.approved_troubleshooting)
-            template += (" Meanwhile, a few safe checks: " if lang == "en" else " Mientras tanto: ") + tip
+        legacy = quickfix.legacy_checks(
+            msg, risk, mode=quickfix_mode, category=triage.category, steps=legacy_draft_steps(triage.category),
+            approved=legacy_checks_approved(), urgency=gate.urgency, repeat=repeat, lang=lang,  # type: ignore[arg-type]
+        ) if first_turn and triage and triage.level == "routine" and not repeat and not hazard_words and \
+            not already_tried and not diy and lang == "en" and not d.get("stated_repeat") and not multi_note and \
+            not qf_intake and "diy" not in locals_lead else None  # R-9: the legacy checks exist in English only
+        # (Sprint 6: not after a split: the triage read the WHOLE message, so its tips may be for the other problem)
+        # Sprint 8 fix round: the legacy checks are DRAFTS (not McKinley-approved): the same safety checks and content
+        # gate as the quick-fix tips; shown only in demo_drafts, labelled, or once McKinley approves them
+        if legacy and legacy.eligible:
+            template += " " + t("legacy_checks_draft" if legacy.draft else "legacy_checks", lang,
+                                items=" ".join(legacy.tips))
         if multi_note:
             template = multi_note + " " + template
         template = injection_lead + template
@@ -3393,7 +3551,11 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
             "stage": "submitted", "record": rec0, "confirm_label": None, "missing": [], "note": PROTOTYPE_NOTE[lang]})
         return ActionResult(ok=True, error_code="ALREADY_SAVED", action=action0, record=rec0,
                             message=t("already_saved", lang, what=WHAT[kind][lang].capitalize(), ref=rec0.id))
-    if near := wf.near_duplicate_of(store.records(session_id=session_id, limit=50), kind, taken, persona_id):
+    own_any = store.records(persona_id=persona_id, kind=kind, limit=200) if (persona_id and _verified(ctx) and
+                                                                            kind == "maintenance_request") else []
+    if near := wf.near_duplicate_of(store.records(session_id=session_id, limit=50), kind, taken, persona_id) or \
+            wf.near_duplicate_of([r for r in own_any if r.get("status") == "submitted_for_review"], kind, taken,
+                                 persona_id):  # Sprint 8 C: an open request from an earlier session counts too
         # Sprint 7 invariant: never a second record for the same repair unless the person says it's a different one
         store.save_draft(session_id, pkey, kind, {**taken, "stale": False})  # put it back, unsent
         return ActionResult(ok=False, error_code="POSSIBLE_DUPLICATE", action=_proposed(kind, taken, lang),

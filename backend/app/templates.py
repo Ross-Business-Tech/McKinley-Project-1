@@ -514,9 +514,22 @@ T: dict[str, dict[Lang, str]] = {
         "es": "No puedo confirmar precios ni ofertas especiales, ni reservar una tarifa desde aquí. El equipo de "
               "arrendamiento confirma los precios y ofertas vigentes. Puedo incluir lo que vio para que lo revisen.",
     },
-    "repeat_heard": {
-        "en": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again.",
-        "es": "Eso no está bien después de tantas visitas, y no le voy a pedir que lo revise otra vez.",
+    "repeat_heard": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: 3 or more earlier requests; was "this many visits")
+        "en": "That's not okay after this many times, and I'm not going to ask you to troubleshoot again.",
+        "es": "Eso no está bien después de tantas veces, y no le voy a pedir que lo revise otra vez.",
+    },
+    "praise_ack": {  # NEEDS McKINLEY REVIEW (Sprint 8 C): a compliment or small talk; no workflow starts
+        "en": "Glad to hear it! If there's anything you need, like a repair or a question about your community, just "
+              "tell me.",
+        "es": "¡Qué bueno! Si necesita algo, como una reparación o una pregunta sobre su comunidad, solo dígame.",
+    },
+    "repeat_heard_one": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: exactly 1 earlier request)
+        "en": "You've reported this before, so I'm not going to ask you to troubleshoot again.",
+        "es": "Usted ya reportó esto antes, así que no le voy a pedir que lo revise otra vez.",
+    },
+    "repeat_heard_two": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: exactly 2 earlier requests)
+        "en": "You've already reported this twice, so I'm not going to ask you to troubleshoot again.",
+        "es": "Usted ya reportó esto dos veces, así que no le voy a pedir que lo revise otra vez.",
     },
     # ---- sprint 5 (TEAM DRAFTS): recovery, follow-ups, honest limits ----
     "lost_draft": {
@@ -1064,6 +1077,56 @@ T: dict[str, dict[Lang, str]] = {
               "and I'll start a repair request.",
         "es": "Qué bueno que se resolvió. No envié nada a mantenimiento. Si vuelve a fallar, dígame y empiezo una "
               "solicitud de reparación.",
+    },
+    # ---- Sprint 8 (D) fix round. NEEDS McKINLEY REVIEW (every key below) ----
+    "quickfix_side_reminder": {
+        "en": "About the earlier problem: did the tips fix it? Reply yes, or say \"send a request\".",
+        "es": "Sobre el problema de antes: ¿lo resolvieron los consejos? Responda sí, o diga \"envíen una solicitud\".",
+    },
+    "quickfix_kept_first": {
+        "en": "I've also kept the earlier problem ({issue}). If the tips didn't fix it, I can start that request "
+              "after this one.",
+        "es": "También guardé el problema de antes ({issue}). Si los consejos no lo resolvieron, puedo empezar esa "
+              "solicitud después de esta.",
+    },
+    "quickfix_unsafe_disposal_hand": {
+        "en": "No. Please never put your hand or anything else into the disposal, even when it's switched off. "
+              "Leave it off and let maintenance get it out.",
+        "es": "No. Por favor nunca meta la mano ni nada más en el triturador, aunque esté apagado. Déjelo apagado y "
+              "que mantenimiento lo saque.",
+    },
+    "quickfix_unsafe_panel_cover": {
+        "en": "No. Please don't take the cover off the breaker panel or tape a breaker on. Only the switches behind "
+              "its door are for residents; anything else is for maintenance.",
+        "es": "No. Por favor no quite la tapa del panel de breakers ni fije un breaker encendido. Solo los "
+              "interruptores detrás de la puerta son para residentes; lo demás lo hace mantenimiento.",
+    },
+    "quickfix_unsafe_chemical_drain": {
+        "en": "No. Please don't use chemical drain cleaners or boiling water. They can splash back and damage the "
+              "pipes; maintenance can clear it.",
+        "es": "No. Por favor no use destapacaños químicos ni agua hirviendo. Pueden salpicar y dañar la tubería; "
+              "mantenimiento lo puede destapar.",
+    },
+    "quickfix_unsafe_wires": {
+        "en": "No. Please don't touch, tape or reconnect any wires, or change an outlet yourself. Electrical work is "
+              "for maintenance.",
+        "es": "No. Por favor no toque, encinte ni reconecte cables, ni cambie un enchufe usted mismo. El trabajo "
+              "eléctrico lo hace mantenimiento.",
+    },
+    "quickfix_unsafe_pesticide": {
+        "en": "No. Please don't set off bug foggers or use poisons yourself: foggers can catch fire and make people "
+              "and pets sick. Report it and staff can advise on pest control.",
+        "es": "No. Por favor no use bombas insecticidas ni venenos usted mismo: pueden incendiarse y enfermar a "
+              "personas y mascotas. Repórtelo y el personal puede orientarle sobre el control de plagas.",
+    },
+    "legacy_checks": {
+        "en": "Meanwhile, a few checks: {items}",
+        "es": "Mientras tanto: {items}",
+    },
+    "legacy_checks_draft": {
+        "en": "Meanwhile, a few draft checks for this demo (not yet approved by McKinley): {items}",
+        "es": "Mientras tanto, unas revisiones en borrador para esta demostración (aún no aprobadas por McKinley): "
+              "{items}",
     },
     "quickfix_ask_again": {
         "en": "Did those steps fix it? Reply yes, or no and I'll start a repair request.",

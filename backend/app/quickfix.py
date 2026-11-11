@@ -83,11 +83,18 @@ EXCLUSIONS: dict[str, re.Pattern[str]] = {
                          r"\bwir(es|ing)\b", r"\bshock(ed)?\b", r"\bzap(ped)?\b", r"electrocut", r"chispa",
                          r"cables? (expuest|pelad|suelt|colgand)", r"\bdescarga", r"\bme dio (un )?toque\b",
                          r"electrocut"),
-    "water": _rx(r"\bleak", r"\bflood", r"overflow", r"water (is )?(on|all over) the floor", r"\bpuddles?\b",
+    "water": _rx(r"\bleak", r"\bfl[oa]+d", r"overfl", r"\bgush", r"\bpour(s|ing|ed)?\b", r"\bspread(s|ing)?\b",
+                 r"\bburst", r"water heater", r"standing water", r"\bsplash", r"\bceiling\b",
+                 r"water[^.?!]{0,30}\b(floors?|carpet|rug|ground)\b", r"\b(floors?|carpet|rug)\b[^.?!]{0,20}\b(wet|"
+                 r"soaked|flooded|covered|soggy)\b", r"agua[^.?!]{0,30}\b(piso|suelo|alfombra)\b",
+                 r"water (is )?(spreading|everywhere|all over|pouring|gushing|coming (in|through|out|up))",
+                 r"\bpuddles?\b",
                  r"water (under|beneath|below|around|coming out|everywhere|dripping)", r"\bdripping\b", r"\bwet\b",
                  r"\bdamp\b", r"\bsoak", r"back(ing|ed)? ?up", r"spill(ing|ed)? over", r"gote", r"\bfugas?\b",
                  r"inund", r"desbord", r"\bcharcos?\b", r"agua (en|por) (el|todo el) (piso|suelo)", r"mojad",
-                 r"h[uú]med", r"rebos", r"se (sale|regresa|devuelve) el agua", r"agua (debajo|abajo|alrededor)"),
+                 r"h[uú]med", r"rebos", r"se (sale|regresa|devuelve) el agua", r"agua (debajo|abajo|alrededor)",
+                 r"agua por todo", r"(sale|saliendo|brota|brotando|chorrea|chorreando) (mucha )?agua", r"\bchorr",
+                 r"derram", r"\btecho\b", r"calentador de agua", r"boiler"),
     "co": _rx(r"carbon monoxide", r"\bco (alarm|detector)\b", r"mon[oó]xido"),
     "injury": _rx(r"\bhurt", r"injur", r"bleed", r"\bblood", r"\bcut (my|his|her|their)", r"burned (my|his|her)",
                   r"\bherid", r"sangr", r"me cort[eé]", r"me quem[eé]", r"lastim", r"\bfinger", r"\bhand (is )?stuck",
@@ -114,15 +121,12 @@ _ALREADY = _rx(r"already (tried|reset|flipped|pressed|checked|did|cleaned|plunge
                r"flip|press|unclog|plung|clean)", r"\bi (reset|flipped|pressed) (it|the)", r"reset (it|the \w+) "
                r"(already|twice|again)", r"\bya (lo |la )?(reinici|intent|prob|presion|limpi|baj|sub|resete)",
                r"\bintent[eé]\b")
+# water words a faucet DRIP itself uses: the legacy drip checks may skip only these, never the spreading ones
+_DRIP_ONLY = re.compile(r"\bleak\w*|\bdripp?\w*|\bgote\w*|\bfugas?\b", re.I)
 _REPEAT_WORDS = _rx(r"keeps? (tripping|happening|clogging|going out|shutting off|turning off|clicking off|popping)",
                     r"\b(again|every time|each time|repeatedly|constantly|over and over|all the time)\b",
                     r"(second|third|\d+(st|nd|rd|th)) time", r"\botra vez\b", r"\bde nuevo\b", r"cada vez",
                     r"se sigue", r"sigue (bot|salt|tap|baj)", r"siempre (se|pasa)", r"varias veces")
-# a degraded / uncertain classifier: any possible-risk word is enough to stay out
-_POSSIBLE_RISK = _rx(r"\bhot\b", r"\bwarm\b", r"\bheat", r"\bsmell", r"\bodor", r"\bnois", r"\bloud\b", r"\bweird\b",
-                     r"\bstrange\b", r"\bpop(ped|ping|s)?\b", r"\bbang", r"\bcrack", r"\bsizzl", r"\bcaliente",
-                     r"\bolor", r"\bhuele", r"\bruido", r"\braro\b", r"\bextra[nñ]o")
-
 # ---- trigger families (structure: object + symptom, EN + ES) -------------------------------------------------------
 _NOT_WORKING = (r"(not|n'?t|stopped|quit|no longer|won'?t|doesn'?t|isn'?t|aren'?t|don'?t) ?(be )?(work|turn|run|"
                 r"start|com|power|go)\w*|\bdead\b|\bbroken?\b|\bno power\b|\bwon'?t (turn|go) on\b|\bnothing happens\b|"
@@ -137,6 +141,8 @@ _BREAKER_WORD = _rx(r"\b(circuit )?breakers?\b", r"tripped (a |the |my )?(circui
 _POWER_OUT = _rx(r"\b(lost|no|lose|losing) (power|electricity)\b", r"power (went|is|has gone|cut) (out|off)",
                  r"(outlets?|plugs?|lights?|lamps?) (and|&|y) (outlets?|plugs?|lights?|lamps?)",
                  r"(half|some|several|all|most|a few|two|three) (of )?(my |the )?(outlets|plugs|sockets)",
+                 r"(half|some|several|most|a few|two|three) (of )?(my |the )?(lights|lamps|light fixtures)",
+                 r"(la mitad|varias|algunas) (de )?(las |mis )?(luces|l[aá]mparas|focos)",
                  r"\bse (fue|cort[oó]) la luz\b", r"\b(sin|no hay) (luz|electricidad|corriente)\b",
                  r"(la mitad|varios|algunos|todos) (de )?(los )?(enchufes|tomacorrientes|contactos)",
                  r"(enchufes|tomacorrientes|contactos) y (luces|focos)", r"(luces|focos) y (enchufes|tomacorrientes)")
@@ -153,8 +159,9 @@ _DISPOSAL_SYMPTOM = _rx(_NOT_WORKING, r"\bhum(s|ming|med)?\b", r"\bjamm?ed\b", r
 _FIXTURE = _rx(r"\bsinks?\b", r"\b(bath)?tubs?\b", r"\bshowers?\b", r"\bbasin\b", r"\blavabos?\b", r"fregadero",
                r"lavamanos", r"lavaplatos", r"\btinas?\b", r"ba[nñ]era", r"regadera", r"\bducha\b", r"\bdrains?\b",
                r"desag[uü]e", r"cola?dera")
-_CLOG = _rx(r"\bclog", r"\bslow(ly)?\b.{0,20}\bdrain", r"\bdrain\w* (really |very |so )?slow", r"\bslow drain",
-            r"(won'?t|doesn'?t|isn'?t|not|n'?t) drain", r"stopped up", r"\bstanding water\b", r"water (just )?"
+_CLOG = _rx(r"\bclog", r"\bslow(ly)?\b.{0,20}\bdrain", r"\bdrain\w* (\w+ ){0,2}slow",
+            r"takes? (forever|ages|a long time) to drain", r"\bslow drain",
+            r"(won'?t|doesn'?t|isn'?t|not|n'?t) drain", r"stopped up", r"water (just )?"
             r"(sits|stays|pools)", r"\btapad", r"\btap[oó]\b", r"atascad", r"\batasc", r"drena (muy )?lento",
             r"no (drena|baja|se va)( el agua)?", r"se queda el agua", r"agua estancada", r"tarda en (drenar|bajar)")
 _TOILET = _rx(r"toilet", r"\bloo\b", r"commode", r"inodoro", r"escusado", r"excusado", r"\btaza\b", r"\bwc\b")
@@ -203,6 +210,50 @@ _ENTRY_EXCLUSIONS: dict[str, dict[str, re.Pattern[str]]] = {
 }
 
 
+# ---- explicit unsafe questions / plans: a direct "no" (templates quickfix_unsafe_<kind>), never tips -------------
+_ASKS_OR_PLANS = (r"(\?|\bcan i\b|\bcould i\b|\bshould i\b|\bmay i\b|\bis it (ok|okay|safe|fine|alright)\b|"
+                  r"\bam i (allowed|able)\b|\bi'?m (going|gonna|about) to\b|\bi'?ll just\b|\bi want to\b|"
+                  r"\bhow (do|can|should) i\b|\bwhat if i\b|\bpuedo\b|\bdebo\b|\bvoy a\b|\bse puede\b|"
+                  r"\bes seguro\b|\bc[oó]mo (le )?hago\b|\bquiero\b)")
+UNSAFE_QUESTIONS: dict[str, tuple[re.Pattern[str], re.Pattern[str]]] = {
+    # (context, unsafe act); both must appear, plus a question or a stated plan
+    "disposal_hand": (_rx(r"\bdisposal\b", r"\bdisposer\b", r"triturador"),
+                      _rx(r"\b(reach|stick|put|shove)\b[^.?!]{0,20}\b(in|into|inside|down)\b",
+                          r"\b(hand|fingers?|arm)\b[^.?!]{0,25}\b(in|into|inside|down)\b",
+                          r"\b(grab|pull|fish|get|take)\b[^.?!]{0,15}\bout\b", r"\bgrab (it|that|the)\b",
+                          r"\b(unjam|untangle|turn) (it|the blades?)\b[^.?!]{0,15}\b(by hand|with my hand)",
+                          r"(meter|meto|met[ae]r) (la )?mano", r"con (la|mi) mano", r"sacar(lo|la)?\b")),
+    "panel_cover": (_rx(r"\bbreakers?\b", r"\bpanel\b", r"\bpastilla", r"\bfuse ?box\b",
+                        r"caja de (fusibles|breakers)"),
+                    _rx(r"\b(take|pull|remove|unscrew|pry|open)\b[^.?!]{0,20}\b(cover|front|faceplate|dead ?front|"
+                        r"screws)\b", r"\b(take|pull) (it|the panel) (off|apart)\b", r"quitar (la )?tapa",
+                        r"(destornillar|abrir) (el )?panel", r"\b(tape|hold|tie|wedge)\b[^.?!]{0,20}\b(on|up)\b")),
+    "chemical_drain": (_rx(r"\bdrains?\b", r"\bsinks?\b", r"\btubs?\b", r"\bshower", r"\bclog", r"desag", r"lavabo",
+                           r"fregadero", r"regadera", r"\btina\b", r"tapad"),
+                       _rx(r"drano", r"liquid.?plumr", r"drain cleaner", r"\bchemicals?\b", r"\bbleach\b", r"\blye\b",
+                           r"\bacid\b", r"boiling water", r"destapa(ca[nñ]os|dor)", r"qu[ií]mic", r"\bcloro\b",
+                           r"\bsosa\b", r"agua hirviendo")),
+    "wires": (_rx(r"\bwires?\b", r"\bwiring\b", r"\bcables?\b", r"\bgfci?\b", r"\boutlets?\b", r"enchufe",
+                  r"tomacorriente"),
+              _rx(r"\b(touch|fix|connect|reconnect|tape|twist|splice|strip|rewire|swap|replace|bypass|disable|"
+                  r"unscrew|open)\b[^.?!]{0,20}\b(wires?|wiring|cables?|outlet|gfci?|it)\b",
+                  r"(tocar|conectar|arreglar|cambiar|abrir) (los |el |la )?(cables?|enchufe|tomacorriente)")),
+    "pesticide": (_rx(r"\broach", r"\bbugs?\b", r"\bpests?\b", r"\bants?\b", r"\bmice\b", r"\bmouse\b", r"\brats?\b",
+                      r"bed ?bugs", r"cucaracha", r"plaga", r"hormiga", r"rat[oó]n", r"chinche"),
+                  _rx(r"fogger", r"bug ?bomb", r"\bbomb\b", r"pesticide", r"insecticide", r"\bpoison", r"\braid\b",
+                      r"fumigat", r"\bbleach\b", r"veneno", r"insecticida", r"fumig", r"\bcloro\b")),
+}
+
+
+def unsafe_question(message: str) -> str | None:
+    """A question or a stated plan to do something unsafe with one of these issues ("can I reach in and grab it?",
+    "should I take the panel cover off?", "can I pour drano in it?"). The planner answers with a direct "no"."""
+    if not re.search(_ASKS_OR_PLANS, message, re.I):
+        return None
+    return next((k for k, (ctx, act) in UNSAFE_QUESTIONS.items() if ctx.search(message) and act.search(message)),
+                None)
+
+
 def _gfci_shape(text: str) -> bool:
     if _GFCI_WORD.search(text):
         return True
@@ -236,9 +287,15 @@ def match_entry(message: str) -> str | None:
     return next((eid for eid, fn in _MATCHERS if fn(message)), None)
 
 
-def exclusion(message: str) -> str | None:
-    """The first universal exclusion class this message hits (None = none)."""
-    return next((name for name, pat in EXCLUSIONS.items() if pat.search(message)), None)
+def exclusion(message: str, allow_drip: bool = False) -> str | None:
+    """The first universal exclusion class this message hits (None = none). `allow_drip`: the legacy faucet-drip checks
+    may name a drip or a leak, but nothing that spreads (floor, flooding, under the sink, ceiling...)."""
+    for name, pat in EXCLUSIONS.items():
+        if name == "water" and allow_drip and not pat.search(_DRIP_ONLY.sub(" ", message)):
+            continue
+        if pat.search(message):
+            return name
+    return None
 
 
 def wants_intake(message: str) -> bool:
@@ -250,12 +307,9 @@ def _no(why: str) -> QuickFixResult:
     return QuickFixResult(eligible=False, reason=why)
 
 
-def check_eligibility(message: str, risk: Any, *, mode: Mode, lang: str = "en", urgency: str | None = None,
-                      repeat: bool = False, used: list[str] | tuple[str, ...] = (),
-                      semantic_level: str | None = None) -> QuickFixResult:
-    """Whether tips may be shown for THIS message. `risk` is this turn's app.risk RiskDecision (the planner passes it);
-    `urgency` the gate urgency; `repeat` a repeat-issue triage; `used` the entry ids already offered;
-    `semantic_level` the classifier's risk level when known ("uncertain" counts like a degraded classifier)."""
+def _refusal(message: str, risk: Any, *, mode: str, urgency: str | None, repeat: bool, semantic_level: str | None,
+             allow_drip: bool = False) -> QuickFixResult | None:
+    """The checks every tip (quick-fix entry or legacy check) must pass first. None = no refusal."""
     if mode not in ("approved_only", "demo_drafts"):
         return _no("mode_off")
     if risk is None:
@@ -266,12 +320,19 @@ def check_eligibility(message: str, risk: Any, *, mode: Mode, lang: str = "en", 
         return _no("safety_decision")
     if urgency == "emergency":
         return _no("safety_decision")
+    # Fix round P1-2: a failed / timed-out / rate-limited / unusable classifier (decision.degraded) or an "uncertain"
+    # one is never a negative safety finding, so no tips at all (not only when a risk word appears)
+    if getattr(risk, "degraded", False) or semantic_level in ("uncertain", "urgent", "emergency"):
+        return _no("classifier_degraded")
+    from app.intake import unsafe_diy_kind  # read-only
     from app.risk.detect import detect  # read-only second look at the message (Agent A's deterministic layer)
 
     det = detect(message, None)
     if det.kind or det.mentioned_kind or det.care or det.concern:
         return _no("safety_detector")
-    if ex := exclusion(message):
+    if unsafe_question(message) or unsafe_diy_kind(message):
+        return _no("unsafe_question")
+    if ex := exclusion(message, allow_drip=allow_drip):
         return _no(f"excluded:{ex}")
     if wants_intake(message):
         return _no("resident_wants_intake")
@@ -279,14 +340,40 @@ def check_eligibility(message: str, risk: Any, *, mode: Mode, lang: str = "en", 
         return _no("already_tried")
     if repeat:
         return _no("repeat_issue")
+    return None
+
+
+def legacy_checks(message: str, risk: Any, *, mode: Mode, category: str, steps: list[str], approved: bool,
+                  urgency: str | None = None, repeat: bool = False, semantic_level: str | None = None,
+                  lang: str = "en") -> QuickFixResult:
+    """The legacy "a few checks" line (app/workflows.LEGACY_DRAFT_TROUBLESHOOTING) behind the SAME safety checks and the
+    SAME approval gate: approved_only shows them only once McKinley approves them; demo_drafts labels them draft."""
+    if not steps:
+        return _no("no_steps")
+    if refused := _refusal(message, risk, mode=mode, urgency=urgency, repeat=repeat, semantic_level=semantic_level,
+                           allow_drip=category == "plumbing_drip"):
+        return refused
+    if not approved and mode != "demo_drafts":
+        return _no("no_approved_content")
+    return QuickFixResult(eligible=True, reason="ok", category=category, tips=list(steps[:MAX_TIPS]),
+                          draft=not approved, label=None if approved else DRAFT_LABEL.get(lang, DRAFT_LABEL["en"]))
+
+
+def check_eligibility(message: str, risk: Any, *, mode: Mode, lang: str = "en", urgency: str | None = None,
+                      repeat: bool = False, used: list[str] | tuple[str, ...] = (),
+                      semantic_level: str | None = None) -> QuickFixResult:
+    """Whether tips may be shown for THIS message. `risk` is this turn's app.risk RiskDecision (the planner passes it);
+    `urgency` the gate urgency; `repeat` a repeat-issue triage; `used` the entry ids already offered;
+    `semantic_level` the classifier's risk level when known ("uncertain" counts like a degraded classifier)."""
+    if refused := _refusal(message, risk, mode=mode, urgency=urgency, repeat=repeat,
+                           semantic_level=semantic_level):
+        return refused
     eid = match_entry(message)
     if eid is None:
         return _no("no_matching_entry")
     for name, pat in _ENTRY_EXCLUSIONS.get(eid, {}).items():
         if pat.search(message):
             return _no(f"excluded:{name}")
-    if (getattr(risk, "degraded", False) or semantic_level == "uncertain") and _POSSIBLE_RISK.search(message):
-        return _no("classifier_uncertain_possible_risk")
     if eid in used:
         return _no("already_offered")
     entry = _BY_ID[eid]
@@ -305,13 +392,19 @@ _RESOLVED = _rx(r"\b(yes|yeah|yep|yup|sure did|it did)\b", r"(that|it|this) (wor
                 r"helped|solved it)", r"\bworks?( now| again)?\b", r"working (now|again)", r"\bfixed\b", r"all good",
                 r"(back|came back) on", r"\bsolved\b", r"\bperfect\b", r"\bs[ií]\b", r"funcion[oó]", r"ya (funciona|"
                 r"sirve|qued[oó]|jala|prende|baja|drena)", r"se (arregl|solucion)[oó]", r"\blisto\b", r"\bresuelto\b")
-_NOT_RESOLVED = _rx(r"^\W*(no|nope|nah|negative)\b", r"not really", r"(didn'?t|did not|doesn'?t|does not|won'?t|isn'?t)"
-                    r" (work|help|fix|stay|change|do)", r"\bstill\b", r"no luck", r"same (thing|as before|problem)",
-                    r"tripped again", r"(clicked|went) (off|out) again", r"nothing (happened|changed)",
-                    r"no (funcion[oó]|sirvi[oó]|cambi[oó]|ayud[oó]|se arregl[oó])", r"\bsigue\b", r"todav[ií]a",
-                    r"a[uú]n no", r"\bigual\b", r"\bmaybe\b", r"not sure", r"\bkind of\b", r"no s[eé]",
-                    r"\bcan'?t (find|reach|open|see)\b", r"no (encuentro|alcanzo|veo)", r"\bwhere is\b",
-                    r"no (lo|la) (encuentro|veo)")
+_NOT_RESOLVED = _rx(r"^\W*(no+|nope|nah|negative)\b", r"not really", r"(didn'?t|did not|doesn'?t|does not|won'?t|"
+                    r"isn'?t|wouldn'?t) (work|help|fix|stay|change|do|start|turn|drain|go)",
+                    r"\bstill (not|isn'?t|doesn'?t|won'?t|dead|slow|clogged|off|out|hums|humming|broken|nothing|"
+                    r"the same|no|tripp\w*|jammed|stuck|there|happening|going|draining|backed)\b",
+                    r"\b(it'?s|its) still\b",
+                    r"\bstill\W*$", r"no luck", r"same (thing|as before|problem)", r"tripped again",
+                    r"(clicked|went|turned) (off|out) again", r"nothing (happened|changed)",
+                    r"no (funcion[oó]|sirvi[oó]|cambi[oó]|ayud[oó]|se arregl[oó]|jal[oó])", r"\bsigue\b",
+                    r"todav[ií]a no", r"a[uú]n no", r"\bigual\b", r"\bmaybe\b", r"not sure", r"\bkind of\b",
+                    r"no s[eé]\b", r"\bcan'?t (find|reach|open|see|get to)\b", r"no (encuentro|alcanzo|veo)",
+                    r"where (is|are|do i find) (the|my) (breaker|panel|reset|button|stopper|switch|gfci|outlet|"
+                    r"hair catcher|plug)", r"no (lo|la) (encuentro|veo)", r"\b(rather|prefer) not\b",
+                    r"didn'?t (try|want)", r"no (quiero|prefiero)")
 
 
 def classify_reply(message: str) -> ReplyKind:
@@ -326,7 +419,10 @@ def classify_reply(message: str) -> ReplyKind:
     return "unclear"
 
 
-FlowAction = Literal["close_resolved", "intake", "ask_again", "none"]
+# close_resolved: no record | intake: the repair request for the ORIGINAL issue | ask_again: once | other: not an
+# answer (a side question or a new problem; the planner decides which and keeps the offer) | none: no offer / safety
+FlowAction = Literal["close_resolved", "intake", "ask_again", "other", "none"]
+MAX_SIDE_TURNS = 2  # an offer survives at most this many unrelated turns, then it lapses (the issue is in history)
 
 
 @dataclass(frozen=True)
@@ -338,13 +434,18 @@ class FlowStep:
 
 def offered_memory(mem: dict[str, Any], result: QuickFixResult) -> None:
     """Record an offer in planner memory (ids and counts only)."""
-    mem[MEM_KEY] = {"state": "offered", "entry": result.entry_id, "asked": 0}
+    mem[MEM_KEY] = {"state": "offered", "entry": result.entry_id, "asked": 0, "side": 0}
     mem[USED_KEY] = list(dict.fromkeys([*(mem.get(USED_KEY) or []), result.entry_id]))[-8:]
+
+
+def _not_an_answer(message: str) -> bool:
+    """A question or a longer message that answers nothing ("also when is my rent due?", "my closet door is off")."""
+    return "?" in message or len(re.findall(r"[A-Za-zÀ-ÿ']+", message)) > 3
 
 
 def follow_up(pending: dict[str, Any] | None, message: str, risk: Any) -> tuple[FlowStep, dict[str, Any] | None]:
     """The turn after an offer. `pending` is mem[MEM_KEY] popped by the planner at the start of the turn (so an offer
-    lives for one turn only). Returns the step and the memory to keep (None = the flow is over).
+    lives one turn unless kept). Returns the step and the memory to keep (None = the flow is over).
     Any safety signal this turn ends the flow and the message is handled normally (safety steps come first)."""
     if not pending or pending.get("state") != "offered":
         return FlowStep("none"), None
@@ -356,16 +457,12 @@ def follow_up(pending: dict[str, Any] | None, message: str, risk: Any) -> tuple[
         return FlowStep("close_resolved", kind, eid), None
     if kind in ("not_resolved", "skip"):
         return FlowStep("intake", kind, eid), None
-    if match_entry(message) is None and len(message.split()) > 6:
-        return FlowStep("none", kind, eid), None  # a different topic: never trap it in the tips flow
+    if _not_an_answer(message):
+        side = int(pending.get("side", 0)) + 1
+        return FlowStep("other", kind, eid), ({**pending, "side": side} if side <= MAX_SIDE_TURNS else None)
     if int(pending.get("asked", 0)) >= 1:
         return FlowStep("intake", kind, eid), None  # asked once already: the repair request, not a third question
     return FlowStep("ask_again", kind, eid), {**pending, "asked": int(pending.get("asked", 0)) + 1}
-
-
-_ANSWER_LEAD = re.compile(r"^\W*(?:no+|nope|nah|yes|yeah|ok(?:ay)?|s[ií]|it|that|this)?\W*(?:it\s+)?(?:still\s+)?"
-                          r"(?:didn'?t|did not|doesn'?t|isn'?t|won'?t|not)?\s*(?:work(?:ing)?|help|fix(?:ed)?(?: it)?)?"
-                          r"\W*", re.I)
 
 
 def issue_from_recent(recent: list[str] | None, entry_id: str | None) -> str | None:
@@ -377,11 +474,24 @@ def issue_from_recent(recent: list[str] | None, entry_id: str | None) -> str | N
     return None
 
 
+# a clause of the answer that adds information for the request: where, entry permission, when to visit
+_DETAIL = _rx(r"\b(kitchen|bath ?room|bedroom|master|guest|hall(way)?|living room|laundry|garage|closet|upstairs|"
+              r"downstairs|basement|patio|balcony|half bath|primary|second|front|back)\b",
+              r"\b(come in|enter|let (your|them)sel(f|ves) in|any ?time|whenever|key|knock|call me first|text me first|"
+              r"i'?m home|not home|i work|mornings?|afternoons?|evenings?|weekdays?|weekends?|after \d|before \d)\b",
+              r"\b(cocina|ba[nñ]o|rec[aá]mara|cuarto|habitaci[oó]n|sala|pasillo|lavander[ií]a|garaje|arriba|abajo)\b",
+              r"\b(pueden entrar|entren|cuando quieran|a cualquier hora|ll[aá]menme|av[ií]senme|ma[nñ]anas?|tardes?|"
+              r"noches?|fines de semana|entre semana)\b")
+_CLAUSES = re.compile(r"(?<=[.;!?])\s+|,\s*|\s+(?:and|but|y|pero)\s+", re.I)
+
+
 def intake_message(issue: str | None, reply: str) -> str:
-    """What the repair intake reads: the original issue, plus extra details from the answer ("no, it's the hall
-    bathroom, come in any time"); an answer that is only "no" / "send maintenance" adds nothing."""
+    """What the repair intake reads: the original issue, word for word, plus WHOLE clauses of the answer that add
+    information (a room, entry permission, a visit time). Nothing is ever cut out of a clause; an answer that is only
+    "nope, still dead" or "I'd rather not touch the panel, can you just send someone" adds nothing."""
     if not issue:
         return reply
-    rest = _SKIP.sub(" ", _ANSWER_LEAD.sub("", reply, count=1)).strip(" ,.;!-")
-    words = re.findall(r"[A-Za-zÀ-ÿ']{2,}", rest)
-    return f"{issue.rstrip('. ')}. {rest}" if len(words) >= 3 else issue
+    extra = [c.strip(" .;!?") for c in _CLAUSES.split(reply) if c and c.strip(" .;!?")]
+    extra = [c for c in extra if _DETAIL.search(c) and not wants_intake(c) and match_entry(c) is None]
+    base = issue.rstrip(" .")
+    return base + "".join(f". {c}" for c in extra) if extra else issue

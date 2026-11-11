@@ -22,6 +22,7 @@ from app.intake import is_explicit_send, is_noise_complaint, split_issues
 from app.state import get_state
 from app.understanding import DialogueAct, entry_value, field_edits, requests_human, understand_rules
 from app.utterance import analyze, date_readback, field_corrections, normalize, segments
+from tests.conftest import forget_persona_records
 from tests.test_sprint6_conversation import chat, fields, press_send
 
 META = settings(max_examples=40, deadline=None, derandomize=True, database=None,
@@ -449,6 +450,7 @@ def test_exposure_near_misses_are_ordinary_repairs_or_questions(client, msg):
 @given(change=st.sampled_from(["actually yes send it", "send it after all", "wait no, send it", "ok send it now"]))
 def test_typed_send_after_dont_send_restores_the_same_card_never_a_command_value(client, change):
     s = sid()
+    forget_persona_records("R001")  # Sprint 8 C: examples share a store; each starts with no open R001 request
     _repair_ready(client, s)
     chat(client, "don't send it, cancel", s, "R001")
     r = chat(client, change, s, "R001")

@@ -143,3 +143,14 @@ def throwaway_pg_url() -> str:
                                 "host). These tests delete data: use a throwaway database, or set "
                                 "ALLOW_DESTRUCTIVE_DB_TESTS=1 for a throwaway Supabase project.")
     return url
+
+
+def forget_persona_records(persona: str) -> None:
+    """Sprint 8 C: hypothesis examples in one test share one store, and an OPEN request the persona saved in an
+    earlier session now gets a follow-up note instead of a second record. Tests that need a clean persona per example
+    (they test something else) call this first. Test-only: the app has no delete path for records."""
+    from app.state import get_state
+
+    store = get_state().store
+    with store._lock, store._tx():
+        store._q("DELETE FROM prototype_records WHERE persona_id=?", (persona,))

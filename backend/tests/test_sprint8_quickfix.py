@@ -183,9 +183,13 @@ def test_degraded_or_uncertain_classifier_with_possible_risk_gives_no_tips(msg):
     assert not qf.check_eligibility(msg, none_risk(), mode="demo_drafts", semantic_level="uncertain").eligible
 
 
-def test_degraded_classifier_without_any_risk_word_still_allows_tips():
+def test_degraded_classifier_never_allows_tips_even_without_a_risk_word():
+    # fix round P1-2 (was: a degraded classifier without a risk word still allowed tips). A failed / timed-out /
+    # rate-limited classifier is never a negative safety finding.
     degraded = RiskDecision(response="none", rule="R8", degraded=True)
-    assert qf.check_eligibility("my breaker tripped", degraded, mode="demo_drafts").eligible
+    assert qf.check_eligibility("my breaker tripped", degraded, mode="demo_drafts").reason == "classifier_degraded"
+    assert not qf.check_eligibility("my bathtub is clogged", none_risk(), mode="demo_drafts",
+                                    semantic_level="uncertain").eligible
 
 
 @pytest.mark.parametrize("msg", ["my breaker tripped, just send maintenance", "the disposal won't turn on. please "
@@ -339,9 +343,15 @@ def test_a_safety_signal_on_the_follow_up_ends_the_flow():
 
 
 def test_a_different_topic_is_not_trapped_in_the_flow():
+    # fix round (was: the offer was dropped). A side question is answered normally and the offer is KEPT, at most
+    # MAX_SIDE_TURNS times, so a later "still not working" still goes to the original issue
     step, keep = qf.follow_up(offered()[qf.MEM_KEY], "what are the office hours for the leasing office today",
                               none_risk())
-    assert step.action == "none" and keep is None
+    assert step.action == "other" and keep and keep["side"] == 1
+    step2, keep2 = qf.follow_up(keep, "and when is my rent due?", none_risk())
+    assert step2.action == "other" and keep2 and keep2["side"] == 2
+    step3, keep3 = qf.follow_up(keep2, "is the pool open this weekend?", none_risk())
+    assert step3.action == "other" and keep3 is None  # lapses; the issue is still in the history
 
 
 def test_no_repeat_offer_for_the_same_issue():
@@ -352,7 +362,7 @@ def test_no_repeat_offer_for_the_same_issue():
 
 def test_memory_holds_ids_only():
     mem = offered()
-    assert mem == {qf.MEM_KEY: {"state": "offered", "entry": "qf-slow-drain", "asked": 0},
+    assert mem == {qf.MEM_KEY: {"state": "offered", "entry": "qf-slow-drain", "asked": 0, "side": 0},
                    qf.USED_KEY: ["qf-slow-drain"]}
 
 

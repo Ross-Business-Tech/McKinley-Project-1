@@ -201,11 +201,16 @@ def test_stated_repeat_with_no_related_history_makes_no_history_claim(client):
 
 
 def test_one_own_earlier_request_gives_singular_wording(client):
-    chat(client, "the dishwasher is leaking", "R003", "a")
-    chat(client, "kitchen, yes you can enter", "R003", "a")
-    assert confirm(client, "R003", "a")["ok"]
+    # Fix round: an OPEN own prototype request for the same thing now gets a follow-up note (not a new card), so the
+    # single earlier request here is a CLOSED workbook item of R003's own (synthetic, added for this test)
+    from app.context import Interaction
+    get_state().deps.workbook.residents["R003"].interactions.append(Interaction(
+        interaction_id="I950", resident_id="R003", timestamp=datetime(2026, 11, 5, 9, 0), channel="chat",
+        category="maintenance", subject="Dishwasher leaking", full_text="", status="closed", resolved_date=None,
+        follow_up_needed=False))
     r = chat(client, "the dishwasher is leaking again", "R003", "b")
     assert "I found 1 related maintenance request in the last 7 days" in r["reply"], r["reply"]
+    assert "You've reported this before" in r["reply"] and "this many" not in r["reply"]
     assert "requests" not in r["reply"].split("community manager")[0].split("I found")[1]
 
 

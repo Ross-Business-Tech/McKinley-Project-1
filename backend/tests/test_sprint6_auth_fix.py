@@ -157,7 +157,7 @@ def test_near_misses_stay_clear(msg):
 @pytest.mark.parametrize("claim", NON_HOLDER[:5])
 def test_non_holder_claim_then_status_lists_nothing(client, claim):
     earlier = r001_request(client, "nh-before")  # an earlier session's request by the real persona
-    current = r001_request(client, "nh")
+    current = r001_request(client, "nh", "The bathroom fan is loud")  # Sprint 8 C: a different problem (no dup)
     chat(client, claim, "R001", "nh")
     for ask in ("show my requests", "any update on the leak under my sink?", f"status of {earlier}?",
                 f"is {current} fixed?", "what repairs are open?"):
