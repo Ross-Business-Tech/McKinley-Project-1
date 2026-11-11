@@ -261,7 +261,9 @@ _HUMAN_FRAMES_2 = [
                r"(?:\s+de la oficina)?\s+me\s+(?:llame|contacte|escriba|atienda|ayude)\b|"
                r"\bque\s+(?:alguien|una persona|la oficina|un gerente)(?:\s+de la oficina)?\s+me\s+(?:llame|"
                r"contacte)\b|"
-               r"\bquiero (?:una persona|un humano|un gerente|hablar con alguien)\b", re.I),
+               r"\bquiero (?:una persona|un humano|un gerente|hablar con alguien)\b|\b(?:quiero|necesito|"
+               r"me gustar[ií]a) que me "
+    r"(?:llamen|contacten|llame)\b|\bque me llamen de la oficina\b", re.I),
 ]
 _HUMAN_ENTRY = re.compile(r"\b(?:first|before (?:they |you |anyone )?(?:come|coming|enter\w*|go(?:ing)? in)|"
                           r"to (?:fix|repair|come (?:in|over|by|fix)|look at the|check the))\b", re.I)
@@ -348,7 +350,9 @@ _HISTORY_FRAME = re.compile(
     r"(?:look(?:ed)?|fix(?:ed)?|repair(?:ed)?|work(?:ed)?|come out)\b[^.?!]{0,30}\b(?:before|in the past|previously|"
     r"last time)\b|\b(?:alguien|ya) (?:revis[oó]|arregl[oó]|vino a ver) (?:esto|eso|lo)\b|\bya (?:lo|la) "
     r"(?:revisaron|arreglaron)\b", re.I)
-_STATUS_NEG = re.compile(r"\bstatus (?:light|bar|led|icon)\b|^\W*update\W*:|\bupdate my (?:phone|number|email|contact|"
+_STATUS_NEG = re.compile(r"\bstatus (?:light|bar|led|icon)\b|\b(?:status|update|news) (?:of|on|about) the (?:pool|gym|"
+                         r"clubhouse|renovation|construction|parking (?:lot|garage)|elevator|lobby|community)\b|"
+                         r"\brenovation\b|\bconstruction\b|^\W*update\W*:|\bupdate my (?:phone|number|email|contact|"
                          r"address|payment)\b", re.I)
 
 _FRUSTRATION_ASSISTANT = re.compile(
@@ -671,7 +675,8 @@ _ENTRY_MAY = re.compile(
     r"pasar)\b[^.?!]{0,12}\b(?:without me|sin m[ií])\b|"
     r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
     r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
-    r"\blet (?:themselves|yourselves) in\b|"
+    r"\blet (?:themselves|yourselves|yourself|himself|herself) in\b|\bcome on in\b|\benter(?:ing)? (?:is )?(?:ok|okay|"
+    r"fine)\b|\b(?:ok|okay|fine)(?: to)? enter\b|"
     r"\b(?:enter|come in|go in)\s+(?:whenever|any ?time|when(?:ever)? (?:you|they) (?:need|want)(?: to)?|"
     r"while i'?m (?:out|away|gone|at work))\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
     r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)|"
@@ -692,6 +697,7 @@ _TIME_VALUE = re.compile(
     r"evenings?|nights?)(?: only)?|(?:only )?(?:weekends?|weekdays?)|"
     r"(?:por|en) la (?:ma[ñn]ana|tarde|noche)|despu[eé]s de las \d{1,2})\b", re.I)
 _VISIT_TIME_WORDS = re.compile(r"\b(?:best time|visit\w*|come|coming|stop by|show up|time|window|schedule|"
+                               r"send (?:someone|somebody|a tech\w*|them|maintenance)|"
                                r"available|work(?:s)? (?:better|best)|don'?t work|doesn'?t work|anymore|vengan|"
                                r"visita|horario)\b", re.I)
 _ISSUE_LEAD = re.compile(
@@ -885,7 +891,7 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
     """Field-targeted corrections for the card (open, or just sent). Each names ONE field and the NEW value; 'X not Y'
     takes X. A message with no edit signal ('actually', 'not', 'instead', 'change', 'field: value', a value that differs
     from the card's) gives nothing, so plain answers keep their usual path."""
-    if not kind or not msg.strip() or utt.ends_as_question(msg):
+    if not kind or not msg.strip() or utt.ends_as_question(msg) or utt.UNRELATED.search(msg):
         return []  # Sprint 7: a question that mentions a field ("the issue is that I work nights, does that matter?")
     out: list[Correction] = []
     signal = bool(_EDIT_SIGNAL.search(msg))
@@ -1260,8 +1266,8 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
     edits = field_edits(msg, live, kind) if live else []
     for c in edits:
         corr = [x for x in corr if x.field != c.field] + [c]
-    if corr and utt.ends_as_question(msg):
-        corr = []  # a question never corrects a field
+    if corr and (utt.ends_as_question(msg) or utt.UNRELATED.search(msg)):
+        corr = []  # a question never corrects a field; "different issue: X" is a new problem, not a correction
     if corr:
         add(DialogueAct.CORRECT_INFORMATION)
     split_ask, split_target = asks_split(msg) if live and kind == "maintenance_request" else (False, None)

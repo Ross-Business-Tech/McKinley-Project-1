@@ -1005,6 +1005,18 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
     },
     # ---- Sprint 7 (all NEEDS McKINLEY REVIEW) ----
+    "no_tour_ack": {  # NEEDS McKINLEY REVIEW: the prospect said no tour
+        "en": "No problem, no tour. Ask me anything you'd like to know, or I can pass your questions to the leasing "
+              "team.",
+        "es": "Sin problema, sin visita. Pregúnteme lo que quiera saber, o puedo pasar sus preguntas al equipo de "
+              "arrendamiento.",
+    },
+    "repair_dropped_call_kept": {  # NEEDS McKINLEY REVIEW: "cancel the oven repair, I just want the call"
+        "en": "Okay, I've set the repair request aside, unsent. Your note asking for a call about \"{topic}\" is ready "
+              "below. Send it when it looks right.",
+        "es": "Listo, dejé la solicitud de reparación a un lado, sin enviar. Su nota pidiendo una llamada sobre "
+              "\"{topic}\" está lista abajo. Envíela cuando esté correcta.",
+    },
     "queued_other_safety": {  # NEEDS McKINLEY REVIEW: shown AFTER the fixed safety text, never instead of it
         "en": " Your other request (\"{topic}\") is in the same note, so it isn't lost.",
         "es": " Su otra solicitud (\"{topic}\") va en la misma nota, así que no se pierde.",

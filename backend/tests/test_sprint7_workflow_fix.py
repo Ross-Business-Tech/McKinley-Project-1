@@ -501,3 +501,142 @@ def test_guard_near_misses_remembered_or_property_follow_ups_still_repair(client
 
     monkeypatch.setattr(ce, "incident_step", forced)
     assert kind(chat(client, "the bathroom sink is leaking", sid(), "R001")) == "maintenance_request"
+
+
+# ---- last round ------------------------------------------------------------------------------------------------
+
+OVEN_CALL = "the oven won't heat, and I'd like someone from leasing to call me about my lease"
+
+
+@pytest.mark.parametrize("msg", ["cancel the oven repair, I just want the call", "skip the repair, only the callback",
+                                 "never mind the oven, just have leasing call me", "forget the oven, keep the call",
+                                 "drop the oven request, I only need the call", "no repair needed, just the callback",
+                                 "scrap the oven, I want the phone call", "olvide el horno, solo la llamada"])
+def test_cancelling_the_repair_keeps_the_call(client, msg):
+    s = sid()
+    chat(client, OVEN_CALL, s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "staff_handoff" and "lease" in json.dumps(r["action"]).lower() and not recs(s)
+
+
+@pytest.mark.parametrize("msg", ["cancel the call, keep the oven", "forget the call from leasing",
+                                 "no call needed, just the oven", "skip the callback"])
+def test_cancelling_the_call_keeps_the_repair_near_misses(client, msg):
+    s = sid()
+    chat(client, OVEN_CALL, s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "maintenance_request" and not draft(s).get("queued_note")
+
+
+@pytest.mark.parametrize("msg", ["the closet light died", "the light quit working", "my bathroom fan died",
+                                 "the disposal gave out", "the hallway light in my apartment went out",
+                                 "my fridge conked out", "the outlet in my bedroom is dead", "el ventilador del baño "
+                                 "no funciona"])
+def test_a_fixture_that_died_is_a_repair(client, msg):
+    assert kind(chat(client, msg, sid(), "R001")) == "maintenance_request"
+
+
+@pytest.mark.parametrize("msg", ["my phone died", "the party died down", "I quit my job", "the music stopped"])
+def test_died_near_misses_are_not_repairs(client, msg):
+    assert kind(chat(client, msg, sid(), "R001")) != "maintenance_request"
+
+
+@pytest.mark.parametrize("msg", ["you can let yourself in", "come on in", "enter ok", "ok to enter without me",
+                                 "fine to go in without me", "they can let themselves in", "yes, enter",
+                                 "go ahead and enter"])
+def test_entry_answers_never_re_ask_and_send_works(client, msg):
+    s = sid()
+    chat(client, "my kitchen sink is leaking", s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert fields(r).get("entry") == MAY
+    assert press_send(client, s, "maintenance_request", "R001")["ok"]
+
+
+def test_walk_in_closet_room_answer(client):
+    s = sid()
+    chat(client, "my sink is clogged", s, "R001")
+    assert fields(chat(client, "the walk-in closet in the hallway", s, "R001"))["location"] == "Closet"
+
+
+@pytest.mark.parametrize("msg", ["i said dont open another ticket, the first one is not done",
+                                 "don't make a new request, the old one isn't fixed", "do not create another ticket",
+                                 "stop opening a new one, the first one wasn't done"])
+def test_no_new_ticket_replaces_the_new_card_with_a_follow_up(client, msg):
+    s = sid()
+    ref = sent_repair(client, s)
+    chat(client, "my kitchen faucet drips", s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "staff_handoff" and ref in r["reply"] and "First" not in json.dumps(r["action"])
+
+
+@pytest.mark.parametrize("msg", ["I'd like to tour fernhill or birchwood", "tour fernhill and birchwood",
+                                 "fernhill / birchwood tour please", "quiero visitar fernhill o birchwood"])
+def test_either_or_communities_keep_both_and_one_can_be_dropped(client, msg):
+    s = sid()
+    r = chat(client, msg, s, P)
+    assert "Fernhill" in fields(r)["area"] and "Birchwood" in fields(r)["area"]
+    r = chat(client, "lets drop fernhill", s, P)
+    assert fields(r)["area"] == "Birchwood Commons"
+
+
+@pytest.mark.parametrize("msg", ["been waiting since monday for someone to look at my fan", "still waiting on my AC",
+                                 "waiting for maintenance since last week", "llevo esperando desde el lunes"])
+def test_waiting_complaints_check_existing_requests(client, msg):
+    r = chat(client, msg, sid(), "R001")
+    assert kind(r) == "staff_handoff" and "I008" in json.dumps(r["action"])
+
+
+@pytest.mark.parametrize("msg", ["unrelated - the hallway carpet has a stain", "separately, the bedroom window won't "
+                                 "lock", "different issue: my dryer won't spin", "otro tema: la luz del closet no "
+                                 "prende"])
+def test_an_unrelated_problem_is_queued_not_appended(client, msg):
+    s = sid()
+    chat(client, "my kitchen sink is leaking", s, "R001")
+    chat(client, msg, s, "R001")
+    d = draft(s)
+    assert "Also:" not in d["fields"]["issue"]["value"] and d.get("queued")
+
+
+@pytest.mark.parametrize("msg,want", [("only send someone on weekends", "Weekends"), ("afternoons only", "Afternoons"),
+                                      ("weekday mornings only", "morning"), ("solo por la tarde", "tarde")])
+def test_visit_window_preferences_are_kept(client, msg, want):
+    s = sid()
+    chat(client, "my kitchen sink is leaking", s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert want.lower() in fields(r)["entry_window"].lower()
+
+
+def test_any_weekday_answers_the_days_question(client):
+    s = sid()
+    chat(client, "I'd like to tour Heron Lake", s, P)
+    assert "Weekday" in fields(chat(client, "any weekday evening", s, P)).get("days", "")
+
+
+@pytest.mark.parametrize("msg", ["nope, still no tour, thanks", "no tour please", "I don't want a tour",
+                                 "no quiero una visita"])
+def test_no_tour_gets_an_answer_not_the_welcome(client, msg):
+    r = chat(client, msg, sid(), P)
+    assert "Welcome" not in r["reply"] and kind(r) is None
+
+
+@pytest.mark.parametrize("msg", ["what's the status of the pool renovation?", "any update on the gym renovation?",
+                                 "status of the lobby construction", "news about the clubhouse renovation?"])
+def test_community_projects_are_not_repair_status_or_renewal(client, msg):
+    r = chat(client, msg, sid(), "R001")
+    assert not r.get("status_items") and "Renewal" not in json.dumps(r.get("action") or {})
+
+
+def test_a_foreign_typed_reference_is_never_cited(client):
+    s = sid()
+    sent_repair(client, s)
+    r = chat(client, "cancel DEMO-WO-1009", s, "R001")
+    assert "DEMO-WO-1009" not in fields(r)["topic"] and "couldn't match" in r["reply"]
+
+
+def test_a_change_targets_the_original_request_not_the_last_note(client):
+    s = sid()
+    ref = sent_repair(client, s)
+    chat(client, "actually call me first before they come in", s, "R001")
+    press_send(client, s, "staff_handoff", "R001")
+    r = chat(client, "also it's the left cabinet", s, "R001")
+    assert ref in json.dumps(r["action"]) and "DEMO-TASK" not in fields(r)["topic"]

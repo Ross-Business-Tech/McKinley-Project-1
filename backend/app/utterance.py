@@ -103,7 +103,8 @@ _SYMPTOM = re.compile(
     r"turning on|closing|locking|opening|flushing)|won'?t|wont|doesn'?t|does not|isn'?t|is not|stopped|dead|stuck|"
     r"jamm?ed|clog\w*|backed up|backing up|overflow\w*|flood\w*|noise|noisy|loud|buzz\w*|rattl\w*|grind\w*|squeak\w*|"
     r"squeal\w*|hum+(?:s|ing)?|click\w*|bang\w*|knock\w*|whistl\w*|hiss\w*|smell\w*|stinks?|mo[u]?ld|mildew|stain\w*|"
-    r"flicker\w*|burn(?:t|ed)? out|(?:is|are|went|goes|keeps going) (?:also |still |now )?out|out too|loose|wobbl\w*|"
+    r"flicker\w*|burn(?:t|ed)? out|died|dies|quit(?: working| on me)?|gave out|conked out|fried|kaput|(?:is|are|went|"
+    r"goes|keeps going) (?:also |still |now )?out|out too|loose|wobbl\w*|"
     r"fell (?:off|down)|missing|"
     r"torn|peeling|warm|freezing|too (?:hot|cold)|no (?:hot water|heat|power|water|ac|a/c)|running|keeps|"
     r"infest\w*|chirp\w*|beep\w*|swollen|rot\w*|rust\w*|puddl\w*|wet|soak\w*|"
@@ -230,7 +231,7 @@ class Utterance:
         if self.symptom and self.objects and not re.search(r"\b(?:problems?|issues?|trouble|problemas?)\b", self.text,
                                                            re.I):
             return False
-        if re.search(r"\b(?:status|update|news|progress|estado|novedad\w*)\b", self.text, re.I):
+        if re.search(r"\b(?:status|update|news|progress|estado|novedad\w*|waiting|esperando)\b", self.text, re.I):
             return False  # "is there a status on the one I put in before?" asks about an open request
         hist_word = bool(re.search(r"\bhistor(?:y|ial)\b|\brecords?\b", self.text, re.I)) or bool(
             self.past_marker and self.about_requests and not self.symptom and len(self.text.split()) <= 6)
@@ -267,6 +268,10 @@ def analyze(msg: str) -> Utterance:
 
 _EDIT_VERB = re.compile(r"\b(?:not|instead|rather|better|prefer\w*|switch|change|update|than|only|actually|wrong|fix|"
                         r"set|put|make|correct\w*|cambi\w*|mejor|en vez)\b", re.I)
+
+
+UNRELATED = re.compile(r"^\W*(?:unrelated|separately|different (?:issue|thing|problem)|another (?:issue|problem|thing)|"
+                       r"new (?:issue|problem)|otro (?:tema|problema)|aparte)\b", re.I)
 
 
 def ends_as_question(msg: str) -> bool:
@@ -318,10 +323,18 @@ _ROOMS_EXTRA: list[tuple[str, str]] = [
 
 
 def room_in(text: str) -> str | None:
-    """A room or place in the home: the intake rooms first, then other places people name (garage, closet...)."""
-    if loc := extract_location(text or ""):
-        return loc
-    return next((label for label, pat in _ROOMS_EXTRA if re.search(pat, text or "", re.I)), None)
+    """A room or place in the home, the one named FIRST ("the walk-in closet in the hallway" -> Closet): the intake
+    rooms and other places people name (garage, closet...)."""
+    text = (text or "")[:MAX_ANALYSED]
+    loc = extract_location(text)
+    extra = [(m.start(), label) for label, pat in _ROOMS_EXTRA for m in [re.search(pat, text, re.I)] if m]
+    if loc and extra:
+        from app.intake import _LOCATIONS
+        pos = next((m.start() for label, pat in _LOCATIONS if label == loc
+                    for m in [re.search(rf"\b(?:{pat})\b", text, re.I)] if m), len(text))
+        first = min(extra)
+        return first[1] if first[0] < pos else loc
+    return loc or (min(extra)[1] if extra else None)
 
 
 # ---- one field-reference resolver for every card kind ----------------------------------------------------------
@@ -444,6 +457,8 @@ def field_corrections(msg: str, kind: str | None, extra: dict[str, Any] | None =
     out: list[tuple[str, str]] = []
     text = normalize((msg or "")[:MAX_ANALYSED])
     for f, start, end in field_refs(text, kind)[:8]:
+        if re.search(r"\b(?:different|another|new|separate|unrelated|second|other)\s+$|\botro\s+$", text[:start], re.I):
+            continue  # "different issue: my dryer won't spin" names a NEW problem, not the card's issue field
         before = text[max(0, start - 40):start]
         after = text[end:end + 30]
         framed = bool(re.search(rf"{_LEADS}$", before, re.I) or re.search(r"\bwrong\s+$|\bincorrect\s+$", before, re.I)

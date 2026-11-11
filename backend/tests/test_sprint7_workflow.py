@@ -365,10 +365,8 @@ def test_prospect_detail_after_tour_sent_is_a_change_note_citing_it(client, msg)
                                  "el fregadero gotea, pueden entrar cuando quieran",
                                  "bathroom fan is broken; knock first please",
                                  "dishwasher won't drain and maintenance can come in whenever",
-                                 pytest.param("the closet door fell off, they can enter while I'm at work",
-                                              marks=pytest.mark.xfail(strict=False, reason=(
-                                                  "safety R7 reads 'fell off' as a person sign (reported to Agent A); "
-                                                  "the planner then rightly opens no repair card")))])
+                                 # was a non-strict xfail while safety R7 read "fell off" as a person sign (fixed)
+                                 "the closet door fell off, they can enter while I'm at work"])
 def test_entry_permission_in_the_first_message(client, msg):
     r = chat(client, msg, sid(), "R001")
     f = fields(r)
