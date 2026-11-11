@@ -94,6 +94,63 @@ def related(a: str, b: str) -> bool:
     return not (room_a and room_b and room_a != room_b)
 
 
+# Symptom classes (last fix round): which open request a new report is about, when one thing has several open
+# requests ("AC rattling" vs "AC quit cooling"). A generic failure ("not working", "died", "out", "broke") is
+# compatible with any symptom; two reports with specific symptoms are the same request only when a class is shared.
+_SYMPTOMS: list[tuple[str, re.Pattern[str]]] = [
+    ("noise", re.compile(r"rattl|nois|loud|buzz|hum+(?:s|ing)?\b|click|bang|grind|squeak|squeal|whistl|hiss|"
+                         r"pop+(?:s|ing)?\b|ruido|zumb|tru?en", re.I)),
+    ("leak", re.compile(r"leak|drip|puddl|wet|water on|soak|overflow|gote|fuga|charco|moja", re.I)),
+    ("cooling", re.compile(r"cool|warm|hot air|\b[89]\d ?(?:degrees|in here)|enfr|calor", re.I)),
+    ("heating", re.compile(r"\bheat(?:ing)?\b(?! ?pump)|cold air|blowing cold|freezing|no calienta|calefacc|fr[ií]o",
+                           re.I)),
+    ("clog", re.compile(r"clog|drain|backed up|backing up|slow|gurgl|tapad|atascad|no drena|desag", re.I)),
+    ("smell", re.compile(r"smell|stink|odor|olor|huele", re.I)),
+    ("stuck", re.compile(r"stuck|stick|jamm|won'?t (?:open|close|lock|latch)|off track|trabad|no (?:abre|cierra)",
+                         re.I)),
+    ("power", re.compile(r"spark|flicker|no power|tripp|breaker|dead outlet|sin luz|chispa", re.I)),
+    ("pests", re.compile(r"roach|ant\b|ants|mice|mouse|bug|cucarach|hormig|rat[oó]n", re.I)),
+    ("damage", re.compile(r"crack|broken glass|torn|peel|stain|mold|mould|moho|mancha|rot[oa]?\b", re.I)),
+]
+
+
+def symptoms(text: str) -> set[str]:
+    """The specific symptom classes a request text names (empty for a generic 'not working')."""
+    return {name for name, pat in _SYMPTOMS if pat.search(text or "")}
+
+
+def match_score(new: str, old: str) -> int:
+    """0 when `old` is not the same request as `new`; otherwise 1 (same thing) + 2 per shared symptom class.
+    Same thing with two different specific symptoms is a different request (0)."""
+    if not related(new, old):
+        return 0
+    a, b = symptoms(new), symptoms(old)
+    if a and b and not (a & b):
+        return 0
+    return 1 + 2 * len(a & b)
+
+
+_LABEL_ES = {"ac": "aire acondicionado", "heat": "calefacción", "water heater": "calentador de agua",
+             "sink": "fregadero", "faucet": "grifo", "toilet": "inodoro", "shower": "ducha o tina",
+             "dishwasher": "lavaplatos",
+             "fridge": "refrigerador", "oven": "estufa u horno", "microwave": "microondas", "disposal": "triturador",
+             "washer": "lavadora", "dryer": "secadora", "window": "ventana", "door": "puerta", "lock": "cerradura",
+             "fan": "ventilador", "light": "luz", "outlet": "enchufe", "ceiling": "techo", "pests": "plagas",
+             "drain": "desagüe", "detector": "detector"}
+_LABEL_EN = {"ac": "AC", "pests": "pest", "oven": "stove or oven", "shower": "shower or tub", "heat": "heating"}
+
+
+def request_label(text: str, lang: str = "en") -> str:
+    """How the assistant cites a saved request: by what it is about, never by the resident's raw words.
+    'your AC repair request' / 'su solicitud de reparación: aire acondicionado'."""
+    objs = sorted(objects(text))
+    if lang == "es":
+        names = ", ".join(_LABEL_ES.get(o, o) for o in objs)
+        return f"su solicitud de reparación: {names}" if names else "su solicitud de reparación"
+    names = " and ".join(_LABEL_EN.get(o, o) for o in objs)
+    return f"your {names} repair request" if names else "your repair request"
+
+
 @dataclass(frozen=True)
 class RelatedRequest:
     reference: str
@@ -216,6 +273,5 @@ def summary_line(h: RepeatHistory, lang: str = "en") -> str:
     return re.sub(r"\s+", " ", f"{head} {win} ({refs})").strip()
 
 
-__all__ = ["RepeatHistory", "RelatedRequest", "current_time", "is_repair_request", "objects", "related",
-           "related_history",
-           "summary_line"]
+__all__ = ["RelatedRequest", "RepeatHistory", "current_time", "is_repair_request", "match_score", "objects",
+           "related", "related_history", "request_label", "summary_line", "symptoms"]

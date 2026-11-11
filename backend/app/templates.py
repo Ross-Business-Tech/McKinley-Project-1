@@ -518,6 +518,39 @@ T: dict[str, dict[Lang, str]] = {
         "en": "That's not okay after this many times, and I'm not going to ask you to troubleshoot again.",
         "es": "Eso no está bien después de tantas veces, y no le voy a pedir que lo revise otra vez.",
     },
+    # ---- Sprint 8 C last round (all NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
+    "followup_extra_asks": {  # NEEDS McKINLEY REVIEW: a refund / credit / callback ask said with a follow-up
+        "en": " You also asked for something only the office can decide. I can't promise it, but it's written on "
+              "the note so they see it.",
+        "es": " También pidió algo que solo la oficina puede decidir. No puedo prometerlo, pero quedó escrito en la "
+              "nota para que lo vean.",
+    },
+    "followup_other_problem": {  # NEEDS McKINLEY REVIEW: a second, different problem in the same message
+        "en": " The other problem you mentioned, \"{issue}\", gets its own repair request: it opens right after you "
+              "send or skip this note.",
+        "es": " El otro problema que mencionó, \"{issue}\", tendrá su propia solicitud de reparación: se abre en "
+              "cuanto envíe u omita esta nota.",
+    },
+    "q_is_normal": {  # NEEDS McKINLEY REVIEW: "is it normal for the water heater to pop?" (a question, no form)
+        "en": "I can't tell from here whether that's normal for your {thing}; a maintenance technician would need to "
+              "check it. If it's happening in your home and you'd like it looked at, say \"report it\" and I'll start "
+              "a repair request with you.",
+        "es": "Desde aquí no puedo saber si eso es normal en su {thing}; un técnico de mantenimiento tendría que "
+              "revisarlo. Si está pasando en su casa y quiere que lo revisen, diga \"reportarlo\" y empiezo una "
+              "solicitud de reparación con usted.",
+    },
+    "payment_plan": {  # NEEDS McKINLEY REVIEW: no plan is set up or approved here
+        "en": "I can't set up or approve a payment plan here; the office decides that. I've prepared a note asking "
+              "them about a payment plan. Send it when you're ready. In this prototype nobody is notified "
+              "automatically.",
+        "es": "Aquí no puedo crear ni aprobar un plan de pagos; eso lo decide la oficina. Preparé una nota para "
+              "preguntarles por un plan de pagos. Envíela cuando quiera. En este prototipo no se avisa a nadie "
+              "automáticamente.",
+    },
+    "resume_after_alert": {  # NEEDS McKINLEY REVIEW: after the safety alert settles, the earlier card comes back
+        "en": "I'm glad things are under control. Your earlier {what} is still here and hasn't been sent. {ask}",
+        "es": "Me alegra que esté bajo control. Su {what} anterior sigue aquí y no se ha enviado. {ask}",
+    },
     "praise_ack": {  # NEEDS McKINLEY REVIEW (Sprint 8 C): a compliment or small talk; no workflow starts
         "en": "Glad to hear it! If there's anything you need, like a repair or a question about your community, just "
               "tell me.",

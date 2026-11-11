@@ -348,7 +348,8 @@ def test_every_backend_template_passes_output_checks():  # F N8
                                                                 status="Open", detail="the fan", flag="",
                                                                 note="High priority", ask="Which room is it in?",
                                                                 items="tour request DEMO-TOUR-1001",
-                                                                    window="over the last 30 days"),  # Sprint 8 C
+                                                                window="last 30 days",  # Sprint 8 C
+                                                                thing="heater"),
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 
