@@ -13,7 +13,8 @@ Guides: [Gemini](deployment/gemini.md) · [Supabase + migrations](deployment/sup
 
 | Piece | Ready in code | Tested | Not yet done |
 | --- | --- | --- | --- |
-| Gemini provider (official `google-genai` SDK) | yes | offline with a fake SDK client (errors, schema, retries, model check, usage) | no live call; model ID unverified on a key |
+| Gemini provider (official `google-genai` SDK) | yes | offline with a fake SDK client (errors, schema, retries, model check, usage) | no live call to Google directly |
+| Gemini via U-M GPT Toolkit gateway (`GEMINI_BASE_URL`) | yes | offline (MockTransport) + live connection check 2026-11-11: model listed, JSON replies, full `/api/chat` turns | no evaluation of quality or safety; not hosted |
 | Supabase / Postgres storage (teammate) | yes | SQLite paths; Postgres tests exist but need `TEST_DATABASE_URL` | never run on Postgres |
 | Alembic migrations + synthetic seed | yes | SQLite upgrade/downgrade, adopt existing DB, seed guard, DB residents == file residents | never run on Postgres/Supabase |
 | Render Blueprint (`render.yaml`) | yes | startup refusal of unsafe hosted settings; health endpoint | never deployed |
@@ -64,8 +65,9 @@ website, the repository, a pull request or a chat.
   information only** and never reads resident records ([security/AUTHORIZATION_BOUNDARIES.md](security/AUTHORIZATION_BOUNDARIES.md)).
   Do not add a bypass; keep real resident data disconnected until real sign-in exists.
 - **Unapproved scripts:** emergency and escalation wording (I-17/I-18) are team drafts; McKinley must approve them.
-- **No live-model evaluation:** Gemini has never been called; the model ID is unverified on a real key; the Gemini
-  semantic safety classifier and reply quality are unevaluated. All results so far are mock.
+- **No live-model evaluation:** Gemini has only had a live *connection* check through the U-M GPT Toolkit gateway
+  (2026-11-11, a few synthetic calls); the Gemini semantic safety classifier and reply quality are unevaluated. All
+  evaluation results so far are mock.
 - **No integrations:** no Yardi, work orders, CRM, paging or messaging. Nobody is notified.
 - **No real-device testing:** the phone checks ran in Playwright Chromium/WebKit against a local mock backend; no
   real iPhone/Android, no real screen reader, no public URL ([INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md)).

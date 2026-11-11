@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # `uv run python -m app.live_eval.preflight` once a key exists. Change it deliberately, never silently.
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
+    # Optional OpenAI-compatible gateway that serves Gemini models (e.g. the U-M GPT Toolkit, ".../v1"). Empty = call
+    # Google's Gemini Developer API directly through the google-genai SDK. Backend only; never sent to the website.
+    gemini_base_url: str | None = None
     # Thinking depth, pinned so a server-side default change can't silently alter evaluations. Empty = the model's
     # default (recorded as such). Levels per Google's thinking guide; verify which ones the model accepts.
     gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
@@ -170,7 +173,8 @@ class Settings(BaseSettings):
     def base_url_for(self, provider: str) -> str | None:
         if provider == self.llm_provider and self.llm_base_url:
             return self.llm_base_url.rstrip("/")
-        return {"openrouter": self.openrouter_base_url, "ollama": self.ollama_base_url}.get(provider)
+        gemini = (self.gemini_base_url or "").strip().rstrip("/") or None
+        return {"openrouter": self.openrouter_base_url, "ollama": self.ollama_base_url, "gemini": gemini}.get(provider)
 
 
 @lru_cache

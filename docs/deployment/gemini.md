@@ -1,7 +1,16 @@
 # Gemini provider
 
-**Status: implemented and tested offline only.** No Gemini key was available, so no request has been sent to
-Google; nothing here is evidence of Gemini's reply quality or of the model ID working on your key.
+**Status (2026-11-11):** the direct Google SDK path is still tested offline only. A second path, an
+**OpenAI-compatible gateway** (the U-M GPT Toolkit, `GEMINI_BASE_URL`), was verified live with a handful of calls:
+`gemini-3.6-flash` is listed for the key, strict JSON-schema replies parse, and full `/api/chat` turns run through the
+real pipeline (synthetic messages only). That is a connection check, **not** evidence of reply quality or safety.
+
+## U-M GPT Toolkit gateway (`GEMINI_BASE_URL`)
+When `GEMINI_BASE_URL` is set, `backend/app/llm/gemini_compat.py` sends OpenAI-style chat completions (strict JSON
+schema, same model only, served model checked for `MODEL_SWITCHED`) to that URL with `GEMINI_API_KEY` as the bearer
+key. Targets stay `gemini:<model>`. The Business+Tech cloud environment already provides both variables, so
+`LLM_PROVIDER=gemini` is enough there. Preflight lists models through the gateway's `/models`. Temperature is not
+sent and `GEMINI_THINKING_LEVEL` is recorded but not sent on this path.
 
 ## What it is
 `backend/app/llm/gemini_provider.py` uses Google's official `google-genai` SDK (3.0.0, Gemini Developer API — a key
@@ -26,6 +35,7 @@ pipeline, the decision gate (`DECISION_GATE_PROVIDER=llm`) and the semantic safe
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=            # backend only (backend/.env locally, Render secret when hosted); never in the website
 GEMINI_MODEL=gemini-3.6-flash
+GEMINI_BASE_URL=           # optional: OpenAI-compatible gateway (e.g. https://api.toolkit.umgpt.umich.edu/v1)
 LLM_MODEL=                 # empty = use GEMINI_MODEL
 ```
 

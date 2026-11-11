@@ -118,8 +118,13 @@ def recommend(targets: list[dict[str, Any]]) -> tuple[str | None, str]:
     return None, "no configured OpenRouter model is listed and free"
 
 
-def gemini_model_names(api_key: str) -> list[str]:
-    """Model names visible to this Gemini key (a list call: no generation, no tokens spent)."""
+def gemini_model_names(api_key: str, base_url: str | None = None) -> list[str]:
+    """Model names visible to this Gemini key (a list call: no generation, no tokens spent). With GEMINI_BASE_URL
+    the OpenAI-compatible gateway's /models listing is used instead of Google's."""
+    if base_url:
+        resp = httpx.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=15)
+        resp.raise_for_status()
+        return [str(m.get("id")) for m in resp.json().get("data", []) if isinstance(m, dict)]
     from google import genai
     from google.genai import types
 
@@ -145,7 +150,10 @@ def run_preflight(settings: Settings, client: httpx.Client | None = None, timeou
     gem_error: str | None = None
     if keys["gemini"] and any(t.provider == "gemini" for t in targets):
         try:
-            gem_names = (gemini_lister or gemini_model_names)(settings.api_key_for("gemini"))
+            if gemini_lister:
+                gem_names = gemini_lister(settings.api_key_for("gemini"))
+            else:
+                gem_names = gemini_model_names(settings.api_key_for("gemini"), settings.base_url_for("gemini"))
         except Exception as e:  # never print the key or the raw error body
             gem_error = f"model list failed: {type(e).__name__}"
     ollama_ok = (_ollama_reachable(settings.base_url_for("ollama") or "http://localhost:11434", client)

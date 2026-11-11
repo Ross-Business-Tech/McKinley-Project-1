@@ -37,6 +37,11 @@ def _mock(s: Settings) -> LLMProvider:
 
 
 def _gemini(s: Settings) -> LLMProvider:
+    base_url = s.base_url_for("gemini")
+    if base_url:  # an OpenAI-compatible gateway in front of Gemini (GEMINI_BASE_URL / LLM_BASE_URL)
+        from app.llm.gemini_compat import GeminiCompatProvider
+        return GeminiCompatProvider(s.api_key_for("gemini"), base_url, s.openrouter_app_title,
+                                    thinking_level=s.gemini_thinking_level or None)
     from app.llm.gemini_provider import GeminiProvider
     return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None)
 

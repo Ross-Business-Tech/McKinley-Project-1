@@ -201,7 +201,7 @@ def test_preflight_main_prints_a_listed_gemini_model_and_recommends_it(tmp_path,
     s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="test-not-a-real-key",
                  eval_targets="mock:mock-deterministic-v1,gemini:gemini-3.6-flash", db_path=tmp_path / "m.db")
     monkeypatch.setattr(preflight, "get_settings", lambda: s)
-    monkeypatch.setattr(preflight, "gemini_model_names", lambda key: ["gemini-3.6-flash"])
+    monkeypatch.setattr(preflight, "gemini_model_names", lambda key, base_url=None: ["gemini-3.6-flash"])
     code = preflight.main(["--out-dir", str(tmp_path)])
     out = capsys.readouterr().out
     assert "listed for this key" in out and "Recommended fixed model: gemini:gemini-3.6-flash" in out
