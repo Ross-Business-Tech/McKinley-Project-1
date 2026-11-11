@@ -23,6 +23,8 @@ const srv = remote ? null : createServer(async (req, res) => {
 }).listen(PORT, "127.0.0.1");
 await mkdir(out, { recursive: true });
 const results = [];
+// a live free model can take most of a minute per reply: REPLY_TIMEOUT_MS=120000 for deployed runs
+const REPLY_MS = Number(process.env.REPLY_TIMEOUT_MS ?? 20000);
 const Q = [process.env.Q1 ?? "What floor plans do you have?", process.env.Q2 ?? "Can I tour on Saturday afternoon?"];
 for (const eng of engArg.split(",")) {
   const browser = await pw[eng].launch();
@@ -62,7 +64,7 @@ for (const eng of engArg.split(",")) {
           await page.screenshot({ path: `${out}/${tag}-2-keyboard-q${i + 1}.png` }); }
         await box.fill(Q[i]);
         if (mobile) await sendBtn.tap(); else await sendBtn.click();
-        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: 20000 });
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: REPLY_MS });
         await page.waitForTimeout(400);
         if (mobile && h > w) await page.setViewportSize({ width: w, height: h });
         await page.waitForTimeout(250);
@@ -96,7 +98,7 @@ for (const eng of engArg.split(",")) {
         const before = await page.locator('[role="article"]').count();
         await box.fill(q);
         if (mobile) await sendBtn.tap(); else await sendBtn.click();
-        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: 20000 });
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: REPLY_MS });
         await page.waitForTimeout(500);
         const alert = page.locator('[role="article"]').last().locator('[data-testid="safety-alert"]');
         if (!(await alert.count())) { fail(`${kind}: no in-conversation alert`); continue; }
