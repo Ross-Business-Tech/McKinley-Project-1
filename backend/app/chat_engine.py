@@ -87,13 +87,15 @@ class EngineDeps:
             self.risk = SemanticRiskClassifier(self.settings, self.llm)
 
 
-_SPACE_RUN = re.compile(r"[ \t\u00a0]{2,}")
+_SPACE_RUN = re.compile(r"[ \t\u00a0\u2000-\u200b\u3000]{2,}")
+_BREAK_RUN = re.compile(r"[ \t\u00a0]*(?:\r?\n[ \t\u00a0]*){2,}")  # 2+ line breaks (with any spaces between) -> one
 
 
 def clean_message(message: str) -> str:
     # Sprint 8 (verifier): runs of spaces collapse to one before any pattern sees the text (a 2,000-char message of
-    # mostly spaces took ~53 s through the detectors); line breaks are kept.
-    return _SPACE_RUN.sub(" ", redact(_TAG.sub("", normalize_for_matching(message)))).strip()
+    # mostly spaces took ~53 s, and a run of line breaks ~105 s, through the detectors); single line breaks are kept.
+    text = _BREAK_RUN.sub("\n", redact(_TAG.sub("", normalize_for_matching(message))))
+    return _SPACE_RUN.sub(" ", text).strip()
 
 
 def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
