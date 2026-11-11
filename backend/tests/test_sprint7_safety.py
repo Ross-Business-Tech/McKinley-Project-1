@@ -646,3 +646,116 @@ def test_im_outside_is_acknowledged_not_a_second_alert(turns):
 ])
 def test_outside_but_asking_to_go_back_in_repeats_the_notice(turns):
     assert _conv(turns)[-1].response == "full_alert", turns
+
+
+# ---- 18. final round -----------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "hay llamas en la cocina", "ahora hay llamas en su ventana", "salen llamas del horno",
+    "veo llamas por la puerta del vecino", "las llamas en la sala están creciendo",
+    "se ven llamas en el balcón de arriba",
+    "la estufa está echando llamas", "hay humo y llamas en el pasillo",
+])
+def test_spanish_flames_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("fire_smoke", "electrical"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "¿me llamas mañana para la cita?", "vi unas llamas en el zoológico con mis hijos", "si llamas a la oficina, pide "
+    "la llave", "compré un suéter de lana de llamas", "¿llamas tú al plomero?",
+])
+def test_llamas_that_are_not_flames(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "tengo la cuerda lista, no puedo más", "compré una cuerda para ahorcarme", "voy a colgarme esta noche",
+    "ya tengo la soga preparada", "quiero cortarme las venas", "tengo las pastillas aquí, ya no puedo",
+    "me voy a tirar del puente", "ya no puedo más, voy a ahorcarme",
+])
+def test_spanish_self_harm_means_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "self_harm", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "la cuerda de la ropa se rompió", "no puedo más con este calor, ¿cuándo arreglan el aire?",
+    "necesito una cuerda para la mudanza", "se me cayeron las pastillas detrás del lavabo",
+])
+def test_spanish_everyday_means_words_are_not_alerts(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my mom's pulse oximeter says 80 and she's confused", "her oxygen reading is 80", "his o2 is at 82",
+    "dad's sats dropped to 85 and he's breathing hard", "the oximeter shows 78 for my son",
+    "mi abuela tiene el oxígeno en 84", "my husband's SpO2 is 79 right now",
+    "her oxygen level is 75 and her lips look grey",
+])
+def test_low_oxygen_readings_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "medical", msg
+
+
+@pytest.mark.parametrize("msg", [
+    "my oxygen tank delivery is at 9am", "the thermostat says 80", "her oxygen reading is 98, all good",
+    "do you allow oxygen concentrators in the units?",
+])
+def test_normal_readings_and_oxygen_logistics_do_not_alert(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "anoche se cayó, y ahora no se despierta", "se cayó en el baño y no se despierta",
+    "se me quemó la mano con aceite y la piel se está cayendo", "my arm got burned and the skin is peeling off",
+    "she spilled boiling water on her leg and it's blistering badly", "he has a bad burn on his chest from the stove",
+    "mi hijo se quemó con agua hirviendo y le salen ampollas", "my daughter touched the iron, third degree burn",
+])
+def test_falls_and_severe_burns_are_medical(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("medical", "fire_smoke"), msg
+    assert r.care != "distress"
+
+
+@pytest.mark.parametrize("msg", [
+    "what's the policy if a tenant's stove catches fire? because mine just did",
+    "what do you do if an outlet sparks? mine is right now",
+    "how do i report a gas smell? because it's happening right now",
+    "¿qué hago si hay humo? porque me está pasando ahora",
+])
+def test_policy_question_with_a_live_clause_alerts(msg):
+    assert full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "what's the policy if a tenant's stove catches fire?", "what do you do if an outlet sparks? mine does sometimes",
+])
+def test_policy_question_alone_stays_calm(msg):
+    assert not full(msg), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "jk I swallowed my whole prescription", "lol i took my whole bottle of xanax", "haha i drank the bleach",
+    "jaja me tomé todas las pastillas",
+])
+def test_overdose_with_a_casual_marker_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("poison", "self_harm"), msg
+
+
+@pytest.mark.parametrize("msg", [
+    "the hall closet shelf collapsed", "pantry shelf collapsed", "the closet door fell off",
+    "the cabinet handle fell off",
+    "the towel bar fell off the wall", "my bed frame collapsed last night", "la repisa se cayó", "the blinds fell down",
+])
+def test_an_object_that_collapsed_is_a_repair(msg):
+    r = d(msg)
+    assert r.response == "none" or (r.response != "full_alert" and r.care != "danger"), (msg, r.response, r.care)
+
+
+@pytest.mark.parametrize("msg", [
+    "the shelf collapsed on my son and he's crying", "my grandpa collapsed", "the bookshelf fell on my daughter",
+    "the ceiling collapsed", "the balcony collapsed", "she collapsed in the hallway",
+])
+def test_people_and_structures_that_collapse_still_alert(msg):
+    assert full(msg), msg

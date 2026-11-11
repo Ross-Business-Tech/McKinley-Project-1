@@ -791,10 +791,24 @@ _HARDWARE_COMPOUND = re.compile(r"\b(?:balcony|patio|deck|porch|closet|stair(?:w
                                 r"luz|l[aá]mpara|ventilador|cerradura)\b", re.I)
 
 
+# Final round (P0 false alarm): a body-state verb with an OBJECT subject is a broken object, not a person ("the closet
+# shelf collapsed", "the cabinet handle fell off"). Kept when it fell / collapsed ON someone; ceilings, roofs, floors,
+# balconies are not in the list and stay structural.
+_OBJECT_FELL = re.compile(
+    r"\b((?:shelf|shelves|shelving|rack|cabinet|cupboard|closet door|door|handle|knob|curtain rod|rod|blinds?|tv|mirro"
+    r"r|"
+    r"picture|frame|towel (?:bar|rack)|hook|light fixture|fixture|ceiling fan|table|chair|bed ?frame|bunk|couch|tent|"
+    r"boxes|box|pile|stack|organizer|bracket|drawer|lid|cover|vent cover|grab bar|toilet seat|repisa|estante|"
+    r"gabinete|puerta|manija|cortinero|espejo|cuadro|mueble|silla|mesa|cajón|cajon))\s+(?:just |completely |totally |"
+    r"kind of |sort of )?(?:collapsed|fell (?:off|down|apart)|came off|broke off|se (?:cay[oó]|cayeron|desplom[oó]|"
+    r"rompi[oó]))\b(?!\s+(?:on|onto|over|on top of|encima|sobre)\b)", re.I)
+
+
 def _clean(text: str) -> str:
     """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
     replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
     text = _HARDWARE_COMPOUND.sub(lambda m: m.group(1), text)
+    text = _OBJECT_FELL.sub(lambda m: m.group(1) + " broke", text)
     return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
 
 

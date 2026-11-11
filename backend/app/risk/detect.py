@@ -21,6 +21,14 @@ WINDOW_TURNS = 3  # earlier user messages combined with this one
 _HAPPENING_NOW = re.compile(r"\b(?:it'?s|it is|this is|that'?s) (?:happening|going on) (?:now|right now)\b|"
                             r"\b(?:yes|yeah|yep)\W+(?:\w+\W+){0,2}(?:right )?now\b|\bhappening now\b|"
                             r"est[aá] pasando (?:ahora)?|s[ií],? ahora", re.I)
+_SAME_MSG_NOW = re.compile(r"\b(?:mine|ours|my (?:\w+ )?(?:one|unit|stove|apartment|place))\s+(?:just |"
+                           r"actually |is |did "
+                           r"|does )?(?:did|does|is|has|happened|happening|right now|now)\b|\b(?:and|because|cause|cuz|"
+                           r"but) (?:it|that|this) (?:just |is |'s )?(?:happened|happening|did|is happening)\b|"
+                           r"\bit'?s happening (?:now|right now)\b|\b(?:a m[ií]|el m[ií]o|la m[ií]a) (?:me )?(?:acaba "
+                           r"de|"
+                           r"est[aá]) pas(?:ar|ando)\b|\bme (?:acaba de|est[aá]) pasando\b", re.I)
+_HABITUAL = re.compile(r"\b(?:sometimes|usually|every time|always|a veces|siempre|de vez en cuando)\b", re.I)
 _NEVER_LOWERED = {"self_harm", "personal_safety", "poison"}
 _OTHER_ACTOR = re.compile(r"\b(?:he|she|they|him|them|someone|somebody|stranger|intruder|my (?:ex|partner|husband|wife|"
                           r"boyfriend|girlfriend|roommate|neighbou?r)|a (?:man|guy|woman)|threat\w*|alguien|[eé]l|ella"
@@ -61,6 +69,11 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
             if k:
                 out.kind, out.framing, out.via_window = k, "report", True
                 break
+    if not out.kind and out.mentioned_kind and out.framing == "hypothetical" and _SAME_MSG_NOW.search(message) \
+            and not _HABITUAL.search(message):
+        # "what's the policy if a tenant's stove catches fire? because mine just did": the question names the hazard,
+        # the anaphoric clause reports it now
+        out.kind, out.framing, out.mentioned_kind = out.mentioned_kind, "report", None
     if not out.kind and prev and _IT.search(message):
         # "the ceiling has a stain" ... "now it's sagging": read "it" as the hazard object named in the last turns
         obj = None
