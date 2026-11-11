@@ -675,7 +675,8 @@ _ENTRY_MAY = re.compile(
     r"pasar)\b[^.?!]{0,12}\b(?:without me|sin m[ií])\b|"
     r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
     r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
-    r"\blet (?:themselves|yourselves|yourself|himself|herself) in\b|\bcome on in\b|\benter(?:ing)? (?:is )?(?:ok|okay|"
+    r"\blet (?:themselves|yourselves|yourself|himself|herself) in\b|\bcome on in\b|\b(?:you have|you'?ve got|with) "
+    r"my (?:ok|okay|permission)\b|\btiene(?:n)? mi permiso\b|\benter(?:ing)? (?:is )?(?:ok|okay|"
     r"fine)\b|\b(?:ok|okay|fine)(?: to)? enter\b|"
     r"\b(?:enter|come in|go in)\s+(?:whenever|any ?time|when(?:ever)? (?:you|they) (?:need|want)(?: to)?|"
     r"while i'?m (?:out|away|gone|at work))\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
@@ -983,7 +984,9 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
         parts = [p for p in re.split(r"[.;!?,—–]|\s-\s|\bactually\b|\bno\b|\bjust\b|\binstead\b", kept, flags=re.I)
                  if p.strip()]
         kept_parts = [p for p in parts if not re.search(r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|scratch|"
-                                                        r"skip|drop|cancel|not|no)\b", p, re.I)]
+                                                        r"skip|drop|cancel|not|no|remove|cross(?:ed)?|"
+                                                        r"off the list|from the list|take \w+(?: \w+)? off|quit\w*)\b",
+                                                        p, re.I)]
         parts = kept_parts if (kept_parts or "," in _fval(card, "area")) else parts
         place = next((n for p in reversed(parts) for n in [community_in(p) or city_in(p)] if n), None)
         cur_area = _fval(card, "area")
@@ -1026,6 +1029,7 @@ def asks_split(msg: str) -> tuple[bool, str | None]:
 
 
 _REMOVE_CUE = re.compile(
+    r"\boff the list\b|\bfrom the list\b|\bcross(?:ed)? (?:\w+ (?:\w+ )?)?(?:off|out)\b|\btake \w+(?: \w+)? off\b|"
     r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|drop|skip|scratch|remove|leave (?:out|off)|leave\b[^.?!]{1,30}"
     r"\bout\b|take (?:out|off)|ignore|cancel|cut|lose|delete|no need for|don'?t need|dont need|not needed|"
     r"isn'?t needed|"

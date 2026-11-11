@@ -58,7 +58,8 @@ _WH = (r"(?:what|what's|whats|which|when|where|who|who's|whos|why|how|qu[eé]|cu
        r"qui[eé]n(?:es)?|por qu[eé]|c[oó]mo|cu[aá]nt[oa]s?)")
 _AUX = (r"(?:is|are|was|were|do|does|did|can|could|will|would|should|has|have|had|may|might|am|any|anything|"
         r"tengo|tiene|tienen|hay|puedo|puede|pueden|van|va|est[aá]|sigue|siguen)")
-_QUESTION = re.compile(rf"\?|^\W*¿|^\W*{_FILLER}(?:{_WH}|{_AUX})\b|\b{_WH}\W*$", re.I)
+_QUESTION = re.compile(rf"\?|^\W*¿|(?:^\W*|\bquestion\s*[:,-]\s*|\bpregunta\s*[:,-]\s*){_FILLER}(?:{_WH}|{_AUX})\b|"
+                       rf"\b{_WH}\W*$", re.I)
 _INFO_REQUEST = re.compile(
     r"^\W*(?:(?:please|can you|could you|would you|pls)\W+)*(?:list|show|tell|give|pull up|bring up|look up|check|"
     r"display|send me|let me see|let me know|remind me|recap|summari[sz]e|mu[eé]strame|mu[eé]streme|dime|d[ií]game|"
@@ -96,6 +97,10 @@ _THINGS: list[tuple[str, str]] = [
     ("thermostat", r"thermostat|termostato"), ("vent", r"\bvents?\b|\bducts?\b"), ("carpet", r"\bcarpet\b|alfombra"),
     ("mailbox", r"\bmail ?box(?:es)?\b|\bbuz[oó]n\b"), ("gate", r"\bgates?\b|\bport[oó]n\b"),
     ("ice maker", r"ice maker"), ("floor", r"\bfloor(?:ing|boards?)?\b|\bpiso\b"),
+    ("doorbell", r"\bdoor ?bell\b|\bintercom\b|\bbuzzer\b|\btimbre\b"), ("peephole", r"\bpeep ?hole\b|\bmirilla\b"),
+    ("doorknob", r"\bdoor ?knobs?\b|\bknobs?\b|\bdoor handles?\b|\bmanija\b"),
+    ("fixture", r"\btowel (?:bar|rack)\b|\bshelf\b|"
+                                                                        r"\bshelves\b|\bmirror\b|\btiles?\b"),
 ]
 _SYMPTOM = re.compile(
     r"\b(?:leak\w*|leaky|drip\w*|broke\w*|busted|bust|cracked|crack\w*|not (?:cold|cool|hot|warm|working|cooling|"
@@ -304,6 +309,10 @@ def adds_to(u: Utterance, sent_text: str) -> bool:
     new_objs = u.objects - sent_objs - {"cabinet", "pipe", "floor", "wall"}  # parts of the same fixture
     if new_objs and u.symptom:
         return False
+    if re.search(r"^\W*add\b|\b(?:have them|tell them to|they(?:'ll| will)? need to|they should|please) "
+                 r"(?:bring|use|wear|call|text|park|check)\b|\bit'?s (?:high|up high|way up)\b|\bstarted (?:after|when|"
+                 r"last)\b|\bempez[oó] (?:despu[eé]s|cuando)\b", u.text, re.I):
+        return True  # a visit instruction or when it started: more about the same request
     descriptive = bool(re.search(
         r"^\W*(?:(?:oh|ah|and|also|so|um+|ok(?:ay)?|btw|fyi|y|oye)\W+)*(?:it'?s|its|it is|it was|it'?s been|"
         r"it only|it (?:leaks|drips|happens|gets|started|seems)|this is|that'?s|the (?:one|leak|drip|water|problem|"

@@ -640,3 +640,141 @@ def test_a_change_targets_the_original_request_not_the_last_note(client):
     press_send(client, s, "staff_handoff", "R001")
     r = chat(client, "also it's the left cabinet", s, "R001")
     assert ref in json.dumps(r["action"]) and "DEMO-TASK" not in fields(r)["topic"]
+
+
+# ---- final round -----------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("msg", ["take fernhill off the list", "cross off fernhill", "remove fernhill from the list",
+                                 "drop fernhill from the list", "cross fernhill out", "take fernhill apartments off",
+                                 "remove fernhill", "quita fernhill"])
+def test_list_removal_keeps_the_other_option(client, msg):
+    s = sid()
+    chat(client, "I'd like to tour fernhill or birchwood", s, P)
+    assert fields(chat(client, msg, s, P))["area"] == "Birchwood Commons"
+
+
+@pytest.mark.parametrize("msg", ["tour in jacksonville next sunday morning", "can I see a place in boston on saturday",
+                                 "tour in chicago this weekend", "visit near miami friday afternoon",
+                                 "quiero visitar en houston el sábado", "tour in denver next week",
+                                 "looking to tour in seattle tomorrow", "a tour in phoenix on monday please"])
+def test_unknown_city_is_answered_honestly_and_keeps_the_day(client, msg):
+    s = sid()
+    r = chat(client, msg, s, "")
+    assert kind(r) == "tour_request" and ("this demo" in r["reply"] or "demostración" in r["reply"])
+    assert fields(r).get("days")
+    r2 = chat(client, "send it", s, "")
+    assert "missing" in r2["reply"] or "falta" in r2["reply"]
+
+
+@pytest.mark.parametrize("msg", ["tour in ann arbor next sunday", "tour in the morning", "tour in person please",
+                                 "tour in orlando saturday"])
+def test_unknown_city_near_misses(client, msg):
+    assert "this demo" not in chat(client, msg, sid(), "")["reply"]
+
+
+@pytest.mark.parametrize("msg", ["no visit please", "still not looking to visit", "no tour", "not planning to visit",
+                                 "no viewings, thanks", "no quiero visitar", "I'm not looking to tour", "no tours"])
+def test_no_visit_suppresses_the_tour_for_the_session(client, msg):
+    s = sid()
+    chat(client, msg, s, P)
+    r = chat(client, "I'm moving next month, what's available?", s, P)
+    assert kind(r) != "tour_request" and "Which days" not in r["reply"]
+
+
+@pytest.mark.parametrize("msg", ["please dont make a new ticket, the old one was never finished",
+                                 "don't open another ticket", "do not create a new request, the first one isn't done",
+                                 "no new ticket please, the old one wasn't fixed"])
+def test_no_new_ticket_follows_up_on_the_earlier_request(client, msg):
+    s = sid()
+    ref = sent_repair(client, s)
+    chat(client, "my kitchen faucet drips", s, "R001")
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "staff_handoff" and ref in r["reply"]
+
+
+@pytest.mark.parametrize("msg", ["been waiting since monday for someone to fix my sink", "still waiting on the sink",
+                                 "waiting for maintenance since yesterday", "sigo esperando lo del fregadero"])
+def test_waiting_after_send_follows_up_on_that_request(client, msg):
+    s = sid()
+    ref = sent_repair(client, s)
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "staff_handoff" and ref in r["reply"] and len(recs(s)) == 1
+
+
+@pytest.mark.parametrize("msg", ["scratch the light repair, I only need the phone call",
+                                 "I'll fix the light myself, but I still want the call",
+                                 "I'll handle the light myself, just the callback please",
+                                 "I can take care of the light, keep the call"])
+def test_more_cancel_the_repair_keep_the_call(client, msg):
+    s = sid()
+    chat(client, "the hallway light in my apartment is out and can someone from leasing call me about my lease", s,
+         "R001")
+    assert kind(chat(client, msg, s, "R001")) == "staff_handoff"
+
+
+@pytest.mark.parametrize("msg,win,issue", [
+    ("only mornings work for visits. the bedroom closet door is off the track", "Mornings", "closet door"),
+    ("evenings are best for visits. my kitchen faucet drips", "Evenings", "faucet"),
+    ("visits after 5pm please, the bathroom fan is broken", "After 5pm", "fan"),
+    ("weekends only for visits. the dishwasher won't drain", "Weekends", "dishwasher")])
+def test_visit_window_in_the_first_message(client, msg, win, issue):
+    f = fields(chat(client, msg, sid(), "R001"))
+    assert win.lower() in f["entry_window"].lower() and issue in f["issue"].lower()
+    assert "visit" not in f["issue"].lower()
+
+
+@pytest.mark.parametrize("msg", ["doorbell stopped working", "garbage disposal stopped working", "intercom won't work",
+                                 "my peephole broke", "the buzzer died", "doorknob is loose", "smoke alarm stopped "
+                                 "working", "towel bar fell off"])
+def test_named_fixture_is_not_vague(client, msg):
+    r = chat(client, msg, sid(), "R001")
+    assert "What is it that isn't working" not in r["reply"] and not fields(r)["issue"].startswith("Door:")
+
+
+@pytest.mark.parametrize("msg", ["you have my permission to come in", "you've got my ok to enter",
+                                 "tienen mi permiso para entrar", "come on in"])
+def test_more_entry_permission(client, msg):
+    s = sid()
+    chat(client, "my kitchen sink is leaking", s, "R001")
+    assert fields(chat(client, msg, s, "R001")).get("entry", "").startswith(("Yes", "Sí"))
+
+
+@pytest.mark.parametrize("msg", ["unrelated question: when is rent due", "quick question: is there a gym",
+                                 "question: when is trash day", "pregunta: ¿cuándo se paga la renta?"])
+def test_side_question_after_send_gets_an_honest_answer(client, msg):
+    s = sid()
+    sent_repair(client, s)
+    r = chat(client, msg, s, "R001")
+    assert "I can help with repair requests" not in r["reply"]
+
+
+@pytest.mark.parametrize("msg", ["is the leasing office open on sundays", "what are the office hours",
+                                 "is the office open saturday?", "¿la oficina abre los domingos?"])
+def test_office_hours_question_keeps_the_tour_draft_unchanged(client, msg):
+    s = sid()
+    chat(client, "I'd like to tour Heron Lake", s, P)
+    r = chat(client, msg, s, P)
+    assert kind(r) == "tour_request" and "days" not in fields(r)
+
+
+@pytest.mark.parametrize("msg", ["my washing machine died mid cycle with water still in it",
+                                 "the washing machine won't spin", "dryer stopped heating", "la lavadora no funciona"])
+def test_laundry_is_inferred(client, msg):
+    assert fields(chat(client, msg, sid(), "R001")).get("location") in ("Laundry area", "Lavandería", "Área de lavado")
+
+
+@pytest.mark.parametrize("msg", ["please have them bring a ladder, it's high up", "add: it started after the storm",
+                                 "they'll need to bring a ladder", "it started last week"])
+def test_more_details_after_send_are_change_notes(client, msg):
+    s = sid()
+    ref = sent_repair(client, s)
+    r = chat(client, msg, s, "R001")
+    assert kind(r) == "staff_handoff" and ref in r["reply"] + json.dumps(r["action"])
+
+
+def test_unmatched_reference_note_links_no_record(client):
+    s = sid()
+    sent_repair(client, s)
+    r = chat(client, "cancel DEMO-WO-1033", s, "R001")
+    f = fields(r)
+    assert "DEMO-WO-1033" not in f["topic"] and "earlier" not in f

@@ -267,7 +267,11 @@ _TOUR = re.compile(r"\btours?\b|\bvisit\b|see (it|one|a place|an apartment|a uni
 
 _NO_TOUR = re.compile(r"\bno tours?\b|(?:don'?t|do not|dont|doesn'?t) (?:want|need)(?: \w+)? (?:a |to )?(?:tour|visit)|"
                       r"\bnot (?:ready )?(?:for |to )?(?:a |do a |book a )?(?:tour|visit)|without (?:a )?tour|(?:skip|"
-                      r"forget) the tour|no (?:quiero|necesito) (?:una )?visita|sin visita", re.I)
+                      r"forget) the tour|no (?:quiero|necesito) (?:una )?visita|sin visita|"
+                      # Sprint 7 final round: "no visit please", "still not looking to visit"
+                      r"\bno (?:visits?|viewings?|showings?)\b|"
+                      r"\bnot (?:looking|wanting|planning|trying|going) to (?:visit|"
+                      r"tour|come see|come by)\b|\bno quiero (?:visitar|ir a ver)\b", re.I)
 
 
 def refuses_tour(message: str) -> bool:
@@ -307,7 +311,7 @@ _LOCATIONS = [
     ("Bedroom", r"bed ?room|dormitorio|recámara"),
     ("Living room", r"living room|lounge|sala"),
     ("Dining room", r"dining (?:room|area)|comedor"),
-    ("Laundry area", r"laundry|washer|dryer|lavadora|secadora"),
+    ("Laundry area", r"laundry|washer|dryer|washing machine|lavadora|secadora"),
     ("Balcony or patio", r"balcony|patio|balc[oó]n"),
     ("Whole apartment", r"whole (apartment|unit|place)|everywhere|all rooms|entire (apartment|unit)|todo el"),
     ("Front door", r"front door|entry door|entrance door|puerta principal"),

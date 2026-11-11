@@ -1005,6 +1005,24 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
     },
     # ---- Sprint 7 (all NEEDS McKINLEY REVIEW) ----
+    "send_missing": {  # NEEDS McKINLEY REVIEW: typed "send it" on an incomplete card
+        "en": "I can't send it yet: still missing {missing}.",
+        "es": "Todavía no la puedo enviar: falta {missing}.",
+    },
+    "q_unknown_office": {  # NEEDS McKINLEY REVIEW: a question with no approved answer
+        "en": "I don't have an approved answer to that here, so I won't guess. The office can tell you, and I can pass "
+              "your question to them.",
+        "es": "No tengo una respuesta aprobada para eso aquí, así que no voy a adivinar. La oficina se lo puede "
+              "decir, y puedo pasarle su pregunta.",
+    },
+    "unknown_city": {  # NEEDS McKINLEY REVIEW: a place with no listed McKinley community in the demo
+        "en": "I don't see a McKinley community in {area} listed in this demo. The cities listed here are Ann Arbor, "
+              "Ypsilanti, Detroit, Lansing, Orlando and Tampa (communities: Heron Lake Apartments, Birchwood Commons, "
+              "Sandpiper Pointe and Fernhill Apartments). I've kept your day and time: which of these would you like?",
+        "es": "No veo una comunidad de McKinley en {area} en esta demostración. Las ciudades aquí son Ann Arbor, "
+              "Ypsilanti, Detroit, Lansing, Orlando y Tampa (comunidades: Heron Lake Apartments, Birchwood Commons, "
+              "Sandpiper Pointe y Fernhill Apartments). Guardé su día y hora: ¿cuál le interesa?",
+    },
     "no_tour_ack": {  # NEEDS McKINLEY REVIEW: the prospect said no tour
         "en": "No problem, no tour. Ask me anything you'd like to know, or I can pass your questions to the leasing "
               "team.",
