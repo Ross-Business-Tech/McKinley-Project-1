@@ -58,14 +58,16 @@ _WH = (r"(?:what|what's|whats|which|when|where|who|who's|whos|why|how|qu[eé]|cu
        r"qui[eé]n(?:es)?|por qu[eé]|c[oó]mo|cu[aá]nt[oa]s?)")
 _AUX = (r"(?:is|are|was|were|do|does|did|can|could|will|would|should|has|have|had|may|might|am|any|anything|"
         r"tengo|tiene|tienen|hay|puedo|puede|pueden|van|va|est[aá]|sigue|siguen)")
-_QUESTION = re.compile(rf"\?|^\W*¿|^\W*{_FILLER}(?:{_WH}|{_AUX})\b|\b{_WH}\W*$", re.I)
+_QUESTION = re.compile(rf"\?|^\W*¿|(?:^\W*|\bquestion\s*[:,-]\s*|\bpregunta\s*[:,-]\s*){_FILLER}(?:{_WH}|{_AUX})\b|"
+                       rf"\b{_WH}\W*$", re.I)
 _INFO_REQUEST = re.compile(
     r"^\W*(?:(?:please|can you|could you|would you|pls)\W+)*(?:list|show|tell|give|pull up|bring up|look up|check|"
     r"display|send me|let me see|let me know|remind me|recap|summari[sz]e|mu[eé]strame|mu[eé]streme|dime|d[ií]game|"
     r"d[eé]me|ens[eé][ñn]ame|rev[ií]s[ae])\b|\bi(?:'d| would)? (?:want|need|like) to (?:see|know|check|review)\b|"
     r"\bcan i (?:see|get|have) (?:a |my |the )?(?:list|history|record|summary|rundown)\b", re.I)
 _ADDITION = re.compile(
-    r"\b(?:btw|by the way|fyi|for your info\w*|also|one more thing|another thing|forgot to (?:say|mention|add)|"
+    r"\b(?:btw|by the way|fyi|for your info\w*|also|one more (?:thing|detail)|another (?:thing|detail)|"
+    r"(?:small |quick |extra )?detail:|forgot to (?:say|mention|add)|"
     r"i forgot|"
     r"forgot|just so you know|should (?:mention|add|say)|i should add|small detail|quick add|to add|adding|p\.?s\.?|"
     r"oh and|and also|plus|se me olvid[oó]|otra cosa|por cierto|tambi[eé]n|adem[aá]s|olvid[eé] (?:decir|mencionar))\b",
@@ -95,6 +97,10 @@ _THINGS: list[tuple[str, str]] = [
     ("thermostat", r"thermostat|termostato"), ("vent", r"\bvents?\b|\bducts?\b"), ("carpet", r"\bcarpet\b|alfombra"),
     ("mailbox", r"\bmail ?box(?:es)?\b|\bbuz[oó]n\b"), ("gate", r"\bgates?\b|\bport[oó]n\b"),
     ("ice maker", r"ice maker"), ("floor", r"\bfloor(?:ing|boards?)?\b|\bpiso\b"),
+    ("doorbell", r"\bdoor ?bell\b|\bintercom\b|\bbuzzer\b|\btimbre\b"), ("peephole", r"\bpeep ?hole\b|\bmirilla\b"),
+    ("doorknob", r"\bdoor ?knobs?\b|\bknobs?\b|\bdoor handles?\b|\bmanija\b"),
+    ("fixture", r"\btowel (?:bar|rack)\b|\bshelf\b|"
+                                                                        r"\bshelves\b|\bmirror\b|\btiles?\b"),
 ]
 _SYMPTOM = re.compile(
     r"\b(?:leak\w*|leaky|drip\w*|broke\w*|busted|bust|cracked|crack\w*|not (?:cold|cool|hot|warm|working|cooling|"
@@ -102,14 +108,16 @@ _SYMPTOM = re.compile(
     r"turning on|closing|locking|opening|flushing)|won'?t|wont|doesn'?t|does not|isn'?t|is not|stopped|dead|stuck|"
     r"jamm?ed|clog\w*|backed up|backing up|overflow\w*|flood\w*|noise|noisy|loud|buzz\w*|rattl\w*|grind\w*|squeak\w*|"
     r"squeal\w*|hum+(?:s|ing)?|click\w*|bang\w*|knock\w*|whistl\w*|hiss\w*|smell\w*|stinks?|mo[u]?ld|mildew|stain\w*|"
-    r"flicker\w*|burn(?:t|ed)? out|(?:is|are|went|goes|keeps going) (?:also |still |now )?out|out too|loose|wobbl\w*|"
+    r"flicker\w*|burn(?:t|ed)? out|died|dies|quit(?: working| on me)?|gave out|conked out|fried|kaput|(?:is|are|went|"
+    r"goes|keeps going) (?:also |still |now )?out|out too|loose|wobbl\w*|"
     r"fell (?:off|down)|missing|"
     r"torn|peeling|warm|freezing|too (?:hot|cold)|no (?:hot water|heat|power|water|ac|a/c)|running|keeps|"
     r"infest\w*|chirp\w*|beep\w*|swollen|rot\w*|rust\w*|puddl\w*|wet|soak\w*|"
     r"gotea\w*|fuga|roto|rota|no (?:funciona|sirve|prende|enfr[ií]a|calienta|cierra|abre|jala)|ruido\w*|"
     r"huele|olor|moho|atascad[oa]|tapad[oa]|descompuest[oa])\b", re.I)
 _LANDMARK_PREP = re.compile(r"(?:next to|by|near|beside|behind|under(?:neath)?|beneath|above|below|across from|"
-                            r"close to|left of|right of|over|al lado de(?:l)?|junto a(?:l)?|cerca de(?:l)?|"
+                            r"close to|left of|right of|over|when|whenever|while|if|after|cuando|mientras|"
+                            r"al lado de(?:l)?|junto a(?:l)?|cerca de(?:l)?|"
                             r"debajo de(?:l)?|encima de(?:l)?|detr[aá]s de(?:l)?)\s+(?:the |my |a |el |la |mi )?$",
                             re.I)
 _OWN_SPACE = re.compile(r"\b(?:in|inside|from|at) (?:my|our|the) (?:unit|apartment|apt|place|home|room|bathroom|"
@@ -118,8 +126,10 @@ _OWN_SPACE = re.compile(r"\b(?:in|inside|from|at) (?:my|our|the) (?:unit|apartme
 
 _REQUEST_NOUN = re.compile(
     r"\b(?:requests?|tickets?|work ?orders?|orders|repairs?|maintenance(?: requests?| tickets?| issues?)?|cases?|"
-    r"service requests?|solicitud(?:es)?|reparaci[oó]n(?:es)?|[oó]rden(?:es)?(?: de trabajo)?|reportes?|pedidos?)\b",
-    re.I)
+    r"service requests?|solicitud(?:es)?|reparaci[oó]n(?:es)?|[oó]rden(?:es)?(?: de trabajo)?|reportes?|pedidos?|"
+    r"reference(?: numbers?| #| ids?)?|ref(?:erence)? (?:number|no\.?|#)|confirmation (?:number|code)|ticket (?:number|"
+    r"#)|n[uú]mero de (?:referencia|solicitud)|(?:the|my) [\w ]{1,20} one(?= (?:closed|done|fixed|finished|resolved|"
+    r"still|yet|open)))\b", re.I)
 _OPEN = re.compile(
     r"\b(?:open|opened|pending|outstanding|active|unresolved|in progress|still (?:open|waiting|pending|going)|"
     r"not (?:yet )?(?:closed|fixed|done|resolved|finished)|haven'?t been (?:closed|fixed|done|resolved)|"
@@ -129,9 +139,11 @@ _PAST = re.compile(
     r"been (?:done|fixed|repaired|worked on|looked at|serviced)|have i had|had (?:any|problems|issues|trouble)|"
     r"antes|pasad[oa]s?|anteriores?|he tenido|han hecho|han arreglado|ya (?:arreglaron|vinieron)|"
     r"(?:have|did) i (?:ever |already )?(?:report|put in|file|submit|ask|request|make|made)\w*|he (?:hecho|reportado|"
-    r"pedido))\b", re.I)
+    r"pedido)|last (?:week|month|year|time|winter|summer)|(?:\d+|a few|a couple of|two|three) (?:days|weeks|months|"
+    r"years) ago|ago|el (?:mes|a[ñn]o) pasado|la semana pasada)\b", re.I)
 _REPAIR_VERB = re.compile(r"\b(?:fix(?:ed)?|repair(?:ed|s)?|work(?:ed)? on|done|serviced|replaced|problems?|issues?|"
-                          r"maintenance|arregl\w*|repar\w*|problemas?)\b", re.I)
+                          r"maintenance|report\w*|anything|submitted|filed|put in|asked for|arregl\w*|repar\w*|"
+                          r"problemas?|report\w*)\b", re.I)
 _VISIT = re.compile(
     r"\b(?:who(?:'s| is| will)?|some(?:one|body)|any(?:one|body)|a (?:tech|technician|plumber|person|repair ?(?:man|"
     r"person))|tech(?:nician)?s?|"
@@ -144,13 +156,17 @@ _VISIT = re.compile(
     r"\bcu[aá]ndo (?:vienen|viene|vendr[aá]n?|llegan?)\b|\by ahora qu[eé]\b|\bqu[eé] sigue\b", re.I)
 _PERSON_WORD = re.compile(r"\b(?:person|human|manager|supervisor|staff|office|leasing|someone|somebody|agent|"
                           r"representative|team|alguien|persona|oficina|gerente)\b", re.I)
-_TOUR_WORD = re.compile(r"\b(?:tour|visit|viewing|showing|see (?:the|a|it|the place|an?)|come (?:see|by|look)|"
-                        r"recorrido|visita|visitar|ver el|ver un)\b", re.I)
+_TOUR_WORD = re.compile(r"\b(?:tour|visit|viewing|showing|see|check out|look at|come (?:see|by|look)|stop by|"
+                        r"recorrido|visita|visitar|ver|conocer|pasar a ver)\b", re.I)
+
+
+MAX_ANALYSED = 600  # every structural scan reads at most this many characters: bounded, linear time on any input
 
 
 def things(text: str) -> set[str]:
     """Every object noun in a text (typed names, EN + ES)."""
-    found = {name for name, pat in _THINGS if re.search(pat, text or "", re.I)}
+    text = (text or "")[:MAX_ANALYSED]
+    found = {name for name, pat in _THINGS if re.search(pat, text, re.I)}
     if "water heater" in found:
         found.discard("heat")
     return found
@@ -160,10 +176,12 @@ def problem_objects(text: str) -> set[str]:
     """The objects a text says something is WRONG with. A landmark ('it's the one next to the fridge', 'the cabinet
     under the sink') locates the problem; it is not a second problem."""
     out: set[str] = set()
+    text = (text or "")[:MAX_ANALYSED]
     for name, pat in _THINGS:
-        for m in re.finditer(pat, text or "", re.I):
-            if not _LANDMARK_PREP.search(text[:m.start()]):
+        for m in re.finditer(pat, text, re.I):
+            if not _LANDMARK_PREP.search(text[max(0, m.start() - 30):m.start()]):  # bounded look-back: linear
                 out.add(name)
+                break
     if "water heater" in out:
         out.discard("heat")
     return out
@@ -218,6 +236,8 @@ class Utterance:
         if self.symptom and self.objects and not re.search(r"\b(?:problems?|issues?|trouble|problemas?)\b", self.text,
                                                            re.I):
             return False
+        if re.search(r"\b(?:status|update|news|progress|estado|novedad\w*|waiting|esperando)\b", self.text, re.I):
+            return False  # "is there a status on the one I put in before?" asks about an open request
         hist_word = bool(re.search(r"\bhistor(?:y|ial)\b|\brecords?\b", self.text, re.I)) or bool(
             self.past_marker and self.about_requests and not self.symptom and len(self.text.split()) <= 6)
         return (self.asks or hist_word) and (self.past_marker or hist_word) and (
@@ -240,7 +260,7 @@ class Utterance:
 
 
 def analyze(msg: str) -> Utterance:
-    text = normalize(msg or "")
+    text = normalize((msg or "")[:MAX_ANALYSED])
     objs = problem_objects(text)
     return Utterance(
         text=text, question=bool(_QUESTION.search(text)), info_request=bool(_INFO_REQUEST.search(text)),
@@ -249,6 +269,30 @@ def analyze(msg: str) -> Utterance:
         about_requests=bool(_REQUEST_NOUN.search(text)), open_marker=bool(_OPEN.search(text)),
         past_marker=bool(_PAST.search(text)), about_visit=bool(_VISIT.search(text)),
         names_person=bool(_PERSON_WORD.search(text)), names_tour=bool(_TOUR_WORD.search(text)))
+
+
+_EDIT_VERB = re.compile(r"\b(?:not|instead|rather|better|prefer\w*|switch|change|update|than|only|actually|wrong|fix|"
+                        r"set|put|make|correct\w*|cambi\w*|mejor|en vez)\b", re.I)
+
+
+UNRELATED = re.compile(r"^\W*(?:unrelated|separately|different (?:issue|thing|problem)|another (?:issue|problem|thing)|"
+                       r"new (?:issue|problem)|otro (?:tema|problema)|aparte)\b", re.I)
+
+
+def ends_as_question(msg: str) -> bool:
+    """The LAST sentence asks something ('the issue is that I work nights, does that matter?') and nothing in the
+    message is phrased as a change. Such a message answers nothing and must never mutate a card."""
+    text = normalize((msg or "")[:MAX_ANALYSED]).strip()
+    last = re.split(r"(?<=[.!])\s+", text)[-1] if text else ""
+    if re.match(r"^\W*[\w' ]{1,25}\s*[:=]", last):
+        return False  # "where: bedroom" is a field label, not a question
+    pure = re.match(r"^\W*(?:what if|why|does|do|is it|is the|is that|how|can you explain|explain)\b", last, re.I)
+    rest = text[:len(text) - len(last)]
+    return bool(last) and bool(_QUESTION.search(last)) and not _EDIT_VERB.search(rest if pure else text)
+
+
+_ANAPHOR_PART = re.compile(r"\b(?:under|behind|near|next to|around|below|above|beside|inside|on|in)\s+(?:it|them)\b",
+                           re.I)
 
 
 def adds_to(u: Utterance, sent_text: str) -> bool:
@@ -265,13 +309,17 @@ def adds_to(u: Utterance, sent_text: str) -> bool:
     new_objs = u.objects - sent_objs - {"cabinet", "pipe", "floor", "wall"}  # parts of the same fixture
     if new_objs and u.symptom:
         return False
+    if re.search(r"^\W*add\b|\b(?:have them|tell them to|they(?:'ll| will)? need to|they should|please) "
+                 r"(?:bring|use|wear|call|text|park|check)\b|\bit'?s (?:high|up high|way up)\b|\bstarted (?:after|when|"
+                 r"last)\b|\bempez[oó] (?:despu[eé]s|cuando)\b", u.text, re.I):
+        return True  # a visit instruction or when it started: more about the same request
     descriptive = bool(re.search(
         r"^\W*(?:(?:oh|ah|and|also|so|um+|ok(?:ay)?|btw|fyi|y|oye)\W+)*(?:it'?s|its|it is|it was|it'?s been|"
         r"it only|it (?:leaks|drips|happens|gets|started|seems)|this is|that'?s|the (?:one|leak|drip|water|problem|"
         r"issue|cabinet|pipe)|there'?s|es (?:el|la)|est[aá]|sale|son|fue)\b|\bthe one\b|\bel de\b|\bla de\b|"
         r"\bonly (?:when|at|if)\b|\bsince\b|\bfor (?:\d+|a|two|three) (?:days?|weeks?|hours?)\b|\bdays?\b", u.text,
         re.I))
-    return u.addition or (descriptive and not (u.objects - sent_objs))
+    return u.addition or (descriptive and not new_objs) or bool(_ANAPHOR_PART.search(u.text) and not new_objs)
 
 
 _ROOMS_EXTRA: list[tuple[str, str]] = [
@@ -284,10 +332,18 @@ _ROOMS_EXTRA: list[tuple[str, str]] = [
 
 
 def room_in(text: str) -> str | None:
-    """A room or place in the home: the intake rooms first, then other places people name (garage, closet...)."""
-    if loc := extract_location(text or ""):
-        return loc
-    return next((label for label, pat in _ROOMS_EXTRA if re.search(pat, text or "", re.I)), None)
+    """A room or place in the home, the one named FIRST ("the walk-in closet in the hallway" -> Closet): the intake
+    rooms and other places people name (garage, closet...)."""
+    text = (text or "")[:MAX_ANALYSED]
+    loc = extract_location(text)
+    extra = [(m.start(), label) for label, pat in _ROOMS_EXTRA for m in [re.search(pat, text, re.I)] if m]
+    if loc and extra:
+        from app.intake import _LOCATIONS
+        pos = next((m.start() for label, pat in _LOCATIONS if label == loc
+                    for m in [re.search(rf"\b(?:{pat})\b", text, re.I)] if m), len(text))
+        first = min(extra)
+        return first[1] if first[0] < pos else loc
+    return loc or (min(extra)[1] if extra else None)
 
 
 # ---- one field-reference resolver for every card kind ----------------------------------------------------------
@@ -367,11 +423,20 @@ def _value_before(msg: str, start: int) -> str:
     return m.group("v").strip() if m else ""
 
 
-def parse_value(field_name: str, kind: str, raw: str) -> str | None:
-    """A value of the field's TYPE from free text, or None ('bathroom not kitchen' -> 'Bathroom' for location)."""
+def parse_value(field_name: str, kind: str, raw: str, extra: dict[str, Any] | None = None) -> str | None:
+    """A value of the field's TYPE from free text, or None ('bathroom not kitchen' -> 'Bathroom' for location).
+    `extra` adds parsers that live elsewhere (entry permission: app.understanding)."""
+    if extra and field_name in extra:
+        return extra[field_name](raw)
     kept = _NEG_SEG.sub(" ", raw)
     if field_name == "location":
-        return room_in(kept)
+        room = room_in(kept)
+        phrase = re.sub(r"^(?:(?:the|my|a|in|in the|el|la|mi)\s+)+", "", kept.strip(" .,;:!?\"'"), flags=re.I)
+        phrase = re.split(r"\s+(?:actually|please|pls|instead|now|not)\b", phrase, flags=re.I)[0].strip()
+        if room and 2 <= len(phrase.split()) <= 3 and room_in(phrase) == room and \
+                re.fullmatch(r"[a-z ]+", phrase, re.I):
+            return phrase[0].upper() + phrase[1:].lower()  # "hall closet" stays "Hall closet", not just "Closet"
+        return room
     if field_name == "area":
         return community_in(kept) or city_in(kept)
     if field_name == "days":
@@ -391,7 +456,7 @@ def parse_value(field_name: str, kind: str, raw: str) -> str | None:
     return None  # entry, entry_window, move_in, beds, budget: their own typed parsers in app.understanding
 
 
-def field_corrections(msg: str, kind: str | None) -> list[tuple[str, str]]:
+def field_corrections(msg: str, kind: str | None, extra: dict[str, Any] | None = None) -> list[tuple[str, str]]:
     """Corrections that NAME a field, by one shared grammar for every card kind: '(the) F is wrong, it's V',
     'wrong F, V', 'change/set/update the F to V', 'put V as the F', 'F should be V', 'F: V', 'la F está mal, es V',
     'cambie la F a V'. The value must parse as the field's type; with no value right after the field ('can you fix
@@ -399,8 +464,10 @@ def field_corrections(msg: str, kind: str | None) -> list[tuple[str, str]]:
     if not kind:
         return []
     out: list[tuple[str, str]] = []
-    text = normalize(msg)
-    for f, start, end in field_refs(text, kind):
+    text = normalize((msg or "")[:MAX_ANALYSED])
+    for f, start, end in field_refs(text, kind)[:8]:
+        if re.search(r"\b(?:different|another|new|separate|unrelated|second|other)\s+$|\botro\s+$", text[:start], re.I):
+            continue  # "different issue: my dryer won't spin" names a NEW problem, not the card's issue field
         before = text[max(0, start - 40):start]
         after = text[end:end + 30]
         framed = bool(re.search(rf"{_LEADS}$", before, re.I) or re.search(r"\bwrong\s+$|\bincorrect\s+$", before, re.I)
@@ -413,9 +480,9 @@ def field_corrections(msg: str, kind: str | None) -> list[tuple[str, str]]:
         tail = re.split(r"[.;!?]\s+|,\s*(?=(?:and |but )?(?:the|my|el|la)\s+\w+\s+(?:is|should|es)\b)", seg)[0]
         raw = _value_before(text, start) or (_value_after(text, end) if f not in ("issue", "message", "notes") else
                                              re.sub(rf"^\s*{_FRAME_AFTER}\s*:?\s*", "", tail, flags=re.I))
-        val = parse_value(f, kind, raw) if raw else None
-        if val is None and f in ("location", "area", "days", "time", "contact"):
-            val = parse_value(f, kind, text[end:])
+        val = parse_value(f, kind, raw, extra) if raw else None
+        if val is None and f in ("location", "area", "days", "time", "contact", "entry"):
+            val = parse_value(f, kind, text[end:], extra)
         if val and not any(x[0] == f for x in out):
             out.append((f, val))
     return out
@@ -429,6 +496,12 @@ def room_swap(msg: str, current: str | None) -> str | None:
     kept = room_in(_NEG_SEG.sub(" ", text))
     ruled_out = [room_in(m.group(0)) for m in _NEG_SEG.finditer(text)]
     if kept and kept != current and (any(ruled_out) or _CORRECTION_SIGNAL.search(text)):
+        m = re.search(r"\b(?:(?:the|my)\s+)?(?P<p>[a-z]+\s+[a-z]+)\s*(?:actually|instead|,|\.|$)",
+                      _NEG_SEG.sub(" ", text), re.I)
+        if m and room_in(m.group("p").split()[-1]) == kept and not (things(m.group("p")) - {"closet"}) and \
+                not re.match(r"(?:it|its|is|in|the|my|a|one)\b", m.group("p"), re.I) and \
+                not re.search(r"\bone\b", m.group("p"), re.I):
+            return m.group("p")[0].upper() + m.group("p")[1:].lower()  # "the hall closet" keeps its detail
         return kept
     return None
 
@@ -450,6 +523,8 @@ def split_problems(msg: str) -> list[str]:
     different objects ('leaky sink, also busted bathroom fan', 'sink leak + bathroom fan not working', 'X, and the
     bathroom fan is also broken'). A clause with no object of its own, only a part (cabinet, floor, pipe) or a pronoun
     back to the last one ('the cabinet under it is wet') stays with the clause before. One problem -> [msg]."""
+    if len(msg or "") > MAX_ANALYSED:
+        return [msg]  # a very long message is not split (a person, not a parser, reads it)
     text = normalize(msg)
     spans: list[tuple[int, int]] = []
     pos = 0
@@ -460,16 +535,18 @@ def split_problems(msg: str) -> list[str]:
     if pos < len(text):
         spans.append((pos, len(text)))
     groups: list[tuple[int, int]] = []
-    for a0, b0 in spans:
+    last_objs: set[str] = set()
+    for a0, b0 in spans[:12]:  # at most 12 clauses are considered
         c = text[a0:b0].strip(" ,.;:")
         if not c:
             continue
         objs = problem_objects(c)
-        if groups and (not objs or objs <= problem_objects(text[groups[-1][0]:groups[-1][1]]) or objs <= _PARTS
-                       or _ANAPHOR.search(c)):
+        if groups and (not objs or objs <= last_objs or objs <= _PARTS or _ANAPHOR.search(c)):
             groups[-1] = (groups[-1][0], b0)  # more about the same problem: keep the person's own wording
+            last_objs |= objs
         else:
             groups.append((a0, b0))
+            last_objs = set(objs)
     texts = [text[a0:b0].strip(" ,.;:") for a0, b0 in groups]
     probs = [g for g in texts if problem_objects(g) and has_symptom(g)]
     if len(probs) < 2:
@@ -502,9 +579,9 @@ class Segment:
 def segments(msg: str, classify_person: Any) -> list[Segment]:
     """The message as clauses, each tagged with the workflow it asks for. `classify_person` is
     `app.understanding.requests_human` (passed in to avoid an import cycle)."""
-    text = normalize(msg)
+    text = normalize((msg or "")[:MAX_ANALYSED])
     out: list[Segment] = []
-    for raw in _CLAUSE_JOIN.split(text):
+    for raw in _CLAUSE_JOIN.split(text)[:12]:
         c = (raw or "").strip(" ,.;:")
         if len(c.split()) < 2:
             continue
@@ -563,7 +640,8 @@ def date_readback(text: str, lang: str, today: date | None = None) -> tuple[str,
     return None
 
 
-__all__ = ["normalize", "analyze", "Utterance", "things", "problem_objects", "has_symptom", "adds_to",
+__all__ = ["normalize", "analyze", "ends_as_question", "Utterance", "things", "problem_objects", "has_symptom",
+           "adds_to",
            "split_problems", "room_in", "FIELD_LEXICON", "field_refs", "field_corrections", "parse_value", "room_swap",
            "segments", "Segment",
            "date_readback"]

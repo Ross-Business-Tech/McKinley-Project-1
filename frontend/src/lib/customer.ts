@@ -1,4 +1,6 @@
-import type { ActionKind, ActionResult, ChatResponse, Journey, Persona, ProposedAction } from "./types";
+import type {
+  ActionKind, ActionResult, ChatResponse, Journey, Persona, ProposedAction, SafetyContact, SafetyHref, SafetyState,
+} from "./types";
 
 /** Security-test fixture personas never appear in the customer view (staff console only). */
 const STAFF_ONLY = new Set(["F-INJECT"]);
@@ -179,8 +181,11 @@ export const UI = {
     newChat: "Start over",
     newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
     prototype: "Prototype with made-up data.",
-    emergencyLead: "Emergency?",
-    emergencyCall: "Emergency: call 911",
+    // NEEDS McKINLEY REVIEW (Sprint 8): the only always-on mention of 911. Plain muted text, deliberately not a link.
+    emergencyFooter: "In an emergency, call 911.",
+    // NEEDS McKINLEY REVIEW (Sprint 8): contact link label and the alert heading when the backend sends none
+    callPoison: "Call Poison Help 1-800-222-1222",
+    safetyHeading: "Your safety comes first",
     demoButton: "Demo",
     demoTitle: "About this demo",
     demoSignIn: "Demo sign-in",
@@ -236,8 +241,10 @@ export const UI = {
     newChat: "Empezar de nuevo",
     newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
     prototype: "Prototipo con datos ficticios.",
-    emergencyLead: "¿Emergencia?",
-    emergencyCall: "Emergencia: llame al 911",
+    // NEEDS McKINLEY REVIEW (Sprint 8)
+    emergencyFooter: "En una emergencia, llame al 911.",
+    callPoison: "Llamar a Poison Help 1-800-222-1222",
+    safetyHeading: "Su seguridad es lo primero",
     demoButton: "Demo",
     demoTitle: "Sobre esta demo",
     demoSignIn: "Inicio de sesión de demo",
@@ -341,4 +348,59 @@ export function loadConversation(): StoredConversation | null {
 /** Personas that appear in recorded journeys (static preview identity list). */
 export function journeyPersonaIds(journeys: Journey[]): Set<string> {
   return new Set(journeys.map((j) => j.persona_id));
+}
+
+// ---- Sprint 8: safety state (normal / concern / active) ----
+
+const SAFETY_STATES = new Set<SafetyState>(["normal", "concern", "active"]);
+const SAFE_HREFS = new Set<SafetyHref>(["tel:911", "tel:988", "sms:988", "tel:18002221222"]);
+
+/**
+ * How this turn shows safety. The backend's `safety_state` wins; older backends and the recorded replay snapshot have
+ * none, so it is derived from the fields they do have (safety_notice / emergency_kind -> active, care_note -> concern).
+ * Fail-safe: a "normal" turn that still carries a safety_notice is shown as active rather than hiding the notice.
+ */
+export function safetyStateOf(r: ChatResponse | null | undefined): SafetyState {
+  if (!r) return "normal";
+  const s = r.safety_state;
+  if (s && SAFETY_STATES.has(s)) return s === "normal" && r.safety_notice ? "active" : s;
+  if (r.safety_notice || r.emergency_kind) return "active";
+  if (r.care_note) return "concern";
+  return "normal";
+}
+
+/** Fallback label for a contact the backend sent without one (and for contacts derived from older responses). */
+function hrefLabel(href: SafetyHref, t: UIStrings): string {
+  return { "tel:911": t.call911, "tel:988": t.call988, "sms:988": t.text988, "tel:18002221222": t.callPoison }[href];
+}
+
+/**
+ * The contact links for one turn. Backend `safety_contacts` when present (only allow-listed tel:/sms: targets become
+ * links; anything else is plain text). Otherwise, for older responses, the same links the screen showed before Sprint 8.
+ * "normal" turns never get contacts.
+ */
+export function safetyContactsOf(r: ChatResponse | null | undefined, t: UIStrings): SafetyContact[] {
+  const state = safetyStateOf(r);
+  if (!r || state === "normal") return [];
+  if (Array.isArray(r.safety_contacts)) {
+    return r.safety_contacts.flatMap((c) => {
+      if (!c || typeof c !== "object") return [];
+      const href = c.href && SAFE_HREFS.has(c.href) ? c.href : null;
+      const label = (typeof c.label === "string" && c.label.trim()) || (href ? hrefLabel(href, t) : "");
+      if (!label) return [];
+      return [{ label, href, kind: href ? (c.kind === "text" || href.startsWith("sms:") ? "text" : "call") : "info" } as SafetyContact];
+    });
+  }
+  const link = (href: SafetyHref, label = hrefLabel(href, t)): SafetyContact => ({ label, href, kind: href.startsWith("sms:") ? "text" : "call" });
+  if (state === "active") {
+    const kind = r.emergency_kind ?? null;
+    if (kind === "self_harm") return [link("tel:988"), link("sms:988")];
+    if (kind === "poison") return [link("tel:18002221222"), link("tel:911")];
+    const out = [link("tel:911", kind === "gas" || kind === "co" ? t.gasCall : t.call911)];
+    if (/\b988\b/.test(r.safety_notice ?? "")) out.push(link("tel:988"));
+    return out;
+  }
+  // concern from an older response: the care line's previous links (distress -> 988; unwell/danger -> 911; info -> none)
+  if (!r.care_note || r.care_kind === "info") return [];
+  return r.care_kind === "distress" ? [link("tel:988"), link("sms:988")] : [link("tel:911")];
 }

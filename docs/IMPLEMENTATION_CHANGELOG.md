@@ -1,5 +1,56 @@
 # Implementation changelog
 
+## Sprint 8: emergency UX, context-aware maintenance, safe quick fixes (2026-11-11)
+Branch `feat/emergency-ux-maintenance-enhancements` (depends on `feat/s7-safety-regression-fixes`). Report:
+[evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
+
+- **UI:** no persistent 911 control. Normal / concern / active states come from the backend `safety_state` and
+  `safety_contacts`, and the links sit straight under the alert heading. axe 0; phone test 14/14.
+- **Safety:**
+  - `ui_state.py` and the benign-span neutraliser;
+  - R5c conditional questions with a 2-turn confirmation (R5f);
+  - live markers inside questions;
+  - household chemicals, hot cars, stroke and infant signs;
+  - 988 for self-injury and deliberate overdoses;
+  - whitespace runs collapsed before detection.
+- **Maintenance:** `maintenance_history.py` builds repair-only counts and windows from the resident's own records.
+  Follow-ups need the same room, fixture, pest and symptom, and cross-session duplicates become follow-up notes. Notes
+  carry history and a manager-review marker.
+- **Quick fixes:** `quickfix.py` and `content/quickfix_drafts.py` hold the four drafts, behind `QUICKFIX_CONTENT_MODE`
+  with a hosted fail-closed. A failed classifier means no tips. The legacy checks are renamed and gated.
+- **Tests:** backend 3,500 → 4,582; frontend 54 → 72.
+
+## Sprint 7: generalization, safety reliability, adversarial journeys (2026-11-10)
+Branches `feat/generalization-safety-journeys` (merged early as PR #4) and `feat/s7-safety-regression-fixes`. Report:
+[evaluation/SPRINT7_GENERALIZATION.md](evaluation/SPRINT7_GENERALIZATION.md).
+
+- **Safety:**
+  - `app/risk/frame.py` builds a compositional frame (who × state × hazard × immediacy).
+  - Frame-aware detection is used by every layer, and lowering is monotone-safe (metamorphic invariant tests).
+  - Incident follow-ups were reworked, and `RiskDecision.person_danger` stops repair intake during emergencies.
+  - `R7-suppressed` was removed; the policy text is a DRAFT.
+- **Conversation:**
+  - `app/utterance.py` gives a structural reading of each message, with a shared EN + ES field resolver.
+  - Cross-workflow segments, targeted cancels, change notes after Send and a near-duplicate guard were added.
+  - `hypothesis` invariant tests drive the real API.
+- **Authorization:**
+  - a customer view without diagnostics;
+  - server-issued sessions on hosted;
+  - full-hash guest keys;
+  - fail-closed demo personas;
+  - a persisted "not the account holder" revocation (migration 0004).
+- **UI:** no stale "Send again" button; the staff console marks hidden facts as hidden.
+- **Results:**
+  - holdout full alert 81.4% → 88.1%, any guidance 83.8% → 90.7%, Spanish 75% → 100%;
+  - look-alike false alarms 13 → 10 of 79;
+  - journeys 30 → 40 of 45;
+  - security 0 leaks;
+  - backend 2350 → 3500 tests, frontend 54;
+  - live OpenRouter: 21 valid calls.
+- **Incidents:**
+  - the first candidate was merged early with P0 safety regressions, which are fixed on the fix branch;
+  - a real `DATABASE_URL` in `.env` reached a test, and the suite is now isolated from `.env`.
+
 ## Sprint 6: robust workflow orchestration, safety and authorization hardening (2026-11-10)
 Branch `feat/robust-workflow-safety-auth`. Report: [evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md).
 

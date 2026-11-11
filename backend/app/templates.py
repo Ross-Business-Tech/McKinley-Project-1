@@ -514,9 +514,60 @@ T: dict[str, dict[Lang, str]] = {
         "es": "No puedo confirmar precios ni ofertas especiales, ni reservar una tarifa desde aquí. El equipo de "
               "arrendamiento confirma los precios y ofertas vigentes. Puedo incluir lo que vio para que lo revisen.",
     },
-    "repeat_heard": {
-        "en": "That's not okay after this many visits, and I'm not going to ask you to troubleshoot again.",
-        "es": "Eso no está bien después de tantas visitas, y no le voy a pedir que lo revise otra vez.",
+    "repeat_heard": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: 3 or more earlier requests; was "this many visits")
+        "en": "That's not okay after this many times, and I'm not going to ask you to troubleshoot again.",
+        "es": "Eso no está bien después de tantas veces, y no le voy a pedir que lo revise otra vez.",
+    },
+    # ---- Sprint 8 C last round (all NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
+    "followup_extra_asks": {  # NEEDS McKINLEY REVIEW: a refund / credit / callback ask said with a follow-up
+        "en": " You also asked for something only the office can decide. I can't promise it, but it's written on "
+              "the note so they see it.",
+        "es": " También pidió algo que solo la oficina puede decidir. No puedo prometerlo, pero quedó escrito en la "
+              "nota para que lo vean.",
+    },
+    "followup_other_problem": {  # NEEDS McKINLEY REVIEW: a second, different problem in the same message
+        "en": " The other problem you mentioned, \"{issue}\", gets its own repair request: it opens right after you "
+              "send or skip this note.",
+        "es": " El otro problema que mencionó, \"{issue}\", tendrá su propia solicitud de reparación: se abre en "
+              "cuanto envíe u omita esta nota.",
+    },
+    "q_is_normal": {  # NEEDS McKINLEY REVIEW: "is it normal for the water heater to pop?" (a question, no form)
+        "en": "I can't tell from here whether that's normal for your {thing}; a maintenance technician would need to "
+              "check it. If it's happening in your home and you'd like it looked at, say \"report it\" and I'll start "
+              "a repair request with you.",
+        "es": "Desde aquí no puedo saber si eso es normal en su {thing}; un técnico de mantenimiento tendría que "
+              "revisarlo. Si está pasando en su casa y quiere que lo revisen, diga \"reportarlo\" y empiezo una "
+              "solicitud de reparación con usted.",
+    },
+    "payment_plan": {  # NEEDS McKINLEY REVIEW: no plan is set up or approved here
+        "en": "I can't set up or approve a payment plan here; the office decides that. I've prepared a note asking "
+              "them about a payment plan. Send it when you're ready. In this prototype nobody is notified "
+              "automatically.",
+        "es": "Aquí no puedo crear ni aprobar un plan de pagos; eso lo decide la oficina. Preparé una nota para "
+              "preguntarles por un plan de pagos. Envíela cuando quiera. En este prototipo no se avisa a nadie "
+              "automáticamente.",
+    },
+    "resume_after_alert": {  # NEEDS McKINLEY REVIEW: after the safety alert, the earlier card comes back (never
+        # assumes the danger is over: the safety guidance shown earlier still applies)
+        "en": "Your earlier {what} is still here and hasn't been sent. {ask}",
+        "es": "Su {what} anterior sigue aquí y no se ha enviado. {ask}",
+    },
+    "resume_card_note": {  # NEEDS McKINLEY REVIEW: the person answered the resumed card's question
+        "en": "Your earlier {what} is back, still unsent.",
+        "es": "Su {what} anterior está de vuelta, todavía sin enviar.",
+    },
+    "praise_ack": {  # NEEDS McKINLEY REVIEW (Sprint 8 C): a compliment or small talk; no workflow starts
+        "en": "Glad to hear it! If there's anything you need, like a repair or a question about your community, just "
+              "tell me.",
+        "es": "¡Qué bueno! Si necesita algo, como una reparación o una pregunta sobre su comunidad, solo dígame.",
+    },
+    "repeat_heard_one": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: exactly 1 earlier request)
+        "en": "You've reported this before, so I'm not going to ask you to troubleshoot again.",
+        "es": "Usted ya reportó esto antes, así que no le voy a pedir que lo revise otra vez.",
+    },
+    "repeat_heard_two": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: exactly 2 earlier requests)
+        "en": "You've already reported this twice, so I'm not going to ask you to troubleshoot again.",
+        "es": "Usted ya reportó esto dos veces, así que no le voy a pedir que lo revise otra vez.",
     },
     # ---- sprint 5 (TEAM DRAFTS): recovery, follow-ups, honest limits ----
     "lost_draft": {
@@ -1005,6 +1056,130 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Solo veo un problema en esta solicitud. Dígame el otro problema y le hago su propia solicitud.",
     },
     # ---- Sprint 7 (all NEEDS McKINLEY REVIEW) ----
+    "send_missing": {  # NEEDS McKINLEY REVIEW: typed "send it" on an incomplete card
+        "en": "I can't send it yet: still missing {missing}.",
+        "es": "Todavía no la puedo enviar: falta {missing}.",
+    },
+    "q_unknown_office": {  # NEEDS McKINLEY REVIEW: a question with no approved answer
+        "en": "I don't have an approved answer to that here, so I won't guess. The office can tell you, and I can pass "
+              "your question to them.",
+        "es": "No tengo una respuesta aprobada para eso aquí, así que no voy a adivinar. La oficina se lo puede "
+              "decir, y puedo pasarle su pregunta.",
+    },
+    "unknown_city": {  # NEEDS McKINLEY REVIEW: a place with no listed McKinley community in the demo
+        "en": "I don't see a McKinley community in {area} listed in this demo. The cities listed here are Ann Arbor, "
+              "Ypsilanti, Detroit, Lansing, Orlando and Tampa (communities: Heron Lake Apartments, Birchwood Commons, "
+              "Sandpiper Pointe and Fernhill Apartments). I've kept your day and time: which of these would you like?",
+        "es": "No veo una comunidad de McKinley en {area} en esta demostración. Las ciudades aquí son Ann Arbor, "
+              "Ypsilanti, Detroit, Lansing, Orlando y Tampa (comunidades: Heron Lake Apartments, Birchwood Commons, "
+              "Sandpiper Pointe y Fernhill Apartments). Guardé su día y hora: ¿cuál le interesa?",
+    },
+    "no_tour_ack": {  # NEEDS McKINLEY REVIEW: the prospect said no tour
+        "en": "No problem, no tour. Ask me anything you'd like to know, or I can pass your questions to the leasing "
+              "team.",
+        "es": "Sin problema, sin visita. Pregúnteme lo que quiera saber, o puedo pasar sus preguntas al equipo de "
+              "arrendamiento.",
+    },
+    "repair_dropped_call_kept": {  # NEEDS McKINLEY REVIEW: "cancel the oven repair, I just want the call"
+        "en": "Okay, I've set the repair request aside, unsent. Your note asking for a call about \"{topic}\" is ready "
+              "below. Send it when it looks right.",
+        "es": "Listo, dejé la solicitud de reparación a un lado, sin enviar. Su nota pidiendo una llamada sobre "
+              "\"{topic}\" está lista abajo. Envíela cuando esté correcta.",
+    },
+    "queued_other_safety": {  # NEEDS McKINLEY REVIEW: shown AFTER the fixed safety text, never instead of it
+        "en": " Your other request (\"{topic}\") is in the same note, so it isn't lost.",
+        "es": " Su otra solicitud (\"{topic}\") va en la misma nota, así que no se pierde.",
+    },
+    "all_clear_ack": {  # NEEDS McKINLEY REVIEW: after a safety retraction; nothing else changes
+        "en": "Thanks for letting me know, I'm glad it's okay. Nothing else was changed, and the urgent note stays for "
+              "staff to close. Is there anything else I can help with?",
+        "es": "Gracias por avisarme, me alegra que todo esté bien. No cambié nada más y la nota urgente queda para que "
+              "el personal la cierre. ¿Le ayudo con algo más?",
+    },
+    # ---- Sprint 8 (D) quick-fix tips before a repair request. NEEDS McKINLEY REVIEW (all four keys) ----
+    "quickfix_offer": {
+        "en": "Before I start a repair request, here are a few quick things that often fix this:\n{items}\n\nDid that "
+              "fix it? Reply yes, or say \"send a request\" and I'll start the repair request.",
+        "es": "Antes de empezar una solicitud de reparación, aquí hay unas cosas rápidas que muchas veces lo "
+              "resuelven:\n{items}\n\n¿Se resolvió? Responda sí, o diga \"envíen una solicitud\" y empiezo la "
+              "solicitud de reparación.",
+    },
+    "quickfix_draft_label": {
+        "en": "Draft tips for this demo, not yet approved by McKinley. If you'd rather not try them, just say "
+              "\"send a request\".",
+        "es": "Consejos en borrador para esta demostración, aún no aprobados por McKinley. Si prefiere no probarlos, "
+              "solo diga \"envíen una solicitud\".",
+    },
+    "quickfix_resolved": {
+        "en": "Glad that fixed it. I haven't sent anything to maintenance. If it stops working again, just tell me "
+              "and I'll start a repair request.",
+        "es": "Qué bueno que se resolvió. No envié nada a mantenimiento. Si vuelve a fallar, dígame y empiezo una "
+              "solicitud de reparación.",
+    },
+    # ---- Sprint 8 (D) fix round. NEEDS McKINLEY REVIEW (every key below) ----
+    "quickfix_side_reminder": {
+        "en": "About the earlier problem: did the tips fix it? Reply yes, or say \"send a request\".",
+        "es": "Sobre el problema de antes: ¿lo resolvieron los consejos? Responda sí, o diga \"envíen una solicitud\".",
+    },
+    "quickfix_kept_first": {
+        "en": "I've also kept the earlier problem ({issue}). If the tips didn't fix it, I can start that request "
+              "after this one.",
+        "es": "También guardé el problema de antes ({issue}). Si los consejos no lo resolvieron, puedo empezar esa "
+              "solicitud después de esta.",
+    },
+    "quickfix_unsafe_disposal_hand": {
+        "en": "No. Please never put your hand or anything else into the disposal, even when it's switched off. "
+              "Leave it off and let maintenance get it out.",
+        "es": "No. Por favor nunca meta la mano ni nada más en el triturador, aunque esté apagado. Déjelo apagado y "
+              "que mantenimiento lo saque.",
+    },
+    "quickfix_unsafe_panel_cover": {
+        "en": "No. Please don't take the cover off the breaker panel or tape a breaker on. Only the switches behind "
+              "its door are for residents; anything else is for maintenance.",
+        "es": "No. Por favor no quite la tapa del panel de breakers ni fije un breaker encendido. Solo los "
+              "interruptores detrás de la puerta son para residentes; lo demás lo hace mantenimiento.",
+    },
+    "quickfix_unsafe_chemical_drain": {
+        "en": "No. Please don't use chemical drain cleaners or boiling water. They can splash back and damage the "
+              "pipes; maintenance can clear it.",
+        "es": "No. Por favor no use destapacaños químicos ni agua hirviendo. Pueden salpicar y dañar la tubería; "
+              "mantenimiento lo puede destapar.",
+    },
+    "quickfix_unsafe_wires": {
+        "en": "No. Please don't touch, tape or reconnect any wires, or change an outlet yourself. Electrical work is "
+              "for maintenance.",
+        "es": "No. Por favor no toque, encinte ni reconecte cables, ni cambie un enchufe usted mismo. El trabajo "
+              "eléctrico lo hace mantenimiento.",
+    },
+    "quickfix_unsafe_pesticide": {
+        "en": "No. Please don't set off bug foggers or use poisons yourself: foggers can catch fire and make people "
+              "and pets sick. Report it and staff can advise on pest control.",
+        "es": "No. Por favor no use bombas insecticidas ni venenos usted mismo: pueden incendiarse y enfermar a "
+              "personas y mascotas. Repórtelo y el personal puede orientarle sobre el control de plagas.",
+    },
+    "legacy_checks": {
+        "en": "Meanwhile, a few checks: {items}",
+        "es": "Mientras tanto: {items}",
+    },
+    "legacy_checks_draft": {
+        "en": "Meanwhile, a few draft checks for this demo (not yet approved by McKinley): {items}",
+        "es": "Mientras tanto, unas revisiones en borrador para esta demostración (aún no aprobadas por McKinley): "
+              "{items}",
+    },
+    "quickfix_ask_again": {
+        "en": "Did those steps fix it? Reply yes, or no and I'll start a repair request.",
+        "es": "¿Esos pasos lo resolvieron? Responda sí, o no y empiezo una solicitud de reparación.",
+    },
+    "danger_no_form": {  # NEEDS McKINLEY REVIEW: no repair form while someone may be in danger
+        "en": "Please follow the safety steps above first. The repair can wait: when everyone is safe, tell me about "
+              "it and we can start the repair request then.",
+        "es": "Por favor, siga primero los pasos de seguridad de arriba. La reparación puede esperar: cuando todos "
+              "estén a salvo, cuénteme y empezamos la solicitud entonces.",
+    },
+    "queued_dropped": {  # NEEDS McKINLEY REVIEW: "cancel the callback, keep the faucet"
+        "en": "Okay, I've taken the request for a call off. Your {what} stays as it is.",
+        "es": "Listo, quité la solicitud de llamada. Su {what} sigue igual.",
+    },
     "exposure_note": {  # NEEDS McKINLEY REVIEW: no heat / no AC with a vulnerable person at home
         "en": "Urgent: no heating or cooling with a vulnerable person at home",
         "es": "Urgente: sin calefacción o aire con una persona vulnerable en casa",
@@ -1013,6 +1188,37 @@ T: dict[str, dict[Lang, str]] = {
         "en": "With someone vulnerable at home, this repair request is marked urgent for the team to review.",
         "es": "Como hay una persona vulnerable en casa, esta solicitud de reparación queda marcada como urgente para "
               "que el equipo la revise.",
+    },
+    # ---- Sprint 8 Workstream C: repeat-issue history (all NEEDS McKINLEY REVIEW; Spanish is a draft translation).
+    # Counts and windows come from app/maintenance_history.py (the signed-in resident's own earlier requests only; the
+    # request being written now is never counted). Never say anyone was notified; no callback, refund, rent concession
+    # or completion date.
+    "repeat_history_many": {  # NEEDS McKINLEY REVIEW
+        "en": "I found {n} related maintenance requests {window}, so I've marked this as a repeat issue. I'll include "
+              "that history in your request, so it's on the record for the community manager to review.",
+        "es": "Encontré {n} solicitudes de mantenimiento relacionadas {window}, así que la marqué como problema "
+              "repetido. Incluiré ese historial en su solicitud para que quede registrado y el gerente de la "
+              "comunidad lo revise.",
+    },
+    "repeat_history_one": {  # NEEDS McKINLEY REVIEW
+        "en": "I found 1 related maintenance request {window}, so I've marked this as a repeat issue. I'll include "
+              "it in your request, so it's on the record for the community manager to review.",
+        "es": "Encontré 1 solicitud de mantenimiento relacionada {window}, así que la marqué como problema repetido. "
+              "La incluiré en su solicitud para que quede registrada y el gerente de la comunidad la revise.",
+    },
+    "repeat_history_lead": {  # NEEDS McKINLEY REVIEW: the apology before the history line
+        "en": "I'm sorry this is happening again.",
+        "es": "Lamento que vuelva a pasar.",
+    },
+    "repeat_history_ready": {  # NEEDS McKINLEY REVIEW: card complete on the same turn
+        "en": "Check it over, then send it.",
+        "es": "Revísela y envíela.",
+    },
+    "repeat_history_saved": {  # NEEDS McKINLEY REVIEW: after Send; the prototype record holds the history
+        "en": " The related history is saved with this prototype record, marked for community manager review once "
+              "this is connected; in this demo nobody sees it yet.",
+        "es": " El historial relacionado quedó guardado con este registro de prueba, marcado para que el gerente de la "
+              "comunidad lo revise cuando esto esté conectado; en esta demo nadie lo ve todavía.",
     },
     "multi_issue_named": {  # NEEDS McKINLEY REVIEW: two problems in one message, the second named and queued
         "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}. Waiting "
@@ -1138,23 +1344,30 @@ DIY_ADVICE: dict[str, dict[Lang, str]] = {
 # I-16 drafts). They state the real outcome and never promise timing.
 CONFIRM: dict[str, dict[Lang, str]] = {
     "maintenance_request": {
-        "en": "Request {id} is saved for staff review. A team member reviews it before anything is scheduled. In "
-              "this prototype nobody is notified automatically. You can ask me for its status anytime.",
-        "es": "La solicitud {id} quedó guardada para revisión del personal. Un miembro del equipo la revisa antes de "
-              "programar algo. En este prototipo no se avisa a nadie automáticamente. Puede preguntarme por su estado "
-              "cuando quiera.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): same honesty as the card ("Demo only ... No McKinley staff will see it")
+        "en": "Request {id} is saved in this demo. In the real service a team member would review it before anything "
+              "is scheduled; in this prototype nobody is notified automatically and no McKinley staff will see it. You "
+              "can ask me for its status anytime.",
+        "es": "La solicitud {id} quedó guardada en esta demostración. En el servicio real un miembro del equipo la "
+              "revisaría antes de programar algo; en este prototipo no se avisa a nadie automáticamente y nadie del "
+              "personal de McKinley la verá. Puede "
+              "preguntarme por su estado cuando quiera.",
     },
     "tour_request": {
-        "en": "Tour request {id} is saved for the leasing team. It isn't a booking yet: the team picks a time from "
-              "your preferences. In this prototype nobody is notified automatically.",
-        "es": "La solicitud de visita {id} quedó guardada para el equipo de arrendamiento. Todavía no es una cita: el "
-              "equipo elige una hora según sus preferencias. En este prototipo no se avisa a nadie automáticamente.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
+        "en": "Tour request {id} is saved in this demo. It isn't a booking yet: in the real service the leasing team "
+              "would pick a time from your preferences; in this prototype nobody is notified automatically and no "
+              "McKinley staff will see it.",
+        "es": "La solicitud de visita {id} quedó guardada en esta demostración. No es una cita: en el servicio real el "
+              "equipo de arrendamiento elegiría una hora según sus preferencias; aquí nadie del personal de McKinley "
+              "la verá ni recibirá aviso.",
     },
     "staff_handoff": {
-        "en": "Note {id} is saved for the office with the details, so you won't have to repeat yourself. In this "
-              "prototype nobody is notified automatically.",
-        "es": "La nota {id} quedó guardada para la oficina con los detalles, para que no tenga que repetirlos. En "
-              "este prototipo no se avisa a nadie automáticamente.",
+        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
+        "en": "Note {id} is saved in this demo with the details, so you won't have to repeat yourself. In this "
+              "prototype nobody is notified automatically and no McKinley staff will see it.",
+        "es": "La nota {id} quedó guardada en esta demostración con los detalles, para que no tenga que repetirlos. "
+              "Aquí nadie del personal de McKinley la verá ni recibirá aviso.",
     },
     # NEEDS McKINLEY REVIEW: a note with no details of the person's own (never claims "with the details")
     "staff_handoff_plain": {
@@ -1177,6 +1390,8 @@ CONFIRM_LABEL: dict[str, dict[Lang, str]] = {
 }
 
 CHIPS: dict[str, dict[Lang, list[str]]] = {
+    "quickfix": {"en": ["It's fixed", "Still not working", "Send a request"],  # NEEDS McKINLEY REVIEW (Sprint 8, D)
+                 "es": ["Ya funciona", "Sigue sin funcionar", "Envíen una solicitud"]},
     "locations": {"en": ["Kitchen", "Bathroom", "Bedroom", "Living room"],
                   "es": ["Cocina", "Baño", "Dormitorio", "Sala"]},
     "door_locations": {"en": ["Front door", "Bedroom", "Bathroom", "Balcony or patio"],

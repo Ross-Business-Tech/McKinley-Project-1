@@ -74,7 +74,12 @@ def test_minor_faucet_leak_routine():
     assert "no_matched_record" in d.risk_flags
     triage = maintenance_triage(msg, build_context("U-NOMATCH", msg, None, principal=TOOLING), d)
     assert triage.level == "routine" and triage.category == "plumbing_drip"
-    assert any("towel" in s for s in triage.approved_troubleshooting)
+    # Sprint 8 fix round (product-owner requirement): these checks are DRAFTS, not McKinley-approved, so the triage
+    # (and the model prompt) carry none; the draft text still exists for the gated, labelled demo_drafts line.
+    # Was: assert any("towel" in s for s in triage.approved_troubleshooting)
+    assert triage.approved_troubleshooting == []
+    from app.workflows import legacy_draft_steps
+    assert any("towel" in s for s in legacy_draft_steps("plumbing_drip"))
     assert triage.work_order_created is False
 
 

@@ -78,7 +78,8 @@ Green appears **only after the backend actually saved something**. Brand blue ne
   - A 48px input and a 48px send button. Send is blue when there is text and grey with an outline when empty, so
     the two states never look alike.
   - Under it: **Talk to a person** (always) and **Start over** (once you have talked).
-  - Then one line: "Prototype with made-up data. Emergency? **Call 911**" (a tap-to-call link). That line is hidden
+  - Then one line: "Prototype with made-up data. In an emergency, call 911." (Sprint 8: plain muted text, **not** a
+    link; tap-to-call links appear only inside a contextual emergency alert). That line is hidden
     visually on screens under 480px tall but stays available to screen readers.
 - **Action card:**
   - A white card with a 12px radius: Barlow title, status pill, field list with sources.

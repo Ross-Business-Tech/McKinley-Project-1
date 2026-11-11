@@ -50,9 +50,10 @@ def refs(resp: dict) -> set[str]:
     return {i["reference"] for i in resp.get("status_items") or []}
 
 
-def r001_request(client, session) -> str:
-    """R001 files a repair through the real flow; returns its DEMO-WO reference."""
-    chat(client, "My kitchen faucet drips", "R001", session)
+def r001_request(client, session, issue: str = "My kitchen faucet drips") -> str:
+    """R001 files a repair through the real flow; returns its DEMO-WO reference. Sprint 8 C: a second request in another
+    session must be a DIFFERENT problem, since an open own request for the same thing now gets a follow-up note."""
+    chat(client, issue, "R001", session)
     r = chat(client, "Yes, you can enter", "R001", session)
     assert r["action"]["stage"] == "ready"
     res = act(client, "confirm", session, "R001")

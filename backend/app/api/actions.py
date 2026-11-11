@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from app.actions import confirm
-from app.api.staff_guard import request_is_local, require_staff
+from app.api.staff_guard import request_is_local, require_staff, staff_allowed
+from app.api.views import customer_record
 from app.auth import (
     AuthError,
     Principal,
@@ -58,7 +59,11 @@ def confirm_action(req: ActionConfirmRequest, request: Request,
         store = store.without_account_access()  # the saved note carries no on-file account slots either
     draft = store.get_draft(req.session_id, pkey)
     lang = draft.get("lang", "en") if draft else "en"
-    return confirm(store, req.session_id, principal.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
+    res = confirm(store, req.session_id, principal.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
+    # Sprint 8: a customer's confirm response carries the customer view of the record (no staff-only review fields)
+    if res.record and not staff_allowed(request, state):
+        return res.model_copy(update={"record": customer_record(res.record)})
+    return res
 
 
 @router.post("/actions/cancel", response_model=ActionResult)

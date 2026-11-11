@@ -157,8 +157,12 @@ export function StaffConsole() {
                 ["Replies", state.health.is_mock || state.health.provider === "mock"
                   ? "mock responder (fixed templates, not an AI model)"
                   : `${state.health.provider} · ${state.health.model} (live AI model${state.health.provider_ready ? "" : ", NOT configured: missing key"})`],
-                ["Database", state.health.database ?? "sqlite"],
-                ["Residents from", state.health.resident_source ?? "nowhere (none loaded)"],
+                // Sprint 7: a non-staff caller gets the public health subset (database is "" then), so say the
+                // facts are hidden instead of showing misleading blanks
+                ["Database", state.health.database === "" ? "hidden (staff access needed)"
+                  : (state.health.database ?? "sqlite")],
+                ["Residents from", state.health.database === "" ? "hidden (staff access needed)"
+                  : (state.health.resident_source ?? "nowhere (none loaded)")],
                 ["Environment", state.health.app_env === "hosted" ? "hosted deployment" : "local"],
               ].map(([k, v]) => (
                 <div key={k} className="min-w-0">

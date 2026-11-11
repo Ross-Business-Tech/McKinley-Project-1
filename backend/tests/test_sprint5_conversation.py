@@ -408,10 +408,18 @@ def test_more_tour_talk_after_sending_does_not_open_a_duplicate(client):
     assert "Which city" not in r["reply"]
 
 
-def test_second_community_tour_carries_days_and_time(client):
+def test_second_community_tour_carries_days_and_time_only_when_said(client):
+    # Sprint 7 fix round (deliberately stricter, independent UX judge): a second tour no longer inherits the first
+    # tour's days and time silently; they carry over only when the person says "same time". Was:
+    # test_second_community_tour_carries_days_and_time (asserted the silent carry-over).
     chat(client, "tour Heron Lake saturday morning", "x2", persona=None)
     assert confirm(client, "x2", "tour_request", persona=None)["ok"]
     r = chat(client, "I'd also like to tour Birchwood", "x2", persona=None)
+    f = fields(r)
+    assert f["area"] == "Birchwood Commons" and "days" not in f and "Which days" in r["reply"]
+    chat(client, "tour Heron Lake saturday morning", "x2b", persona=None)
+    assert confirm(client, "x2b", "tour_request", persona=None)["ok"]
+    r = chat(client, "I'd also like to tour Birchwood, same time", "x2b", persona=None)
     f = fields(r)
     assert f["area"] == "Birchwood Commons" and f["days"] == "Saturday" and f["time"] == "Morning"
     assert r["action"]["stage"] == "ready" and "Which days" not in r["reply"]

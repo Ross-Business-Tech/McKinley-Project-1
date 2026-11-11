@@ -249,9 +249,29 @@ def detect_topics(text: str) -> list[str]:
                               r"tapad[oa]|lavabo|lights? (?:\w+ ){0,5}(?:is|are) out|bulbs? (?:is |are )?(?:out|burnt?"
                               r")|"
                               r"burn(?:ed|t) out", t)
+    if not (set(topics) & MAINTENANCE_TOPICS):
+        # Sprint 8 C fix round: a fixture named with the shared object lexicon (EN + ES, app/utterance.py) is a repair
+        # topic even when this keyword list misses the word ("my bathtub is clogged", "la ducha no drena"), so a direct
+        # repair request gets the on-file fields (entry window). Other objects need a symptom ("the blinds are bent").
+        from app.utterance import has_symptom, things
+
+        objs = things(re.sub(r"\bbath ?tubs?\b", "tub", text or "", flags=re.I))
+        fam = next((topic for topic, members in _OBJECT_TOPIC.items() if objs & members), None)
+        if fam and fam not in topics:
+            topics.append(fam)
+        elif objs and (generic_maint or has_symptom(text)) and "amenity" not in topics:
+            generic_maint = True  # type: ignore[assignment]
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics
+
+
+_OBJECT_TOPIC: dict[str, set[str]] = {  # shared-lexicon object names -> repair topic
+    "plumbing": {"sink", "faucet", "toilet", "shower", "water heater", "hot water", "pipe", "drain"},
+    "appliance": {"dishwasher", "fridge", "oven", "microwave", "disposal", "washer", "dryer", "ice maker"},
+    "hvac": {"ac", "heat", "thermostat", "vent"},
+    "pest": {"pests"},
+}
 
 
 def interaction_topics(i: Interaction) -> set[str]:

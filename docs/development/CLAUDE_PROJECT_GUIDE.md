@@ -77,7 +77,9 @@ real screenshots at 375, 390, 768 and 1440 px for visible changes.
   icon and words. See [`docs/design/BRAND_SYSTEM.md`](../design/BRAND_SYSTEM.md).
 - **Phones first:**
   - The composer stays pinned on every phone height, keyboard open or not (it scrolls with the page only at extreme zoom, 280px tall or less).
-  - The tap-to-call 911 link and "Talk to a person" are always visible.
+  - "Talk to a person" is always visible. Since Sprint 8 (product-owner decision) there is **no persistent tap-to-call
+    911 control**: emergency contacts appear only inside a contextual safety state (concern / active, driven by the
+    backend `safety_state` + `safety_contacts`), plus one muted, non-tappable footer line about 911.
   - Run `frontend/e2e/mobile-acceptance.mjs` (Chromium and WebKit, 7 sizes, keyboard stand-in) before a UI PR; see
     [`docs/design/MOBILE_UX_AUDIT.md`](../design/MOBILE_UX_AUDIT.md).
 - **Honesty:** never claim the public phone requirement is met until a deployed URL passes on a real phone

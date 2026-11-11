@@ -107,3 +107,28 @@ Fix round events (rules only, so a model can't cause them):
 `plan_turn`'s later steps (5 to 13) still decide most routing themselves, though they now read the understanding
 (`wants_person`, `status_q`, `chat_frustrated`, `act`). The table is authoritative for consent, cancel, restore,
 switch-topic and the duplicate check. Moving the remaining branches over is future work, one tested branch at a time.
+
+## Sprint 7 additions
+- **Duplicate guard.** `near_duplicate_of(kind, draft, records)` stops a second save of the same repair, even when it
+  is reworded ("mirror is cracked" / "mirror has a crack"). Confirm returns `POSSIBLE_DUPLICATE`; "it's a different
+  problem / save it as a new request" sets `draft["dup_ok"]` and allows it. The exact-fingerprint `duplicate_of`
+  check is unchanged.
+- **Queued items across workflows.** A note for the office (a callback) can be queued behind a repair card from the
+  same message (`draft["queued_note"]`). A prospect's tour can be queued behind an open note. The reply names
+  what is waiting.
+- **Targeted cancel (step 1c-target).** A cancel naming one of two items (the repair or the queued callback) drops
+  only that item. A mistaken cancel can be undone from the note that opened in its place.
+- **After Send.** Additions and corrections (repair or tour) open a `staff_handoff` change note citing the original
+  reference. This is never a second record of the same kind.
+- **Consent.** One vocabulary (`intake._SEND_COMMAND`) for every card kind: the whole message must be a send command.
+  A typed send on a declined card restores and saves it; a bare yes or ok never saves.
+- **Property-based invariants** (`tests/test_sprint7_invariants.py`, `hypothesis`, derandomized), checked after every
+  step of generated act sequences:
+  - consent;
+  - no duplicate side effects;
+  - unrelated fields preserved;
+  - questions never mutate;
+  - cancelling one of two keeps the other;
+  - no booking or dispatch claims;
+  - no overwrite of an open workflow;
+  - no cross-persona access.

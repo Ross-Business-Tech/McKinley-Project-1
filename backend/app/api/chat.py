@@ -63,7 +63,7 @@ def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state
         # Interactive chat: a provider-reported model mismatch is surfaced as an error, never hidden.
         resp = run_turn(state.deps, req.message, req.mode, principal.persona_id, session_id, target=target,
                         gate_provider=req.gate_provider, channel=req.channel, fallback_on_model_error=True,
-                        principal=principal)
+                        principal=principal, local_request=local)
     except AuthError as e:
         raise HTTPException(status_code=e.status, detail=e.detail()) from None
     except LLMError as e:

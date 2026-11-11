@@ -21,6 +21,7 @@ Rules the table enforces (see docs/architecture/WORKFLOW_STATE_MACHINE.md):
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -299,6 +300,16 @@ def _fvals(fields: Any) -> dict[str, str]:
     return {f.get("key"): str(f.get("value") or "") for f in fields or [] if f.get("key")}
 
 
+_STEM_STOP = {"the", "my", "is", "has", "have", "a", "an", "and", "it", "its", "in", "on", "of", "to", "with", "there",
+              "bathroom", "kitchen", "bedroom", "room", "again", "still", "very", "really", "some", "this", "that"}
+_SYMPTOM_STEMS = {"crack", "broke", "leak", "drip", "stuck", "loose", "dirty", "stain", "brok", "damag", "missi",
+                  "worki", "not"}
+
+
+def _stems(text: str) -> set[str]:
+    return {w[:5] for w in re.findall(r"[a-zà-ÿ]{3,}", (text or "").lower()) if w not in _STEM_STOP}
+
+
 def near_duplicate_of(records: list[dict[str, Any]], kind: str, draft: dict[str, Any],
                       persona_id: str | None) -> dict[str, Any] | None:
     """Sprint 7: a repair about the SAME thing in the SAME place as one already saved in this session, worded
@@ -312,7 +323,8 @@ def near_duplicate_of(records: list[dict[str, Any]], kind: str, draft: dict[str,
     parts = {"cabinet", "floor", "pipe", "wall"}  # around a fixture: the same repair
     objs = things(mine.get("issue", "")) - parts or things(mine.get("issue", ""))
     room = room_in(mine.get("location", "") or mine.get("issue", ""))
-    if not objs:
+    words = _stems(mine.get("issue", ""))
+    if not objs and len(words) < 1:
         return None
     for r in records:
         if r.get("kind") != kind or (r.get("persona_id") or None) != (persona_id or None) or \
@@ -321,8 +333,12 @@ def near_duplicate_of(records: list[dict[str, Any]], kind: str, draft: dict[str,
         theirs = _fvals(r.get("fields") or [])
         r_room = room_in(theirs.get("location", "") or theirs.get("issue", ""))
         r_objs = things(theirs.get("issue", "")) - parts or things(theirs.get("issue", ""))
-        if r_objs == objs and (room is None or r_room is None or r_room == room):
+        same_place = room is None or r_room is None or r_room == room
+        if objs and r_objs == objs and same_place:
             return r
+        if not objs and not r_objs and same_place and words and (words & _stems(theirs.get("issue", ""))) >= {
+                w for w in words if w not in _SYMPTOM_STEMS} and words - _SYMPTOM_STEMS:
+            return r  # "the mirror is cracked" / "the mirror has a crack": the same unnamed fixture, same place
     return None
 
 

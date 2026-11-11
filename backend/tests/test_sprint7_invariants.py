@@ -26,6 +26,7 @@ from hypothesis import strategies as st
 from app.safety import output_checks
 from app.state import get_state
 from app.utterance import room_in, things
+from tests.conftest import forget_persona_records
 from tests.test_sprint6_conversation import chat, fields, press_send
 
 SETTINGS = settings(max_examples=30, deadline=None, derandomize=True, database=None,
@@ -39,7 +40,10 @@ CORRECTIONS = [("the location is wrong, it's the bedroom", "location", "Bedroom"
                ("la ubicación está mal, es la cocina", "location", "Cocina"),
                ("actually call me instead of texting", "contact", "call")]
 QUESTIONS = ["what are the pool hours?", "do you allow cats?", "is parking free?", "who will see this?",
-             "¿a qué hora abre la oficina?"]
+             "¿a qué hora abre la oficina?",
+             # fix round P2: a question that MENTIONS a field never mutates it
+             "the issue is that I work nights, does that matter?", "does the location matter?",
+             "is the contact preference important?", "what if the entry permission is wrong?"]
 BARE = ["yes", "ok", "sure", "sí", "sounds good"]
 SENDS = ["send it", "yes please send it", "go ahead and submit it", "envíelo por favor"]
 CANCELS = ["never mind, cancel it", "forget it, I don't need it anymore", "no lo envíe, cancélelo"]
@@ -195,6 +199,7 @@ def test_cancelling_one_of_two_requests_keeps_the_other(client, msg, keep, drop,
        finish=st.sampled_from(["button", "cancel"]))
 def test_two_workflows_in_one_message_are_both_kept(client, repair, join, person, finish):
     s = f"inv-mw-{uuid.uuid4().hex[:8]}"
+    forget_persona_records("R001")  # Sprint 8 C: examples share a store; each starts with no open R001 request
     r = chat(client, repair + join + person, s, "R001")
     assert (r.get("action") or {}).get("kind") == "maintenance_request"
     assert "renew" not in fields(r).get("issue", "").lower() and "renovaci" not in fields(r).get("issue", "").lower()
@@ -217,6 +222,7 @@ def test_two_workflows_in_one_message_are_both_kept(client, repair, join, person
        how=st.sampled_from(["button", "typed"]))
 def test_same_repair_twice_is_never_saved_twice_without_authorisation(client, first, second, how):
     s = f"inv-dup-{uuid.uuid4().hex[:8]}"
+    forget_persona_records("R003")  # Sprint 8 C: examples share a store; each starts with no open R003 request
     chat(client, first, s, "R003")
     chat(client, "yes you can come in", s, "R003")
     press_send(client, s, "maintenance_request", "R003")

@@ -75,7 +75,7 @@ WATER_BODY = (r"\b(?:pool|deep end|shallow end|hot tub|jacuzzi|bath ?tub|tub|lak
               r"piscina|alberca|ba[nñ]era|tina)\b")
 SUBMERGED = (r"went under|go(?:ne|ing|es)? under|hasn'?t (?:come|came) (?:back )?up|not coming (?:back )?up|"
              r"didn'?t come (?:back )?up|face ?down|under (?:the )?water|underwater|drown\w*|floating|sank|sinking|"
-             r"can'?t swim|ahog\w*|se hundi[oó]|bajo el agua|boca abajo")
+             r"ahog\w*|se hundi[oó]|bajo el agua|boca abajo")
 SHUT_IN = (r"(?:locked|left|stuck|shut|trapped|alone|sleeping|asleep) (?:\w+ )?(?:in|inside)\b|by (?:him|her|them)sel"
            r"(?:f|ves) (?:in|inside)|encerrad[oa]|se qued[oó] (?:encerrad[oa]|adentro|solo|sola)")
 VEHICLE = r"\b(?:car|truck|van|suv|vehicle|backseat|back seat|carro|coche|auto|camioneta)\b"

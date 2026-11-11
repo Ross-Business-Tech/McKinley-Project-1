@@ -7,6 +7,8 @@ Rules are applied in order; the first that fires decides. Each has an id recorde
   R3 deterministic "joking" self-harm                           -> 988 care line (never silent).
   R4 semantic urgent / uncertain with a category                -> category care line; staff check for self-harm.
   R5 deterministic hypothetical / past hazard                   -> calm safety info (same approved steps, no alarm).
+  R5c sprint 8: R5 for a serious sign about a specific person said only inside "if ..." ("if my dad can't breathe,
+     what should I do?"): the same approved steps plus the category contacts (UI "concern"); no incident opened.
   R6 deterministic care tier: distress / unwell                 -> that care line (semantic cannot remove it).
   R4u semantic "uncertain" with no category                     -> 911 care line (possible danger is never silence).
   R7 deterministic "danger" vocabulary line                     -> 911 care line. Sprint 7: ALWAYS shown. The semantic
@@ -71,8 +73,9 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
                             escalation_priority="high" if human else None, rule="R4",
                             sources=["semantic"] + (["deterministic"] if det.care else []))
     if det.mentioned_kind and det.framing in ("hypothetical", "past"):  # R5
-        return RiskDecision(response="safety_info", kind=det.mentioned_kind, care="info", rule="R5",
-                            sources=["deterministic"], degraded=degraded,
+        return RiskDecision(response="safety_info", kind=det.mentioned_kind, care="info",
+                            rule="R5c" if det.conditional_danger else ("R5p" if det.happened else "R5"),
+                            sources=["deterministic"], degraded=degraded, conditional_danger=det.conditional_danger,
                             conflict="semantic agreed no active danger" if s else None)
     if det.care in ("distress", "unwell"):  # R6
         human = det.care == "distress"

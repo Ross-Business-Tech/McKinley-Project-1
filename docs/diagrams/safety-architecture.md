@@ -1,4 +1,4 @@
-# Safety architecture (sprint 3, updated sprint 6)
+# Safety architecture (sprint 3, updated sprints 6 and 7)
 
 Reflects `backend/app/risk/` and its use in `backend/app/chat_engine.py` on `feat/workflow-customer-experience`.
 Safety is decided **before** routing and before any response generation, and no later step (the response model,
@@ -13,7 +13,11 @@ flowchart TB
   HIST[("Earlier user turns<br/>(this session, last 3)")] --> DET
   HIST --> SEM
   subgraph L1["Layer 1: risk/detect.py (deterministic)"]
-    DET["scan(): keyword KINDS + concept CONCEPTS<br/>+ sprint 6 concept slots (risk/concepts.py)<br/>framing: report / hypothetical / past / joking<br/>narrow negation, idioms, contractions<br/>+ conversation window, 'it's happening now'<br/>+ person-in-danger 'concern' flag"]
+    DET["scan(): keyword KINDS + concept CONCEPTS<br/>+ sprint 6 concept slots (risk/concepts.py)<br/>framing: report / hypothetical / past<br/>narrow negation, idioms, contractions<br/>+ conversation window, 'it's happening now'<br/>+ person-in-danger 'concern' flag"]
+    FRM["Sprint 7 risk/frame.py: WHO x STATE x HAZARD x IMMEDIACY<br/>(bilingual lexicon, severity tiers)<br/>-> category, urgency, ongoing, template"]
+    CMB["detect._combine: frame may ADD;<br/>lowering only if no person state, no hazard<br/>without the look-alike phrase, and not<br/>self-harm / personal safety / poison;<br/>laughter never lowers (monotone invariant)"]
+    DET --> CMB
+    FRM --> CMB
   end
   MSG --> SEM
   subgraph L2["Layer 2: risk/classifier.py (semantic, optional)"]
@@ -21,7 +25,8 @@ flowchart TB
     ST{"provider ready<br/>and not mock?"}
     SEM --- ST
   end
-  DET --> POL
+  MSG --> FRM
+  CMB --> POL
   SEM -->|"ok / timeout / error /<br/>bad_output / unavailable / mock"| POL
   PRIOR[("Urgent notes already saved<br/>in this session")] --> POL
   subgraph L3["Layer 3: risk/policy.py (explicit rules R1-R9, R9e)"]

@@ -43,7 +43,9 @@ for (const eng of engArg.split(",")) {
       await page.screenshot({ path: `${out}/${tag}-1-open.png` });
       const vis = async (loc) => { const b = await loc.boundingBox(); return b && b.y >= 0 && b.y + b.height <= (await page.evaluate(() => window.visualViewport?.height ?? innerHeight)) + 1; };
       if (!(await vis(box))) fail("composer not visible on open");
-      if (!(await box.isDisabled()) && !(await vis(page.locator('a[href="tel:911"]').last()))) fail("911 link not visible on open");
+      // Sprint 8 (product owner): the always-visible tap-to-call 911 link was removed. Was: "911 link not visible on open".
+      // Now: no tap-to-call control in the normal state (only a plain-text 911 line); an active alert is checked below.
+      if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail("persistent call link visible in the normal state");
       const sendBtn = page.locator('form button[type="submit"]');
       const tb = await sendBtn.boundingBox(); if (tb && (tb.width < 44 || tb.height < 44)) fail(`send target ${tb.width}x${tb.height}`);
       for (let i = 0; i < Q.length; i++) {
@@ -55,7 +57,8 @@ for (const eng of engArg.split(",")) {
           const share = await page.evaluate(() => { const c = document.querySelector("textarea")?.closest(".sticky"); return c ? c.getBoundingClientRect().height / (window.visualViewport?.height ?? innerHeight) : 0; });
           r.notes.push(`q${i + 1}: composer uses ${Math.round(share * 100)}% of the keyboard-height screen`);
           if (share > 0.42) fail(`q${i + 1}: composer takes ${Math.round(share * 100)}% of the screen while typing`);
-          if (!(await vis(page.locator('a[href="tel:911"]').last()))) fail(`q${i + 1}: 911 link not visible while typing`);
+          // Sprint 8: was "911 link not visible while typing"; the persistent link is gone, so: no call link while typing.
+          if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail(`q${i + 1}: call link shown in a normal conversation`);
           await page.screenshot({ path: `${out}/${tag}-2-keyboard-q${i + 1}.png` }); }
         await box.fill(Q[i]);
         if (mobile) await sendBtn.tap(); else await sendBtn.click();
@@ -77,8 +80,44 @@ for (const eng of engArg.split(",")) {
       r.notes.push(`after refresh: ${kept} assistant messages restored`);
       if (kept < Q.length + 1) fail(`refresh restored ${kept} assistant messages, expected ${Q.length + 1}`);
       await page.screenshot({ path: `${out}/${tag}-4-refresh.png` });
+      // Sprint 8: an active emergency shows an in-conversation alert with labelled contact links (never auto-dialled).
+      // Judge fix round: for each active type the FIRST contact link must be fully on screen above the sticky composer
+      // on arrival (it was hidden under it at 320x568 and 844x390), the composer stays visible, and focus is not on a link.
+      // Each emergency starts a fresh conversation (session cleared) so one incident doesn't shape the next.
+      const EMERGENCIES = (process.env.Q_EMERGENCY ?? [
+        "medical=My neighbor collapsed in the hallway and isn't breathing",
+        "gas=I smell gas really strongly in my kitchen right now",
+        "poison=My toddler just swallowed a laundry detergent pod",
+        "self_harm=I want to kill myself tonight",
+      ].join("|")).split("|").map((x) => x.split("="));
+      for (const [kind, q] of EMERGENCIES) {
+        if (await box.isDisabled()) break;
+        await page.evaluate(() => sessionStorage.clear()); await page.reload({ waitUntil: "networkidle" }); await box.waitFor();
+        const before = await page.locator('[role="article"]').count();
+        await box.fill(q);
+        if (mobile) await sendBtn.tap(); else await sendBtn.click();
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: 20000 });
+        await page.waitForTimeout(500);
+        const alert = page.locator('[role="article"]').last().locator('[data-testid="safety-alert"]');
+        if (!(await alert.count())) { fail(`${kind}: no in-conversation alert`); continue; }
+        const first = alert.locator('a[href^="tel:"], a[href^="sms:"]').first();
+        if (!(await first.count())) { fail(`${kind}: alert has no contact link`); continue; }
+        const label = (await first.innerText()).trim();
+        if (!/911|988|1-800-222-1222/.test(label)) fail(`${kind}: first link is not labelled with its number ("${label}")`);
+        if (kind === "medical" && !(await alert.locator('a[href="tel:911"]').count())) fail('medical: no labelled "Call 911" link');
+        const lb = await first.boundingBox(); const cb = await page.locator("textarea").evaluate((t) => t.closest(".sticky").getBoundingClientRect().top);
+        if (!lb || lb.y < 0 || lb.y + lb.height > cb + 1) fail(`${kind}: first contact link not above the composer (link ${lb && Math.round(lb.y + lb.height)} > composer ${Math.round(cb)})`);
+        if (await first.evaluate((a) => a.getClientRects().length > 1 || a.querySelector('[data-testid="phone-number"]')?.getClientRects().length > 1)) fail(`${kind}: link label breaks mid-number`);
+        if (!(await vis(box))) fail(`${kind}: composer hidden`);
+        if (await page.evaluate(() => document.activeElement?.matches('a[href^="tel:"], a[href^="sms:"]'))) fail(`${kind}: focus moved onto a call link`);
+        if (page.url().startsWith("tel:") || page.url().startsWith("sms:")) fail(`${kind}: dialled without a tap`);
+        const ov3 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        if (ov3 > 0) fail(`${kind}: horizontal overflow ${ov3}px`);
+        r.notes.push(`${kind}: first link "${label}"`);
+        await page.screenshot({ path: `${out}/${tag}-5-active-${kind}.png` });
+      }
       // tap target audit (outside running text)
-      const small = await page.evaluate(() => [...document.querySelectorAll("button, a, select, textarea, input")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.height < 44 || b.width < 24) && !e.closest("p"); }).map(e => (e.textContent || e.tagName).trim().slice(0, 30) + ` ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
+      const small = await page.evaluate(() => [...document.querySelectorAll("button, a, select, textarea, input, summary")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.height < 44 || b.width < 24) && !e.closest("p"); }).map(e => (e.textContent || e.tagName).trim().slice(0, 30) + ` ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
       if (small.length) r.notes.push("small targets: " + small.join("; "));
     } catch (e) { fail(String(e).split("\n")[0]); await page.screenshot({ path: `${out}/${tag}-x-error.png` }).catch(() => {}); }
     if (errs.length) r.notes.push("console: " + errs.slice(0, 3).join(" | ").slice(0, 300));

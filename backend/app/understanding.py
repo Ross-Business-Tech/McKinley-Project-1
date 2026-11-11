@@ -261,7 +261,9 @@ _HUMAN_FRAMES_2 = [
                r"(?:\s+de la oficina)?\s+me\s+(?:llame|contacte|escriba|atienda|ayude)\b|"
                r"\bque\s+(?:alguien|una persona|la oficina|un gerente)(?:\s+de la oficina)?\s+me\s+(?:llame|"
                r"contacte)\b|"
-               r"\bquiero (?:una persona|un humano|un gerente|hablar con alguien)\b", re.I),
+               r"\bquiero (?:una persona|un humano|un gerente|hablar con alguien)\b|\b(?:quiero|necesito|"
+               r"me gustar[ií]a) que me "
+    r"(?:llamen|contacten|llame)\b|\bque me llamen de la oficina\b", re.I),
 ]
 _HUMAN_ENTRY = re.compile(r"\b(?:first|before (?:they |you |anyone )?(?:come|coming|enter\w*|go(?:ing)? in)|"
                           r"to (?:fix|repair|come (?:in|over|by|fix)|look at the|check the))\b", re.I)
@@ -348,7 +350,9 @@ _HISTORY_FRAME = re.compile(
     r"(?:look(?:ed)?|fix(?:ed)?|repair(?:ed)?|work(?:ed)?|come out)\b[^.?!]{0,30}\b(?:before|in the past|previously|"
     r"last time)\b|\b(?:alguien|ya) (?:revis[oó]|arregl[oó]|vino a ver) (?:esto|eso|lo)\b|\bya (?:lo|la) "
     r"(?:revisaron|arreglaron)\b", re.I)
-_STATUS_NEG = re.compile(r"\bstatus (?:light|bar|led|icon)\b|^\W*update\W*:|\bupdate my (?:phone|number|email|contact|"
+_STATUS_NEG = re.compile(r"\bstatus (?:light|bar|led|icon)\b|\b(?:status|update|news) (?:of|on|about) the (?:pool|gym|"
+                         r"clubhouse|renovation|construction|parking (?:lot|garage)|elevator|lobby|community)\b|"
+                         r"\brenovation\b|\bconstruction\b|^\W*update\W*:|\bupdate my (?:phone|number|email|contact|"
                          r"address|payment)\b", re.I)
 
 _FRUSTRATION_ASSISTANT = re.compile(
@@ -369,7 +373,12 @@ _FRUSTRATION_ASSISTANT = re.compile(
     r"\w+ times|so many times|already)\b|\b(?:tired|sick) of (?:asking|explaining|repeating)\b|\bkeep (?:explaining|"
     r"asking|repeating myself|telling you)\b|\bthis is the (?:second|third|fourth|fifth|\d+(?:st|nd|rd|th)) time i'?m "
     r"asking\b|\b(?:nobody|no one|no-one) (?:helps|is helping|will help|wants to help|ever helps)\b|\bwhy is (?:nobody|"
-    r"no one) helping\b|\bnadie me (?:ayuda|hace caso)\b|\bya (?:lo )?(?:ped[ií]|dije) (?:varias|muchas) veces\b", re.I)
+    r"no one) helping\b|\bnadie me (?:ayuda|hace caso)\b|\bya (?:lo )?(?:ped[ií]|dije) (?:varias|muchas) veces\b|"
+    # Sprint 7 fix round: waiting with nothing happening ("I asked you an hour ago ... and nothing")
+    r"\b(?:asked|told|messaged|wrote|contacted) (?:you|y'?all|the office)?\s*(?:\w+ ){0,6}?ago\b|"
+    r"\band (?:still )?nothing\b|"
+    r"\bstill nothing\b|\bnothing (?:has )?(?:happened|changed)\b|\b(?:no one|nobody) (?:got back|answered|replied)\b|"
+    r"\bhace (?:una hora|horas|d[ií]as) (?:que )?(?:ped[ií]|pregunt[eé])\b", re.I)
 _FRUSTRATION_FEELING = re.compile(r"\b(?:i'?m|i am|i feel|feeling|getting) (?:so |really |very |extremely |pretty |"
                                   r"beyond )?(?:frustrated|annoyed|fed up|upset|irritated|exasperated|angry|mad)\b|"
                                   r"\b(?:so|really) (?:frustrating|annoying)\b|\b(?:ugh|argh)+\b", re.I)
@@ -635,7 +644,8 @@ _EDIT_SIGNAL = re.compile(
     r"change|update|swap|make (?:it|that)|set|fix|correct|should be|should say|meant|only|anymore|"
     r"preferir\w*|cambi\w*|mejor)\b|^\W*(?:contact(?: preference| method)?|entry(?: permission)?|where|room|"
     r"location|best time(?: for visits)?|visit time|time|description|problem|issue|what'?s wrong)\s*[:=-]", re.I)
-_PREF_FRAME = re.compile(r"\b(?:call|text|e-?mail|ring|phone|message)\s+(?:me|us)\b|\bprefer\w*\b|\brather\b|"
+_PREF_FRAME = re.compile(r"\b(?:call|text|e-?mail|ring|phone|message)\s+(?:me|us)\b|\buse (?:e-?mail|texts?|"
+                         r"phone|calls?|the portal)\b|\bprefer\w*\b|\bprefier\w*\b|\brather\b|"
                          r"\b(?:better|easier|best)\b|\binstead\b|\bcontact (?:preference|method|pref|me (?:by|via|"
                          r"through))\b|\b(?:by|via|through) (?:a )?(?:call|phone|text|e-?mail|portal)\b|^\W*contact\w*"
                          r"(?: preference| method)?\s*[:=-]|\bll[aá]menme\b|\bescr[ií]banme\b|\bmejor (?:por|que)\b|"
@@ -655,12 +665,19 @@ _ENTRY_ASK_FIRST = re.compile(
     # Sprint 7: presence required, said in other words ("I'd rather be home", "only if I'm there", "not without me")
     r"\b(?:i'?d|i would) (?:rather|prefer to) be (?:home|there|present|around)\b|\bonly if i'?m (?:home|there|present|"
     r"around|in)\b|\bi (?:want|need|have|would like) to be (?:present|around)\b|\b(?:please )?(?:don'?t|do not|dont) "
-    r"(?:enter|come in|go in)\b|\bwithout me\b|\bsin m[ií]\b|\bno (?:pueden|puede|deben) (?:entrar|pasar)\b|"
-    r"\bquiero estar (?:presente|ah[ií]|en casa)\b", re.I)
+    r"(?:enter|come in|go in)\b|\b(?:not|never|no|don'?t|do not)\b[^.?!]{0,25}\bwithout me\b|"
+    r"\bno (?:pueden|puede|deben) (?:entrar|pasar)\b|\bno\b[^.?!]{0,20}\bsin m[ií]\b|"
+    r"\bquiero estar (?:presente|ah[ií]|en casa)\b|\bll[aá]m(?:ame|eme|enme)\s+(?:primero|antes)\b|"
+    r"\bav[ií]s(?:ame|eme|enme)\s+(?:primero|antes)\b|\b(?:toquen|toque)\b", re.I)
 _ENTRY_MAY = re.compile(
+    # Sprint 7 fix round: "ok to enter without me" is PERMISSION (it was read as "contact me first")
+    r"\b(?:ok|okay|fine|can|may|free to|go ahead|alright|pueden|puede)\b[^.?!]{0,25}\b(?:enter|come in|go in|entrar|"
+    r"pasar)\b[^.?!]{0,12}\b(?:without me|sin m[ií])\b|"
     r"\bcome in (?:whenever|any ?time|anyway|if i'?m not (?:home|there))\b|\b(?:go ahead and|feel free to|they can "
     r"just|you can just|ok to|okay to|fine to|free to) (?:enter|come in|go in|let (?:themselves|yourselves) in)\b|"
-    r"\blet (?:themselves|yourselves) in\b|"
+    r"\blet (?:themselves|yourselves|yourself|himself|herself) in\b|\bcome on in\b|\b(?:you have|you'?ve got|with) "
+    r"my (?:ok|okay|permission)\b|\btiene(?:n)? mi permiso\b|\benter(?:ing)? (?:is )?(?:ok|okay|"
+    r"fine)\b|\b(?:ok|okay|fine)(?: to)? enter\b|"
     r"\b(?:enter|come in|go in)\s+(?:whenever|any ?time|when(?:ever)? (?:you|they) (?:need|want)(?: to)?|"
     r"while i'?m (?:out|away|gone|at work))\b|\b(?:can|may) (?:enter|come in|go in) (?:whenever|any ?time|if i'?m not)|"
     r"\b(?:pueden|puede) (?:entrar|pasar)(?! antes)\b|\bno (?:need|hace falta) (?:to )?(?:call|llamar|avisar)|"
@@ -681,6 +698,7 @@ _TIME_VALUE = re.compile(
     r"evenings?|nights?)(?: only)?|(?:only )?(?:weekends?|weekdays?)|"
     r"(?:por|en) la (?:ma[ñn]ana|tarde|noche)|despu[eé]s de las \d{1,2})\b", re.I)
 _VISIT_TIME_WORDS = re.compile(r"\b(?:best time|visit\w*|come|coming|stop by|show up|time|window|schedule|"
+                               r"send (?:someone|somebody|a tech\w*|them|maintenance)|"
                                r"available|work(?:s)? (?:better|best)|don'?t work|doesn'?t work|anymore|vengan|"
                                r"visita|horario)\b", re.I)
 _ISSUE_LEAD = re.compile(
@@ -778,6 +796,17 @@ def _channel_edits(clause: str) -> list[str]:
     return list(dict.fromkeys(reversed(new)))  # the last channel asked for is the correction ("it says call. text me")
 
 
+def contact_pref(msg: str) -> str | None:
+    """A contact channel the person PREFERS, said anywhere ("put down that I'd rather get a phone call than texts",
+    "email me updates instead of the portal"): 'call' | 'text' | 'email' | 'portal', or None. A question is not one."""
+    if utt.ends_as_question(msg) and not _STRONG_EDIT.search(msg):
+        return None
+    if requests_human(msg) or _entry_value(msg):
+        return None  # "have someone call me about parking" asks for a person; "call me first" is entry permission
+    chans = _channel_edits(msg)
+    return chans[0] if chans and _PREF_FRAME.search(msg) else None
+
+
 def entry_value(clause: str) -> str | None:
     """'knock first' / 'come in whenever' / 'go ahead and enter' -> the canonical entry permission, or None."""
     return _entry_value(clause)
@@ -794,6 +823,12 @@ def _entry_value(clause: str) -> str | None:
     return e
 
 
+_OBJ_SWAP = re.compile(r"\b(?:it'?s|its|it is|that'?s|es)\s+(?:actually\s+|really\s+)?(?:the|my|el|la|mi)\s+"
+                       r"(?P<x>[a-zà-ÿ][\w ]{1,24}?),?\s+(?:not|no|y no)\s+(?:the|my|el|la|"
+                       r"mi)\s+(?P<y>[a-zà-ÿ][\w ]{1,24}?)"
+                       r"\s*(?:[.,;!]|$)", re.I)
+
+
 def _fval(card: dict[str, Any] | None, key: str) -> str:
     return str(((card or {}).get("fields", {}).get(key) or {}).get("value") or "")
 
@@ -802,6 +837,20 @@ def _issue_edit(msg: str, card: dict[str, Any] | None) -> str | None:
     """A replacement for 'What's wrong': 'let me rephrase: X', 'correction: X', 'the what's wrong part is wrong.
     change it to: X', 'it's under the sink not the dishwasher itself' (keeps the symptom), 'say window won't lock'."""
     cur = _fval(card, "issue")
+    if (m := _OBJ_SWAP.search(msg)) and cur:
+        # Sprint 7 fix round: "it's the tub, not the sink": the OBJECT changes, the rest of the problem stays
+        x, y = m.group("x").strip(), m.group("y").strip()
+        tx, ty, tc = utt.things(x), utt.things(y), utt.things(cur)
+        if tx and ty and ty <= tc and not (tx & ty) and not re.search(rf"\b{re.escape(x.split()[-1])}\b", cur, re.I):
+            word = next((w for w in re.findall(r"[a-zà-ÿ]+", y.lower()) if re.search(rf"\b{w}\b", cur, re.I) and
+                         utt.things(w)), None)
+            if word:
+                new = re.sub(rf"\b{word}\b", x.lower(), cur, count=1, flags=re.I)
+                old_room, new_room = extract_location(cur), extract_location(x)
+                if old_room and new_room and old_room != new_room:  # "kitchen tub" -> "bathroom tub"? drop the room
+                    new = re.sub(rf"\s*\b{re.escape(old_room)}\b", "", new, count=1, flags=re.I)
+                return _cap(new.strip())[:200]
+            return _cap(f"{x}: {cur}")[:200]
     if m := _X_NOT_Y.search(msg):
         x, y = m.group("x").strip(), m.group("y").strip()
         y_things, cur_things = things_in(y), things_in(cur)
@@ -843,8 +892,8 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
     """Field-targeted corrections for the card (open, or just sent). Each names ONE field and the NEW value; 'X not Y'
     takes X. A message with no edit signal ('actually', 'not', 'instead', 'change', 'field: value', a value that differs
     from the card's) gives nothing, so plain answers keep their usual path."""
-    if not kind or not msg.strip():
-        return []
+    if not kind or not msg.strip() or utt.ends_as_question(msg) or utt.UNRELATED.search(msg):
+        return []  # Sprint 7: a question that mentions a field ("the issue is that I work nights, does that matter?")
     out: list[Correction] = []
     signal = bool(_EDIT_SIGNAL.search(msg))
     clauses = [c for c in re.split(r"(?<=[.!?;])\s+|,\s*(?=(?:and |but |also |plus )?(?:i |they |please |pls |"
@@ -859,12 +908,14 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
     # Sprint 7: ONE field-reference resolver (app/utterance.py) for every card kind, before and after Send: a message
     # that NAMES a field ("the location is wrong, it's the garage", "change the tour date to Friday", "la ubicación
     # está mal, es el baño") changes that field to a value of its type.
-    named = dict(utt.field_corrections(msg, kind))
+    named = dict(utt.field_corrections(msg, kind, extra={"entry": _entry_value}))
     ut = utt.analyze(msg)
     if kind == "maintenance_request":
         cur_loc = _fval(card, "location")
         loc = named.get("location")
-        if not loc and not (ut.objects - utt.things(_fval(card, "issue"))) and not (ut.symptom and ut.objects) and \
+        room_things = {"closet"}  # nouns that are also places in the home
+        if not loc and not (ut.objects - utt.things(_fval(card, "issue")) - room_things) and not (
+                ut.symptom and ut.objects - room_things) and \
                 not _ROOM_FIELD.match(msg) and not _INSIDE_UNIT.search(msg):
             loc = utt.room_swap(msg, cur_loc or None)  # "no, not kitchen — bathroom", "it's the bathroom one, my bad"
         if loc and loc != cur_loc and loc != extract_location(cur_loc or ""):  # "Hall bathroom" is already a bathroom
@@ -874,8 +925,13 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
             iv = None  # "sorry I meant the bathroom sink": the room changed, the problem did not
         if iv and _fval(card, "issue") and iv.lower() != _fval(card, "issue").lower():
             add("issue", iv)
+        if (sw := _OBJ_SWAP.search(msg)) and any(c.field == "issue" for c in out) and not any(
+                c.field == "location" for c in out) and (rx := extract_location(sw.group("x"))) and rx != cur_loc:
+            add("location", rx)  # "it's the tub, not the sink": the tub is in the bathroom
         if (cv := named.get("contact")) and cv not in _fval(card, "contact").lower():
             add("contact", cv)
+        if (ev0 := named.get("entry")) and ev0 != _fval(card, "entry"):
+            add("entry", ev0)  # "cambia la entrada: llámame primero"
         for c in clauses:
             entryish = bool(_ENTRY_WORDS.search(c))
             ev = _entry_value(c) if entryish or extract_entry(c) else None
@@ -918,7 +974,8 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
         for f in ("area", "days", "time"):
             if (v := named.get(f)) and not _fval(card, f).lower().startswith(v.lower()):
                 add(f, v)
-    elif kind == "tour_request" and (signal or _REMOVE_CUE.search(msg)):
+    elif kind == "tour_request" and (signal or _REMOVE_CUE.search(msg) or (
+            "," in _fval(card, "area") and re.search(r"\b(?:just|only|solo)\b", msg, re.I))):
         # the place asked for, never the one ruled out ("ypsilanti instead of ann arbor", "nvm heron lake. actually
         # no, fernhill" -> the last one named). Sprint 7: a place next to a removal cue ("never mind Heron Lake, just
         # Sandpiper Pointe", "scratch Heron Lake — Sandpiper Pointe", "no heron lake, sandpiper pointe") is ruled out.
@@ -926,11 +983,28 @@ def field_edits(msg: str, card: dict[str, Any] | None, kind: str | None) -> list
                       flags=re.I)
         parts = [p for p in re.split(r"[.;!?,—–]|\s-\s|\bactually\b|\bno\b|\bjust\b|\binstead\b", kept, flags=re.I)
                  if p.strip()]
-        parts = [p for p in parts if not re.search(r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|scratch|skip|"
-                                                   r"drop|cancel|not|no)\b", p, re.I)] or parts
+        kept_parts = [p for p in parts if not re.search(r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|scratch|"
+                                                        r"skip|drop|cancel|not|no|remove|cross(?:ed)?|"
+                                                        r"off the list|from the list|take \w+(?: \w+)? off|quit\w*)\b",
+                                                        p, re.I)]
+        parts = kept_parts if (kept_parts or "," in _fval(card, "area")) else parts
         place = next((n for p in reversed(parts) for n in [community_in(p) or city_in(p)] if n), None)
-        if place and not _fval(card, "area").lower().startswith(place.lower()):
+        cur_area = _fval(card, "area")
+        if "," in cur_area and (place is None or place.lower() not in cur_area.lower()):
+            # only the dropped one was named ("forget sandpiper pointe"): keep the other one on the card
+            gone_names = {n for p in re.split(r"[.;!?,]", msg) for n in [community_in(p)] if n}
+            left = [a.strip() for a in cur_area.split(",") if a.strip() and a.strip() not in gone_names]
+            place = left[0] if len(left) == 1 else place
+        if place and (not cur_area.lower().startswith(place.lower()) or ("," in cur_area and cur_area != place)):
             add("area", place)
+            # Sprint 7 fix round: the dropped community's own day leaves with it ("Sandpiper Pointe on Sunday")
+            gone = {a: d for a, d in ((card or {}).get("area_days") or {}).items() if a != place and d}
+            cur_days = _fval(card, "days")
+            if gone and cur_days:
+                kept_days = [x.strip() for x in cur_days.split(",") if x.strip() and not any(
+                    x.strip().lower() == g.strip().lower() for g in gone.values())]
+                if kept_days and kept_days != [x.strip() for x in cur_days.split(",")]:
+                    add("days", ", ".join(kept_days))
     elif kind == "staff_handoff":
         for c in clauses:
             chans = _channel_edits(c)
@@ -955,6 +1029,7 @@ def asks_split(msg: str) -> tuple[bool, str | None]:
 
 
 _REMOVE_CUE = re.compile(
+    r"\boff the list\b|\bfrom the list\b|\bcross(?:ed)? (?:\w+ (?:\w+ )?)?(?:off|out)\b|\btake \w+(?: \w+)? off\b|"
     r"\b(?:never ?mind|nevermind|nvm|forget(?: about)?|drop|skip|scratch|remove|leave (?:out|off)|leave\b[^.?!]{1,30}"
     r"\bout\b|take (?:out|off)|ignore|cancel|cut|lose|delete|no need for|don'?t need|dont need|not needed|"
     r"isn'?t needed|"
@@ -1195,6 +1270,8 @@ def understand_rules(msg: str, draft: dict[str, Any] | None, pending: str | None
     edits = field_edits(msg, live, kind) if live else []
     for c in edits:
         corr = [x for x in corr if x.field != c.field] + [c]
+    if corr and (utt.ends_as_question(msg) or utt.UNRELATED.search(msg)):
+        corr = []  # a question never corrects a field; "different issue: X" is a new problem, not a correction
     if corr:
         add(DialogueAct.CORRECT_INFORMATION)
     split_ask, split_target = asks_split(msg) if live and kind == "maintenance_request" else (False, None)

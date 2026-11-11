@@ -371,3 +371,39 @@ owner for McKinley risk review, and must not be used to tune rules.
 - A person described only by a pronoun ("she's lying on the floor, not responding") is still missed: the
   person-plus-body-state rule needs a person noun.
 - A self-harm incident never auto-resolves. R9 keeps the 988 line for the rest of the session by design.
+
+## 9. Sprint 8: customer-facing safety states and contacts
+The persistent tap-to-call 911 control was removed from the customer UI (product-owner decision). Emergency contacts now
+appear only inside a contextual state that the backend computes once per turn (`app/risk/ui_state.py`) and returns as
+`safety_state` and `safety_contacts`. The customer view passes both through. Full report:
+[../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
+
+```mermaid
+stateDiagram-v2
+  [*] --> normal
+  normal --> active: full alert (R1 / R2 / R9e / R10, R5f confirmation)
+  normal --> concern: care line, safety info (R5 / R5c), remembered line (R9), quiet incident turn (R10q)
+  concern --> active: the person confirms or describes the sign within 2 turns (R5f), or a new full alert
+  concern --> normal: nothing shown on the next turn (benign, resolved, "no, just asking")
+  active --> active: follow-up during the incident (R10)
+  active --> concern: quiet incident turn (R10q) / hazard reported controlled
+  active --> normal: explicit resolution or retraction (incident closed)
+```
+
+| State | Shown to the resident | Contacts |
+| --- | --- | --- |
+| `normal` | nothing safety-related (no banner, no call link) | none |
+| `concern` | a calm in-conversation note (`care_note`) | always matching the line: distress → 988 call + text; unwell / danger from a person sign → 911; R5 / R5c info → that category's contacts; R10q → the incident's contacts |
+| `active` | a clearly visible alert first in the turn (`safety_heading`, `safety_notice`), links straight under the heading | medical, fire, CO, personal safety, trapped → 911; gas → "Call 911 once you're outside" + gas company (info); poison → Poison Help 1-800-222-1222 + 911 if hard to wake; self-harm → 988 call + text + 911 if in immediate danger; flood / electrical without a person → maintenance line (info) + 911 if anyone is in danger; deliberate poisoning adds 988 |
+
+Rules:
+- Only `tel:911`, `tel:988`, `sms:988` and `tel:18002221222` become links. Nothing dials on render, and focus never moves
+  onto a call link.
+- Labels follow the reply language and are marked NEEDS McKINLEY REVIEW.
+- **R5c** (new): a conditional question about a serious emergency ("if my dad can't breathe, what do I do?") gets
+  the approved steps and the category's links as a *concern*, without opening an incident. A 2-turn pending marker
+  holds only the kind and the turn; a confirmation ("yes", "it is happening", "sí") or a described sign escalates to
+  the full alert (**R5f**). Live markers keep the original message active: "right now", recent-time phrases ("10 min
+  ago", "hace unos minutos"), a completed event about a specific person, or a separate present-tense symptom.
+- The footer keeps one muted, non-tappable line about 911 as a mitigation for missed emergencies (lead decision,
+  awaiting product-owner confirmation).

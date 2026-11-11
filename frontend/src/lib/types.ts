@@ -205,6 +205,22 @@ export interface ChatResponse {
   care_kind?: "distress" | "unwell" | "danger" | "info" | null;
   risk?: RiskAssessment | null;
   care_note?: string | null;
+  /** Sprint 8: how the customer screen shows safety this turn. Missing on older backends / the replay snapshot. */
+  safety_state?: SafetyState | null;
+  /** Sprint 8: category-specific contacts for this turn (empty for "normal"). Never auto-dialled. */
+  safety_contacts?: SafetyContact[] | null;
+}
+
+/** normal = nothing shown; concern = calm inline note; active = in-conversation alert with labelled contact links. */
+export type SafetyState = "normal" | "concern" | "active";
+
+/** The only numbers the customer screen will ever turn into a link (anything else is shown as plain text). */
+export type SafetyHref = "tel:911" | "tel:988" | "sms:988" | "tel:18002221222";
+
+export interface SafetyContact {
+  label: string;
+  href: SafetyHref | null;
+  kind: "call" | "text" | "info";
 }
 
 export type Channel = "web_chat" | "sms" | "email";
@@ -307,7 +323,7 @@ export interface Health {
   interaction_count: number;
   // deployment facts (optional: older backends and the static snapshot don't send them)
   app_env?: "local" | "hosted";
-  database?: "sqlite" | "postgres";
+  database?: "sqlite" | "postgres" | ""; // "" = public health subset (not staff)
   resident_source?: string | null;
   is_mock?: boolean;
   // false = this backend has no demo personas (APP_ENV=hosted): hide the demo sign-in, guest only

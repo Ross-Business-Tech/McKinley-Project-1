@@ -41,12 +41,14 @@ from app.models import (
 )
 from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
+from app.quickfix import effective_mode as quickfix_effective_mode
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
 from app.risk.classifier import SemanticRiskClassifier
 from app.risk.incident import prior_hazards as incident_prior_hazards
 from app.risk.incident import step as incident_step
 from app.risk.pipeline import assess
+from app.risk.ui_state import safety_ui
 from app.safety import (
     CRITICAL_CHECKS,
     contains_pii,
@@ -85,8 +87,18 @@ class EngineDeps:
             self.risk = SemanticRiskClassifier(self.settings, self.llm)
 
 
+_LINE_BREAKS = str.maketrans({"\r": "\n", "\u2028": "\n", "\u2029": "\n", "\x0b": "\n", "\x0c": "\n", "\x85": "\n"})
+_WS_RUN = re.compile(r"\s{2,}")  # any run of whitespace: one line break if it contains one, else one space
+
+
+def _collapse_ws(text: str) -> str:
+    return _WS_RUN.sub(lambda m: "\n" if "\n" in m.group(0) else " ", text.translate(_LINE_BREAKS))
+
+
 def clean_message(message: str) -> str:
-    return redact(_TAG.sub("", normalize_for_matching(message))).strip()
+    # Sprint 8 (verifier): runs of spaces collapse to one before any pattern sees the text (a 2,000-char message of
+    # mostly spaces took ~53 s, and a run of line breaks ~105 s, through the detectors); single line breaks are kept.
+    return _collapse_ws(redact(_TAG.sub("", normalize_for_matching(message)))).strip()
 
 
 def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
@@ -233,7 +245,7 @@ def run_turn(
     deps: EngineDeps, message: str, mode: Mode, persona_id: str | None, session_id: str | None,
     use_history: bool = True, target: Target | None = None, gate_provider: str | None = None,
     channel: Channel = "web_chat", enforce_validation: bool = True, fallback_on_model_error: bool = False,
-    principal: Principal | None = None,
+    principal: Principal | None = None, local_request: bool = True,
 ) -> ChatResponse:
     """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net).
     `principal` is derived by the API layer (app/auth.py); without one it is derived here from the settings."""
@@ -374,6 +386,9 @@ def run_turn(
                          channel=channel, lang=lang,  # type: ignore[arg-type]
                          hazard=rd.kind if rd.response == "full_alert" else None,
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
+                         person_danger=bool(getattr(rd, "person_danger", False)),  # Agent A: no repair intake now
+                         full_alert=rd.response == "full_alert", danger_rule=rd.rule,
+                         risk=rd, quickfix_mode=quickfix_effective_mode(settings, local_request),  # Sprint 8 (D)
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
                                  if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
                          understanding_hint=hint)
@@ -449,6 +464,8 @@ def run_turn(
     care_note = st.care_note if care_kind else None
     if care_kind:
         trace.add("8_validate", "warn", f"safety policy {rd.rule}: calm {care_kind} line added")
+    # sprint 8: the UI safety state follows exactly what is shown (app/risk/ui_state.py)
+    safety_state, safety_contacts = safety_ui(rd, alert_shown=bool(safety_notice), care_kind=care_kind, lang=lang)
     failed = [c.code for c in checks if not c.passed]
     unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
@@ -526,6 +543,8 @@ def run_turn(
         care_note=care_note,
         risk=risk,
         safety_heading=emergency_heading(ekind, lang) if safety_notice else None,
+        safety_state=safety_state,  # type: ignore[arg-type]
+        safety_contacts=safety_contacts,  # type: ignore[arg-type]
         mode=mode,
         audience=audience,  # type: ignore[arg-type]
         recommended_handoff=recommended,
