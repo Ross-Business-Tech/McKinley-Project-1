@@ -13,11 +13,13 @@ def test_whitespace_runs_collapse_before_detection():
     assert clean_message("if my dad " + " " * 1985 + "x") == "if my dad x"
     assert clean_message("line one\nline   two") == "line one\nline two"
     assert clean_message("a\n\n\n\nb") == "a\nb" and clean_message("a \n \n b") == "a\nb"
+    assert clean_message("a\u2028\u2028b") == "a\nb" and clean_message("a\x0b\x0cb") == "a\nb"
 
 
 @pytest.mark.parametrize("msg", ["if my dad " + " " * 1985 + "x", "the sink, " * 300, "a " * 1990,
                                  "if my dad " + "\n" * 1985 + "x", "if my dad " + " \n" * 990 + "x",
-                                 "if my dad " + "\r\n" * 990 + "x"])
+                                 "if my dad " + "\r\n" * 990 + "x", "if my dad " + "\u2028" * 1985 + "x",
+                                 "if my dad " + "\x0b\x0c" * 990 + "x", "if my dad " + "\u2029 " * 990 + "x"])
 def test_long_adversarial_inputs_are_fast(client, msg):
     t0 = time.time()
     r = client.post("/api/chat", json={"message": msg[:3990], "persona_id": "R003", "mode": "aware",

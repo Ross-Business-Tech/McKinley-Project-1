@@ -87,15 +87,18 @@ class EngineDeps:
             self.risk = SemanticRiskClassifier(self.settings, self.llm)
 
 
-_SPACE_RUN = re.compile(r"[ \t\u00a0\u2000-\u200b\u3000]{2,}")
-_BREAK_RUN = re.compile(r"[ \t\u00a0]*(?:\r?\n[ \t\u00a0]*){2,}")  # 2+ line breaks (with any spaces between) -> one
+_LINE_BREAKS = str.maketrans({"\r": "\n", "\u2028": "\n", "\u2029": "\n", "\x0b": "\n", "\x0c": "\n", "\x85": "\n"})
+_WS_RUN = re.compile(r"\s{2,}")  # any run of whitespace: one line break if it contains one, else one space
+
+
+def _collapse_ws(text: str) -> str:
+    return _WS_RUN.sub(lambda m: "\n" if "\n" in m.group(0) else " ", text.translate(_LINE_BREAKS))
 
 
 def clean_message(message: str) -> str:
     # Sprint 8 (verifier): runs of spaces collapse to one before any pattern sees the text (a 2,000-char message of
     # mostly spaces took ~53 s, and a run of line breaks ~105 s, through the detectors); single line breaks are kept.
-    text = _BREAK_RUN.sub("\n", redact(_TAG.sub("", normalize_for_matching(message))))
-    return _SPACE_RUN.sub(" ", text).strip()
+    return _collapse_ws(redact(_TAG.sub("", normalize_for_matching(message)))).strip()
 
 
 def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
