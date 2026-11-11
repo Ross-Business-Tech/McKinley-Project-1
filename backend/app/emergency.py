@@ -285,6 +285,21 @@ _GONE = (r"(?:when|after|once|if) i(?:'m (?:not around|gone|not here|no longer h
 _GONE_PLAN = (r"planning|plan\b|tonight|soon|this week|already|arrang\w*|sorted|found someone|take (?:my|care of my)|"
               r"have to deal|won't have to|so (?:my|the) (?:family|kids|sister|brother|mom|dad|parents|roommate)|"
               r"deposit|rent early|for after|my stuff|my things|my (?:dog|cat|pets?)")
+# Sprint 8 (verifier P0-B): a wish or plan to take MORE medicine than prescribed ("I want to take the whole bottle",
+# "thinking of taking the rest", "wish I could take them all", "quiero tomarme todo el frasco") is self-harm intent,
+# also after a routine dose ("I took 2 tylenol for my headache but I want to take the whole bottle").
+OD_INTENT = re.compile(
+    # only with a medicine word somewhere in the message ("take the rest of the week off" is not an overdose)
+    r"^(?=[\s\S]*\b(?:pills?|tablets?|meds|medicines?|medications?|tylenol|advil|ibuprofen|aspirin|xanax|sleeping|"
+    r"prescriptions?|pastillas?|medicinas?|frasco)\b)[\s\S]*?"
+    r"\b(?:want(?:s|ed)?|wanna|thinking (?:about|of)|wish(?: i could)?|going to|gonna|plan(?:ning)? (?:to|on)|might|"
+    r"about to|tempted to|could just|feel like|quiero|pienso|voy a|tengo ganas de)\b[^.?!]{0,40}?"
+    r"\b(?:tak(?:e|ing)|"
+    r"swallow(?:ing)?|down(?:ing)?|tomar(?:me)?|tragar(?:me)?)\b[^.?!]{0,30}?\b(?:the rest|the whole|whole bottle|all "
+    r"(?:of )?(?:them|it|my|the|those)|them all|everything|the (?:entire )?bottle|todo|todas|el resto|el frasco)\b",
+    re.I)
+
+
 _INTENT = (r"(?:roof|rooftop|top (?:floor|of (?:the|a|my) (?:\w+ ){0,2}(?:garage|building|bridge|parking structure|"
            r"tower))|bridge|ledge|overpass|balcony)\W+(?:\w+\W+){0,10}(?:not coming (?:back|down|home)|never coming "
            r"back|step off|jump\w*|let go|for the last time|one last time)|how easy it (?:would|'d) be to (?:just )?"
@@ -404,6 +419,7 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("self_harm", re.compile(_SELF_HARM2, re.I)),
     ("self_harm", _near(_BURDEN, _FINAL, 20)),
     ("self_harm", re.compile(_HEIGHT_ALONE + "|" + _METHOD + "|" + _INTENT, re.I)),
+    ("self_harm", OD_INTENT),
     ("self_harm", _near(_GONE, _GONE_PLAN, 20)),
     ("poison", re.compile(_OD_SIGNS, re.I)),
     ("poison", _near(_CHEM, _CHEM_HARM, 10)),

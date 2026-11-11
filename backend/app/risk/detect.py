@@ -12,7 +12,7 @@ Sprint 7: the compositional frame (app/risk/frame.py) is combined with the phras
 
 import re
 
-from app.emergency import intent_to_self_harm, person_concern, possible_risk, scan
+from app.emergency import OD_INTENT, intent_to_self_harm, person_concern, possible_risk, scan
 from app.risk.frame import RiskFrame, analyse, normalize, unknown_ingestion, without_lookalike
 from app.risk.models import DeterministicRisk
 from app.risk.neutralize import spans
@@ -75,7 +75,9 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     if not sp.reasons and sp.hypothetical is None and sp.recovered is None and not sp.controlled:
         return full
     routine = "routine dose" in sp.reasons and not intent_to_self_harm(sp.benign) and not (
-        _SELF_QUANTITY.search(message))  # "i took 2 tylenol for my headache": the dose alone set the 988 hint
+        _SELF_QUANTITY.search(message)) and not OD_INTENT.search(message)
+    # ^ "i took 2 tylenol for my headache": the dose alone set the 988 hint; "...but I want to take the whole bottle"
+    # (P0-B, verifier) never lowers
     if full.kind in _NEVER_LOWERED_BY_SPANS or full.via_window or (full.self_harm_intent and not routine) or (
             full.care == "distress"):
         return full
