@@ -29,6 +29,13 @@ _ISOLATED_ENV = [
 def _isolate_environment(monkeypatch):
     for name in _ISOLATED_ENV:
         monkeypatch.delenv(name, raising=False)
+    # Sprint 7: tests never read backend/.env. Deleting the variables is not enough, because Settings also reads the
+    # .env file directly; a developer's real DATABASE_URL (e.g. Supabase) or key there must never reach a test.
+    from app.config import Settings, get_settings
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 REAL_WORKBOOK = Path(__file__).resolve().parent.parent / "data" / "um_ai_sprint_sample_residents.xlsx"
