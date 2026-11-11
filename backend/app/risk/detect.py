@@ -109,6 +109,7 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
         fr = full.frame or {}
         if not (fr.get("states") and any(w not in ("self", "pet") for w in fr.get("who") or [])):
             # "small grease fire, I put it out, everyone is fine": the approved steps as calm info, no incident
+            # (R5, not R5p: "If that happens: get out..." fits a fire that is already out better than "Get out now")
             cur = DeterministicRisk(mentioned_kind=cur.kind, framing="past", frame={
                 **(full.frame or {}), "neutralized": [*sp.reasons, "controlled in this message"]})
     return cur
@@ -116,6 +117,36 @@ def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
 
 # gas and carbon monoxide stay alerts even when the source is off: the air is still unsafe until checked
 _CONTROLLABLE = {"fire_smoke", "flood", "electrical"}
+_CO_SYMPTOM = (r"head ?aches?|head (?:hurts|is pounding)|dizz\w*|light-?headed|nause\w*|throwing up|vomit\w*|"
+               r"(?:so |really |very )?(?:sleepy|drowsy|groggy)|feel(?:s|ing)? (?:sick|weird|awful|faint)|sick|"
+               r"confus\w*|dolor de cabeza|mare\w*|n[aá]usea\w*|v[oó]mit\w*|somnolient\w*")
+_CO_HOUSEHOLD = re.compile(rf"\b(?:everyone|everybody|all of us|we all|the whole (?:family|house|household)|both of us|"
+                           rf"all the (?:kids|family)|my whole family|todos|toda la familia|los dos|ambos)\b(?:\W+\w+)"
+                           rf"{{0,6}}?\W+(?:{_CO_SYMPTOM})\b", re.I)
+_CO_OTHER_CAUSE = re.compile(r"\b(?:flu|cold|covid|virus|bug|hangover|hungover|party|drinking|drunk|allerg\w*|food "
+                             r"poisoning|ate|dinner|restaurant|gripe|resfriado|resaca|fiesta|comida)\b", re.I)
+_ALARM_NOW = re.compile(r"\b(?:alarm|detector|sensor|alarma)\b(?:\W+\w+){0,5}?\W+(?:is |keeps |kept |won'?t stop |"
+                        r"started |just )?(?:going off|went off|goes off|beeping|sounding|blaring|screeching|"
+                        r"screaming|wailing|flashing red|alarming|sonando|son[oó]|pitando|chillando)\b|\b(?:keeps|won"
+                        r"'?t "
+                        r"stop) (?:going off|beeping|sounding)\b", re.I)
+_FUEL_NEAR = re.compile(r"\b(?:furnace|water heater|boiler|heater|generator|stove|oven|fireplace|garage|dryer|"
+                        r"caldera|calentador|calefactor|generador|estufa|horno|chimenea)\b", re.I)
+_LOW_BATTERY = re.compile(r"\b(?:car|clock|phone|wake-?up|snooze|morning|kitchen timer|timer|oven timer|reloj|"
+                          r"celular)\s+alarms?\b|\balarm clock\b|\bmy alarm\b|\balarma del (?:carro|coche|reloj|"
+                          r"celular)\b|\bdespertador\b|\b(?:low battery|battery|batteries|chirp\w* (?:every|once)|eve"
+                          r"ry (?:\d+|few|30) (?:seconds|"
+                          r"minutes)|test(?:ing)?|drill|pila|bater[ií]a|smoke detector|detector de humo|burnt toast|"
+                          r"cooking|shower steam|steam)\b", re.I)
+_SELF_CUT = re.compile(r"\b(?:i|i'?ve|i just|i have)\s+(?:\w+\s+)?(?:cut|sliced|slashed|stabbed|carved|burned|burnt)\s+"
+                       r"(?:myself|my (?:own )?(?:arm|arms|wrist|wrists|leg|legs|thigh|thighs|skin|stomach))\b|"
+                       r"\bme (?:cort[eé]|lastim[eé]|quem[eé]|raj[eé])\b(?! (?:con el cuchillo )?(?:cocinando|sin que"
+                       r"rer|"
+                       r"por accidente))", re.I)
+_ACCIDENT = re.compile(r"\b(?:cooking|chopping|cutting (?:onions|vegetables|bread|the)|knife slipped|slipped|by accid"
+                       r"ent|"
+                       r"accident\w*|shaving|opening|broken glass|glass broke|on the (?:can|glass|fence|counter)|while|"
+                       r"sin querer|por accidente|cocinando|picando|rasur\w*|accidente)\b", re.I)
 _MINOR_SHOCK = re.compile(
     r"\b(?:got|get|getting|felt|feel) (?:a |an )?(?:little |small |tiny |mild |slight |quick )?(?:shock|shocked|zap|"
     r"zapped|jolt)\b|\b(?:shocked|zapped) me\b|\bme (?:dio|da|dieron) (?:un |una )?(?:peque[nñ]o |pequeña |leve )?"
@@ -183,10 +214,22 @@ def _detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
                 out.kind, out.framing, out.via_window = "poison", "report", True
                 break
     _combine(out, fr, message)
+    if not out.kind and (_CO_HOUSEHOLD.search(message) and not _CO_OTHER_CAUSE.search(message)
+                         or _ALARM_NOW.search(message) and _FUEL_NEAR.search(message)
+                         and not _LOW_BATTERY.search(message)):
+        # final round (holdout class a): several people in the home with carbon-monoxide symptoms, or a sounding
+        # detector next to a fuel-burning appliance, is the CO alert (fresh air first), never a repair intake
+        out.kind, out.framing, out.mentioned_kind, out.frame_rule = "co", "report", None, True
+    elif not out.kind and _ALARM_NOW.search(message) and not _LOW_BATTERY.search(message) and out.care is None:
+        # a detector or alarm sounding now, source unknown: at least the calm 911 line, as a person-danger line (the
+        # planner opens no ordinary repair while it shows)
+        out.care, out.concern = "danger", True
     if not out.kind and not out.mentioned_kind and _MINOR_SHOCK.search(message):
         # "i got a little shock when i touched the outlet": the electrical steps as calm info (don't touch it; smoke,
         # sparks or heat: leave and call 911), never silence
-        out.mentioned_kind, out.framing = "electrical", "past"
+        out.mentioned_kind, out.framing, out.happened = "electrical", "past", True
+    if out.kind == "medical" and _SELF_CUT.search(message) and not _ACCIDENT.search(message):
+        out.self_harm_intent = True  # final round: a self-inflicted cut scored as medical also gets 988
     if out.kind == "poison" and _SELF_QUANTITY.search(message):
         out.self_harm_intent = True  # "i just swallowed a whole bottle of my sleeping pills": 988 with the alert
     if out.kind == "poison" and (intent_to_self_harm(message) or any(intent_to_self_harm(m) for m in prev)):

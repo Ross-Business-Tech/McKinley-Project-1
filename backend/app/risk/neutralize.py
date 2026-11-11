@@ -106,16 +106,25 @@ _APPLIANCE = (r"dishwasher|washer|washing machine|fridge|refrigerator|freezer|ic
               r"pan|tray|water heater pan|tub|sink|lavavajillas|lavaplatos|lavadora|refri\w*|nevera|congelador|"
               r"fregadero|lavabo")
 _CONTAINED = re.compile(
+    # "a little / some water ... dishwasher (at the bottom, after it runs)"
     rf"\b(?:a little|a bit of|some|a small (?:amount|puddle) of|a small puddle|a puddle of|a few drops(?: of)?|a "
     rf"little puddle(?: of)?|un poco de|poquita|algo de|un charquito de)\s+(?:standing |pooled |leftover |clean )?"
     rf"(?:water|agua)\b[^.?!]{{0,40}}?\b(?:{_APPLIANCE})\b(?:[^.?!]{{0,30}}?\b(?:after (?:it )?(?:runs|a cycle)|"
-    rf"(?:at|in) the bottom))?|\b(?:{_APPLIANCE})\b[^.?!]{{0,30}}?\b(?:has|had|is|with|tiene) (?:a little|a bit of|"
-    rf"some|un poco de) (?:standing |pooled )?(?:water|agua)\b[^.?!]{{0,30}}", _F)
+    rf"(?:at|in) the bottom))?|"
+    # "water (all over / sitting in) the bottom of my dishwasher": inside the appliance
+    rf"\b(?:water|agua)\s+(?:all over |sitting (?:in |at )?|standing (?:in |at )?|pooled (?:in |at )?|en )?(?:the )?"
+    rf"(?:bottom|inside|el fondo|dentro) (?:of |de |del )?(?:the |my |el |la |mi )?(?:{_APPLIANCE})\b|"
+    # "the washer has a little water"
+    rf"\b(?:{_APPLIANCE})\b[^.?!]{{0,30}}?\b(?:has|had|is|with|tiene) (?:a little|a bit of|some|un poco de) "
+    rf"(?:standing |pooled )?(?:water|agua)\b[^.?!]{{0,30}}", _F)
 _CONTAINED_Q = re.compile(r"\b(?:is|was) (?:that|this|it) (?:a |an )?(?:flood\w*|leak\w*|normal|bad|a problem|"
                           r"emergency|dangerous|serious)\b\??|\b(?:es|ser[aá]) (?:una )?(?:inundaci[oó]n|fuga|normal|"
                           r"grave|peligroso)\b\??", _F)
-_EXTENT = re.compile(r"\b(?:gushing|pouring|spraying|everywhere|all over|won'?t stop|wont stop|keeps (?:coming|rising)|"
-                     r"rising|spreading|outlets?|electrical|wires?|ceiling|inches|ankle|into the (?:hall|hallway|"
+_EXTENT = re.compile(r"\b(?:gushing|pouring|spraying|everywhere|all over(?! (?:the )?(?:bottom|inside|tub|basin|"
+                     r"drum))|won'?t stop|wont stop|keeps (?:coming|rising)|"
+                     r"rising|spreading|outlets?|electrical|wires?|ceiling|inches|ankle|power ?strips?|plugs?|cords?|"
+                     r"sockets?|buzz\w*|spark\w*|humming|hot|smok\w*|regletas?|zumb\w*|chispa\w*|cables?|"
+                     r"into the (?:hall|hallway|"
                      r"bedroom|living)|por todas partes|no para|enchufe|techo|"
                      # never near an ingestion: "drank some of the drano under the sink" is a poisoning
                      r"drank|drink\w*|swallow\w*|ate|took|bebi\w*|tom[oó]|trag\w*|kid|child|baby|son|daughter|"
@@ -146,8 +155,11 @@ _COMPLETED = re.compile(
     r"\b(?:swallowed|drank|ate|took|taken|has taken|got into|inhaled|overdosed|od'?d|collapsed|fell|fainted|passed "
     r"out|blacked out|hit (?:his|her|their) head|stopped breathing|cut (?:himself|herself|themselves)|(?:has|have|'s|"
     r"s) been|se (?:trag[oó]|tom[oó]|comi[oó]|bebi[oó]|cay[oó]|desmay[oó]|golpe[oó])|tom[oó]|bebi[oó]|trag[oó]|"
+    r"tom[eé]|me tom[eé]|tragu[eé]|"
     r"comi[oó])\b|\b(?:lips?|skin|face|fingers|labios|piel|cara)\b(?:\W+\w+){0,2}?\W+(?:are|is|look|looks|went|turned|"
     r"turning|est[aá]n?|se ven?) (?:\w+ )?(?:blue|purple|gr[ae]y|azul\w*|morad\w*)\b", _F)
+# final round: "is it bad if i took 20 sleeping pills?" is the speaker's own completed event, a live report
+_FIRST = re.compile(r"\b(?:i|i'?ve|i'?m|me|myself|yo|me tom[eé]|me tragu[eé]|tom[eé]|tragu[eé]|beb[ií])\b", _F)
 _NOT_KNOWING = re.compile(r"\b(?:don'?t|do not|didn'?t|can'?t|cannot|not|no|never|unable to)\s+(?:\w+\s+)?"
                           r"(?:know|tell|s[eé]|saber|figure out)\s*$", _F)
 # a general question about a hazard's properties, nobody named, nothing perceived ("is carbon monoxide dangerous?")
@@ -233,7 +245,7 @@ def _conditionals(text: str) -> tuple[str, list[str], bool]:
         clause = text[m.end():stop]
         if _NOT_KNOWING.search(text[max(0, m.start() - 40):m.start()]):
             continue  # "i don't know if he's breathing": a live, uncertain report
-        if _LIVE.search(clause) or (_SPECIFIC.search(clause) and not _GENERIC.search(clause)
+        if _LIVE.search(clause) or ((_SPECIFIC.search(clause) or _FIRST.search(clause)) and not _GENERIC.search(clause)
                                     and _COMPLETED.search(clause)):
             continue  # "if he can't breathe right now", "if my kid swallowed a magnet": a live report
         out.append(text[pos:m.start()])

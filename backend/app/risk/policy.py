@@ -74,7 +74,7 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
                             sources=["semantic"] + (["deterministic"] if det.care else []))
     if det.mentioned_kind and det.framing in ("hypothetical", "past"):  # R5
         return RiskDecision(response="safety_info", kind=det.mentioned_kind, care="info",
-                            rule="R5c" if det.conditional_danger else "R5",
+                            rule="R5c" if det.conditional_danger else ("R5p" if det.happened else "R5"),
                             sources=["deterministic"], degraded=degraded, conditional_danger=det.conditional_danger,
                             conflict="semantic agreed no active danger" if s else None)
     if det.care in ("distress", "unwell"):  # R6

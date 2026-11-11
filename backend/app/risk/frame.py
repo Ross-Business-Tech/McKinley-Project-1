@@ -191,6 +191,7 @@ BODY = re.compile(
     r"\b(?:not|isnt|stopped|quit|no longer) sweating\b|\bno (?:esta )?suda\w*|\bdry (?:and hot|hot) skin\b|"
     r"\b(?:skin is (?:\w+ )?(?:hot and )?dry|dry skin)\b|\bnodding off\b|\bkeeps? (?:falling asleep|passing out)\b|"
     r"\bflushed\b|\b(?:hasnt|not|no) (?:peed|peeing|wet (?:a )?diapers?)\b|\bstopped making sense\b|"
+    r"\bfeverish\b|\bhigh fever\b|\bfiebre (?:muy )?alta\b|"
     r"\b(?:confused|dizzy|weak) and (?:very |so |really )?(?:hot|cold)\b|\bhot to the touch\b|\bburning (?:hot|up)\b|"
     r"\b(?:hes|shes|he feels|she feels|skin|forehead|body) (?:is |feels )?"
     r"(?:so |"
@@ -220,6 +221,28 @@ _UNSURE_ALIVE = re.compile(r"\b(?:dont|do not|cant|cannot|not sure|unsure|no se|
                            r"has a pulse|respira|respirando|vivo|viva|tiene pulso)\b|\b(?:cant|cannot|no puedo) "
                            r"(?:find|feel|encontrar|sentir) (?:a |his |her |their |el |su )?(?:pulse|heartbeat|"
                            r"pulso)\b")
+# final round (pre-existing P0): stroke signs. A numb / weak / dead limb or face WITH a companion sign (suddenly,
+# can't lift it, one side, drooping, slurred, confused); "my arm went numb from sleeping on it" is not one.
+_LIMB_NUMB = re.compile(r"\b(?:cant|cannot|can no longer) feel (?:my|his|her|their) (?:\w+ )?(?:arm|leg|hand|face|sid"
+                        r"e)\b|"
+                        r"\bno (?:siento|siente) (?:el|la|mi|su) (?:brazo|pierna|mano|cara)\b|"
+                        r"\b(?:arm|leg|hand|face|side|brazo|pierna|mano|cara|lado)s?\b(?:\W+\w+){0,3}?\W+(?:numb|dead|"
+                        r"limp|weak|heavy|droopy|tingly|dormid[oa]|entumid[oa]|adormecid[oa]|debil|pesad[oa]|caid[oa]"
+                        r")\b|"
+                        r"\b(?:numb|numbness|weak|weakness|entumid\w*|adormecid\w*|durmio)\b(?:\W+\w+){0,3}?\W+(?:arm|"
+                        r"leg|hand|face|side|brazo|pierna|mano|cara|lado)\b")
+_STROKE_COMP = re.compile(r"\b(?:suddenly|all of a sudden|out of nowhere|cant (?:lift|move|raise|feel|hold)|wont (?:l"
+                          r"ift|"
+                          r"move)|droop\w*|slurr\w*|one side|left|right|confus\w*|cant (?:talk|speak)|de repente|"
+                          r"izquierd[oa]|derech[oa]|no (?:puede|lo puede|la puede) (?:levantar|mover)|no habla bien|"
+                          r"arrastra\w*)\b")
+# final round (holdout class b): an overdose quantity, also inside a question ("what happens if i took 15 xanax")
+_TOOK_QTY = re.compile(r"\b(?:took|taken|popped|downed|swallowed|tomo|tome|me tome|trague|se tomo)\b(?:\W+\w+){0,3}?"
+                       r"\W+(?:[1-9]\d+(?!\s?(?:mg|ml|mcg|milligrams?|miligramos?)\b)|a handful|handful|whole|all (?:"
+                       r"of )?(?:my|the|her|his)|too many|entire|a bunch|"
+                       r"double|triple|todas|toda la|un punado|demasiad[oa]s)\b")
+_LIMB_BENIGN = re.compile(r"\b(?:slept on|sleeping on|from sleeping|from the cold|from typing|after (?:the gym|working "
+                          r"out|lifting|yoga)|dormi encima|por dormir|dentist|novocaine|anesthesia|anestesia)\b")
 _MENTAL = re.compile(r"\b(?:confus\w*|out of it|not making sense|disoriented|confundid[oa]|desorientad[oa])\b"
                      r"(?! (?:about|by|with|over|on|regarding|why|what|how|when|where|which|sobre|con|por|de) )")
 _ES_THIRD = re.compile(r"\b(?:esta|este|se (?:puso|desmayo|desplomo|cayo|esta)|no (?:me )?(?:responde|responda|"
@@ -393,7 +416,7 @@ FABRIC_FIRE = [_near_re(_FABRIC, _IGNITE, 3), _near_re(_IGNITE, _HEAT_SRC, 5)]
 WATER_ELEC = [_near_re(r"water|agua|leak\w*|puddle|drip\w*|gotea\w*", r"reaching|touching|getting (?:close )?to|"
                        r"close to|"
                         r"next to|near|around|onto|into|under|behind|toward|towards|heading for|llegando a|llega a|"
-                        r"cerca de|hacia|en", 4),
+                        r"cerca de|hacia|junto a|al lado de|pegad[oa] a|en", 4),
               re.compile(r"\b(?:outlets?|plugs?|power ?strips?|cords?|extension cords?|wires?|wiring|electrical panel|"
                          r"panel|breaker\w*|fuse ?box|enchufes?|tomacorrientes?|cables?|regletas?)\b")]
 
@@ -486,7 +509,7 @@ def _hazard(s: str) -> tuple[str, str] | None:
                                                           r"gotea\w*)\b(?:\W+\w+)"
                                                           r"{0,6}?\W+(?:reaching|touching|getting|close|next|near|"
                                                           r"around|onto|into|under|behind|toward|towards|heading|"
-                                                          r"llegando|llega|cerca|hacia|en)\b"
+                                                          r"llegando|llega|cerca|hacia|junto|lado|pegad[oa]|en)\b"
                                                           r"(?:\W+\w+){0,3}?\W+(?:outlets?|plugs?|power ?strips?|cords"
                                                           r"?|"
                                                           r"wires?|wiring|panel|breaker\w*|fuse ?box|enchufes?|"
@@ -808,6 +831,14 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         if "pet" in roles and INGEST.search(s) and (
                 SUBSTANCE.search(s) or _PET_TOXIC.search(s)):
             cand.append((1, "poison", "a pet swallowed something harmful (calm line; the notices are for people)"))
+        mild = all(re.match(r"vitamin|vitamina|gummy|melatonin", x) for x in SUBSTANCE.findall(s))
+        if _TOOK_QTY.search(s) and SUBSTANCE.search(s) and (person or "self" in roles) and not (
+                mild and not re.search(r"\b(?:[1-9]\d+|whole|entire|bottle|frasco|bote)\b", s)):
+            # ("i took all my vitamins" is a daily routine; a whole bottle of them is not)
+            cand.append((3, "poison", "a quantity of a medicine taken (overdose)"))
+        if _LIMB_NUMB.search(s) and _STROKE_COMP.search(s) and not _LIMB_BENIGN.search(s) and (person or
+                                                                                         "self" in roles):
+            cand.append((3, "medical", "one-sided numbness or weakness with a stroke sign"))
         if _UNSURE_ALIVE.search(s) and (re.search(r"\b(?:breath\w*|respir\w*)\b", s) or any(
                 r in roles for r in ("child", "elder", "adult"))):  # not "my plant", "this watch app"
             cand.append((3, "medical", "the speaker cannot tell whether someone is breathing / alive"))
@@ -829,7 +860,8 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         stative = bool(_STATIVE.search(s)) or (cat == "medical" and "height" in f.hazards) or bool(hz) or (
             cat == "poison" and bool(re.search(r"\b(?:swallowed|ate|drank|se trago|trago|se comio|se tomo)\b", s)))
         framing = _framing(s, t, stative)
-        if framing == "hypothetical" and _IF.search(s) and _SPECIFIC.search(s) and not _GENERIC_RE.search(s) and (
+        if framing == "hypothetical" and _IF.search(s) and (_SPECIFIC.search(s) or re.search(
+                r"\b(?:i|ive|me|yo)\b", s)) and not _GENERIC_RE.search(s) and (
                 _COMPLETED.search(s) or _LIVE_TIME.search(s)):
             # fix round (P1-1): "is it bad if my daughter drank bleach a few minutes ago", "what if my husband's lips
             # are turning blue": a completed event, an observed appearance or a recent time is a live report

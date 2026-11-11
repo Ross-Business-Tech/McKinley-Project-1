@@ -853,7 +853,13 @@ def _clean(text: str) -> str:
     text = _OBJECT_FELL.sub(lambda m: m.group(1) + " broke", text)
     text = _NOUN_SUBJECT_VERB.sub(_object_subject, text)
     text = _OBJECT_FELL_ES.sub(lambda m: (m.group(1) or m.group(2)) + " roto", text)
-    return _strip_habit_smoke(_BODY_HEAT.sub(" ", _not_physical(_strip_negated(_strip_figurative(text)))))
+    # final round: body heat is a FEVER, not a fire, but the person and the sign are kept ("my baby is burning up and
+    # limp" was read as "my and limp": no person, no alert)
+    return _strip_habit_smoke(_BODY_HEAT.sub(_as_fever, _not_physical(_strip_negated(_strip_figurative(text)))))
+
+
+def _as_fever(m: re.Match[str]) -> str:
+    return re.sub(r"burning(?: up| hot)?|ardiendo", "feverish", m.group(0), flags=re.I)
 
 
 # Sprint 5.1 (journey j-safe-indirect-co): an alarm sounding + (a heat source OR several people) + symptoms = CO, even

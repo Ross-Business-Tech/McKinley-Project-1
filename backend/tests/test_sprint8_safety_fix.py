@@ -292,3 +292,175 @@ def test_clause_regexes_are_linear(msg):
     _FCLAUSE.split(msg)
     spans(msg)
     assert time.perf_counter() - t < 1.0
+
+
+# ==== final round =================================================================================================
+# NEW-P1-A: the pending question closes on any other turn; "my X is ..." only for people; a bare "yes" only next turn
+Q = "what do I do if my dad can't breathe?"
+
+
+@pytest.mark.parametrize("turns", [
+    [Q, "my AC is broken"], [Q, "my sink is clogged"], [Q, "the bathroom fan is broken", "yes you can enter"],
+    [Q, "I want to schedule a tour", "yes"], [Q, "what are the office hours?", "yes"], [Q, "my kitchen light is out"],
+    ["qué hago si mi mamá no respira", "mi lavabo está tapado"], ["qué hago si mi mamá no respira",
+                                                                   "¿a qué hora abre la oficina?", "sí"],
+    [Q, "my rent payment didn't go through", "yes"], [Q, "my door lock is stuck", "yes, anytime tomorrow"],
+])
+def test_other_turns_never_confirm_the_pending_question(turns):
+    out = run_turns(turns)
+    assert all(x.response != "full_alert" for x in out[1:]), [(x.rule, x.response) for x in out]
+
+
+@pytest.mark.parametrize("turns", [
+    [Q, "yes"], [Q, "it is happening"], ["si mi papá no respira, ¿qué hago?", "sí"], [Q, "ok", "he isn't breathing"],
+    [Q, "wait", "my dad is turning blue"], [Q, "ok", "he is"], [Q, "my dad can't breathe right now"],
+    ["qué hago si mi abuelo no reacciona", "espera", "mi abuelo no responde"],
+])
+def test_confirmations_still_escalate(turns):
+    assert run_turns(turns)[-1].response == "full_alert"
+
+
+def test_a_bare_yes_two_turns_later_does_not_escalate():
+    assert run_turns([Q, "ok", "yes"])[-1].response != "full_alert"
+
+
+def test_the_planner_can_see_an_open_question():
+    from app.risk.incident import pending_open, step
+
+    class Store:
+        def __init__(self):
+            self.g = {}
+
+        def last_gate(self, s, mode, p):
+            return self.g.get((s, mode, p))
+
+        def log_gate(self, s, mode, p, data):
+            self.g[(s, mode, p)] = dict(data)
+
+    st = Store()
+    step(st, "s", "p", Q, assess(Q, [], None), 1)
+    assert pending_open(st, "s", "p", 2)
+    step(st, "s", "p", "my AC is broken", assess("my AC is broken", [Q], None), 2)
+    assert not pending_open(st, "s", "p", 3)
+
+
+# pre-existing P0: stroke signs and a limp, feverish baby
+@pytest.mark.parametrize("msg", [
+    "grandpa's left arm went numb and he can't lift it", "my grandpa's arm suddenly went numb",
+    "my mom's face is numb on one side", "my wife's right leg suddenly feels weak and she's confused",
+    "his hand went dead all of a sudden and he can't hold anything", "a mi abuela se le durmió el brazo izquierdo de "
+    "repente", "mi papá tiene la pierna derecha débil y no la puede mover", "i suddenly can't feel my left arm",
+    "my baby is burning up and limp and won't feed", "the baby is feverish and floppy", "mi bebé está ardiendo en "
+    "fiebre y muy decaído y no despierta",
+])
+def test_stroke_and_infant_signs_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "medical", (msg, r.rule)
+
+
+@pytest.mark.parametrize("msg", ["my arm went numb from sleeping on it", "my leg is weak after the gym",
+                                 "my right hand is tingly from typing", "my face is numb from the dentist",
+                                 "se me durmió la pierna por dormir encima",
+                                 "the baby is burning up the dance floor lol"])
+def test_stroke_near_misses(msg):
+    assert rank(msg) < 3, msg
+
+
+# holdout class (a): carbon monoxide without the words: never a repair intake
+@pytest.mark.parametrize("msg", [
+    "the detector near the water heater keeps going off", "everyone in the house has a headache and feels sick",
+    "we all have headaches and the kids are sleepy", "todos en la casa tenemos dolor de cabeza y náuseas",
+    "the alarm by the furnace won't stop beeping", "the sensor next to the boiler is going off",
+    "both of us feel dizzy and sick since this morning", "la alarma junto al calentador está sonando",
+])
+def test_co_classes_alert(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind == "co", (msg, r.rule)
+
+
+@pytest.mark.parametrize("msg", ["the alarm in the hallway keeps going off", "the detector upstairs is beeping",
+                                 "la alarma del pasillo está sonando"])
+def test_an_unknown_alarm_sounding_is_a_person_danger_line(msg):
+    r = d(msg)
+    assert r.response in ("care_line", "full_alert") and r.person_danger, (msg, r.rule)
+
+
+@pytest.mark.parametrize("msg", ["the car alarm keeps going off outside", "my alarm clock keeps going off",
+                                 "the co detector chirps every minute, low battery",
+                                 "we all have the flu and headaches",
+                                 "the smoke detector went off from burnt toast", "everyone was sick after the party"])
+def test_co_near_misses(msg):
+    assert d(msg).kind != "co", msg
+
+
+# holdout class (b): overdose quantity inside a question
+@pytest.mark.parametrize("msg", [
+    "is it dangerous if i took a whole bottle of tylenol an hour ago?", "what happens if i took 15 xanax",
+    "what if i took too many of my pills", "is it bad that i took 20 sleeping pills?",
+    "¿qué pasa si me tomé 20 pastillas?", "should i worry if i swallowed all my antidepressants",
+    "how bad is it if my son took a handful of advil", "es grave si mi mamá se tomó todas sus pastillas",
+])
+def test_overdose_quantity_in_a_question_alerts(msg):
+    r = d(msg)
+    assert r.response == "full_alert" and r.kind in ("poison", "self_harm"), (msg, r.rule)
+
+
+@pytest.mark.parametrize("msg", ["what happens if someone takes 15 xanax?", "i take 10 mg of melatonin every night",
+                                 "how many advil can i take?", "I took all my vitamins", "my doctor said take 2 pills"])
+def test_overdose_near_misses(msg):
+    assert rank(msg) < 3, msg
+
+
+# holdout class (c): a self-inflicted cut scored as medical also gets 988
+@pytest.mark.parametrize("msg", ["i cut my arm really deep and there's blood everywhere",
+                                 "me corté y no para de sangrar",
+                                 "i sliced my wrist open and it's bleeding a lot"])
+def test_self_inflicted_cut_has_988(msg):
+    hrefs = [c["href"] for c in ui(d(msg))[1]]
+    assert {"tel:988", "sms:988", "tel:911"} <= set(hrefs), (msg, hrefs)
+
+
+def test_an_accidental_cut_has_no_988():
+    r = d("i sliced my finger chopping onions and it won't stop bleeding")
+    assert r.response == "full_alert" and not r.also_988
+
+
+# simulators: water near a buzzing power strip; water inside the appliance; a shock that happened; flood shut off
+@pytest.mark.parametrize("msg", ["a little water under the fridge next to the power strip that is buzzing",
+                                 "some water under the washer near the plug and it's sparking",
+                                 "un poco de agua debajo de la lavadora junto a la regleta que zumba"])
+def test_water_near_live_electrics_stays_an_alert(msg):
+    assert rank(msg) == 3, msg
+
+
+@pytest.mark.parametrize("msg", ["water all over the bottom of my dishwasher", "there's water sitting in the bottom of "
+                                 "the washer", "agua en el fondo del lavavajillas"])
+def test_water_inside_the_appliance_is_a_repair(msg):
+    assert rank(msg) < 3, msg
+
+
+@pytest.mark.parametrize("msg", ["I got a little shock when I touched it", "me dio un toque el enchufe"])
+def test_a_shock_that_happened_gets_the_steps_directly(msg):
+    from app.risk.responses import select
+    r = d(msg)
+    assert r.rule == "R5p"
+    note = select(r, "en").care_note
+    assert not note.startswith("If that happens") and "don't touch" in note
+
+
+@pytest.mark.parametrize("turns", [
+    ["a pipe burst and water is everywhere", "ok the water is shut off now, what next?"],
+    ["se reventó una tubería y hay agua por todas partes", "ya cerré la llave, ¿y ahora?"],
+    ["water is pouring through the ceiling", "the water is off now"],
+])
+def test_a_flood_reported_shut_off_is_concern(turns):
+    first, second = run_turns(turns)
+    assert first.response == "full_alert" and second.response in ("care_line", "safety_info", "none"), second.rule
+
+
+@pytest.mark.parametrize("turns", [
+    ["a pipe burst and water is everywhere", "is the water off?"],
+    ["a pipe burst and water is everywhere", "i shut the water off but it is still pouring"],
+])
+def test_a_flood_not_controlled_stays_active(turns):
+    assert run_turns(turns)[-1].response == "full_alert"

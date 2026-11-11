@@ -30,6 +30,7 @@ class DeterministicRisk(BaseModel):
     frame: dict[str, Any] | None = None
     frame_rule: bool = False
     conditional_danger: bool = False  # sprint 8: a live-looking sign only inside "if ..." (see RiskDecision)
+    happened: bool = False  # final round: a small event that already happened ("i got a little shock"): rule R5p
 
 
 class SemanticRisk(BaseModel):

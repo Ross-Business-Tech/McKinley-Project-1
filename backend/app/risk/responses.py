@@ -33,7 +33,10 @@ def select(decision: RiskDecision, lang: str) -> SafetyText:
             text += ALSO_988[lang]
         return SafetyText(safety_notice=text)
     if decision.response == "safety_info" and decision.kind:
-        return SafetyText(care_kind="info", care_note=INFO_LEAD[lang] + notice(decision.kind, lang))
+        # final round: R5p = a small event that already happened ("i got a little shock"): the steps directly,
+        # without "If that happens:"
+        lead = "" if decision.rule == "R5p" else INFO_LEAD[lang]
+        return SafetyText(care_kind="info", care_note=lead + notice(decision.kind, lang))
     if decision.response == "care_line" and decision.care in CARE_NOTE:
         return SafetyText(care_kind=decision.care, care_note=CARE_NOTE[decision.care][lang])
     return SafetyText()

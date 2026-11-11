@@ -228,12 +228,25 @@ def is_retraction(message: str, kind: str | None = None) -> bool:
     return not scan(rest)[0]
 
 
+_CLAUSE_BREAK = re.compile(r"[,.;!]|\b(?:but|pero|and then|y luego)\b")
+
+
+def _clause_at(text: str, pos: int) -> str:
+    """The clause of `text` around position `pos` (up to the next break; the question mark stays in it)."""
+    start = max((m.end() for m in _CLAUSE_BREAK.finditer(text, 0, pos)), default=0)
+    end_m = _CLAUSE_BREAK.search(text, pos)
+    return text[start:end_m.start() if end_m else len(text)]
+
+
 def classify(message: str, inc: Incident) -> Turn:
     text = message.strip()
     low = text.lower()
     if is_retraction(text, inc.kind):
         return "retracted"
-    if inc.kind in CONTROLLABLE_KINDS and _CONTROLLED.search(low) and not _CONTROLLED_NOT.search(low):
+    ctl = _CONTROLLED.search(low)
+    if inc.kind in CONTROLLABLE_KINDS and ctl and not _CONTROLLED_NOT.search(_clause_at(low, ctl.start())):
+        # final round: only the clause that reports the control is checked ("ok the water is shut off now, what next?"
+        # is controlled; "is the water off?" and "should i shut it off?" are not)
         rest = _CONTROLLED.sub(" ", text)
         if not scan(rest)[0] and possible_risk(rest) not in ("unwell", "distress") and not (
                 _CONTINUE_PERSON.search(rest)):
@@ -312,18 +325,36 @@ def _call(decision: RiskDecision, inc: Incident, rule: str, conflict: str) -> Ri
 # "No, just asking" clears it. Stored as its own row (mode PENDING_MODE): kind and turn only, never text.
 PENDING_MODE = "safety_pending"
 PENDING_TURNS = 2
-_AFFIRM = re.compile(
+# A bare "yes" / "sí" / "it is happening" counts only on the turn RIGHT AFTER the safety reply (final round: a later
+# "yes" usually answers another question, e.g. "can we enter?").
+_AFFIRM_BARE = re.compile(
     r"^\W*(?:yes|yeah|yea|yep|yup|ya|uh-?huh|it is|its happening|it'?s happening|it is happening|"
-    r"happening (?:right )?now|"
-    r"right now|correct|exactly|that'?s right|thats it|i think so|please help|help|s[ií]|asi es|así es|claro|"
-    r"est[aá] pasando|ahora mismo|ayuda|por favor)\b|"
-    r"^\W*(?:he|she|they|it|we|i|my \w+|el|él|ella|mi \w+)\s*(?:is|are|am|was|isn'?t|is not|aren'?t|can'?t|cannot|"
-    r"won'?t|does|doesn'?t|did|didn'?t|has|hasn'?t|'s|'re|'m|s|esta|está|no)\b", re.I)
+    r"happening (?:right )?now|right now|correct|exactly|that'?s right|i think so|please help|help|s[ií]|asi es|"
+    r"así es|claro|est[aá] pasando|ahora mismo|ayuda|por favor)\b", re.I)
+# "he is / she isn't / my dad can't ...": only with a PERSON subject ("my AC is broken" is not an answer)
+_PERSON_SUBJ = (r"(?:he|she|they|him|her|el|él|ella|ellos|(?:my|our|mi|nuestr[oa]) (?:\w+ )?(?:grand\w+|mom|mum|mother|"
+                r"dad|father|husband|wife|partner|son|daughter|kid|child|baby|toddler|boy|girl|brother|sister|"
+                r"uncle|aunt|cousin|nephew|niece|friend|roommate|neighbou?r|boyfriend|girlfriend|fianc\w*|"
+                r"coworker|esposo|esposa|hij[oa]|mam[aá]|pap[aá]|abuel[oa]|beb[eé]|niñ[oa]|herman[oa]|t[ií][oa]|"
+                r"amig[oa]|vecin[oa]|novi[oa]|pareja))")
+_AFFIRM_PERSON = re.compile(
+    rf"^\W*(?:yes,?\s*|yeah,?\s*|s[ií],?\s*)?{_PERSON_SUBJ}(?:'s|'re)?\s*(?:is|are|was|isn'?t|is not|aren'?t|can'?t|"
+    rf"cannot|won'?t|doesn'?t|didn'?t|has|hasn'?t|still|not|no|est[aá]|sigue|s)\b", re.I)
 _DENY = re.compile(
     r"^\W*(?:no|nope|nah|not (?:right )?now|not happening|nothing like that|just (?:asking|curious|wondering|in case)|"
     r"only asking|hypothetical\w*|asking for (?:a friend|the future)|solo (?:pregunt\w*|por si acaso)|por si acaso|"
     r"nada de eso|no est[aá] pasando)\b|\b(?:fine|ok|okay|safe|alright|all right|doing good|bien|tranquil[oa])\b",
     re.I)
+# a turn about something else closes the marker: a repair, a tour, the office, rent, an answer about entry or times
+_OTHER_TOPIC = re.compile(
+    r"\b(?:repair|fix|broken|broke|clogged|leak\w*|drip\w*|ac|a/c|heat(?:er|ing)?|fan|sink|toilet|dishwasher|washer|"
+    r"dryer|fridge|oven|stove|light|bulb|door|lock|window|outlet|tour|schedule|visit|office|hours|rent|lease|"
+    r"pay\w*|parking|package|pool|gym|amenit\w*|enter|entry|come in|permission|key|maintenance|work order|"
+    r"apartment|unit|move|pet|noise|appointment|tomorrow|morning|afternoon|anytime|any time|reparar|arreglar|roto|"
+    r"tapad[oa]|gotea|visita|oficina|horario|renta|pago|estacionamiento|entrar|llave|mantenimiento|cita|mañana)\b",
+    re.I)
+_NEUTRAL = re.compile(r"^\W*(?:ok(?:ay)?|k|thanks?|thank you|hmm+|wait|one sec(?:ond)?|hold on|gracias|espera|"
+                      r"un momento)\W*$", re.I)
 
 
 def _pending(store: Any, session_id: str, persona_key: str) -> dict[str, Any] | None:
@@ -345,15 +376,27 @@ def _set_pending(store: Any, session_id: str, persona_key: str, data: dict[str, 
         pass  # only the follow-up escalation is lost; this turn's safety text is unaffected
 
 
-def confirms_pending(message: str, risk: RiskAssessment) -> bool:
-    """A "yes" / "he is" / "she isn't" answer, or any sign described, after a safety question."""
+def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True) -> bool:
+    """A sign described, a "he is / she isn't" answer about a person, or (only on the very next turn) a bare "yes"."""
     det = risk.deterministic
     fr = det.frame or {}
-    sign = bool(det.kind or det.care or det.mentioned_kind or fr.get("states") or fr.get("hazards")
-                or scan(message)[0] or possible_risk(message))
+    people = [w for w in fr.get("who") or [] if w not in ("pet",)]
+    sign = bool(det.kind or det.care in ("distress", "unwell") or (fr.get("states") and people)
+                or scan(message)[0] or possible_risk(message) in ("distress", "unwell"))
     if sign:
         return True
-    return bool(_AFFIRM.search(message.strip())) and not _DENY.search(message)
+    text = message.strip()
+    if _DENY.search(text):
+        return False
+    if _AFFIRM_PERSON.search(text):
+        return True
+    return next_turn and bool(_AFFIRM_BARE.search(text)) and not _OTHER_TOPIC.search(text)
+
+
+def pending_open(store: Any, session_id: str, persona_key: str, turn: int) -> bool:
+    """For the planner: a safety question ("is anything like that happening right now?") is waiting for an answer."""
+    pend = _pending(store, session_id, persona_key)
+    return bool(pend and pend.get("open") and turn - int(pend.get("turn", 0)) <= PENDING_TURNS)
 
 
 def step(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
@@ -369,9 +412,10 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
     d = risk.decision
     pend = _pending(store, session_id, persona_key)
     if pend and pend.get("open") and turn - int(pend.get("turn", 0)) <= PENDING_TURNS:
+        gap = turn - int(pend.get("turn", 0))
         if d.response == "full_alert":
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "alert"})
-        elif confirms_pending(message, risk):
+        elif confirms_pending(message, risk, next_turn=gap == 1):
             from app.risk.category import refine
             kind, reason = refine(pend["kind"], message)
             nd = d.model_copy(update={
@@ -382,8 +426,10 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
                 "conflict": f"confirmed after safety information for a {pend['kind']} question: full alert"})
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "confirmed"})
             return risk.model_copy(update={"decision": nd})
-        elif _DENY.search(message):
-            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "denied"})
+        elif not _NEUTRAL.search(message):
+            # a denial, or a turn about anything else (a repair, a tour, the office, an answer to another question)
+            # closes it; only "ok" / "wait" / "thanks" keep it open for the second turn
+            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "other turn"})
     if d.response == "safety_info" and d.kind and risk.deterministic.framing == "hypothetical":
         _set_pending(store, session_id, persona_key, {"kind": d.kind, "turn": turn, "open": True,
                                                      "rule": d.rule})
