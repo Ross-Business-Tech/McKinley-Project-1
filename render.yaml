@@ -10,10 +10,12 @@ services:
     runtime: python
     plan: free              # the free plan sleeps when idle; the first request after a pause can take about a minute
     rootDir: backend
-    buildCommand: pip install uv && uv sync --frozen --no-dev
+    # `env -u UV_NO_MANAGED_PYTHON`: matches the live service (set in the Dashboard after the first Blueprint build
+    # failed); a Blueprint sync must not revert it.
+    buildCommand: pip install uv && env -u UV_NO_MANAGED_PYTHON uv sync --frozen --no-dev
     # Migrations run before every start (idempotent); then the API. No --reload, one worker (the Store holds one
     # connection and an in-process lock).
-    startCommand: uv run --no-sync alembic upgrade head && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
+    startCommand: env -u UV_NO_MANAGED_PYTHON uv run --no-sync alembic upgrade head && env -u UV_NO_MANAGED_PYTHON uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION

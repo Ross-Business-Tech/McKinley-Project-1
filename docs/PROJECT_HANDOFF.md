@@ -9,8 +9,10 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
   branch `claude/epic-brahmagupta-f1jrlx`: Supabase storage, Vercel/Render setup, legal-threat routing). Older
   branches `feat/workflow-customer-experience`, `feat/context-aware-ai-assistant`, `feat/agentic-workflow-gates` and
   `sprint3/live-eval` are fully merged and can be deleted by the owner.
-- **Target hosting (prepared, not deployed):** Vercel + Render + Supabase + Gemini — see
-  [`DEPLOYMENT_READINESS.md`](DEPLOYMENT_READINESS.md) for status, missing access and the checklist.
+- **Hosting (2026-11-11, public guest-only demo):** Render static site `mckinley-frontend` + Render web service
+  `mckinley-backend` (both free, both deploy `development`), development Supabase project (synthetic), OpenRouter
+  free model. Vercel stays an option. Status, tested journeys and blockers:
+  [`DEPLOYMENT_READINESS.md`](DEPLOYMENT_READINESS.md). Render dashboard access: the team workspace owner.
 - **Verdict:** a working **prototype on synthetic data; NOT production ready.**
 
 ## What works (tested, mock model)
