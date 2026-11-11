@@ -12,13 +12,16 @@ resident context), aware (everything). See docs/diagrams/chat-turn-sequence.md.
 import re
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
-from app.actions import TurnPlan, identity_note, plan_turn, resident_for
+from app import understanding as und
+from app import workflow_state as wf
+from app.actions import TurnPlan, identity_note, plan_turn, resident_for, synthesize_handoff
+from app.auth import Principal, derive_principal, session_bound_to
 from app.config import Settings
 from app.context import Workbook
-from app.db import Store
+from app.db import ScopedStore, Store
 from app.emergency import heading as emergency_heading
 from app.gates import DecisionGateService, GateContext
 from app.handoff import build_handoff
@@ -36,11 +39,13 @@ from app.models import (
     SafeContext,
     Usage,
 )
-from app.personas import apply_account_holder_rule, build_context
+from app.personas import apply_account_holder_rule, build_context, holder_disclaimed
 from app.prompts import PromptBundle, aware_user_turn, baseline_prompt, load_aware_prompt
 from app.risk import escalation as risk_escalation
 from app.risk import responses as risk_responses
 from app.risk.classifier import SemanticRiskClassifier
+from app.risk.incident import prior_hazards as incident_prior_hazards
+from app.risk.incident import step as incident_step
 from app.risk.pipeline import assess
 from app.safety import (
     CRITICAL_CHECKS,
@@ -89,7 +94,8 @@ def prompt_for(mode: Mode, settings: Settings) -> PromptBundle:
         return baseline_prompt()
     bundle = load_aware_prompt(settings.prompt_path)
     suffix = "+ctx" if mode == "aware" else "+noctx"
-    return PromptBundle(system=bundle.system, version=f"{bundle.version}+{WORKFLOW_VERSION}{suffix}")
+    return PromptBundle(system=bundle.system,
+                        version=f"{bundle.version}+{WORKFLOW_VERSION}+{PLAN_SECTION_VERSION}{suffix}")
 
 
 def context_signals(ctx: SafeContext) -> list[PolicySignal]:
@@ -129,7 +135,8 @@ def resolve_target(deps: EngineDeps, target_key: str | None) -> Target:
 # Runtime model failures where the customer gets the backend template instead of an error. Configuration
 # errors (missing key, unknown target, auth) still surface as errors so staff notice them.
 FALLBACK_CODES = {"MODEL_API_ERROR", "MODEL_CONNECTION_ERROR", "MODEL_TIMEOUT", "MODEL_RATE_LIMITED",
-                  "MODEL_EMPTY_RESPONSE", "MODEL_BAD_RESPONSE", "MODEL_TRUNCATED", "MODEL_REFUSAL"}
+                  "MODEL_EMPTY_RESPONSE", "MODEL_BAD_RESPONSE", "MODEL_TRUNCATED", "MODEL_REFUSAL",
+                  "LLM_BUDGET_EXHAUSTED"}  # approved template, labelled template_after_model_error (never the mock)
 # Failed checks that make a model reply unsafe to show (fabrication, false completion, leakage, unsafe advice).
 REPLACE_ON_FAIL = CRITICAL_CHECKS | {"no_invented_price", "no_invented_time", "terminology"}
 
@@ -141,7 +148,46 @@ CHANNEL_RULES = {
 }
 
 
-def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
+# Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
+PLAN_SECTION_VERSION = "plan-s51b"
+
+# Allowlisted, synthetic facts the model may state: community -> region, read from the demo workbook only.
+FACT_RULES = ("Only state a community's location, size, features, availability or price if that fact is in the "
+              "approved facts or context given here; otherwise say you don't know and offer the leasing team. "
+              "Never offer to send a note, request or anything else unless the action card shown says so.")
+
+
+def community_facts(workbook: Workbook | None) -> str:
+    """'Community regions (synthetic demo data): Birchwood Commons: Michigan; ...' from the workbook, or ''."""
+    if not workbook:
+        return ""
+    pairs = sorted({(r.row.get("community"), r.row.get("region")) for r in workbook.residents.values()
+                    if r.row.get("community") and r.row.get("region")})
+    if not pairs:
+        return ""
+    return "Approved facts, community regions (synthetic demo data): " + "; ".join(f"{c}: {g}" for c, g in pairs) + "."
+
+
+def card_instructions(plan: TurnPlan) -> list[str]:
+    """L-2 / L-5: what the model must say about the card on screen. The card IS the request."""
+    a = plan.action
+    if not a:
+        return []
+    if a.stage == "submitted":
+        return [f"The {a.title} was saved in the prototype (reference shown on the card). Nobody is notified "
+                "automatically; do not promise a call, a visit or a time."]
+    out = [f"A {a.title} card is open on screen and is NOT sent yet. That card is the request: never say you can't "
+           "create or file it, never tell the person to submit a request somewhere else, and never offer to write a "
+           "note or request that is already on screen."]
+    if a.stage == "collecting" and a.missing:
+        out.append(f"Still needed on the card: {', '.join(a.missing)}. Ask only for {a.missing[0]}, with the "
+                   "question the draft reply asks; do not skip it and do not ask for anything else.")
+    else:
+        out.append("The card is ready: tell the person to check it and press Send. Typing 'yes' does not send it.")
+    return out
+
+
+def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str = "") -> str:
     """Trusted backend facts for the response model: the next step, and a draft reply it must stay faithful to."""
     lines = [
         "## Backend next step (authoritative)",
@@ -154,6 +200,11 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str) -> str:
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")
+    lines += card_instructions(plan)
+    lines += [x for x in (facts, FACT_RULES) if x]
+    # F-4: repeat / history claims only as the planner established them
+    lines += plan.facts or ["Do not say a problem is a repeat or mention earlier requests unless the draft reply "
+                            "says so."]
     lines.append(f"<backend_draft_reply>{plan.template}</backend_draft_reply>")
     return "\n".join(lines)
 
@@ -182,12 +233,13 @@ def run_turn(
     deps: EngineDeps, message: str, mode: Mode, persona_id: str | None, session_id: str | None,
     use_history: bool = True, target: Target | None = None, gate_provider: str | None = None,
     channel: Channel = "web_chat", enforce_validation: bool = True, fallback_on_model_error: bool = False,
+    principal: Principal | None = None,
 ) -> ChatResponse:
-    """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net)."""
+    """`enforce_validation=False` keeps the raw model reply (evals measure the model, not the safety net).
+    `principal` is derived by the API layer (app/auth.py); without one it is derived here from the settings."""
     settings = deps.settings
     target = target or deps.llm.default_target
     session_id = session_id or uuid.uuid4().hex
-    hist_key = persona_id or "none"
     mode_key = f"{mode}|{target.key}"
     trace = _Trace()
 
@@ -196,15 +248,40 @@ def run_turn(
     pii_found = contains_pii(_TAG.sub("", normalize_for_matching(message)))
     trace.add("1_receive", "ok", f"{len(msg)} chars after cleaning")
 
-    # 2. identity: audience comes ONLY from the trusted app context (demo persona), never from the message/model
-    full_ctx = build_context(persona_id, msg, deps.workbook)
+    # 2. identity: the PRINCIPAL is derived server-side only (app/auth.py): anonymous unless this deployment allows
+    # demo personas and the id is a known one. Message text, the model and audience classification never change it.
+    # Every later step sees only the authorized persona and a store scoped to (this session, this principal).
+    if principal is None:
+        principal = derive_principal(settings, persona_id, session_id, deps.workbook, strict=False)
+    principal = replace(principal, session_id=session_id)
+    persona_id = principal.persona_id
+    hist_key = principal.key
+    rebound = False
+    if deps.store is not None and use_history and not session_bound_to(deps.store, principal):
+        # the session id belongs to another principal/persona: never refuse (this may be an emergency), never show
+        # its history, drafts or records. Start a new conversation under a fresh server-issued id (returned below).
+        session_id, rebound = uuid.uuid4().hex, True
+        principal = replace(principal, session_id=session_id)
+        session_bound_to(deps.store, principal)
+    if deps.store is not None and not isinstance(deps.store, ScopedStore):
+        deps = replace(deps, store=ScopedStore(deps.store, session_id, hist_key,  # type: ignore[arg-type]
+                                               principal_kind=principal.kind))
+    if isinstance(deps.store, ScopedStore) and not deps.store.account_access:
+        principal = replace(principal, account_access=False)  # sticky non-holder, persisted (app/db.py)
+    full_ctx = build_context(persona_id, msg, deps.workbook, principal=principal)
     said_before = ([m["content"] for m in deps.store.history(session_id, mode_key, hist_key) if m["role"] == "user"]
                    if (deps.store and use_history) else [])
     said_ever = deps.store.user_messages(session_id, hist_key) if (deps.store and use_history) else []
-    full_ctx = apply_account_holder_rule(full_ctx, [*said_ever, msg])
+    record_ctx, full_ctx = full_ctx, apply_account_holder_rule(full_ctx, [*said_ever, msg])
+    if holder_disclaimed(record_ctx, full_ctx) and isinstance(deps.store, ScopedStore):
+        # "not the account holder" (now or earlier in this session): the store drops account records and on-file
+        # draft slots too, so no later step can list them whatever it asks for (data layer, not just the context)
+        deps = replace(deps, store=deps.store.without_account_access())
     verified = full_ctx.persona_kind == "resident" and full_ctx.record_found
     trace.add("2_identity", "ok" if full_ctx.audience != "unknown" else "warn",
-              f"audience={full_ctx.audience}, identity_verified={verified} (demo persona = trusted app context)")
+              f"principal={principal.kind} ({principal.source}), audience={full_ctx.audience}, "
+              f"{'session belonged to another sign-in: new conversation started, ' if rebound else ''}"
+              f"identity_verified={verified} (demo persona = synthetic demo account, NOT authentication)")
 
     # 2b. safety: deterministic rules -> semantic classifier -> conservative policy. Runs before routing and before
     # any response generation; nothing later (model, user instructions, retrieved records) can lower it.
@@ -212,7 +289,13 @@ def run_turn(
     prior_hazards = ([r.get("hazard") for r in deps.store.records(session_id=session_id, limit=50)
                       if r.get("status") == "urgent_queued" and (r.get("persona_id") or None) == (persona_id or None)]
                      if (deps.store and use_history) else [])
+    if use_history and mode != "baseline":  # an alert the resident retracted ("false alarm") is not remembered
+        prior_hazards = incident_prior_hazards(deps.store, session_id, hist_key, msg, len(said_ever) + 1,
+                                               prior_hazards)
     risk = assess(msg, earlier, deps.risk if mode != "baseline" else None, prior_hazards)  # type: ignore[arg-type]
+    # 2b'. persistent incident state (app/risk/incident.py): follow-ups during an active emergency repeat its notice
+    risk = incident_step(deps.store if (use_history and mode != "baseline") else None, session_id, hist_key, msg,
+                         risk, len(said_ever) + 1)
     rd = risk.decision
     trace.add("2b_safety", "warn" if rd.response != "none" or rd.degraded else "ok",
               f"{rd.rule}: {rd.response}" + (f" ({rd.kind or rd.care})" if (rd.kind or rd.care) else "")
@@ -273,14 +356,34 @@ def run_turn(
             lead = lead_profile(msg, ctx)
         if workflow.id == "renewal":
             renewal = renewal_assessment(msg, ctx)
+        # planner memory (flags/counts only, no text) rides on the previous turn's gate-log row
+        last = deps.store.last_gate(session_id, mode_key, hist_key) if (deps.store and use_history) else None
+        # 6a. understanding (Sprint 6, app/understanding.py). The rules pass runs inside plan_turn on every turn; the
+        # optional model pass (UNDERSTANDING_PROVIDER=model|auto, a live provider) runs here, bounded and validated,
+        # and falls back to the rules on any failure. It sees the message, recent user messages and the open card's
+        # kind only, never account data, and it can't confirm, change identity or lower safety.
+        hint = None
+        if und.provider_mode(settings) != "rules":
+            open_d = deps.store.get_draft(session_id, hist_key) if (deps.store and use_history) else None
+            hint = und.model_pass(deps.llm, settings, msg, (open_d or {}).get("kind"), wf.derive(open_d).pending,
+                                  said_before[-3:])
         plan = plan_turn(msg=msg, gate=gate, workflow=workflow, ctx=ctx, triage=triage,
+                         memory=(last or {}).get("planner_memory") or {},
                          store=deps.store if use_history else None, session_id=session_id, persona_id=persona_id,
                          resident=resident_for(persona_id, deps.workbook) if verified else None,
                          channel=channel, lang=lang,  # type: ignore[arg-type]
                          hazard=rd.kind if rd.response == "full_alert" else None,
                          care=rd.care if rd.rule != "R9" else None,  # R9 = remembered line, not a new disclosure
                          recent=[m["content"] for m in deps.store.history(session_id, mode_key, hist_key)
-                                 if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg])
+                                 if m["role"] == "user"][-4:] + [msg] if (deps.store and use_history) else [msg],
+                         understanding_hint=hint)
+        if plan.understanding:
+            uu, tt = plan.understanding, plan.transition
+            trace.add("6a_understanding", "warn" if uu.get("model_status") in ("timeout", "bad_output", "error")
+                      else "ok", f"{uu.get('act')} {uu.get('acts')} source={uu.get('source')} "
+                      f"model={uu.get('model_status')}" + (f" | {tt.get('from')} --{tt.get('event')}--> {tt.get('to')}"
+                                                           f" {tt.get('effects')}" if tt else ""))
+        lang = plan.lang or lang  # R-9: a conversation the planner kept in Spanish is reported as Spanish
         if plan.consumed_by_draft and "low_confidence" in gate.risk_flags:
             gate = gate.model_copy(update={
                 "risk_flags": [f for f in gate.risk_flags if f not in ("low_confidence", "repeated_low_confidence")],
@@ -288,7 +391,7 @@ def run_turn(
             })
         workflow = plan.workflow if plan.workflow.id != workflow.id else workflow
         system = (f"{system}\n\n{workflow_prompt_section(workflow, gate, triage, lead, renewal)}\n\n"
-                  f"{plan_prompt_section(plan, channel, lang)}")
+                  f"{plan_prompt_section(plan, channel, lang, community_facts(deps.workbook))}")
         trace.add("6_workflow", "ok", f"{workflow.id}: {workflow.reason} | functions={plan.functions}"
                   + (f" | action={plan.action.kind}:{plan.action.stage}" if plan.action else ""))
     else:
@@ -322,7 +425,9 @@ def run_turn(
     # 8. validate (model output is untrusted)
     raw_reply = out.reply.strip()
     allowed_text = " ".join(f.value for f in ctx.fields)
-    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None)
+    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None,
+                                              user_text=" ".join([*said_ever, msg]),
+                                              nothing_sent=not (plan and plan.records))
     checks.append(OutputCheck(
         code="structured_output",
         passed=result.parse_mode != "text_fallback",
@@ -368,6 +473,12 @@ def run_turn(
                 f"Saved to the PROTOTYPE staff queue as {staff_recs[0].id}. No one is paged, called or notified.")})
         if handoff is None and rd.needs_human:  # possible distress etc.: a person should look (recommendation only)
             handoff = risk_escalation.recommend(rd, sorted({f.name for f in ctx.fields}))
+        if handoff is None and plan and plan.understanding.get("model_emergency") and rd.response == "none":
+            # Sprint 6 pass-through: the understanding model thought someone may be in danger and the safety rules
+            # found nothing. Raise only: a staff-review recommendation (nothing is sent, no alert text is invented).
+            handoff = synthesize_handoff(gate, ctx, "safety_emergency", "management",
+                                         "Understanding model flagged possible danger; safety rules did not: staff "
+                                         "should review this chat.").model_copy(update={"priority": "high"})
         recommended = handoff is not None
         category: HandoffCategory = handoff.category if handoff else "none"
         reason = " | ".join(handoff.reasons) if handoff else None
@@ -398,6 +509,7 @@ def run_turn(
                 "action": f"{plan.action.kind}:{plan.action.stage}" if plan and plan.action else None,
                 "records": [r.id for r in plan.records] if plan else [], "reply_source": reply_source,
                 "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
+                "planner_memory": plan.memory if plan else {},
             })
     trace.add("10_persist", "ok" if (deps.store and use_history) else "skipped",
               "gate metadata logged (no message text)" if (deps.store and use_history and gate) else

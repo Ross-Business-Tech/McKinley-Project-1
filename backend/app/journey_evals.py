@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from app.actions import confirm
+from app.auth import TOOLING
 from app.chat_engine import resolve_target, run_turn
 from app.config import REPO_DIR, Settings
 from app.db import Store
@@ -65,7 +66,7 @@ def run_journey(deps, j: dict, mode: str, target) -> dict[str, Any]:
                 break  # a generic assistant has no actions to confirm
             kind = step.split(":", 1)[1]
             draft = deps.store.get_draft(sid, pid or "none")
-            res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook),  # type: ignore[arg-type]
+            res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook, principal=TOOLING),  # type: ignore[arg-type]
                           (draft or {}).get("lang", "en"))
             if res.record:
                 records.append(res.record.kind if res.record.status != "urgent_queued" else "urgent")

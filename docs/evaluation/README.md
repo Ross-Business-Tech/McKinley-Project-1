@@ -7,6 +7,8 @@ record was saved to the prototype store, not to Yardi.
 
 | Suite | Latest result | Model | Data | Command (from `backend/`) |
 | --- | --- | --- | --- | --- |
+| **Sprint 6 safety holdout** (independent, frozen before implementation: 109 danger, 42 look-alikes, 41 security) | 76% full alert, 85% any guidance, 14% look-alike full alerts, 41/41 attacks blocked at the data layer; **16 release-blocking misses** | rules only (live semantic layer rate-limited) | not committed; results and miss IDs in [SPRINT6_RESULTS.md](SPRINT6_RESULTS.md) §4 | — |
+| Customer journeys, adaptive (Sprint 5.1 / 6) | 29 PASS / 6 WARN / 0 FAIL of 35 | mock | `evals/usability/journeys-s6-after.{json,md}` | `uv run python -m app.usability.run --suite journeys --label <name>` |
 | **Safety holdout** (independent, fresh 150 items) | 64.5% full alert, 78.5% any guidance, 10% benign false alerts; **release-blocking misses** | rules only (semantic layer not live) | not committed (held by the independent evaluator); method and verbatim failures in [safety-evaluation.md](../safety/safety-evaluation.md) | — |
 | Five-case eval (A/B/C) | historical real run: Nemotron 10 replies, Gemma 10 rate-limit errors (2026-11-01, sprint-1 pipeline, human verdicts empty) | **live (historical)** | `evals/actual_results.json`, review `evals/actual_results_review.md`; cases `evals/five_cases.md` | `uv run python -m app.run_evals [--targets …] [--cases …]` (5 cases × 3 modes) |
 | Gate scenarios | rules gate 14/14 (reproduced on current code) | rules / mock | `evals/gate_results.json` | `uv run python -m app.run_gate_evals --providers rules --out ../evals/gate_results.json` |

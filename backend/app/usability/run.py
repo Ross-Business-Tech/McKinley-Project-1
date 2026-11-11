@@ -1,7 +1,13 @@
-"""Run the persona usability suite and write structured records + a report.
+"""Run the persona usability suite (48 scenarios) or the customer-journey suite (35 journeys).
 
-  uv run python -m app.usability.run --base-url http://127.0.0.1:8000      # real HTTP endpoints (default)
-  uv run python -m app.usability.run --in-process                          # FastAPI TestClient, temp DB, mock
+  uv run python -m app.usability.run --base-url http://127.0.0.1:8000      # persona suite, real HTTP endpoints
+  uv run python -m app.usability.run --in-process                          # persona suite, TestClient, mock
+
+  uv run python -m app.usability.run --suite journeys                      # journeys, in-process MOCK (default)
+  uv run python -m app.usability.run --suite journeys --live --base-url http://127.0.0.1:8001 --max-calls 40
+                                                                           # journeys over HTTP, stops at N model
+                                                                           # replies (reply_source == "model")
+Journey outputs: evals/usability/journeys-<label>.json and .md (label defaults to "mock" / "live").
 
 Outputs (evals/usability/): results.json (one structured record per scenario incl. the full conversation),
 report.md (summary tables). The model used is whatever the backend is configured with; each record says
@@ -151,8 +157,163 @@ def export_summary(labels: list[str]) -> Path:
     return out
 
 
+def _mock_state(workbook=None):  # noqa: ANN001, ANN202 - small helper shared by the suites and tests
+    import tempfile
+
+    from app.config import Settings
+    from app.db import Store
+    from app.llm import LLMGateway
+    from app.state import build_state, set_state
+
+    settings = Settings(llm_provider="mock", llm_model="mock-deterministic-v1",  # type: ignore[call-arg]
+                        db_path=Path(tempfile.mkdtemp()) / "ux.sqlite3", _env_file=None)
+    state = build_state(settings=settings, gateway=LLMGateway(settings), store=Store(settings.db_path),
+                        workbook=workbook)
+    set_state(state)
+    return state
+
+
+def run_journeys(transport: Transport, only: list[str] | None = None, *, store=None,  # noqa: ANN001
+                 workbook=None) -> list[dict[str, Any]]:
+    """Simulate each journey, then grade it with the separate evaluator. ``store`` (mock runs) lets the evaluator
+    see the records the database really holds for the session; live runs grade what the responses showed."""
+    from app.usability.journey_evaluator import PrivacyLexicon, evaluate_journey
+    from app.usability.journey_simulator import BudgetTransport, run_journey
+    from app.usability.journeys import JOURNEYS
+
+    tag = datetime.now(UTC).strftime("%H%M%S") + str(time.time_ns())[-4:]
+    lex = PrivacyLexicon.from_workbook(workbook) if workbook else None
+    rows = []
+    for j in JOURNEYS:
+        if only and j.id not in only:
+            continue
+        if isinstance(transport, BudgetTransport) and transport.calls >= transport.max_calls:
+            rows.append({"journey": j.id, "category": j.category, "persona": j.persona.id, "goal": j.goal,
+                         "verdict": "NOT_RUN", "reasons": ["model-call budget reached before this journey"],
+                         "execution": "NONE"})
+            continue
+        convo = run_journey(transport, j, tag)
+        db = allowed = None
+        if store is not None:
+            db = store.records(session_id=convo["session_id"], limit=50)
+            allowed = {r["id"] for r in store.records(persona_id=j.persona.identity, limit=200)} \
+                if j.persona.identity else set()
+        rows.append(evaluate_journey(j, convo, db_records=db, privacy=lex, allowed_refs=allowed))
+    return rows
+
+
+def summarize_journeys(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    from app.usability.journeys import CATEGORIES
+
+    def agg(rs: list[dict[str, Any]]) -> dict[str, Any]:
+        ran = [r for r in rs if r["verdict"] != "NOT_RUN"]
+        f = [r["friction"] for r in ran]
+        return {
+            "journeys": len(rs), "ran": len(ran),
+            "verdicts": {v: sum(r["verdict"] == v for r in rs) for v in ("PASS", "WARN", "FAIL", "INCOMPLETE",
+                                                                         "NOT_RUN")},
+            "completed": sum(r["completed"] for r in ran),
+            "avg_turns": round(statistics.mean(x["user_turns"] for x in f), 2) if f else 0,
+            "questions": sum(x["questions"] for x in f),
+            "repeated_questions": sum(len(x["repeated_questions"]) for x in f),
+            "unnecessary_questions": sum(len(x["unnecessary_questions"]) for x in f),
+            "repeated_replies": sum(len(x["repeated_replies"]) for x in f),
+            "duplicate_records": sum(len(r["side_effects"]["duplicates"]) for r in ran),
+            "honesty_safety_flags": sum(not c["ok"] for r in ran for c in r["safety_checks"]),
+            "model_calls": sum(x["model_calls"] for x in f),
+        }
+
+    by = {c: agg([r for r in rows if r["category"] == c]) for c in CATEGORIES}
+    return {"all": agg(rows), **by, "execution": dict(Counter(r["execution"] for r in rows))}
+
+
+def write_journeys(rows: list[dict[str, Any]], meta: dict[str, Any], label: str) -> dict[str, Any]:
+    OUT.mkdir(parents=True, exist_ok=True)
+    doc = {"meta": meta, "summary": summarize_journeys(rows), "results": rows}
+    (OUT / f"journeys-{label}.json").write_text(json.dumps(doc, indent=2, default=str) + "\n")
+    (OUT / f"journeys-{label}.md").write_text(render_journeys_md(doc))
+    return doc
+
+
+def render_journeys_md(doc: dict[str, Any]) -> str:
+    s, meta = doc["summary"], doc["meta"]
+    mode = meta["mode"]
+    lines = [f"# Customer-journey suite: {mode} results", "",
+             f"Run {meta['run_at']} against `{meta['target']}`. Execution per journey: {s['execution']}. "
+             f"{meta.get('note') or ''}", "",
+             ("**MOCK.** Replies came from the deterministic mock model or fixed backend templates: this measures the "
+              "product pipeline (routing, cards, records, safety rules, honesty), not language-model quality."
+              if mode == "MOCK" else
+              f"**LIVE** (small sample; model-call budget {meta.get('max_calls')}, used {s['all']['model_calls']})."),
+             "Records are written to the PROTOTYPE store only (not Yardi; nobody is notified).", "",
+             "| Category | Journeys | PASS | WARN | FAIL | Incomplete | Completed | Avg turns | Repeated Qs | "
+             "Unneeded Qs | Repeated replies | Duplicates | Honesty/safety flags |", "| --- |" + " ---: |" * 12]
+    from app.usability.journeys import CATEGORIES
+    for c in (*CATEGORIES, "all"):
+        a = s[c]
+        v = a["verdicts"]
+        lines.append(f"| {c} | {a['journeys']} | {v['PASS']} | {v['WARN']} | {v['FAIL']} | "
+                     f"{v['INCOMPLETE'] + v['NOT_RUN']} | {a['completed']}/{a['ran']} | {a['avg_turns']} | "
+                     f"{a['repeated_questions']} | {a['unnecessary_questions']} | {a['repeated_replies']} | "
+                     f"{a['duplicate_records']} | "
+                     f"{a['honesty_safety_flags']} |")
+    lines += ["", "## Per journey", "", "| Journey | Category | Verdict | Turns | Records | Reasons |",
+              "| --- | --- | --- | ---: | --- | --- |"]
+    for r in doc["results"]:
+        recs = ", ".join(f"{k}x{n}" for k, n in (r.get("side_effects") or {}).get("by_kind", {}).items()) or "-"
+        turns = (r.get("friction") or {}).get("user_turns", 0)
+        why = "; ".join(r["reasons"])[:300].replace("|", "/")
+        lines.append(f"| {r['journey']} | {r['category']} | **{r['verdict']}** | {turns} | {recs} | {why} |")
+    return "\n".join(lines) + "\n"
+
+
+def main_journeys(a: argparse.Namespace) -> None:
+    from app.usability.journey_simulator import BudgetTransport
+
+    store = workbook = None
+    if a.live:
+        if not a.max_calls or a.max_calls < 1:
+            raise SystemExit("--live needs --max-calls N (the model-call budget)")
+        transport: Transport = BudgetTransport(HttpTransport(a.base_url), a.max_calls)
+        target, mode = a.base_url, "LIVE"
+        try:  # the same synthetic workbook, locally, for the other-resident privacy check (never sent anywhere)
+            from app.config import BACKEND_DIR
+            from app.context import load_workbook
+            workbook = load_workbook(BACKEND_DIR / "data" / "um_ai_sprint_sample_residents.xlsx")
+        except Exception:  # noqa: BLE001 - privacy lexicon is optional; record-id checks still run
+            workbook = None
+    else:
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+        state = _mock_state()
+        store, workbook = state.store, state.deps.workbook
+        transport, target, mode = InProcessTransport(TestClient(app)), "in-process TestClient (mock)", "MOCK"
+    rows = run_journeys(transport, a.only, store=store, workbook=workbook)
+    execs = {r["execution"] for r in rows} - {"NONE"}
+    if mode == "LIVE" and execs <= {"MOCK"}:
+        mode = "MOCK"  # a backend running the mock over HTTP is still a mock run
+    label = a.label or mode.lower()
+    meta = {"run_at": datetime.now(UTC).isoformat(timespec="seconds"), "target": target, "mode": mode,
+            "suite": "journeys", "journeys": len(rows), "max_calls": a.max_calls if a.live else None,
+            "privacy_lexicon": workbook is not None, "note": a.note}
+    if a.no_write:
+        print(json.dumps(summarize_journeys(rows), indent=2))
+        return
+    doc = write_journeys(rows, meta, label)
+    print(json.dumps({k: v for k, v in doc["summary"].items() if k != "all"} | {"all": doc["summary"]["all"]},
+                     indent=1))
+    for r in rows:
+        if r["verdict"] in ("FAIL", "INCOMPLETE"):
+            print(f"{r['verdict']:10} {r['journey']}: {'; '.join(r['reasons'])[:240]}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--suite", choices=("persona", "journeys"), default="persona",
+                    help="persona = the 48 persona scenarios; journeys = the 35 adaptive customer journeys")
+    ap.add_argument("--live", action="store_true", help="journeys: send to --base-url over HTTP (needs --max-calls)")
+    ap.add_argument("--max-calls", type=int, default=0, help="journeys --live: stop after N model-written replies")
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
     ap.add_argument("--in-process", action="store_true")
     ap.add_argument("--only", nargs="*")
@@ -161,6 +322,9 @@ def main() -> None:
     ap.add_argument("--note", default="", help="free text recorded in meta (e.g. which commit the server runs)")
     ap.add_argument("--export-summary", default="", help="comma-separated labels -> frontend/src/lib/usability.json")
     a = ap.parse_args()
+    if a.suite == "journeys":
+        main_journeys(a)
+        return
     if a.export_summary:
         print(export_summary([x for x in a.export_summary.split(",") if x]))
         return

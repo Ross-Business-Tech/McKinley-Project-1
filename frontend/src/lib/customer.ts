@@ -62,9 +62,11 @@ export function toIdentities(personas: Persona[]): Identity[] {
 /** I-01 draft: AI disclosure on the first message. Wording still needs McKinley approval. */
 export function greeting(identity: Identity): string {
   if (identity.lang === "es") {
-    return `Hola, ${identity.firstName ?? ""}. Soy el asistente virtual de McKinley. Soy una IA; si prefiere hablar con una persona, dígamelo y preparo una nota para nuestro equipo. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
+    return `Hola, ${identity.firstName ?? ""}. Soy el asistente automático de McKinley, no una persona. Si prefiere hablar con alguien del equipo, dígamelo y preparo una nota. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
   }
-  const intro = "I'm McKinley's virtual assistant. I'm an AI. If you'd rather talk to a person, just say so and I'll prepare a note for our team.";
+  // I-01 AI disclosure (team draft, McKinley approves). "Automated, not a person" is true for the fixed-rule demo
+  // responder and for a live AI model, and it is short enough for a 320px screen.
+  const intro = "I'm McKinley's automated assistant, not a person. Want a person instead? Just say so and I'll prepare a note for our team.";
   switch (identity.kind) {
     case "resident":
       return `Hi ${identity.firstName ?? "there"}. ${intro} I can help you report a repair, check your open requests, ask about your renewal, or reach the office.`;
@@ -101,11 +103,26 @@ export function actionTone(a: ProposedAction): Tone {
   return "draft";
 }
 
+/** Backend record / status-list labels (English) in Spanish. Unknown labels are shown as they are. */
+const ES_STATUS: Record<string, string> = {
+  "submitted, waiting for staff review": "Enviada, en espera de revisión del personal",
+  "requested; leasing team to confirm a time": "Solicitada; el equipo de arrendamiento confirmará una hora",
+  "in the office queue": "En la cola de la oficina",
+  "urgent; in the office queue": "Urgente; en la cola de la oficina",
+  "urgent": "Urgente",
+  "submitted": "Enviada",
+  "open": "Abierta",
+  "in progress": "En curso",
+  "scheduled": "Programada",
+  "completed": "Completada",
+  "closed": "Cerrada",
+};
+
 /** Customer-facing UI strings. Spanish = draft translation (needs review by a fluent McKinley staff member). */
 export const UI = {
   en: {
     lang: "en",
-    stage: { collecting: "Draft: a few details to go", ready: "Check, then send", submitted: "Sent", blocked: "Not available here" },
+    stage: { collecting: "Draft: a few details to go", ready: "Ready to send", submitted: "Sent", blocked: "Not available here" },
     source: { you_said: "You told us", on_file: "On your account", assistant: "Added by the assistant", missing: "Still needed" },
     stillNeeded: "Still needed:",
     dontSend: "Don't send",
@@ -115,7 +132,7 @@ export const UI = {
     reference: "Reference",
     assistantSaid: "Assistant said:",
     youSaid: "You said:",
-    placeholder: "Type your message",
+    youChose: "You pressed:",
     previewPlaceholder: "Typing is off in this preview",
     replying: "The assistant is replying…",
     failed: "Not sent",
@@ -126,7 +143,10 @@ export const UI = {
     noEmergencyLine: "Your community's emergency maintenance number isn't connected in this prototype.",
     openRequests: "Your open requests",
     followUpOwed: "Follow-up owed",
-    footer: "Prototype with made-up data. In an emergency, call 911.",
+    replyMock: "Replies here come from fixed rules, not an AI model.",
+    replyAi: "Replies are written by an AI model and checked by fixed safety rules; it can make mistakes.",
+    replyModel: (who: string) => `Replies are written by an AI model (${who}) and checked by fixed safety rules; it can make mistakes.`,
+    replyTemplate: (who: string) => `The last reply used approved wording, not the AI model (${who}).`,
     staffLink: "Staff and demo console",
     message: "Message the assistant",
     send: "Send message",
@@ -150,13 +170,28 @@ export const UI = {
     howCanIHelp: "What do you need help with?",
     afterSend: ["Check its status", "Report a repair"],
     afterDecline: ["Send it after all", "Report a repair"],
+    afterSendGuest: ["What happens next?"],
+    subtitle: "Resident and leasing help",
+    sentDemoNote: "Demo only: saved in this prototype. No McKinley staff will see it or be notified.",
+    statusText: (label: string) => label,
     talkToPerson: "Talk to a person",
     gasCall: "Get outside, then call 911",
+    newChat: "Start over",
+    newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
+    prototype: "Prototype with made-up data.",
+    emergencyLead: "Emergency?",
+    emergencyCall: "Emergency: call 911",
+    demoButton: "Demo",
+    demoTitle: "About this demo",
+    demoSignIn: "Demo sign-in",
+    // NEEDS McKINLEY REVIEW: shown instead of the demo sign-in when the backend has no demo accounts (hosted)
+    guestOnly: "Guest: general questions and notes to the office",
+    demoClose: "Close",
     safetyInfo: "If that happens",
   },
   es: {
     lang: "es",
-    stage: { collecting: "Borrador: faltan algunos datos", ready: "Revise y envíe", submitted: "Enviada", blocked: "No disponible aquí" },
+    stage: { collecting: "Borrador: faltan algunos datos", ready: "Lista para enviar", submitted: "Enviada", blocked: "No disponible aquí" },
     source: { you_said: "Lo que dijo", on_file: "En su cuenta", assistant: "Agregado por el asistente", missing: "Falta" },
     stillNeeded: "Falta:",
     dontSend: "No enviar",
@@ -166,7 +201,7 @@ export const UI = {
     reference: "Referencia",
     assistantSaid: "El asistente dijo:",
     youSaid: "Usted dijo:",
-    placeholder: "Escriba su mensaje",
+    youChose: "Usted pulsó:",
     previewPlaceholder: "En esta vista previa no se puede escribir",
     replying: "El asistente está respondiendo…",
     failed: "No enviado",
@@ -177,7 +212,10 @@ export const UI = {
     noEmergencyLine: "El número de emergencias de mantenimiento de su comunidad no está conectado en este prototipo.",
     openRequests: "Sus solicitudes abiertas",
     followUpOwed: "Seguimiento pendiente",
-    footer: "Prototipo con datos ficticios. En una emergencia, llame al 911.",
+    replyMock: "Las respuestas aquí vienen de reglas fijas, no de un modelo de IA.",
+    replyAi: "Las respuestas las escribe un modelo de IA y las revisan reglas de seguridad fijas; puede equivocarse.",
+    replyModel: (who: string) => `Las respuestas las escribe un modelo de IA (${who}) y las revisan reglas de seguridad fijas; puede equivocarse.`,
+    replyTemplate: (who: string) => `La última respuesta usó un texto aprobado, no el modelo de IA (${who}).`,
     staffLink: "Consola del personal",
     message: "Escriba al asistente",
     send: "Enviar mensaje",
@@ -190,7 +228,22 @@ export const UI = {
     declinedMsg: "De acuerdo, no envié nada. ¿Le ayudo con algo más?",
     afterSend: ["Ver mis solicitudes", "Reportar una reparación"],
     afterDecline: ["Envíelo", "Reportar una reparación"],
+    afterSendGuest: ["¿Qué pasa ahora?"],
+    subtitle: "Ayuda para residentes y arrendamiento",
+    sentDemoNote: "Solo demostración: guardada en este prototipo. Nadie del personal de McKinley la verá ni recibirá aviso.",
+    statusText: (label: string) => ES_STATUS[label.trim().toLowerCase()] ?? label,
     talkToPerson: "Hablar con una persona",
+    newChat: "Empezar de nuevo",
+    newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
+    prototype: "Prototipo con datos ficticios.",
+    emergencyLead: "¿Emergencia?",
+    emergencyCall: "Emergencia: llame al 911",
+    demoButton: "Demo",
+    demoTitle: "Sobre esta demo",
+    demoSignIn: "Inicio de sesión de demo",
+    // NEEDS McKINLEY REVIEW
+    guestOnly: "Invitado: preguntas generales y notas a la oficina",
+    demoClose: "Cerrar",
     gasCall: "Salga y luego llame al 911",
     safetyInfo: "Si eso pasa",
     whatItSaid: "Lo que decía",
@@ -209,11 +262,21 @@ export const UI = {
 
 export type UIStrings = (typeof UI)["en"] | (typeof UI)["es"];
 
+const PROVIDER_LABEL: Record<string, string> = {
+  openrouter: "OpenRouter", gemini: "Gemini", ollama: "Ollama (local)", anthropic: "Anthropic", mock: "Mock",
+};
+
+/** "OpenRouter: model-id" for the About panel and diagnostics; never shows prompts or keys. */
+export function providerLabel(provider?: string | null, model?: string | null): string {
+  const name = PROVIDER_LABEL[provider ?? ""] ?? provider ?? "unknown provider";
+  return model ? `${name}: ${model}` : name;
+}
+
 export function formatDate(iso: string, lang: Lang): string {
   const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+    : d.toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ---- customer session restore (live mode only; same tab, sessionStorage) ----

@@ -77,7 +77,7 @@ def _turn_record(*, kind: str, item_id: str, mode: str, turn_index: int, user_me
     rec: dict[str, Any] = {
         "kind": kind, "item_id": item_id, "mode": mode, "mode_label": MODE_LABEL[mode], "turn_index": turn_index,
         "execution": execution, "user_message": user_message, "target": target.key,
-        "requested_model": target.model, "served_model": last.get("served_model"),
+        "provider": target.provider, "requested_model": target.model, "served_model": last.get("served_model"),
         "model_calls": calls, "human_review_status": "pending",
     }
     if resp is None:
@@ -196,12 +196,14 @@ def run_live_eval(
 ) -> tuple[int, dict[str, Any]]:
     """Returns (exit_code, document). Writes status.json always; results/report only when the run started."""
     modes = list(modes or MODES)
-    case_ids = CORE_CASE_IDS if case_ids is None else case_ids
-    scenario_ids = list(DEFAULT_SCENARIOS) if scenario_ids is None else scenario_ids
+    # "--cases none" / "--scenarios none" (as written in the docs) mean the same as passing the flag with no ids.
+    case_ids = CORE_CASE_IDS if case_ids is None else [] if case_ids == ["none"] else case_ids
+    scenario_ids = list(DEFAULT_SCENARIOS) if scenario_ids is None else [] if scenario_ids == ["none"] \
+        else scenario_ids
 
     def blocked(code: str, reason: str, **kw: Any) -> tuple[int, dict[str, Any]]:
         doc = {"status": "blocked", "reason_code": code, "reason": reason, "target": target_raw, **kw,
-               "keys_present": {p: bool(settings.api_key_for(p)) for p in ("openrouter", "anthropic")},
+               "keys_present": {p: bool(settings.api_key_for(p)) for p in ("gemini", "openrouter", "anthropic")},
                "note": "No model was called and nothing fell back to mock."}
         write_status(out_dir, **doc)
         log(f"BLOCKED {code}: {reason}")
@@ -245,8 +247,11 @@ def run_live_eval(
         ready, status = (True, status) if _ollama_up(settings) else (False, "OLLAMA_NOT_REACHABLE")
     if not ready:
         return blocked(status if status.isupper() else "PROVIDER_NOT_READY",
-                       f"{target.provider} is not ready ({status}). Add OPENROUTER_API_KEY to backend/.env (or "
-                       "start Ollama) and re-run preflight." if target.provider != "mock" else status,
+                       f"{target.provider} is not ready ({status}). "
+                       + {"gemini": "Add GEMINI_API_KEY to backend/.env", "anthropic": "Add ANTHROPIC_API_KEY to "
+                          "backend/.env", "ollama": "Start Ollama"}.get(target.provider,
+                                                                        "Add OPENROUTER_API_KEY to backend/.env")
+                       + " and re-run preflight." if target.provider != "mock" else status,
                        resolved_target=target.key)
 
     listing_info: dict[str, Any] | None = None
@@ -263,6 +268,10 @@ def run_live_eval(
         if listing_info.get("listed"):
             gw.pricing[target.model] = (listing_info["pricing_prompt_usd_per_token"],
                                         listing_info["pricing_completion_usd_per_token"])
+
+    if target.provider == "gemini" and not allow_paid:  # free tier or billed depends on the key's project
+        return blocked("MAY_BE_BILLED", f"'{target.key}' may be billed on this key's Google project; pass "
+                       "--allow-paid after checking the project's quota and billing", resolved_target=target.key)
 
     execution = "MOCK" if is_mock else "LIVE"
     label = label or ("mock-dryrun" if is_mock else "live-" + datetime.now(UTC).strftime("%Y%m%d-%H%M"))

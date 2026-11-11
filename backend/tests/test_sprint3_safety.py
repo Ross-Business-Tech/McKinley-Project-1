@@ -65,7 +65,9 @@ def test_classifier_failure_never_defaults_to_safe():
 
 
 def test_only_the_broad_danger_line_can_be_suppressed_and_only_confidently():
-    assert decide(DeterministicRisk(care="danger"), sem("none", conf=0.95)).response == "none"
+    # Sprint 7 (stricter, moved): the first case used to expect "none" (the semantic layer removed the broad 911 line
+    # at confidence >= 0.8). The semantic layer can no longer remove deterministic guidance, so the line stays.
+    assert decide(DeterministicRisk(care="danger"), sem("none", conf=0.95)).response == "care_line"
     assert decide(DeterministicRisk(care="danger"), sem("none", conf=0.5)).response == "care_line"
     assert decide(DeterministicRisk(care="distress"), sem("none", conf=0.99)).care == "distress"
     assert decide(DeterministicRisk(care="unwell"), sem("none", conf=0.99)).care == "unwell"

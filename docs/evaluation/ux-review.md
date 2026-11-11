@@ -3,6 +3,19 @@
 > **Sprint 3 (November 2026)** is summarised first, then sprint 2 and sprint 1 unchanged. Full sprint-3 evidence:
 > [SPRINT3_REPORT.md](../archive/sprint3/sprint3-report.md), [SAFETY_EVALUATION.md](../safety/safety-evaluation.md).
 
+## Sprint 5 at a glance (2026-11-10, mock only)
+Independent resident and prospect simulators (31 conversations) and a strict UX judge (91 replies) found no false
+claims and no data leaks. Two rounds of planner fixes followed, and a regression verifier re-checked them by replay.
+
+Judge scores before the fixes (out of 5):
+
+| Honesty | Clarity | Unnecessary questions | Task progress | Context | Empathy |
+| --- | --- | --- | --- | --- | --- |
+| 4.90 | 4.11 | 4.80 | 3.71 | 3.65 | **3.05** (weakest) |
+
+The judge did not re-score after the fixes. Remaining: stitched template wording, English values on Spanish cards,
+and a few partial fixes. Full table: [SPRINT5_LIVE_CONVERSATION.md](SPRINT5_LIVE_CONVERSATION.md).
+
 ## Sprint 3 at a glance
 
 **Mock response model throughout** (no key): these findings are about routing, memory, state and honesty, not

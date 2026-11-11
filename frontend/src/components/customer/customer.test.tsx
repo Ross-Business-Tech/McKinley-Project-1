@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatResponse, Persona, ProposedAction } from "@/lib/types";
 
-import { CustomerApp } from "./CustomerApp";
+import { CustomerApp, sortStatusItems } from "./CustomerApp";
 
 const personas: Persona[] = [
   { id: "R001", label: "R001 · Marisol (synthetic resident)", kind: "resident", description: "Synthetic workbook resident at Heron Lake Apartments.", synthetic: true },
@@ -83,6 +83,35 @@ describe("CustomerApp", () => {
     await screen.findByText(/Submitted, waiting for staff review/);
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
+    // the press is shown as the person's own turn, so the saved message reads as the reply to it
+    expect(screen.getByTestId("choice")).toHaveTextContent("Send repair request");
+    // a resident who sent a repair is offered its status and another repair
+    expect(screen.getByRole("button", { name: "Check its status" })).toBeInTheDocument();
+  });
+
+  it("announces the outcome of Send once, with its reference", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    await screen.findByText(/Submitted, waiting for staff review/);
+    const region = document.querySelector('[aria-live="polite"]');
+    await waitFor(() => expect(region).toHaveTextContent(/Assistant said:.*DEMO-WO-/));
+  });
+
+  it("puts focus in the message box after Start over", async () => {
+    live(() => resp({ reply: "Got it." }));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "hello{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    await waitFor(() => expect(screen.getByLabelText("Message the assistant")).toHaveFocus());
+    expect(screen.queryByText("Got it.")).not.toBeInTheDocument();
   });
 
   it("gives emergencies a tap-to-call 911 link", async () => {
@@ -116,7 +145,7 @@ describe("CustomerApp", () => {
     const user = userEvent.setup();
     render(<CustomerApp />);
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R012");
-    expect(screen.getByText(/Soy el asistente virtual de McKinley/)).toBeInTheDocument();
+    expect(screen.getByText(/Soy el asistente automático de McKinley, no una persona/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Escriba al asistente"), "el horno no calienta{Enter}");
     const reply = await screen.findByText("¿En qué parte del apartamento es?");
     expect(reply.closest("[lang]")).toHaveAttribute("lang", "es");
@@ -148,6 +177,72 @@ describe("CustomerApp", () => {
     expect(within(note).getByText("If that happens")).toBeInTheDocument();
     expect(within(note).queryByRole("link")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("says plainly whether replies come from fixed rules or an AI model", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: true }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/come from fixed rules, not an AI model/)).toBeInTheDocument();
+  });
+
+  it("names OpenRouter and the served model, and says when a live provider's reply was approved wording", async () => {
+    let n = 0;
+    live(() => (++n === 1
+      ? resp({ reply: "Sure.", is_mock: false, provider: "openrouter", model: "vendor/model-x:free", reply_source: "model" })
+      : resp({ reply: "Okay.", is_mock: false, provider: "openrouter", model: "vendor/model-x:free", reply_source: "template" })));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "hi{Enter}");
+    await screen.findByText("Sure.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/AI model \(OpenRouter: vendor\/model-x:free\)/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Message the assistant"), "thanks{Enter}");
+    await screen.findByText("Okay.");
+    expect(within(screen.getByTestId("about-demo")).getByText(/approved wording, not the AI model \(OpenRouter/)).toBeInTheDocument();
+  });
+
+  it("labels live model replies as AI-written", async () => {
+    live(() => resp({ reply: "Got it.", is_mock: false, provider: "gemini", reply_source: "model" }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    await user.type(screen.getByLabelText("Message the assistant"), "my sink leaks{Enter}");
+    await screen.findByText("Got it.");
+    await user.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(within(screen.getByTestId("about-demo")).getByText(/written by an AI model \(Gemini/)).toBeInTheDocument();
+  });
+
+  it("keeps a tap-to-call 911 link and an honest 'not a person' greeting on screen", async () => {
+    live(() => resp({ reply: "Got it." }));
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    expect(screen.getByRole("link", { name: "Emergency: call 911" })).toHaveAttribute("href", "tel:911");
+    expect(screen.getByText(/automated assistant, not a person/)).toBeInTheDocument();
+    expect(screen.queryByText(/I'm an AI/)).not.toBeInTheDocument();
+  });
+
+  it("opens and closes 'About this demo' from the keyboard and returns focus", async () => {
+    live(() => resp({ reply: "Got it." }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await screen.findByLabelText("Demo sign-in");
+    const toggle = screen.getByRole("button", { name: "About this demo" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByTestId("about-demo");
+    expect(within(panel).getByRole("link", { name: "Staff and demo console" })).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: /Close/ }));
+    await user.click(toggle);
+    await user.keyboard("{Tab}{Escape}");
+    expect(screen.queryByTestId("about-demo")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
   });
 
   it("always offers a way to talk to a person", async () => {
@@ -227,5 +322,97 @@ describe("CustomerApp", () => {
     await screen.findByText("Here's your request.");
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Actually it's the bathroom" })).toBeEnabled();
+  });
+});
+
+
+describe("Sprint 5.1 UI fixes", () => {
+  it("marks a failed Send as not sent, announces it, and retries the same card", async () => {
+    let fail = true;
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const base = globalThis.fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/actions/confirm") && fail) { fail = false; return new Response("{}", { status: 500 }); }
+      return base(url, init);
+    }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    expect((await screen.findAllByText(/That didn't save/)).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("choice").parentElement).toHaveTextContent("Not sent");
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent(/That didn't save/);
+    await user.click(screen.getByRole("button", { name: /Send again/ }));
+    expect(await screen.findByText(/Submitted, waiting for staff review/)).toBeInTheDocument();
+  });
+
+  it("shows 'Ready to send', hides demo-system rows, and gives a sent card one honest line", async () => {
+    const card = { ...readyCard, fields: [...readyCard.fields,
+      { key: "who", label: "Account", value: "Signed-in resident (demo account)", source: "on_file" as const },
+      { key: "contact_route", label: "Contact route", value: "Not collected in this prototype", source: "assistant" as const }] };
+    live(() => resp({ reply: "Here's your request.", action: card }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    const group = await screen.findByRole("group", { name: "Repair request" });
+    expect(within(group).getByText("Ready to send")).toBeInTheDocument();
+    expect(within(group).queryByText(/demo account/)).not.toBeInTheDocument();
+    expect(within(group).queryByText(/Not collected in this prototype/)).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Send repair request" }));
+    expect(await screen.findByText(/No McKinley staff will see it or be notified/)).toBeInTheDocument();
+  });
+
+  it("never pins more than three urgent rows and always shows the newest request", async () => {
+    const status_items = [
+      ...Array.from({ length: 6 }, (_, i) => ({ reference: `DEMO-TASK-10${i}`, title: `Alert ${i}`, status: "Urgent; in the office queue", opened: "2026-11-10", source: "prototype_store" as const, note: null })),
+      { reference: "DEMO-WO-1080", title: "Bathroom sink", status: "Submitted, waiting for staff review", opened: "2026-11-10", source: "prototype_store" as const, note: null },
+    ];
+    live(() => resp({ reply: "Here are your open requests.", status_items }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "check my requests{Enter}");
+    const list = await screen.findByRole("list", { name: "Your open requests" });
+    expect(within(list).getByText("Bathroom sink")).toBeInTheDocument();
+    expect(within(list).getAllByText(/Urgent/).length).toBe(3);
+    expect(sortStatusItems(status_items)[0].status).toMatch(/^Urgent/);
+  });
+});
+
+describe("Sprint 6 authorization: demo sign-in follows the backend", () => {
+  it("hides the demo sign-in and sends no persona when the backend has no demo personas (hosted)", async () => {
+    const bodies: { persona_id: string | null; session_id: string }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/personas")) return new Response(JSON.stringify([]));
+      if (url.endsWith("/api/health")) {
+        return new Response(JSON.stringify({ status: "ok", provider: "mock", model: "m", provider_ready: true, provider_status: "ok",
+          prompt_version: "v", data_loaded: true, data_error: null, resident_count: 0, interaction_count: 0, app_env: "hosted",
+          is_mock: true, demo_personas_enabled: false }));
+      }
+      if (url.endsWith("/api/chat")) {
+        bodies.push(JSON.parse(String(init?.body)));
+        return new Response(JSON.stringify(resp({ reply: "General help only.", audience: "unknown", session_id: "server-new" })));
+      }
+      throw new TypeError("fetch failed");
+    }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    expect(await screen.findByTestId("guest-only")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Demo sign-in")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Message the assistant"), "show my requests{Enter}");
+    await screen.findByText("General help only.");
+    await user.type(screen.getByLabelText("Message the assistant"), "and my renewal?{Enter}");
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies.every((b) => b.persona_id === null)).toBe(true);
+    expect(bodies[1].session_id).toBe("server-new"); // follows a new conversation the backend started
+  });
+
+  it("keeps the demo sign-in on a local backend", async () => {
+    live(() => resp({}));
+    render(<CustomerApp />);
+    expect(await screen.findByLabelText("Demo sign-in")).toBeInTheDocument();
+    expect(screen.queryByTestId("guest-only")).not.toBeInTheDocument();
   });
 });

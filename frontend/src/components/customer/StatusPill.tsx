@@ -1,11 +1,11 @@
-import { AlertTriangle, Ban, CheckCircle2, CircleDashed, ClipboardCheck, Clock, Lock } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, ClipboardCheck, Clock, Lock, PencilLine } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 /**
  * One status vocabulary for the chat cards, the customer status list and the staff work queue.
- * urgent = danger red + warning icon; owed = amber; ready = brand (check, then send); submitted = brand;
+ * urgent = danger red + warning icon; owed = amber; ready = brand blue (check, then send); submitted = green (saved);
  * draft / not sent / blocked = neutral. Text and icon always carry the meaning; colour only reinforces it.
  */
 export type StatusTone = "urgent" | "owed" | "ready" | "submitted" | "draft" | "declined" | "blocked";
@@ -15,9 +15,9 @@ type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 export const STATUS_STYLE: Record<StatusTone, { pill: string; Icon: Icon }> = {
   urgent: { pill: "bg-mk-danger-soft text-mk-danger", Icon: AlertTriangle },
   owed: { pill: "bg-mk-attention-soft text-mk-attention", Icon: Clock },
-  ready: { pill: "bg-mk-brand-soft text-mk-brand", Icon: ClipboardCheck },
-  submitted: { pill: "bg-mk-brand-soft text-mk-brand", Icon: CheckCircle2 },
-  draft: { pill: "bg-mk-draft-soft text-mk-draft", Icon: CircleDashed },
+  ready: { pill: "bg-mk-brand-soft text-mk-brand-strong", Icon: ClipboardCheck },
+  submitted: { pill: "bg-mk-done-soft text-mk-done", Icon: CheckCircle2 },
+  draft: { pill: "bg-mk-draft-soft text-mk-draft", Icon: PencilLine },
   declined: { pill: "bg-mk-draft-soft text-mk-draft", Icon: Ban },
   blocked: { pill: "bg-mk-draft-soft text-mk-draft", Icon: Lock },
 };

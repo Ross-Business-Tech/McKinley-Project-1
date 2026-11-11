@@ -1,6 +1,6 @@
 # System architecture
 
-Reflects the code on `feat/workflow-customer-experience`. Two front-ends share one static build; the Python API is the only place with resident data, model keys or business rules.
+Reflects the code on `feat/gemini-supabase-deployment`. Two front-ends share one static build; the Python API is the only place with resident data, model keys or business rules.
 
 ```mermaid
 flowchart LR
@@ -25,12 +25,12 @@ flowchart LR
     UX["usability/ (offline)<br/>personas, scenarios, simulator,<br/>independent evaluator"]
     CTX["context.py + personas.py<br/>allowlisted SAFE_CONTEXT"]
     TPL["templates.py + knowledge_base.json<br/>(team drafts)"]
-    LLM["LLMGateway<br/>OpenRouter | Ollama | Anthropic | Mock"]
+    LLM["LLMGateway<br/>Gemini | OpenRouter | Ollama | Anthropic | Mock"]
   end
 
   subgraph Data["Local data (synthetic)"]
     XLSX[("Resident workbook<br/>(XLSX, not committed)")]
-    DB[("SQLite<br/>chat_turns, gate_decisions,<br/>action_drafts, prototype_records,<br/>eval_runs")]
+    DB[("SQLite (local) or Postgres / Supabase (DATABASE_URL)<br/>chat_turns, gate_decisions, action_drafts,<br/>prototype_records, eval runs, synthetic residents")]
   end
 
   CV -- "live mode" --> CHAT
@@ -69,3 +69,42 @@ Notes
   semantic classifier receives only the customer's last message and up to three earlier customer messages (never
   resident records). Without a provider key it does not run and every turn is marked `degraded`.
 - **Prototype store ≠ Yardi.** `prototype_records` stands in for work orders (D-11), CRM tour requests (D-10) and the staff queue (D-14). Nothing leaves SQLite.
+
+## Target deployment (prepared, not yet deployed)
+
+```mermaid
+flowchart LR
+  P["Phone / browser"] --> V["Vercel<br/>static export of frontend/ (out/)<br/>NEXT_PUBLIC_API_BASE_URL only"]
+  V -->|"HTTPS, CORS: exact Vercel origin"| R["Render web service<br/>FastAPI + uvicorn, APP_ENV=hosted<br/>alembic upgrade head on start"]
+  R -->|"DATABASE_URL (Session pooler), backend only"| S[("Supabase Postgres<br/>RLS on every table, no policies<br/>synthetic residents via seed")]
+  R -->|"GEMINI_API_KEY, backend only"| G["Gemini Developer API<br/>replies + optional gate / safety classifier"]
+  H["here.now (team preview)<br/>static replay, no backend"] -.-> P
+```
+
+Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`) live only in Render's settings. The browser never
+talks to Supabase or Gemini. Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
+
+
+## What the customer page shows (no silent substitution)
+
+```mermaid
+flowchart TD
+  O["Phone opens the link"] --> B{"Built with<br/>NEXT_PUBLIC_API_BASE_URL?"}
+  B -- "no (here.now)" --> RP["Recorded replay<br/>'Preview link' notice, typing off"]
+  B -- yes --> W["GET /api/personas<br/>(after 4 s: 'Waking the assistant up…')"]
+  W -- "answers" --> L["Live chat: type and send<br/>About this demo says: fixed rules or AI model"]
+  W -- "unreachable (90 s timeout)" --> OFF["'The live assistant can't be reached'<br/>Try again + recorded replay"]
+  L --> T["Each turn: POST /api/chat"]
+  T -- "model error" --> TPL["Approved template or clear error<br/>(never the mock in disguise)"]
+  T -- "network error" --> RETRY["'Not sent' + Send again<br/>(text kept)"]
+```
+
+Layout on a phone, top to bottom:
+- the blue McKinley band;
+- the demo row (Demo sign-in select and About this demo), which scrolls away;
+- the conversation;
+- the composer, pinned at every height and lifted above the keyboard (`visualViewport` on iOS,
+  `interactive-widget=resizes-content` on Android). It holds the suggestions, the message box with Send, then
+  Talk to a person, Start over and Call 911.
+
+Details: [../design/BRAND_SYSTEM.md](../design/BRAND_SYSTEM.md), [../design/MOBILE_UX_AUDIT.md](../design/MOBILE_UX_AUDIT.md).
