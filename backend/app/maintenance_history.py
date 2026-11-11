@@ -79,8 +79,17 @@ def objects(text: str) -> set[str]:
     for part, whole in _PART_OF.items():
         if part in found:
             found.discard(whole)
+    if "pests" in found:  # different pests are different requests (a mouse is not the roach problem)
+        species = {name for name, pat in _SPECIES if pat.search(text or "")}
+        if species:
+            found = (found - {"pests"}) | species
     specific = found - GENERIC_PARTS
     return specific or found
+
+
+_SPECIES = [("roaches", re.compile(r"roach|cucarach", re.I)), ("ants", re.compile(r"\bants?\b|hormig", re.I)),
+            ("rodents", re.compile(r"\bmice\b|\bmouse\b|\brats?\b|rodent|rat[oó]n|ratones", re.I)),
+            ("bedbugs", re.compile(r"bed ?bugs?|chinches?", re.I))]
 
 
 def related(a: str, b: str) -> bool:
@@ -100,16 +109,21 @@ def related(a: str, b: str) -> bool:
 _SYMPTOMS: list[tuple[str, re.Pattern[str]]] = [
     ("noise", re.compile(r"rattl|nois|loud|buzz|hum+(?:s|ing)?\b|click|bang|grind|squeak|squeal|whistl|hiss|"
                          r"pop+(?:s|ing)?\b|ruido|zumb|tru?en", re.I)),
-    ("leak", re.compile(r"leak|drip|puddl|wet|water on|soak|overflow|gote|fuga|charco|moja", re.I)),
+    ("leak", re.compile(r"leak|drip|puddl|\bwet\b|water on|soak|overflow|gote|fuga|charco|moja", re.I)),
     ("cooling", re.compile(r"cool|warm|hot air|\b[89]\d ?(?:degrees|in here)|enfr|calor", re.I)),
     ("heating", re.compile(r"\bheat(?:ing)?\b(?! ?pump)|cold air|blowing cold|freezing|no calienta|calefacc|fr[ií]o",
                            re.I)),
     ("clog", re.compile(r"clog|drain|backed up|backing up|slow|gurgl|tapad|atascad|no drena|desag", re.I)),
     ("smell", re.compile(r"smell|stink|odor|olor|huele", re.I)),
-    ("stuck", re.compile(r"stuck|stick|jamm|won'?t (?:open|close|lock|latch)|off track|trabad|no (?:abre|cierra)",
-                         re.I)),
+    ("stuck", re.compile(r"stuck|stick|jamm|won'?t (?:open|close|lock|latch|stay (?:closed|shut|open))|off track|"
+                         r"trabad|no (?:abre|cierra)|no se (?:queda|mantiene) cerrad", re.I)),
+    # a PART of the thing failed (last round): a latch, hinge, handle, seal... a new problem, not "it died again"
+    ("part", re.compile(r"latch|hinge|\bhandles?\b|knob|\bseals?\b|gasket|\bracks?\b|shelf|drawer|button|panel|"
+                        r"filter|\bcords?\b|burner|"
+                        r"snapp|broke off|fell off|came off|bisagra|manija|perilla|empaque|pestillo|bot[oó]n|repisa",
+                        re.I)),
     ("power", re.compile(r"spark|flicker|no power|tripp|breaker|dead outlet|sin luz|chispa", re.I)),
-    ("pests", re.compile(r"roach|ant\b|ants|mice|mouse|bug|cucarach|hormig|rat[oó]n", re.I)),
+    ("pests", re.compile(r"roach|\bants?\b|\bmice\b|\bmouse\b|\bbugs?\b|\brats?\b|cucarach|hormig|rat[oó]n", re.I)),
     ("damage", re.compile(r"crack|broken glass|torn|peel|stain|mold|mould|moho|mancha|rot[oa]?\b", re.I)),
 ]
 
@@ -121,11 +135,14 @@ def symptoms(text: str) -> set[str]:
 
 def match_score(new: str, old: str) -> int:
     """0 when `old` is not the same request as `new`; otherwise 1 (same thing) + 2 per shared symptom class.
-    Same thing with two different specific symptoms is a different request (0)."""
+    - same thing, a generic new report ("it died again", "still not working"): the same request as any open one;
+    - a SPECIFIC new symptom ("the door latch snapped") against an old GENERIC request ("dishwasher died"): a new
+      problem (0); with specific symptoms on both, the same request only when every new symptom is already on the open
+      one ("not cooling AND noisy" is not just the open "AC rattling")."""
     if not related(new, old):
         return 0
     a, b = symptoms(new), symptoms(old)
-    if a and b and not (a & b):
+    if a - b:  # a specific symptom the open request does not have is a new problem
         return 0
     return 1 + 2 * len(a & b)
 
@@ -136,19 +153,45 @@ _LABEL_ES = {"ac": "aire acondicionado", "heat": "calefacción", "water heater":
              "fridge": "refrigerador", "oven": "estufa u horno", "microwave": "microondas", "disposal": "triturador",
              "washer": "lavadora", "dryer": "secadora", "window": "ventana", "door": "puerta", "lock": "cerradura",
              "fan": "ventilador", "light": "luz", "outlet": "enchufe", "ceiling": "techo", "pests": "plagas",
-             "drain": "desagüe", "detector": "detector"}
-_LABEL_EN = {"ac": "AC", "pests": "pest", "oven": "stove or oven", "shower": "shower or tub", "heat": "heating"}
+             "drain": "desagüe", "detector": "detector", "roaches": "cucarachas", "ants": "hormigas",
+             "rodents": "ratones", "bedbugs": "chinches", "closet": "clóset"}
+_LABEL_EN = {"ac": "AC", "pests": "pest", "oven": "stove or oven", "shower": "shower or tub", "heat": "heating",
+             "roaches": "roach", "ants": "ant", "rodents": "mouse or rat", "bedbugs": "bed bug"}
 
 
 def request_label(text: str, lang: str = "en") -> str:
     """How the assistant cites a saved request: by what it is about, never by the resident's raw words.
     'your AC repair request' / 'su solicitud de reparación: aire acondicionado'."""
-    objs = sorted(objects(text))
+    objs = sorted(objects(text), key=lambda o: _position(o, text))
     if lang == "es":
         names = ", ".join(_LABEL_ES.get(o, o) for o in objs)
         return f"su solicitud de reparación: {names}" if names else "su solicitud de reparación"
-    names = " and ".join(_LABEL_EN.get(o, o) for o in objs)
+    # adjacent objects are one compound thing ("closet light"); others are joined with "and"
+    parts: list[str] = []
+    for i, o in enumerate(objs):
+        word = _LABEL_EN.get(o, o)
+        if i and _position(o, text) - _end(objs[i - 1], text) <= 1:
+            parts[-1] = f"{parts[-1]} {word}"
+        else:
+            parts.append(word)
+    names = " and ".join(parts)
     return f"your {names} repair request" if names else "your repair request"
+
+
+def _span(obj: str, text: str) -> tuple[int, int]:
+    pats = [pat for name, pat in utt._THINGS if name == obj] + [pat.pattern for name, pat in _SPECIES if name == obj]
+    for pat in pats:
+        if m := re.search(pat, text or "", re.I):
+            return m.start(), m.end()
+    return len(text or ""), len(text or "")
+
+
+def _position(obj: str, text: str) -> int:
+    return _span(obj, text)[0]
+
+
+def _end(obj: str, text: str) -> int:
+    return _span(obj, text)[1]
 
 
 @dataclass(frozen=True)

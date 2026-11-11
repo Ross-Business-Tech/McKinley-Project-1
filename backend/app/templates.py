@@ -547,9 +547,14 @@ T: dict[str, dict[Lang, str]] = {
               "preguntarles por un plan de pagos. Envíela cuando quiera. En este prototipo no se avisa a nadie "
               "automáticamente.",
     },
-    "resume_after_alert": {  # NEEDS McKINLEY REVIEW: after the safety alert settles, the earlier card comes back
-        "en": "I'm glad things are under control. Your earlier {what} is still here and hasn't been sent. {ask}",
-        "es": "Me alegra que esté bajo control. Su {what} anterior sigue aquí y no se ha enviado. {ask}",
+    "resume_after_alert": {  # NEEDS McKINLEY REVIEW: after the safety alert, the earlier card comes back (never
+        # assumes the danger is over: the safety guidance shown earlier still applies)
+        "en": "Your earlier {what} is still here and hasn't been sent. {ask}",
+        "es": "Su {what} anterior sigue aquí y no se ha enviado. {ask}",
+    },
+    "resume_card_note": {  # NEEDS McKINLEY REVIEW: the person answered the resumed card's question
+        "en": "Your earlier {what} is back, still unsent.",
+        "es": "Su {what} anterior está de vuelta, todavía sin enviar.",
     },
     "praise_ack": {  # NEEDS McKINLEY REVIEW (Sprint 8 C): a compliment or small talk; no workflow starts
         "en": "Glad to hear it! If there's anything you need, like a repair or a question about your community, just "

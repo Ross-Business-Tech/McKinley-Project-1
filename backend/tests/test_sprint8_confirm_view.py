@@ -5,7 +5,9 @@ from tests.test_sprint7_auth import TOKEN, act, chat, token_client  # noqa: F401
 
 
 def _repeat_ac(c, headers=None):
-    r = chat(c, "my AC is broken again, it keeps rattling", persona="R001", session="cv1", headers=headers)
+    # Sprint 8 C final round: "it keeps rattling" is now a follow-up on the OPEN workbook item I008 "AC rattling" (same
+    # thing, same symptom), so this repeat repair names a new symptom to save a request with its repeat history
+    r = chat(c, "my AC is broken again, it's blowing warm air", persona="R001", session="cv1", headers=headers)
     sid = r["session_id"]
     chat(c, "yes you can come in", persona="R001", session=sid, headers=headers)
     return act(c, "confirm", sid, headers=headers)
