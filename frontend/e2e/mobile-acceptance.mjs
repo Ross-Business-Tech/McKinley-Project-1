@@ -43,7 +43,9 @@ for (const eng of engArg.split(",")) {
       await page.screenshot({ path: `${out}/${tag}-1-open.png` });
       const vis = async (loc) => { const b = await loc.boundingBox(); return b && b.y >= 0 && b.y + b.height <= (await page.evaluate(() => window.visualViewport?.height ?? innerHeight)) + 1; };
       if (!(await vis(box))) fail("composer not visible on open");
-      if (!(await box.isDisabled()) && !(await vis(page.locator('a[href="tel:911"]').last()))) fail("911 link not visible on open");
+      // Sprint 8 (product owner): the always-visible tap-to-call 911 link was removed. Was: "911 link not visible on open".
+      // Now: no tap-to-call control in the normal state (only a plain-text 911 line); an active alert is checked below.
+      if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail("persistent call link visible in the normal state");
       const sendBtn = page.locator('form button[type="submit"]');
       const tb = await sendBtn.boundingBox(); if (tb && (tb.width < 44 || tb.height < 44)) fail(`send target ${tb.width}x${tb.height}`);
       for (let i = 0; i < Q.length; i++) {
@@ -55,7 +57,8 @@ for (const eng of engArg.split(",")) {
           const share = await page.evaluate(() => { const c = document.querySelector("textarea")?.closest(".sticky"); return c ? c.getBoundingClientRect().height / (window.visualViewport?.height ?? innerHeight) : 0; });
           r.notes.push(`q${i + 1}: composer uses ${Math.round(share * 100)}% of the keyboard-height screen`);
           if (share > 0.42) fail(`q${i + 1}: composer takes ${Math.round(share * 100)}% of the screen while typing`);
-          if (!(await vis(page.locator('a[href="tel:911"]').last()))) fail(`q${i + 1}: 911 link not visible while typing`);
+          // Sprint 8: was "911 link not visible while typing"; the persistent link is gone, so: no call link while typing.
+          if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail(`q${i + 1}: call link shown in a normal conversation`);
           await page.screenshot({ path: `${out}/${tag}-2-keyboard-q${i + 1}.png` }); }
         await box.fill(Q[i]);
         if (mobile) await sendBtn.tap(); else await sendBtn.click();
@@ -77,6 +80,28 @@ for (const eng of engArg.split(",")) {
       r.notes.push(`after refresh: ${kept} assistant messages restored`);
       if (kept < Q.length + 1) fail(`refresh restored ${kept} assistant messages, expected ${Q.length + 1}`);
       await page.screenshot({ path: `${out}/${tag}-4-refresh.png` });
+      // Sprint 8: an active emergency shows an in-conversation alert with a labelled "Call 911" link (never auto-dialled),
+      // the alert's top is on screen, and the composer stays visible.
+      if (!(await box.isDisabled())) {
+        const before = await page.locator('[role="article"]').count();
+        await box.fill(process.env.Q_EMERGENCY ?? "There's smoke coming from my kitchen and I can't put it out");
+        if (mobile) await sendBtn.tap(); else await sendBtn.click();
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: 20000 });
+        await page.waitForTimeout(400);
+        const alert = page.locator('[role="article"]').last().locator('[data-testid="safety-alert"]');
+        if (!(await alert.count())) fail("active emergency: no in-conversation alert");
+        else {
+          const call = alert.locator('a[href="tel:911"]').first();
+          if (!(await call.count()) || !/911/.test(await call.innerText())) fail('active emergency: no labelled "Call 911" link');
+          const ab = await alert.boundingBox(); const vh = await page.evaluate(() => window.visualViewport?.height ?? innerHeight);
+          if (!ab || ab.y < 0 || ab.y > vh) fail("active emergency: alert not on screen");
+        }
+        if (!(await vis(box))) fail("active emergency: composer hidden");
+        if (page.url().startsWith("tel:")) fail("active emergency: dialled without a tap");
+        const ov3 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        if (ov3 > 0) fail(`active emergency: horizontal overflow ${ov3}px`);
+        await page.screenshot({ path: `${out}/${tag}-5-active-alert.png` });
+      }
       // tap target audit (outside running text)
       const small = await page.evaluate(() => [...document.querySelectorAll("button, a, select, textarea, input")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.height < 44 || b.width < 24) && !e.closest("p"); }).map(e => (e.textContent || e.tagName).trim().slice(0, 30) + ` ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
       if (small.length) r.notes.push("small targets: " + small.join("; "));

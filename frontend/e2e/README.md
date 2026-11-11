@@ -11,7 +11,10 @@ Each run fails if:
   on-screen keyboard);
 - the send button is under 44px;
 - no reply arrives;
-- the newest reply starts below the message box.
+- the newest reply starts below the message box;
+- a tap-to-call link (`tel:`/`sms:`) shows in a normal conversation (Sprint 8: the always-visible 911 link was removed);
+- an emergency message (`Q_EMERGENCY`) does not show an on-screen alert with a labelled "Call 911" link, or hides the
+  message box.
 
 It also lists small tap targets and console errors.
 
