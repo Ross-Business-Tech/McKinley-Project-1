@@ -176,6 +176,7 @@ export function CustomerApp() {
       const nodes = document.querySelectorAll<HTMLElement>("[data-msg]");
       const last = nodes[nodes.length - 1];
       const room = (window.visualViewport?.height ?? window.innerHeight) - (composerRef.current?.offsetHeight ?? 0) - 24;
+      // (An active safety alert sits at the top of its message, links first, so "from its first line" keeps them in view.)
       if (!busy && grew && last?.dataset.msg === "assistant" && last.offsetHeight > room && last.scrollIntoView) {
         last.scrollIntoView({ block: "start" });
       } else {
@@ -900,10 +901,13 @@ function Message({
               <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
               <span>{r?.safety_heading ?? t.safetyHeading}</span>
             </p>
-            {(templateCoversNotice || r?.safety_notice) && (
-              <p className="mt-2 text-base break-words text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
-            )}
+            {/* Links directly under the heading, before the (sometimes long) guidance, so the first one is on screen
+                above the sticky composer even at 320x568 and in landscape. Focus is NOT moved onto a link (it stays in
+                the message box): a stray Enter must never start a call. */}
             <SafetyContacts contacts={contacts} strong />
+            {(templateCoversNotice || r?.safety_notice) && (
+              <p className="mt-3 text-base break-words text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
+            )}
             {kind && !CALL_KINDS_WITHOUT_MAINTENANCE.has(kind) && !contacts.some((c) => c.kind === "info") && (
               <p className="mt-2 text-sm text-mk-muted">{t.noEmergencyLine}</p>
             )}
@@ -950,7 +954,7 @@ function SafetyContacts({ contacts, strong }: { contacts: SafetyContact[]; stron
             const Icon = c.kind === "text" ? MessageSquareText : Phone;
             return (
               <a key={`${c.href}-${c.label}`} href={c.href!} data-testid="safety-contact" className={strong ? (i === 0 ? first : other) : calm}>
-                <Icon aria-hidden className={strong ? "size-5 shrink-0" : "size-4 shrink-0"} /> {c.label}
+                <Icon aria-hidden className={strong ? "size-5 shrink-0" : "size-4 shrink-0"} /> <ContactLabel label={c.label} />
               </a>
             );
           })}
@@ -960,6 +964,16 @@ function SafetyContacts({ contacts, strong }: { contacts: SafetyContact[]; stron
         <p key={c.label} className={cn("mt-2 text-sm text-mk-muted", !strong && "pl-6")}>{c.label}</p>
       ))}
     </>
+  );
+}
+
+/** A phone number in a label never breaks across lines ("1-" / "800-222-1222"). */
+function ContactLabel({ label }: { label: string }) {
+  const parts = label.split(/(\d[\d\s().-]{5,}\d)/);
+  return (
+    <span>
+      {parts.map((p, i) => (i % 2 ? <span key={i} data-testid="phone-number" className="whitespace-nowrap">{p}</span> : p))}
+    </span>
   );
 }
 

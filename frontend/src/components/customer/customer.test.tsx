@@ -75,6 +75,19 @@ describe("CustomerApp", () => {
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   });
 
+  it("gives the 'What was sent' disclosure a 44px target (inner span; WebKit ignores flex on <summary>)", async () => {
+    live(() => resp({ reply: "Here's your request.", action: readyCard }));
+    const user = userEvent.setup();
+    render(<CustomerApp />);
+    await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
+    await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Send repair request" }));
+    const label = await screen.findByText("What was sent");
+    expect(label.tagName).toBe("SPAN");
+    expect(label).toHaveClass("min-h-11");
+    expect(label.closest("summary")).toHaveClass("min-h-11");
+  });
+
   it("retires the read-back card's buttons once the request is sent", async () => {
     live(() => resp({ reply: "Here's your request.", action: readyCard }));
     const user = userEvent.setup();
@@ -517,6 +530,25 @@ describe("CustomerApp safety states (Sprint 8)", () => {
     // no flashing / animation on the alert
     expect(alert.className).not.toMatch(/animate/);
     expect(alert.querySelector('[class*="animate"]')).toBeNull();
+  });
+
+  it("active: the contact links come right after the heading, before the guidance text (judge fix round)", async () => {
+    await chatOnce(() => resp({
+      reply: "Please follow the steps above.", safety_state: "active", safety_contacts: [POISON, C911], emergency_kind: "poison",
+      safety_heading: "Get help now", safety_notice: "Don't make them vomit. Keep the container with you.",
+    }), "my son swallowed a pod");
+    const alert = screen.getByRole("alert");
+    const first = within(alert).getAllByRole("link")[0];
+    const notice = within(alert).getByText(/Don't make them vomit/);
+    expect(first.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(alert).getByText("Get help now").compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // the Poison Help number never breaks mid-number
+    const num = within(first).getByTestId("phone-number");
+    expect(num).toHaveTextContent("1-800-222-1222");
+    expect(num).toHaveClass("whitespace-nowrap");
+    expect(first).toHaveTextContent("Call Poison Help 1-800-222-1222");
+    // focus stays in the message box, never on a call link (a stray Enter must not dial)
+    await waitFor(() => expect(screen.getByLabelText("Message the assistant")).toHaveFocus());
   });
 
   it("active: never dials on render, links only open when tapped", async () => {

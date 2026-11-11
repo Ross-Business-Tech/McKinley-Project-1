@@ -76,8 +76,9 @@ export function ActionCard({
       {open && shownFields.length > 0 && <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />}
       {(submitted || declined) && shownFields.length > 0 && (
         <details className="mt-1">
-          <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center text-mk-brand-hover underline underline-offset-2">
-            {submitted ? t.whatWasSent : t.whatItSaid}
+          {/* WebKit ignores display:flex on <summary>, so the 44px target height lives on an inner span. */}
+          <summary className="mk-focus block w-fit min-h-11 cursor-pointer text-mk-brand-hover underline underline-offset-2">
+            <span className="inline-flex min-h-11 items-center">{submitted ? t.whatWasSent : t.whatItSaid}</span>
           </summary>
           <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />
         </details>
