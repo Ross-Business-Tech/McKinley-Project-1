@@ -3,6 +3,15 @@
 For the next developer or Claude Code session. Read with [`../README.md`](../README.md) and
 [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md); old chat history is not needed.
 
+> **Sprint 10 (2026-11-12):** independent prototype review remediated on `feat/review-remediation`; read
+> [`evaluation/PROTOTYPE_REVIEW_REMEDIATION.md`](evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) first. New behaviour to
+> know: hosted rate limits (30/min per visitor, 15/min per conversation; `RATE_LIMIT_PER_MINUTE`,
+> `RATE_LIMIT_PER_SESSION_MINUTE`), 64 KB body cap (`MAX_REQUEST_BYTES`), a retried confirm returns
+> `ALREADY_SAVED` with the same reference, `/api/health` reports `version` and `commit`, and
+> `KNOWLEDGE_CONTENT_MODE=demo_samples` shows labelled SAMPLE answers locally only (refused when hosted). Set
+> `LLM_CALL_BUDGET`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES` in the Render dashboard; `render.yaml` alone does not
+> change the live service.
+
 ## Where things are
 - **Branches:** sprints 1–3 + consolidation were merged into `development` (PR #1) and then into `main` (PR #2).
   Deployment preparation is on **`feat/gemini-supabase-deployment`** (from `development`, includes the teammate

@@ -7,6 +7,7 @@ record was saved to the prototype store, not to Yardi.
 
 | Suite | Latest result | Model | Data | Command (from `backend/`) |
 | --- | --- | --- | --- | --- |
+| Sprint 10 review remediation ([report](PROTOTYPE_REVIEW_REMEDIATION.md)): independent safety holdout 61 conv. + 38 injection | false alerts 4 → 2, real alerts 22/24 (unchanged), benign injection flags 11/22 → 0/22; simulator 326 → 339/420; journeys 32 PASS / 3 WARN both | MOCK | holdout not committed | `uv run python -m app.usability.run --suite journeys --in-process` |
 | Sprint 8 red-team suite (independent, frozen: 288 cases incl. 55 quick-fix traps) | full alert 67/86 (unchanged), no guidance 8 → 6, unsafe tips 2 → 0 of 40 | rules only | not committed; IDs in [SPRINT8_EMERGENCY_UX_MAINTENANCE.md](SPRINT8_EMERGENCY_UX_MAINTENANCE.md) | — |
 | Sprint 9 matched journeys (7, MOCK; 5 LIVE on the first sprint commit) | words per reply 41.9 → 30.0 (MOCK), 48.8 → 31.9 (LIVE); demo-limit sentences per journey 4.6 → 2.0 (MOCK), 2.8 → 1.0 (LIVE) | mock + openrouter:nvidia/nemotron-3.5-super-vl:free | scratch transcripts, summary in [SPRINT9_WARM_VOICE.md](SPRINT9_WARM_VOICE.md) | — |
 | **Sprint 7 safety holdout** (independent, frozen before implementation: 216 danger turns, 79 look-alikes, 47 ES/mixed) | 88.1% full alert, 90.7% any guidance, 10/79 look-alike full alerts; **20 turns with no guidance** (release-blocking) | rules only | not committed; results and miss IDs in [SPRINT7_GENERALIZATION.md](SPRINT7_GENERALIZATION.md) §4 | — |
