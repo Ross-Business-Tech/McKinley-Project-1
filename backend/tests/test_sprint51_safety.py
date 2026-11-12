@@ -262,9 +262,9 @@ def test_follow_up_promise_when_nothing_was_sent_fails(reply):
     assert not codes(reply, nothing_sent=True)["no_false_action_claim"], reply
 
 
-@pytest.mark.parametrize("reply", ["Once you send it, staff can review it.",
-                                   "Once you tap Send, a staff member can follow up with you.",
-                                   "Would you like a staff member to call you?",
+# Sprint 9: in this demo Send reaches nobody, so "once you tap Send, a staff member can follow up" is a false
+# status claim now (tests/test_sprint9_voice.py pins it); the remaining conditionals stay honest.
+@pytest.mark.parametrize("reply", ["Would you like a staff member to call you?",
                                    "I can't promise someone will call you.",
                                    "Here is what the note says. Tap Send when it looks right.",
                                    "Our leasing team can check current availability and help you compare options."])

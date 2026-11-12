@@ -92,17 +92,16 @@ T: dict[str, dict[Lang, str]] = {
               "cambio. Envíela cuando quiera.",
     },
     "no_promise": {
-        "en": "I can't promise a date, a credit or any outcome; a team member decides that. Your request is "
-              "in the details so the office sees it.",
-        "es": "No puedo prometer una fecha, un crédito ni un resultado; eso lo decide un miembro del equipo. Agregué"
-              " su "
-              "petición a los detalles para que la oficina la vea.",
+        "en": "I can't promise a date, a credit or any outcome; a team member decides that. Your request is in the "
+              "details below.",
+        "es": "No puedo prometer una fecha, un crédito ni un resultado; eso lo decide un miembro del equipo. Agregué "
+              "su petición a los detalles de abajo.",
     },
     "no_promise_note": {
-        "en": "I can't promise a credit, a date or any outcome; a team member decides that. I've prepared a note so "
-              "the office can review your request.",
-        "es": "No puedo prometer un crédito, una fecha ni un resultado; eso lo decide un miembro del equipo. Preparé "
-              "una nota para que la oficina revise su petición.",
+        "en": "I can't promise a credit, a date or any outcome; a team member decides that. Your request is on the "
+              "note for the office below.",
+        "es": "No puedo prometer un crédito, una fecha ni un resultado; eso lo decide un miembro del equipo. Agregué "
+              "su petición a una nota para la oficina.",
     },
     "listening": {
         "en": "I'm sorry, I hear you, and you shouldn't have to repeat yourself. I already have your details below.",

@@ -282,7 +282,21 @@ _DEMO_STATUS_CLAIM = re.compile(
     r"\b(?:your |the )?(?:visit|tour|appointment|booking|repair)(?: request)? (?:is|has been) (?:now )?(?:confirmed|"
     r"booked|scheduled)\b|"
     r"\b(?:fue|ha sido|qued[oó]) enviad[oa] (?:al|a la|a el|a mantenimiento|a la oficina)\b|\ble confirmar[áa]n?\b|"
-    r"\ble llamar[áa]n?\b|\brecibi(?:ó|eron) su\b",
+    r"\ble llamar[áa]n?\b|\brecibi(?:ó|eron) su\b|"
+    # Sprint 9 live Gemini review: Send framed as delivery ("press Send to submit it to our maintenance team",
+    # "press Send so our team can follow up", "so our office receives your details", "a leasing team member should
+    # follow up", "para que la reciba el equipo de mantenimiento")
+    r"\b(?:submit|send|pass|forward|get) (?:it|this|them|that|your \w+(?: \w+)?) (?:along |over |on )?to "
+    r"(?:our |the |your )?(?:\w+ ){0,3}(?:maintenance|leasing|office|staff|team|manager)\b|"
+    r"\bso (?:that )?(?:our |the |your )?(?:\w+ ){0,2}(?:team|office|staff|manager|maintenance|leasing)"
+    r"(?: team| office)? (?:can|will|could) (?:follow up|review|contact|reach|get back|call|look|schedule|confirm|"
+    r"see)\b|"
+    r"\b(?:once|after|when) you (?:tap |press |hit )?send(?: it)?,? (?:a |the |our )?(?:staff|team|office|manager|"
+    r"maintenance|leasing)(?: member| team)? (?:can|will|could) \w+|"
+    r"\bso (?:that )?(?:our |the |your )?(?:\w+ ){0,2}(?:team|office|staff|manager)(?: team)? (?:gets|receives|sees)\b|"
+    r"\b(?:a |an |one of our )?(?:leasing|maintenance|office|staff)(?: team)? (?:member|representative|agent)s? "
+    r"(?:should|will|can|is going to) (?:follow up|reach out|contact|call|get back|be in touch)\b|"
+    r"\bpara que (?:la|lo|las|los) (?:reciba|vea)n? (?:el|la|nuestro|nuestra)\b",
     re.IGNORECASE,
 )
 
@@ -292,6 +306,9 @@ _NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|
 # idioms that are not a negation of what follows ("No problem! I've sent it to the office." is a claim)
 _NOT_IDIOM = re.compile(r"\b(?:no problem|no worries|not a problem|don'?t worry|no te preocupes|no se preocupe|"
                         r"sin problema)\b\W*", re.IGNORECASE)
+# an offer is not a claim: "I can pass your question to the leasing team in a note" (the note is a demo card)
+_OFFER_LEAD = re.compile(r"\b(?:I can|I could|can I|could I|want me to|I'd be happy to|I(?:'m| am) happy to)\s+$",
+                         re.IGNORECASE)
 # only the explicit "in the real service" framing (or "would") makes a staff action hypothetical; "if you send it,
 # the office will get back to you" is still false in this demo (review G-1)
 _REAL_SERVICE = re.compile(r"\bin (?:the|a) real (?:service|deployment|system)\b|\bwould\b|\bel servicio real\b|"
@@ -303,7 +320,9 @@ def _demo_status_claim(reply: str) -> str | None:
         start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
         clause = reply[start + 1:m.end()]
         before = _NOT_IDIOM.sub("", clause[: len(clause) - len(m.group(0))])  # same sentence only (review G-1)
-        if _REAL_SERVICE.search(clause) or _NOT.search(before[-60:]):
+        imperative = not before.strip() and m.group(0).lower().startswith("send")  # "Send it to the office when
+        # you're ready": the instruction to press the card's own button, whose demo line says it reaches nobody
+        if imperative or _REAL_SERVICE.search(clause) or _NOT.search(before[-60:]) or _OFFER_LEAD.search(before[-30:]):
             continue
         return m.group(0)
     return None

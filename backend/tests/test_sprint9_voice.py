@@ -260,3 +260,30 @@ def test_repeat_history_save_says_nobody_sees_it():
     from app.templates import t
     assert "no one at McKinley sees it" in t("repeat_history_saved") and "community manager" in t(
         "repeat_history_saved")
+
+
+@pytest.mark.parametrize("text", [  # live Gemini review on f6a32a7 (peer session): Send framed as delivery
+    "Please review the details and press Send when you are ready to submit it to our Sandpiper Pointe maintenance "
+    "team.", "Please check your request below and press Send so our office receives your details.",
+    "Please review your request below and press Send so our team can follow up with you.",
+    "A leasing team member should follow up to give you exact details.",
+    "Revise la solicitud y pulse Enviar para que la reciba el equipo de mantenimiento.",
+    "Once you send it, staff can review it.", "Once you tap Send, a staff member can follow up with you.",
+])
+def test_validator_rejects_send_framed_as_delivery(text):
+    from app.safety import _demo_status_claim
+    assert _demo_status_claim(text), text
+
+
+def test_offers_are_not_claims():
+    from app.safety import _demo_status_claim
+    assert not _demo_status_claim("I can pass your question to the leasing team in a note.")
+
+
+def test_ok_cool_is_not_an_ac_repair(client):
+    sid = chat(client, "I'd like to tour Heron Lake on Saturday", "v14")["session_id"]
+    r = chat(client, "ok cool. mornings please", sid)
+    assert r["action"]["kind"] == "tour_request" and r["action"]["stage"] == "ready"
+    from app.context import detect_topics
+    assert "hvac" in detect_topics("the AC won't cool") and "hvac" in detect_topics("it wont cool anymore")
+    assert "hvac" not in detect_topics("ok cool, thanks")
