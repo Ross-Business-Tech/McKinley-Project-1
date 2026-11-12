@@ -340,6 +340,10 @@ def _impossible_date(text: str) -> str | None:
     return None
 
 
+_NOT_A_RESIDENT_YET = re.compile(r"\b(?:i )?(?:don'?t|do not) live (?:there|here|at mckinley)(?: yet)?\b|\bnot (?:a )?"
+                                 r"(?:tenant|resident)\b|\b(?:just )?(?:looking|shopping) (?:to rent|around|for "
+                                 r"(?:a|an) (?:place|apartment|home))\b|\bno vivo (?:ah[ií]|aqu[ií])\b|\bbusco "
+                                 r"(?:departamento|apartamento|casa|d[oó]nde vivir)\b", re.I)
 _TOUR_ROUTE = re.compile(r"\b(?:please |pls )?(?:text|call|email|e-mail|phone) me\b(?: (?:after|before|at|in the|on) "
                          r"[\w: ]{1,15})?|"
                          r"\b(?:texting|a text|text|calling|a call|email|e-mail)(?: me)? (?:is|works|would"
@@ -1303,6 +1307,15 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     pkey = persona_id or "none"
     msg = utt.normalize(msg)  # Sprint 7: "tmrw", "pls", "2morrow" read as words by every step below
     draft = store.get_draft(session_id, pkey, include_declined=True) if store else None
+    guest_note_aside = False
+    if persona_id is None and draft and draft.get("kind") == "staff_handoff" and not draft.get("declined") and \
+            str(draft.get("topic", "")).startswith("Repair reported by a visitor") and (
+                is_tour_request(msg) or _NOT_A_RESIDENT_YET.search(msg)):
+        # Sprint 10 (simulator regression): a visitor who reported a repair and then says they're only looking to
+        # rent, or asks for a tour, gets that; the unsent repair note is set aside (said once), never filled with it
+        if store:
+            store.clear_draft(session_id, pkey)
+        draft, guest_note_aside = None, True
     mem: dict[str, Any] = dict(memory or {})
     streak = int(mem.get("unproductive", 0) or 0)
     # Sprint 8 (D): quick-fix tips offered last turn. The offer lives for exactly one turn (ids only, no text).
@@ -1408,6 +1421,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             if (r.get("persona_id") or None) == persona_id]
     touched = {"draft": False}
     locals_lead: dict[str, str] = {}
+    if guest_note_aside:
+        locals_lead["aside"] = t("guest_note_set_aside", lang)
     meta_u: dict[str, dict[str, Any]] = {}  # Sprint 6: the understanding / transition summaries for the trace
 
     def save(kind: str, d: dict[str, Any]) -> None:
@@ -1429,6 +1444,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         plan.lang = lang
         plan.understanding = plan.understanding or meta_u.get("u", {})
         plan.transition = plan.transition or meta_u.get("tr", {})
+        if (aside := locals_lead.get("aside")) and not plan.template.startswith(aside):
+            plan.template = f"{aside} {plan.template}"
+            plan.extra_flags = [*plan.extra_flags, "declined:staff_handoff"]
         if (inj := locals_lead.get("inj")) and not plan.template.startswith(inj):
             plan.template = inj + plan.template  # E-8: the instruction-like part was dropped; say so once
             plan.skip_model = True
@@ -1813,8 +1831,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             store.clear_draft(session_id, pkey)
             touched["draft"] = True
         mem["boundary_said"] = mem.get("boundary_said", 0) + 1  # Sprint 9: the full refusal once, then shorter
-        return done(TurnPlan(template=t("account_boundary" if mem["boundary_said"] == 1 else "account_boundary_again",
-                                        lang), functions=["F3"], skip_model=True,
+        key_b = {1: "account_boundary", 2: "account_boundary_again"}.get(mem["boundary_said"], "account_boundary_third")
+        return done(TurnPlan(template=t(key_b, lang), functions=["F3"], skip_model=True,
                              consumed_by_draft=True,
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
                              workflow=_sel("general_inquiry", "Account details asked for without that account "

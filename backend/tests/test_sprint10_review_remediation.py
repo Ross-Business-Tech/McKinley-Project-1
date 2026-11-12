@@ -299,3 +299,28 @@ def test_contact_route_goes_on_the_tour_card_without_the_number(client):
     r = chat(client, "text me after 6, my cell is 555-0177", sid)
     f = {x["key"]: x["value"] for x in r["action"]["fields"]}
     assert "text me" in f["contact_route"].lower() and "555" not in str(r["action"]) and f["time"] == "Afternoon"
+
+
+# ---- simulator findings (paraphrased) ----
+
+@pytest.mark.parametrize("msg,kind", [("oh no there's smoke pouring out of the wall socket", "fire_smoke"),
+                                      ("oh no, flames on the stove", "fire_smoke"),
+                                      ("no smoke, it was just steam from the shower", None),
+                                      ("there is no smoke anymore", None)])
+def test_oh_no_is_an_exclamation_not_a_negation(msg, kind):
+    from app.emergency import emergency_kind
+    assert emergency_kind(msg) == kind
+
+
+def test_smoke_reported_while_a_repair_card_is_open_alerts(client):
+    sid = chat(client, "the living room outlet stopped working", "sm1", "R003")["session_id"]
+    r = chat(client, "oh no now smoke is coming out of it", sid, "R003")
+    assert r["safety_state"] == "active" and r["safety_notice"]
+
+
+def test_guest_who_is_only_looking_gets_the_tour_not_the_repair_note(client):
+    sid = chat(client, "the bathroom fan in the unit is broken", "gn1")["session_id"]
+    r = chat(client, "sorry, I'm not a tenant, just shopping around for an apartment", sid)
+    assert "set the repair note aside" in r["reply"] and r["action_cleared"] == "staff_handoff"
+    r2 = chat(client, "could I tour Birchwood next week?", sid)
+    assert r2["action"]["kind"] == "tour_request"

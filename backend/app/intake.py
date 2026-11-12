@@ -1464,6 +1464,10 @@ def asks_privacy(message: str) -> bool:
 # R-4: asking about, or acting for, another resident (roommate, friend, family). Routing only: the account-holder rule
 # itself lives elsewhere and is not changed here.
 _OTHER_RESIDENT = re.compile(
+    # Sprint 10 (journey j-safe-courier): a named resident's number, or "confirm their last name" (stricter only)
+    r"\b(?:number|phone|email|address|apartment|unit|cell)(?: number)? (?:to reach|for|of) (?-i:[A-Z][a-z]+)\b|"
+    r"\b(?:confirm|tell me|give me|what'?s|read me) (?:their|his|her) (?:last name|full name|surname|apartment|unit|"
+    r"phone(?: number)?|cell|number|address)\b|"
     r"\b(?:give|tell|show|send) me (?:his|her|their)\b|\bwhat (?:repairs?|requests?|work orders?) (?:he|she|"
     r"they) (?:has|"
     r"have|had)\b|\b(?:he|she) has (?:open|any)\b|\b(?:his|her) (?:phone|number|email|rent|balance|unit|"

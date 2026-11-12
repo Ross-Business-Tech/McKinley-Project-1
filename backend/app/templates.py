@@ -280,7 +280,7 @@ T: dict[str, dict[Lang, str]] = {
         "es": "¿Le gustaría solicitar una visita?",
     },
     "leasing_welcome": {
-        "en": "Welcome! I can answer general questions and send a tour request to the leasing team.",
+        "en": "Welcome! I can answer general questions and help you put together a tour request.",
         "es": "¡Bienvenido! Puedo responder preguntas generales y enviar una solicitud de visita al equipo de "
               "arrendamiento.",
     },
@@ -1478,6 +1478,16 @@ T: dict[str, dict[Lang, str]] = {
     "route_noted": {  # Sprint 10, NEEDS McKINLEY REVIEW
         "en": "Got it: \"{value}\" is now on your tour request.",
         "es": "Listo: \"{value}\" ya está en su solicitud de visita.",
+    },
+    "account_boundary_third": {  # Sprint 10, NEEDS McKINLEY REVIEW: the boundary a third time, said differently
+        "en": "That's something only the office can look up once they've confirmed who you are. Would you like me to "
+              "start a note for them?",
+        "es": "Eso solo lo puede consultar la oficina después de confirmar su identidad. ¿Quiere que empiece una nota "
+              "para ellos?",
+    },
+    "guest_note_set_aside": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "No problem, I've set the repair note aside.",
+        "es": "Sin problema, dejé a un lado la nota de reparación.",
     },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
