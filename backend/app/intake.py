@@ -427,7 +427,7 @@ _DAYS = r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|
 _DAY_PHRASE = re.compile(
     rf"\b(this|next) (week|weekend|{_DAYS})\b|\b(tomorrow|today|this afternoon|tonight|weekends?|weekdays?|"
     rf"any ?day|anytime this week)\b|\b(?:on |this |next )?(?:{_DAYS})s?\b|\b(lunes|martes|mi[ée]rcoles|"
-    rf"jueves|viernes|s[áa]bado|domingo|ma[ñn]ana)\b", re.IGNORECASE)
+    rf"jueves|viernes|s[áa]bados?|domingos?|ma[ñn]ana)\b", re.IGNORECASE)  # Sprint 9: "los domingos"
 _TIME_OF_DAY = re.compile(r"\b(morning|mornings|afternoon|afternoons|evening|evenings|after work|lunch ?time|"
                           r"before work|ma[ñn]ana|tarde|noche)\b", re.IGNORECASE)
 _BEDS = re.compile(r"\b(\d|one|two|three|four|dos|tres|una?)\s?-?\s?(?:bed|br|bedroom|rec[aá]mara|habitaci[oó]n|"
@@ -545,7 +545,9 @@ _BOOKING_Q = re.compile(r"\b(am i|are we|is it|is that) (booked|confirmed|schedu
 _BOOKING_Q2 = re.compile(r"\bis (?:my|the) (?:tour|visit|appointment) (?:booked|confirmed|scheduled|set)\b|"
                          r"\b(?:tour|it|that|visit|appointment)(?: is|'s) (?:booked|confirmed|scheduled|set) for\b|"
                          r"\b(?:booked|confirmed|scheduled) for (?:mon|tues|wednes|thurs|fri|satur|sun|tomorrow|"
-                         r"today|next)",
+                         r"today|next)|"
+                         # Sprint 9 (holdout3): "so Friday at 11 in Detroit is booked?" (status at the end)
+                         r"\b(?:is|it'?s|that'?s|are we|am i)(?: all)? (?:booked|confirmed|scheduled|set)\W*\?\s*$",
                          re.I)
 
 

@@ -96,6 +96,14 @@ The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on ev
   with 911 twice instead of a plain "No, please go outside"; asking what to do now after water at a
   light fixture gets only "your urgent note is saved … call the emergency line" without the steps again. Fixing this
   changes which approved safety text is shown, so it belongs in a safety PR with an independent review.
+- **Safety decisions found by the third independent holdout (pre-existing on `development`, need a reviewed fix):**
+  a Spanish "the stove burner won't light, no gas smell" raises a full fire/smoke alert (Spanish negation and
+  "quemador" read as fire), so no repair is created; a neighbour "not answering her door" raises the full medical
+  alert and the same 911 text on three turns; a bystander reporting someone calling for help gets the notice written
+  for the person in danger.
+- **Wording decision for McKinley:** fixed offers such as "I can pass your question to the leasing team in a note"
+  describe a delivery that never happens in the demo (the note's card says so). Keep, or reword to "save your
+  question in a note for the office".
 - Understanding gaps seen by the simulators, all also on the pre-sprint code: ordinal dates ("the 14th") and unknown
   community names ("Arbor Landing") are not captured; "can you cancel that?", "so it's confirmed?", "who got it?",
   small talk and several Spanish follow-ups get the generic fallback; "yeah same as last time" is read as entry

@@ -1073,7 +1073,18 @@ def _apply_edits(card: dict[str, Any], edits: list[Any], msg: str, lang: Lang) -
             if (tail := _ADD_TAIL.search(msg)) and tail.group("v").strip().lower() not in val.lower():
                 val = f"{val}. Also: {_cap(tail.group('v').strip())}"[:400]
         _set(card, c.field, val, "you_said")
+        also: list[str] = []
+        if card["kind"] == "tour_request" and c.field == "area":
+            # holdout3: "make that Detroit instead, Friday around 11am" also changes the day and time on the card
+            clock = extract_clock_preference(msg)
+            for k, v in (("days", extract_days(msg)),
+                         ("time", f"{_tr(clock[0], lang)} ({clock[1]})" if clock else
+                          _tr(extract_time_of_day(msg), lang))):
+                if v and k not in {e.field for e in edits} and _set(card, k, v, "you_said"):
+                    also.append(_FIELD_NAME[k])
         name = _FIELD_NAME.get(c.field) if lang == "en" else None  # Sprint 9: a sentence; the card shows the value
+        if name and c.field == "area" and also:
+            name = ", ".join([name, *also[:-1]]) + f" and {also[-1]}"
         notes.append(t("location_updated", lang, loc=val) if c.field == "location" else
                      t("field_changed", lang, name=name) if name else
                      t("field_updated", lang, label=LABEL[c.field][lang], value=val))
@@ -3460,7 +3471,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     tour_mine = [r for r in mine if r["kind"] == "tour_request"]
     if not is_resident and in_tour_draft and draft and u.utterance is not None and u.utterance.question and \
             re.search(r"\b(?:office|leasing office|front desk|oficina)\b.{0,30}\b(?:open|hours|closed|abierta|"
-                      r"horario)\b|"
+                      r"horario|abre|abren|cierra|cierran)\b|"
                       r"\b(?:hours|horario)\b", msg, re.I):
         # Sprint 7 final round: "is the leasing office open on sundays" is a question, not a tour day; the draft stays
         save("tour_request", draft)

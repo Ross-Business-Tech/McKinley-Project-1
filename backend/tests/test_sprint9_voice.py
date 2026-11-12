@@ -387,3 +387,21 @@ def test_unlisted_city_is_not_saved_and_the_list_is_not_repeated_verbatim(client
         f["value"] != "Saginaw" for f in r1["action"]["fields"] if f["key"] == "area")
     r2 = chat(client, "yes that one", sid)["reply"]
     assert r1["reply"] != r2
+
+
+# ---- holdout3 routing (paraphrased) ----
+
+def test_spanish_plural_weekday_answers_the_days_question(client):
+    sid = chat(client, "quiero conocer una comunidad en Orlando", "v25")["session_id"]
+    r = chat(client, "los viernes por la tarde", sid)
+    days = {f["key"]: f["value"] for f in r["action"]["fields"]}.get("days", "")
+    assert "viernes" in days.lower() and "¿Qué días" not in r["reply"]
+
+
+def test_correction_with_place_and_time_updates_both_and_booked_question_is_answered(client):
+    sid = chat(client, "tour Birchwood on Tuesday evening", "v26")["session_id"]
+    r = chat(client, "actually change it to Lansing, Wednesday around 9am", sid)
+    f = {x["key"]: x["value"] for x in r["action"]["fields"]}
+    assert f["days"] == "Wednesday" and "9 AM" in f["time"]
+    q = chat(client, "so Wednesday at 9 in Lansing is confirmed?", sid)["reply"]
+    assert q.startswith("Nothing is booked yet")
