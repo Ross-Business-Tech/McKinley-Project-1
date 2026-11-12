@@ -19,7 +19,7 @@ from app.content import quickfix_drafts as content
 from app.risk.models import RiskDecision
 from app.risk.pipeline import assess
 
-GOOD_HOSTED = dict(_env_file=None, app_env="hosted", cors_origins="https://mckinley-demo.vercel.app",
+GOOD_HOSTED = dict(_env_file=None, app_env="hosted", llm_provider="openrouter", cors_origins="https://mckinley-demo.vercel.app",
                    staff_api_token="k7Qp2vX9mR4tL8wZ3nB6yC1dF5hJ0sGa", gate_override_enabled=False,
                    database_url="postgresql://user:secret-password@db.example.com:5432/postgres")
 

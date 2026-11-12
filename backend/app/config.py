@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     quickfix_content_mode: Literal["off", "approved_only", "demo_drafts"] = "approved_only"
 
     # ---- default target used by /api/chat ----
-    llm_provider: ProviderName = "openrouter"
+    # Gemini is the default chat provider (2026-11-11). Deployments still pin LLM_PROVIDER explicitly (render.yaml),
+    # so this default never switches a running service; OpenRouter stays available with LLM_PROVIDER=openrouter.
+    llm_provider: ProviderName = "gemini"
     llm_model: str = "nvidia/nemotron-3.5-super-vl:free"
     # Generic overrides for the *default* provider (optional; provider-specific values below also work).
     llm_api_key: SecretStr | None = None
@@ -59,6 +61,9 @@ class Settings(BaseSettings):
     # `uv run python -m app.live_eval.preflight` once a key exists. Change it deliberately, never silently.
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
+    # Optional OpenAI-compatible gateway in front of Gemini (e.g. the U-M GPT Toolkit). Empty = Google's Gemini
+    # Developer API through the google-genai SDK. Backend only: never exposed to the website or put in errors.
+    gemini_base_url: str | None = None
     # Thinking depth, pinned so a server-side default change can't silently alter evaluations. Empty = the model's
     # default (recorded as such). Levels per Google's thinking guide; verify which ones the model accepts.
     gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
@@ -159,6 +164,12 @@ class Settings(BaseSettings):
         if self.demo_personas_enabled:
             out.append("DEMO_PERSONAS_ENABLED must be false: demo personas are not authentication, so a shared "
                        "deployment must not let anyone act as a resident account")
+        if "llm_provider" not in self.model_fields_set:
+            out.append("LLM_PROVIDER must be set explicitly on a hosted backend (the built-in default can change "
+                       "between releases; a shared deployment must never switch provider silently)")
+        gem_base = self.base_url_for("gemini")
+        if gem_base and not gem_base.startswith("https://"):
+            out.append("GEMINI_BASE_URL must use https:// on a hosted backend (the key is sent to it)")
         if not (self.database_url and self.database_url.get_secret_value().strip()):
             out.append("DATABASE_URL must be set (a hosted backend's local SQLite file is lost on every restart)")
         return out
@@ -178,6 +189,8 @@ class Settings(BaseSettings):
     def base_url_for(self, provider: str) -> str | None:
         if provider == self.llm_provider and self.llm_base_url:
             return self.llm_base_url.rstrip("/")
+        if provider == "gemini":
+            return (self.gemini_base_url or "").strip().rstrip("/") or None
         return {"openrouter": self.openrouter_base_url, "ollama": self.ollama_base_url}.get(provider)
 
 
