@@ -129,6 +129,19 @@ def _postgres_schema() -> str:
     return ddl + rls
 
 
+_LOCAL_PG_HOSTS = {"localhost", "127.0.0.1", "::1", "", None}
+
+
+def pg_tls_args(url: str) -> dict[str, str]:
+    """Connection options that require TLS for any non-local Postgres (Supabase, a Render-hosted DB) unless the URL
+    already states an sslmode. psycopg's default `prefer` would silently fall back to plaintext."""
+    from urllib.parse import parse_qs, urlsplit
+    parts = urlsplit(url)
+    if "sslmode" in parse_qs(parts.query) or parts.hostname in _LOCAL_PG_HOSTS:
+        return {}
+    return {"sslmode": "require"}
+
+
 class Store:
     def __init__(self, path: Path | None = None, database_url: str | None = None):
         self._lock = threading.Lock()
@@ -169,7 +182,7 @@ class Store:
         try:
             return psycopg.connect(self._pg_url, autocommit=True, row_factory=dict_row, prepare_threshold=None,
                                    connect_timeout=10, keepalives=1, keepalives_idle=30, keepalives_interval=10,
-                                   keepalives_count=3)
+                                   keepalives_count=3, **pg_tls_args(self._pg_url))
         except Exception as e:  # psycopg messages can echo the connection string (password included): scrub
             from urllib.parse import urlsplit
             host = urlsplit(self._pg_url).hostname or "unknown host"

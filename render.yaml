@@ -1,4 +1,7 @@
-# Render Blueprint: the Python backend (FastAPI). Guide: docs/deployment/render.md (and docs/DEPLOYMENT_READINESS.md).
+# Render Blueprint: two services from one repo. Backend = Python web service (FastAPI, rootDir backend); website =
+# static site (Next.js static export, rootDir frontend). Guides: docs/deployment/render.md (backend),
+# docs/deployment/render-frontend.md (website) and docs/DEPLOYMENT_READINESS.md. The Vercel website option
+# (frontend/vercel.json) stays supported: use either the static site below or Vercel, not both, for one backend.
 # Secrets are never stored here: Render asks for the "sync: false" values when the Blueprint is first applied.
 # This is a PROTOTYPE on synthetic data, not a production service (see README "Status").
 services:
@@ -7,10 +10,12 @@ services:
     runtime: python
     plan: free              # the free plan sleeps when idle; the first request after a pause can take about a minute
     rootDir: backend
-    buildCommand: pip install uv && uv sync --frozen --no-dev
+    # `env -u UV_NO_MANAGED_PYTHON`: matches the live service (set in the Dashboard after the first Blueprint build
+    # failed); a Blueprint sync must not revert it.
+    buildCommand: pip install uv && env -u UV_NO_MANAGED_PYTHON uv sync --frozen --no-dev
     # Migrations run before every start (idempotent); then the API. No --reload, one worker (the Store holds one
     # connection and an in-process lock).
-    startCommand: uv run --no-sync alembic upgrade head && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
+    startCommand: env -u UV_NO_MANAGED_PYTHON uv run --no-sync alembic upgrade head && env -u UV_NO_MANAGED_PYTHON uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
@@ -19,13 +24,19 @@ services:
         value: only-system
       - key: APP_ENV               # hosted: startup refuses wildcard/localhost CORS, a missing staff token, etc.
         value: hosted
-      - key: LLM_PROVIDER          # Gemini writes replies; set to "mock" (and LLM_MODEL=mock-deterministic-v1)
-        value: gemini              # until a key exists, otherwise model turns answer NEEDS_API_KEY
-      - key: GEMINI_MODEL          # stable model in Google's list (checked 2026-11-10); verify with preflight
-        value: gemini-3.6-flash
-      - key: GEMINI_API_KEY        # from Google AI Studio; backend only, never in the website
+      - key: LLM_PROVIDER          # OpenRouter now (Gemini later: set gemini + GEMINI_API_KEY, keep the rest)
+        value: openrouter
+      - key: LLM_MODEL             # the one model this project evaluated (free tier: rate-limited, may log prompts)
+        value: nvidia/nemotron-3.5-super-vl:free
+      - key: OPENROUTER_API_KEY    # backend only, never in the website; Render asks for it on first apply
         sync: false
-      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs on Gemini (one extra call per turn)
+      - key: OPENROUTER_REASONING_EFFORT  # low latency (Sprint 5.1: slowest reply 48 s -> 3.4 s)
+        value: none
+      - key: GEMINI_MODEL          # kept ready for the Gemini migration (unused while LLM_PROVIDER=openrouter)
+        value: gemini-3.6-flash
+      - key: GEMINI_API_KEY        # optional until the Gemini migration
+        sync: false
+      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs on the provider (one extra call/turn)
         value: auto
       - key: GATE_OVERRIDE_ENABLED # staff-only override stays off on any shared deployment
         value: "false"
@@ -33,7 +44,40 @@ services:
         value: database
       - key: DATABASE_URL          # Supabase Session pooler URI; set in Render, never commit it
         sync: false
-      - key: CORS_ORIGINS          # the exact Vercel website address, e.g. https://your-project.vercel.app
-        sync: false
+      - key: CORS_ORIGINS          # the exact website address: the Render static site (https://<name>.onrender.com)
+        sync: false                #   and/or the Vercel site; comma-separated, https only, no paths
       - key: STAFF_API_TOKEN       # Render makes up a long random value
         generateValue: true
+
+  # The website: a static site on Render's CDN (free). It only ever calls the backend above; it holds no secrets.
+  - type: web
+    name: mckinley-frontend
+    runtime: static
+    rootDir: frontend
+    # NEXT_STATIC_EXPORT must reach the build step (not just npm ci); it is also set below.
+    buildCommand: npm ci && NEXT_STATIC_EXPORT=1 npm run build
+    staticPublishPath: out
+    envVars:
+      - key: NEXT_STATIC_EXPORT
+        value: "1"
+      - key: NEXT_PUBLIC_API_BASE_URL  # the backend's public https address; PUBLIC by design (built into the site)
+        sync: false
+      - key: NODE_VERSION
+        value: "22"
+    routes:
+      - type: redirect             # /staff/index.html is exported (trailingSlash); keep /staff working
+        source: /staff
+        destination: /staff/
+    headers:                       # same headers as frontend/vercel.json
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()

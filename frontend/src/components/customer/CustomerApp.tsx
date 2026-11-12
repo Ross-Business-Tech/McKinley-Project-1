@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import { ApiError, LIVE_BACKEND_CONFIGURED, api, demoSignInAvailable, loadDemoSnapshot } from "@/lib/api";
 import {
+  sendErrorText,
   GUEST,
   type Identity,
   type Lang,
@@ -332,8 +333,7 @@ export function CustomerApp() {
       announce(response);
       readyCard = response.action?.stage === "ready";
     } catch (e) {
-      const why = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE" ? t.unreachable : t.serverError;
-      const text = `${why} ${t.tryAgain}`;
+      const text = sendErrorText(e, t);
       setMessages((m) => [
         ...m.map((x) => (x.id === userId ? { ...x, failed: true } : x)),
         { id: mid(), role: "assistant", text, lang, error: { retry: message } },
@@ -545,6 +545,9 @@ export function CustomerApp() {
                 <p className="mt-1 text-sm text-mk-muted">
                   {t.prototype} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
                 </p>
+                {state.mode === "live" && !state.demoSignIn && (
+                  <p className="mt-2 text-sm text-mk-muted" data-testid="guest-only-about">{t.guestOnlyAbout}</p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-4">
                   <Link href="/staff" prefetch={false} className="mk-focus inline-flex min-h-11 items-center font-medium text-mk-brand-hover underline underline-offset-2">
                     {t.staffLink}

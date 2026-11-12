@@ -2715,6 +2715,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                             topic="Accommodation or legal question")
     if status_q and is_resident and not verified:
         return handoff_plan("status_unverified", "Status lookup needs a verified resident (I-10/I-11 draft).")
+    if status_q and persona_id is None and store is not None and gate.urgency != "emergency" and not hazard \
+            and not care:
+        # Not signed in (the public demo): only records THIS conversation sent, never an account listing. Without
+        # this the model answered "nothing on file" right after a tour request was saved.
+        mine = [r for r in store.records(session_id=session_id, limit=20) if not r.get("persona_id")]
+        if mine:
+            items = ", ".join(f"{WHAT.get(r['kind'], WHAT['staff_handoff'])[lang]} {r['id']}" for r in mine[:5])
+            return done(TurnPlan(template=t("guest_session_status", lang, items=items), functions=["F8"],
+                                 skip_model=True, chips=CHIPS["prospect_next"][lang],
+                                 workflow=_sel("status_lookup", "Guest asked about what this conversation sent.")))
     if is_resident and verified and _PAYMENT_PLAN.search(msg) and gate.urgency != "emergency" and \
             (not draft or draft["kind"] == "staff_handoff"):
         # Sprint 8 C last round: a payment-plan request is a billing note, never "Follow-up still owed"

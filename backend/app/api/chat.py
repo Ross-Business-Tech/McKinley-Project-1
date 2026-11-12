@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.api.errors import llm_error_response
+from app.api.errors import customer_llm_error_response, llm_error_response
 from app.api.staff_guard import request_is_local, require_staff, staff_allowed
 from app.api.views import customer_view
 from app.auth import (
@@ -67,6 +67,7 @@ def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state
     except AuthError as e:
         raise HTTPException(status_code=e.status, detail=e.detail()) from None
     except LLMError as e:
-        return llm_error_response(e)
+        # staff see the provider's code and message (diagnostics); customers a fixed, safe one (app/api/errors.py)
+        return llm_error_response(e) if staff else customer_llm_error_response(e)
     # Staff diagnostics (risk, gate, pipeline, context provenance, rule ids) only for staff callers (app/api/views).
     return resp if staff else customer_view(resp)

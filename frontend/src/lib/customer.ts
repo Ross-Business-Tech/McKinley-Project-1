@@ -1,3 +1,4 @@
+import { ApiError } from "./api";
 import type {
   ActionKind, ActionResult, ChatResponse, Journey, Persona, ProposedAction, SafetyContact, SafetyHref, SafetyState,
 } from "./types";
@@ -156,7 +157,12 @@ export const UI = {
     suggestions: "Suggested replies",
     unreachable: "I can't reach the assistant right now, so your message wasn't sent.",
     serverError: "Something went wrong on our side, so your message wasn't handled.",
+    // the AI model is busy or slow (rate limit, timeout): worth retrying soon
+    busy: "The assistant is busy right now, so your message wasn't answered.",
+    // the assistant is switched off or misconfigured: retrying will not help, the office can
+    unavailable: "The assistant isn't available right now, so your message wasn't answered. You can contact the office directly.",
     tryAgain: "Please try again. In an emergency, call 911.",
+    tryLater: "In an emergency, call 911.",
     notSaved: "That didn't save, so nothing was sent. Please try again, or contact the office directly.",
     declinedMsg: "Okay, I haven't sent anything. Is there something else I can help with?",
     whatItSaid: "What it said",
@@ -191,6 +197,8 @@ export const UI = {
     demoSignIn: "Demo sign-in",
     // NEEDS McKINLEY REVIEW: shown instead of the demo sign-in when the backend has no demo accounts (hosted)
     guestOnly: "Guest: general questions and notes to the office",
+    // NEEDS McKINLEY REVIEW: public demo (no sign-in) - say plainly what a visitor cannot do here
+    guestOnlyAbout: "On this public demo everyone is a guest: you can ask general questions, request a tour or leave a note for the office. Resident features such as repairs on your account and request status need a sign-in, which this demo does not have.",
     demoClose: "Close",
     safetyInfo: "If that happens",
   },
@@ -228,7 +236,10 @@ export const UI = {
     suggestions: "Respuestas sugeridas",
     unreachable: "No puedo comunicarme con el asistente ahora, así que su mensaje no se envió.",
     serverError: "Algo salió mal de nuestro lado, así que su mensaje no se procesó.",
+    busy: "El asistente está ocupado ahora, así que su mensaje no se respondió.",
+    unavailable: "El asistente no está disponible ahora, así que su mensaje no se respondió. Puede comunicarse directamente con la oficina.",
     tryAgain: "Inténtelo de nuevo. En una emergencia, llame al 911.",
+    tryLater: "En una emergencia, llame al 911.",
     notSaved: "No se guardó, así que no se envió nada. Inténtelo de nuevo o comuníquese con la oficina.",
     declinedMsg: "De acuerdo, no envié nada. ¿Le ayudo con algo más?",
     afterSend: ["Ver mis solicitudes", "Reportar una reparación"],
@@ -250,6 +261,7 @@ export const UI = {
     demoSignIn: "Inicio de sesión de demo",
     // NEEDS McKINLEY REVIEW
     guestOnly: "Invitado: preguntas generales y notas a la oficina",
+    guestOnlyAbout: "En esta demostración pública todos son invitados: puede hacer preguntas generales, pedir una visita o dejar una nota para la oficina. Las funciones para residentes, como reparaciones en su cuenta y el estado de sus solicitudes, requieren iniciar sesión, algo que esta demostración no tiene.",
     demoClose: "Cerrar",
     gasCall: "Salga y luego llame al 911",
     safetyInfo: "Si eso pasa",
@@ -403,4 +415,18 @@ export function safetyContactsOf(r: ChatResponse | null | undefined, t: UIString
   // concern from an older response: the care line's previous links (distress -> 988; unwell/danger -> 911; info -> none)
   if (!r.care_note || r.care_kind === "info") return [];
   return r.care_kind === "distress" ? [link("tel:988"), link("sms:988")] : [link("tel:911")];
+}
+
+// ---- why a message was not answered ----
+
+/** Busy model (wait and retry), switched-off assistant (contact the office), no connection, or a server error. */
+const BUSY_CODES = new Set(["ASSISTANT_BUSY", "MODEL_RATE_LIMITED", "MODEL_TIMEOUT", "MODEL_CONNECTION_ERROR"]);
+const UNAVAILABLE_CODES = new Set(["ASSISTANT_UNAVAILABLE", "NEEDS_API_KEY", "MODEL_AUTH_ERROR", "MODEL_PAYMENT_REQUIRED"]);
+
+export function sendErrorText(e: unknown, t: UIStrings): string {
+  const code = e instanceof ApiError ? e.code : "";
+  if (code === "BACKEND_UNREACHABLE") return `${t.unreachable} ${t.tryAgain}`;
+  if (BUSY_CODES.has(code)) return `${t.busy} ${t.tryAgain}`;
+  if (UNAVAILABLE_CODES.has(code)) return `${t.unavailable} ${t.tryLater}`;
+  return `${t.serverError} ${t.tryAgain}`;
 }

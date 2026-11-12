@@ -87,7 +87,10 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   - OpenRouter and Gemini share a tested provider contract.
   - **No live model call was made**, because there is no key. See [Sprint 5 report](docs/evaluation/SPRINT5_LIVE_CONVERSATION.md).
   - A new independent safety holdout found **10/63 immediate-danger messages with no guidance**, which is release-blocking.
-- **Deployment:** Vercel + Render + Supabase are prepared but **not deployed**
+- **Deployment (2026-11-11):** a public, guest-only demo runs on Render: website
+  https://mckinley-frontend.onrender.com, backend https://mckinley-backend.onrender.com, data in the development
+  Supabase project (synthetic), replies from a free OpenRouter model (live, not mock). Resident features need a
+  sign-in that does not exist, so they are off there. Option A (Vercel website) stays supported
   ([deployment readiness](docs/DEPLOYMENT_READINESS.md)).
 - **Static preview:** the here.now link has no backend; it replays recorded conversations (see below). It is not
   interactive.
@@ -171,8 +174,10 @@ npm run dev            # Next.js on http://localhost:3000  (customer /, staff /s
 
 **Interactive mode** = both running locally; the page origin must be listed in `CORS_ORIGINS`.
 
-**Deployed interactive mode** (prepared, not deployed) = website on Vercel, backend on Render, database on
-Supabase, replies from Gemini: [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md) and the walkthrough
+**Deployed interactive mode** (live since 2026-11-11, guest-only) = website on Render (or Vercel), backend on
+Render, database on Supabase, replies from OpenRouter (Gemini adapter kept):
+[docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md), [Render website](docs/deployment/render-frontend.md),
+[Render backend](docs/deployment/render.md) and the walkthrough
 [docs/development/deploy-vercel-render-supabase.md](docs/development/deploy-vercel-render-supabase.md).
 Database tables come from migrations (`cd backend && uv run alembic upgrade head`); a hosted backend reads the
 synthetic residents from the database after `uv run python -m app.seed_synthetic`.

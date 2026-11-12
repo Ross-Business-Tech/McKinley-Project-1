@@ -37,7 +37,9 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     url = database_url()
     # prepare_threshold=None: works behind Supabase's transaction pooler too.
-    connect_args = {"prepare_threshold": None} if url.startswith("postgresql+psycopg") else {}
+    from app.db import pg_tls_args  # TLS required for any non-local Postgres unless the URL sets sslmode
+    connect_args = ({"prepare_threshold": None, **pg_tls_args(url.replace("+psycopg", "", 1))}
+                    if url.startswith("postgresql+psycopg") else {})
     engine = create_engine(url, poolclass=pool.NullPool, connect_args=connect_args)
     with engine.connect() as connection:
         context.configure(connection=connection)

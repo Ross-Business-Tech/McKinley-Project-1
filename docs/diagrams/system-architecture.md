@@ -1,6 +1,6 @@
 # System architecture
 
-Reflects the code on `feat/gemini-supabase-deployment`. Two front-ends share one static build; the Python API is the only place with resident data, model keys or business rules.
+Reflects the code on `feat/render-dual-deploy-supabase` (deployed from `development`). Two front-ends share one static build; the Python API is the only place with resident data, model keys or business rules.
 
 ```mermaid
 flowchart LR
@@ -70,19 +70,22 @@ Notes
   resident records). Without a provider key it does not run and every turn is marked `degraded`.
 - **Prototype store ≠ Yardi.** `prototype_records` stands in for work orders (D-11), CRM tour requests (D-10) and the staff queue (D-14). Nothing leaves SQLite.
 
-## Target deployment (prepared, not yet deployed)
+## Deployment (live public demo since 2026-11-11; option B)
 
 ```mermaid
 flowchart LR
-  P["Phone / browser"] --> V["Vercel<br/>static export of frontend/ (out/)<br/>NEXT_PUBLIC_API_BASE_URL only"]
-  V -->|"HTTPS, CORS: exact Vercel origin"| R["Render web service<br/>FastAPI + uvicorn, APP_ENV=hosted<br/>alembic upgrade head on start"]
-  R -->|"DATABASE_URL (Session pooler), backend only"| S[("Supabase Postgres<br/>RLS on every table, no policies<br/>synthetic residents via seed")]
-  R -->|"GEMINI_API_KEY, backend only"| G["Gemini Developer API<br/>replies + optional gate / safety classifier"]
+  P["Phone / browser"] --> W["Render static site mckinley-frontend<br/>static export of frontend/ (out/)<br/>NEXT_PUBLIC_API_BASE_URL only"]
+  P -.->|"option A"| V["Vercel<br/>same static export"]
+  W -->|"HTTPS, CORS: exact website origin"| R["Render web service mckinley-backend<br/>FastAPI + uvicorn, APP_ENV=hosted<br/>alembic upgrade head on start"]
+  V -.-> R
+  R -->|"DATABASE_URL (Session pooler, TLS), backend only"| S[("Supabase Postgres (dev project)<br/>RLS on every table, no policies<br/>synthetic residents via seed")]
+  R -->|"OPENROUTER_API_KEY, backend only"| O["OpenRouter<br/>free model, replies"]
+  R -.->|"GEMINI_API_KEY (option)"| G["Gemini Developer API"]
   H["here.now (team preview)<br/>static replay, no backend"] -.-> P
 ```
 
-Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`) live only in Render's settings. The browser never
-talks to Supabase or Gemini. Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
+Secrets (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `DATABASE_URL`, `STAFF_API_TOKEN`) live only in Render's settings.
+The browser never talks to Supabase or the model provider. Status and checklist: [../DEPLOYMENT_READINESS.md](../DEPLOYMENT_READINESS.md).
 
 
 ## What the customer page shows (no silent substitution)

@@ -201,6 +201,13 @@ T: dict[str, dict[Lang, str]] = {
               "así que por favor haga esas llamadas.",
     },
     # ---- F8 status lookup ----
+    # Public demo, not signed in: a status question lists only what THIS conversation sent (server-issued session).
+    "guest_session_status": {
+        "en": "In this conversation you sent: {items}. It's saved in this demo only: nobody at McKinley is notified, "
+              "and without a sign-in I can't look up requests from other visits.",
+        "es": "En esta conversación envió: {items}. Solo se guardó en esta demostración: nadie de McKinley recibe "
+              "un aviso y, sin iniciar sesión, no puedo buscar solicitudes de otras visitas.",
+    },
     "status_none": {
         "en": "I don't see any open requests on your record right now. If something isn't fixed, I can help you "
               "report it.",
