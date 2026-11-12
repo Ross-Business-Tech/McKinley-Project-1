@@ -63,7 +63,10 @@ A separate session ran the 35-journey suite live on `f6a32a7` with **Gemini** (`
 low, through its gateway branch `feat/gemini-gateway-default`): 35/35 completed, 31 PASS, 4 WARN, 0 FAIL; in 11 of 63
 model-written replies Gemini framed Send as delivery ("press Send to submit it to our maintenance team", "so our team
 can follow up"). The validator now rejects those phrasings (`90d1aa7`), so such replies fall back to the backend
-wording; this has not been re-run live yet.
+wording. Re-run live on `90d1aa7` (same session, Gemini): 35/35 completed, 31 PASS, 4 WARN, 0 FAIL, 0 duplicate
+records, reply p90 4.3 s; staff-delivery claims 1/56 (was 11/63), but `template_after_validation` 14 per run (was 7),
+about 20% of Gemini replies replaced. `4047176` adds the rule to the live-model instructions (plan-s9b) to cut that
+at the source; not yet re-measured.
 
 The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on every call; replies were the labelled
 `template_after_model_error` fallback), so the final wording has not been measured on the live model.
