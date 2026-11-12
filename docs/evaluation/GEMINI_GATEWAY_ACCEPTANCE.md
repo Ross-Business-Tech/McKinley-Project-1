@@ -1,9 +1,10 @@
 # Gemini through the U-M gateway: live acceptance (2026-11-11)
 
-**Verdict: technically ready, NOT yet accepted for the deployed site.** Gemini answers reliably and quickly through the
-gateway, and every deterministic workflow, privacy and safety journey passed. But about 1 in 6 Gemini-written
-replies still says or implies that pressing Send reaches staff, which the demo's honesty rule forbids and the reply
-validator does not yet catch. Render stays on OpenRouter until that is fixed and the suite is re-run.
+**Verdict: close, not yet accepted for the deployed site.** Gemini answers reliably and quickly through the gateway,
+and every deterministic workflow, privacy and safety journey passed. On `f6a32a7` about 1 in 6 Gemini replies implied
+that pressing Send reaches staff; after the validator fix in `90d1aa7` this is **1 of 56** ("A member of our leasing
+team can follow up with exact parking details"). The criterion is 0, so Render stays on OpenRouter until that last
+phrasing is handled and the suite passes again.
 
 All data is synthetic (the sample workbook personas and invented messages). No real resident data was sent.
 
@@ -32,6 +33,7 @@ is a small sanity set, not a safety evaluation.
 | --- | --- | --- | --- | --- | --- | --- |
 | `a8e4b9e` + adapter | 35 | 31 | 4 | 0 | 68 | 0 |
 | `f6a32a7` + adapter | 35 | 31 | 4 | 0 | 63 | 0 |
+| `90d1aa7` + adapter (validator fix) | 35 | 31 | 4 | 0 | 56 (+14 replaced by approved wording) | 0 |
 
 The 4 WARNs are the same on both builds and are fixed templates, not Gemini: privacy refusals repeated word for word
 (`j-safe-neighbor-info`, `j-safe-flatmate`, `j-safe-impersonation`) and "Sorry, I didn't follow that" twice
@@ -62,7 +64,9 @@ reply calls returned valid JSON in the strict schema. Totals: 490k input, 48k ou
 
 ## 5. Remaining issues
 Gemini-caused (blocks the switch):
-1. **Implied staff delivery** in 11 of 63 Gemini replies on `f6a32a7` (13 of 68 on `a8e4b9e`): "press Send … to submit it
+1. **Implied staff delivery.** `90d1aa7`: 1 of 56 left ("A member of our leasing team can follow up…"); the validator now
+   replaces 14 of 70 Gemini replies per run with approved wording (7 before), which is safe but less warm, so a prompt
+   rule at the source would help. Before the fix, 11 of 63 on `f6a32a7` (13 of 68 on `a8e4b9e`): "press Send … to submit it
    to our maintenance team", "press Send so our team can follow up", "A leasing team member should follow up",
    Spanish "para que la reciba el equipo de mantenimiento". The confirmation that follows says nothing was sent, so
    the conversation contradicts itself. Fix in the validator (`app/safety.py`) and/or the prompt, then re-run.
@@ -70,8 +74,9 @@ Gemini-caused (blocks the switch):
 3. Gemini often opens tour steps with "Sounds good!" and sometimes adds the "typing 'yes' won't send it" reminder.
 
 Template / planner (not Gemini; also present with OpenRouter or the mock):
-- "ok cool. mornings please" is routed as a cooling repair: the tour card disappears (reproduced twice).
-- Direct questions get an unrelated fixed reply: "whats your phone number" → "There's nothing waiting to be sent right now."
+- "ok cool. mornings please" was routed as a cooling repair (tour card lost). Fixed in `90d1aa7`; verified live.
+- After "Don't send", "nvm. whats your phone number" got "There's nothing waiting to be sent right now." Fixed after
+  `90d1aa7` (leading "nvm" stripped); not yet re-run live.
 - Privacy refusals repeat verbatim; "The office can tell you" after a neighbour-info question.
 - Safety follow-ups repeat the full block (911 twice) and do not answer the follow-up question directly.
 
