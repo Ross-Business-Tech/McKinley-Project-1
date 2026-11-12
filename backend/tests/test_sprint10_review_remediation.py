@@ -148,3 +148,90 @@ def test_hosted_refuses_sample_knowledge_content():
     from app.config import Settings
     s = Settings(_env_file=None, app_env="hosted", knowledge_content_mode="demo_samples")
     assert any("KNOWLEDGE_CONTENT_MODE" in p for p in s.hosted_problems())
+
+
+# ---- public endpoint reliability and abuse controls (review P1/P2) ----
+
+def test_oversized_body_is_refused_without_echo(client):
+    big = "x" * (70 * 1024)
+    r = client.post("/api/chat", content=('{"message": "' + big + '", "mode": "aware"}').encode(),
+                    headers={"Content-Type": "application/json"})
+    assert r.status_code == 413 and len(r.content) < 500 and r.json()["error"]["code"] == "REQUEST_TOO_LARGE"
+
+
+def test_validation_errors_never_echo_the_request(client):
+    r = client.post("/api/chat", json={"message": "my ssn is 123-45-6789", "mode": "aware", "channel": 5})
+    assert r.status_code == 422 and "123-45-6789" not in r.text and r.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+def test_a_failed_save_still_returns_the_safety_reply(client, monkeypatch):
+    from app.state import get_state
+
+    def boom(*a, **k):
+        raise RuntimeError("db down")
+    monkeypatch.setattr(get_state().store, "append_turns", boom)
+    r = client.post("/api/chat", json={"message": "I smell gas in my kitchen", "persona_id": "R003", "mode": "aware",
+                                       "session_id": "dbdown"})
+    assert r.status_code == 200 and r.json()["safety_notice"]
+
+
+def test_unexpected_errors_get_the_standard_json_error(client, monkeypatch):
+    import app.api.chat as chat_api
+
+    def boom(*a, **k):
+        raise RuntimeError("secret internal detail")
+    monkeypatch.setattr(chat_api, "run_turn", boom)
+    r = client.post("/api/chat", json={"message": "hello", "mode": "aware", "session_id": "boom1"})
+    assert r.status_code == 500 and r.json()["error"]["code"] == "SERVER_ERROR" and "secret" not in r.text
+
+
+def test_public_chat_is_rate_limited_when_configured():
+    from types import SimpleNamespace
+
+    from app.api.protection import LIMITER, rate_limited
+    LIMITER.reset()
+    req = SimpleNamespace(headers={"x-forwarded-for": "203.0.113.9"}, client=SimpleNamespace(host="10.0.0.1"))
+    st = SimpleNamespace(app_env="hosted", rate_limit_per_minute=3, rate_limit_per_session_minute=None)
+    out = [rate_limited(req, st, "chat", f"s{i}") for i in range(5)]
+    LIMITER.reset()
+    assert out == [False, False, False, True, True]  # per visitor, across conversations
+
+
+def test_hosted_defaults_limit_one_conversation_too():
+    from types import SimpleNamespace
+
+    from app.api.protection import LIMITER, rate_limited
+    LIMITER.reset()
+    st = SimpleNamespace(app_env="hosted", rate_limit_per_minute=None, rate_limit_per_session_minute=None)
+    out = [rate_limited(SimpleNamespace(headers={"x-forwarded-for": f"198.51.100.{i}"}, client=None), st, "chat",
+                        "same") for i in range(17)]
+    LIMITER.reset()
+    assert out.count(True) == 2  # 15 a minute per conversation by default when hosted
+
+
+def test_local_defaults_have_no_limits():
+    from types import SimpleNamespace
+
+    from app.api.protection import rate_limited
+    st = SimpleNamespace(app_env="local", rate_limit_per_minute=None, rate_limit_per_session_minute=None)
+    req = SimpleNamespace(headers={}, client=SimpleNamespace(host="127.0.0.1"))
+    assert not any(rate_limited(req, st, "chat", "x") for _ in range(100))
+
+
+def test_a_retried_send_returns_the_saved_reference_not_nothing_waiting(client):
+    sid = chat(client, "tour Heron Lake on Saturday morning", "retry1")["session_id"]
+    first = client.post("/api/actions/confirm", json={"session_id": sid, "persona_id": None,
+                                                      "kind": "tour_request"}).json()
+    again = client.post("/api/actions/confirm", json={"session_id": sid, "persona_id": None,
+                                                      "kind": "tour_request"}).json()
+    from app.state import get_state
+    assert first["ok"] and again["error_code"] == "ALREADY_SAVED"
+    assert again["record"]["id"] == first["record"]["id"] and first["record"]["id"] in again["message"]
+    assert len(get_state().store.records(session_id=sid, kind="tour_request")) == 1
+
+
+def test_health_reports_version_and_commit(client, monkeypatch):
+    import app.main as main
+    monkeypatch.setattr(main, "DEPLOYED_COMMIT", "abc1234def56")
+    h = client.get("/api/health").json()
+    assert h["version"] == main.API_VERSION and h["commit"] == "abc1234def56"

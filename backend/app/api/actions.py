@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from app.actions import confirm
+from app.api.protection import SESSION_LOCKS, rate_limited
 from app.api.staff_guard import request_is_local, require_staff, staff_allowed
 from app.api.views import customer_record
 from app.auth import (
@@ -49,9 +50,22 @@ def confirm_action(req: ActionConfirmRequest, request: Request,
                    state: AppState = Depends(get_state)) -> ActionResult:
     """Write the server-side draft for this session. The body names the session and kind only: the saved fields
     always come from the draft the backend built, never from the browser. Identity is re-checked here."""
+    _limit(req, request, state)
     principal, store = _authorized(req, request, state)
     if _not_issued(req, request, state):
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION", message=_NOTHING)
+    with SESSION_LOCKS.get(req.session_id):
+        return _confirm_locked(req, request, state, principal, store)
+
+
+def _limit(req: ActionConfirmRequest, request: Request, state: AppState) -> None:
+    if not staff_allowed(request, state) and rate_limited(request, state.deps.settings, "actions", req.session_id):
+        raise HTTPException(status_code=429, detail={"code": "RATE_LIMITED", "message": "Please wait a minute and "
+                            "try again.", "retryable": True})
+
+
+def _confirm_locked(req: ActionConfirmRequest, request: Request, state: AppState, principal: Principal,
+                    store: ScopedStore) -> ActionResult:
     pkey = principal.key
     record_ctx = build_context(principal.persona_id, "", state.deps.workbook, principal=principal)
     ctx = apply_account_holder_rule(record_ctx, store.user_messages(req.session_id, pkey))
@@ -69,6 +83,7 @@ def confirm_action(req: ActionConfirmRequest, request: Request,
 @router.post("/actions/cancel", response_model=ActionResult)
 def cancel_action(req: ActionConfirmRequest, request: Request,
                   state: AppState = Depends(get_state)) -> ActionResult:
+    _limit(req, request, state)
     principal, store = _authorized(req, request, state)
     draft = None if _not_issued(req, request, state) else store.get_draft(req.session_id, principal.key)
     if not draft or draft.get("kind") != req.kind:

@@ -39,7 +39,8 @@ def test_maintenance_intake_readback_confirm_and_status(client):
     res = confirm(client, "maintenance_request")
     assert res["ok"] and res["record"]["id"].startswith("DEMO-WO-") and res["record"]["system"] == "prototype"
     assert res["record"]["status"] == "submitted_for_review"
-    assert confirm(client, "maintenance_request")["error_code"] == "NO_PENDING_ACTION"  # no double submit
+    again = confirm(client, "maintenance_request")  # no double submit: a retry returns the saved record (Sprint 10)
+    assert again["error_code"] == "ALREADY_SAVED" and again["record"]["id"] == res["record"]["id"]
 
     st = chat(client, "What's the status of my requests?")
     refs = [i["reference"] for i in st["status_items"]]

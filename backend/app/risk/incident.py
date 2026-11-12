@@ -359,7 +359,9 @@ _THANKS = re.compile(r"^\W*(?:(?:ok(?:ay)?|great|cool|got it|perfect)\W+)?(?:tha
                      r"thx|ty|gracias|muchas gracias)\W*$", re.I)
 # a present-tense confirmation at any point while the question is open ("I think I smell it now")
 _AFFIRM_NOW = re.compile(r"\b(?:i (?:think i |can )?)?(?:smell|see|hear|feel) (?:it|that|gas|smoke) (?:now|right now|"
-                         r"again)\b|\b(?:it |that )?(?:kind of |kinda |really )?(?:smells?|looks?|sounds?) like "
+                         r"again)\b|\b(?:it'?s|it is|the alarm'?s|the alarm is|that'?s) (?:\w+ )?(?:going off|beeping|"
+                         r"sounding|ringing|chirping|happening)(?: \w+){0,2} (?:right )?now\b|"
+                         r"\b(?:it |that )?(?:kind of |kinda |really )?(?:smells?|looks?|sounds?) like "
                          r"(?:that|it|this|gas|smoke)(?: \w+){0,2} (?:right )?now\b|"
                          r"\bit'?s happening (?:now|right now)\b|\bit is happening\b|\bnow it is\b|"
                          r"\bit'?s happening\b|\bahora (?:s[ií]|huele|lo huelo)\b|\best[aá] pasando ahora\b", re.I)
@@ -392,7 +394,8 @@ def _set_pending(store: Any, session_id: str, persona_key: str, data: dict[str, 
         pass  # only the follow-up escalation is lost; this turn's safety text is unaffected
 
 
-def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True, kind: str | None = None) -> bool:
+def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True, kind: str | None = None,
+                     acked: bool = False) -> bool:
     """Does this turn answer "is it happening now?" with yes? A hazard sign in this message, a sign that belongs to
     the pending kind, a short "he is / she isn't" answer about a person, a present-tense "I smell it now", or (only
     on the very next turn) a bare "yes".
@@ -411,10 +414,12 @@ def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True,
     sign = bool(det.kind or scan(message)[0] or related_care or (fr.get("states") and people and short))
     if sign:
         return True
-    if _DENY.search(text):
+    if _DENY.search(text) and not _AFFIRM_NOW.search(text):
         return False
     if _AFFIRM_NOW.search(text):
         return True
+    if acked:  # after "thanks": a person-subject sentence or a bare "yes" is not an answer any more
+        return False
     if _AFFIRM_PERSON.search(text) and (short or re.search(r"\bhelp\b|\bayuda\b", text, re.I)):
         return True
     return next_turn and bool(_AFFIRM_BARE.search(text)) and not _OTHER_TOPIC.search(text)
@@ -444,9 +449,12 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
         gap = turn - last
         if d.response == "full_alert":
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "alert"})
-        elif _THANKS.search(message):
-            _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "thanks"})
-        elif confirms_pending(message, risk, next_turn=gap == 1, kind=pend.get("kind")):
+        elif _THANKS.search(message) and not _AFFIRM_NOW.search(message):
+            # thanks acknowledges the information: from now on only a present-tense report ("yes it's going off
+            # now") or a sign of this kind confirms; an ordinary sentence never does (Sprint 10, holdout P1)
+            _set_pending(store, session_id, persona_key, {**pend, "last": turn, "acked": True})
+        elif confirms_pending(message, risk, next_turn=gap == 1 and not pend.get("acked"), kind=pend.get("kind"),
+                              acked=bool(pend.get("acked"))):
             from app.risk.category import refine
             kind, reason = refine(pend["kind"], message)
             nd = d.model_copy(update={

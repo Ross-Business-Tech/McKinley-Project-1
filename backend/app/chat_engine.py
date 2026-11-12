@@ -9,6 +9,7 @@ Modes: baseline (generic prompt; steps 4-6 and 9 skipped), prompt_only (McKinley
 resident context), aware (everything). See docs/diagrams/chat-turn-sequence.md.
 """
 
+import logging
 import re
 import time
 import uuid
@@ -551,7 +552,7 @@ def run_turn(
         trace.add("9_handoff", "skipped", "baseline: model's own recommendation only")
 
     # 10. persist safe metadata (turn text for session memory; gate log has no message text)
-    if deps.store and use_history:
+    def _persist() -> None:
         shown = ("emergency safety steps" + (" and 988 crisis line" if ekind == "self_harm" or rd.also_988
                                              else " and 911")
                  if safety_notice else {"distress": "988 care line", "danger": "911 safety line",
@@ -571,7 +572,15 @@ def run_turn(
                 "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
                 "planner_memory": plan.memory if plan else {},
             })
-    trace.add("10_persist", "ok" if (deps.store and use_history) else "skipped",
+
+    persisted = True
+    if deps.store and use_history:
+        try:
+            _persist()
+        except Exception as e:  # Sprint 10 (review P1): a failed save never replaces the reply, safety text included
+            persisted = False
+            logging.getLogger("mckinley").error("turn not persisted: %s", type(e).__name__)
+    trace.add("10_persist", ("ok" if persisted else "warn") if (deps.store and use_history) else "skipped",
               "gate metadata logged (no message text)" if (deps.store and use_history and gate) else
               "session turns stored" if (deps.store and use_history) else "eval run: not stored as session")
 

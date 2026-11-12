@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # Central live-call budget: 0 = unlimited. Counted across processes when LLM_CALL_LEDGER is set (one JSON line
     # per real model call, metadata only: no prompts, no replies, no keys). Mock calls are never counted.
     llm_call_budget: int = 0
+    # Sprint 10 (review P1, public endpoints): None = the default (30 requests a minute per visitor and 15 per
+    # conversation on a hosted deployment, off locally); 0 = off. Bodies over max_request_bytes get 413.
+    rate_limit_per_minute: int | None = Field(default=None, ge=0, le=10_000)
+    rate_limit_per_session_minute: int | None = Field(default=None, ge=0, le=10_000)
+    max_request_bytes: int = Field(default=64 * 1024, ge=0, le=10_000_000)
     llm_call_ledger: Path | None = None
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 

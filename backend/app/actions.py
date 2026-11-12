@@ -4029,12 +4029,45 @@ def _faq_text(topics: list[Any], lang: Lang) -> str:
 # ---- confirmation ------------------------------------------------------------------------------------------
 
 
+RETRY_WINDOW_SECONDS = 15 * 60
+
+
+def draft_lang(rec: dict[str, Any]) -> Lang:
+    return "es" if rec.get("lang") == "es" else "en"
+
+
+def _just_saved(store: Store, session_id: str, persona_id: str | None, kind: str) -> dict[str, Any] | None:
+    """This conversation's newest record of this kind, if it was saved in the last few minutes (a retried confirm)."""
+    from datetime import UTC
+    rows = [r for r in store.records(session_id=session_id, kind=kind, limit=5)
+            if (r.get("persona_id") or None) == (persona_id or None) and r.get("status") != "urgent_queued"]
+    if not rows:
+        return None
+    try:
+        age = (datetime.now(UTC) - datetime.fromisoformat(str(rows[0]["created_at"]))).total_seconds()
+    except (ValueError, TypeError):
+        return None
+    return rows[0] if 0 <= age <= RETRY_WINDOW_SECONDS else None
+
+
 def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: ActionKind, ctx: SafeContext,
             lang: Lang = "en") -> ActionResult:
     """Write the server-side draft for this session after the person confirmed it (atomic: one record at most)."""
     pkey = persona_id or "none"
     draft = store.get_draft(session_id, pkey) if store else None
     if not draft or draft.get("kind") != kind:
+        if store and getattr(store, "account_access", True) and (
+                again := _just_saved(store, session_id, persona_id, kind)):
+            # (never after the account holder was disclaimed: the record may carry the holder's on-file details)
+            # Sprint 10 (review P2): a retried Send after a lost response gets the record it already saved, never
+            # "nothing waiting" (and never a second record)
+            rec0 = PrototypeRecord.model_validate(again)
+            act0 = ProposedAction(kind=kind, stage="submitted", title=TITLE[kind][draft_lang(again)],
+                                  fields=rec0.fields, missing=[], confirm_label=None,
+                                  note=CARD_NOTE["saved"][kind][draft_lang(again)], record=rec0)
+            return ActionResult(ok=False, error_code="ALREADY_SAVED", action=act0, record=rec0,
+                                message=t("already_saved", draft_lang(again), what=WHAT[kind][draft_lang(again)]
+                                          .capitalize(), ref=rec0.id))
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION",
                             message="There's nothing waiting to be sent. Tell me what you need and I'll set it up.")
     lang = draft.get("lang", lang)  # type: ignore[assignment]

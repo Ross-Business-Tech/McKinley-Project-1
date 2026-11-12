@@ -32,6 +32,15 @@ services:
         sync: false
       - key: OPENROUTER_REASONING_EFFORT  # low latency (Sprint 5.1: slowest reply 48 s -> 3.4 s)
         value: none
+      # Sprint 10 (independent review P1): a model-call cap per running instance (the free plan restarts after idle,
+      # which resets it); when spent, replies fall back to the approved templates. Server time stays under the
+      # browser's 90 s: 25 s x (1 + 1 retry), plus the short safety and gate calls.
+      - key: LLM_CALL_BUDGET
+        value: "1500"
+      - key: LLM_TIMEOUT_SECONDS
+        value: "25"
+      - key: LLM_MAX_RETRIES
+        value: "1"
       - key: GEMINI_MODEL          # kept ready for the Gemini migration (unused while LLM_PROVIDER=openrouter)
         value: gemini-3.6-flash
       - key: GEMINI_API_KEY        # optional until the Gemini migration

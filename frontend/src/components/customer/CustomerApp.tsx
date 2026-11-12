@@ -35,7 +35,7 @@ import { StatusPill, statusTone } from "./StatusPill";
 
 type Boot =
   | { mode: "loading" }
-  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean }
+  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean; build?: string | null }
   | { mode: "preview"; identities: Identity[]; journeys: Journey[] }
   | { mode: "error"; message: string };
 
@@ -65,9 +65,26 @@ interface SavedSession {
 let counter = 0;
 const mid = () => `m${++counter}`;
 
+/** Sprint 10 (review P2): a sleeping free backend can take about a minute to wake. Keep trying for up to two minutes
+ * before falling back to the recorded replay, instead of switching on the first failure. */
+const WAKE_MS = 120_000;
+
+async function personasWhenAwake() {
+  const started = Date.now();
+  for (;;) {
+    try {
+      return await api.personas();
+    } catch (e) {
+      const unreachable = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE";
+      if (!unreachable || !LIVE_BACKEND_CONFIGURED || Date.now() - started > WAKE_MS) throw e;
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
+}
+
 async function boot(): Promise<Boot> {
   try {
-    const personas = await api.personas();
+    const personas = await personasWhenAwake();
     const health = await api.health().catch(() => null); // "About this demo" line + whether demo sign-in exists
     const demoSignIn = demoSignInAvailable(personas, health);
     return {
@@ -75,6 +92,7 @@ async function boot(): Promise<Boot> {
       identities: demoSignIn ? toIdentities(personas) : [GUEST],
       mock: health ? health.is_mock ?? health.provider === "mock" : null,
       demoSignIn,
+      build: health?.commit ? `${health.version ?? ""} · ${health.commit.slice(0, 7)}`.replace(/^ · /, "") : null,
     };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE") {
@@ -102,7 +120,9 @@ export function CustomerApp() {
   }, [state.mode]);
   const [attempt, setAttempt] = useState(0);
   const [identity, setIdentity] = useState<Identity>(GUEST);
-  const [sessionId, setSessionId] = useState(() => newSessionId());
+  // Sprint 10 (review P1): created in the browser only, never during the static prerender (a fresh-clone `next build`
+  // failed on crypto.randomUUID() there); the id is not rendered, so the empty server value can't mismatch
+  const [sessionId, setSessionId] = useState(() => (typeof window === "undefined" ? "" : newSessionId()));
   const [messages, setMessages] = useState<Msg[]>([]);
   const [turns, setTurns] = useState<StoredTurn[]>([]);
   const [draft, setDraft] = useState("");
@@ -385,7 +405,9 @@ export function CustomerApp() {
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
       // Sprint 7: once a retry goes through, the earlier "Not sent" box for this card goes (no stale "Send again")
-      setMessages((m) => [...m.filter((x) => !(x.error && x.retryKind === kind)),
+      // Sprint 10 (review P2): and the dashed "Send … / Not sent" press goes too, so only the successful one stays
+      setMessages((m) => [...m.filter((x) => !(x.error && x.retryKind === kind) &&
+        !(x.choice && x.failed && x.text === confirmLabel(kind))),
         { id: mid(), role: "assistant", text: result.message, result, lang }]);
       // The outcome and its reference, said once (focus also moves to the new message).
       const ref = result.action?.record?.id;
@@ -544,6 +566,7 @@ export function CustomerApp() {
                 <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
                 <p className="mt-1 text-sm text-mk-muted">
                   {t.demoAbout} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
+                  {state.mode === "live" && state.build ? <span className="block pt-1 text-xs" data-testid="build-id">{t.buildLabel} {state.build}</span> : null}
                 </p>
                 {state.mode === "live" && !state.demoSignIn && (
                   <p className="mt-2 text-sm text-mk-muted" data-testid="guest-only-about">{t.guestOnlyAbout}</p>

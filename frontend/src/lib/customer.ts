@@ -65,18 +65,18 @@ export function toIdentities(personas: Persona[]): Identity[] {
 /** I-01 draft: AI disclosure on the first message. Wording still needs McKinley approval. */
 export function greeting(identity: Identity): string {
   if (identity.lang === "es") {
-    return `Hola, ${identity.firstName ?? ""}. Soy el asistente automático de McKinley, no una persona. Si prefiere hablar con alguien del equipo, dígamelo y preparo una nota. Puedo ayudarle a reportar una reparación, revisar sus solicitudes, hablar de su renovación o comunicarle con la oficina.`;
+    return `Hola, ${identity.firstName ?? ""}. Soy el asistente automático de McKinley, no una persona. ¿En qué le puedo ayudar hoy?`;
   }
   // I-01 AI disclosure (team draft, McKinley approves). "Automated, not a person" is true for the fixed-rule demo
-  // responder and for a live AI model, and it is short enough for a 320px screen.
-  const intro = "I'm McKinley's automated assistant, not a person. Want a person instead? Just say so and I'll prepare a note for our team.";
+  // responder and for a live AI model. Sprint 10 (review P3): one short line; "Talk to a person" is always below.
+  const intro = "I'm McKinley's automated assistant, not a person.";
   switch (identity.kind) {
     case "resident":
-      return `Hi ${identity.firstName ?? "there"}. ${intro} I can help you report a repair, check your open requests, ask about your renewal, or reach the office.`;
+      return `Hi ${identity.firstName ?? "there"}! ${intro} What can I help you with today?`;
     case "prospect":
-      return `Welcome! ${intro} I can answer general questions and send a tour request to our leasing team.`;
+      return `Welcome! ${intro} Ask me anything, or I can help you plan a tour.`;
     case "unmatched_resident":
-      return `Hi. ${intro} I couldn't match you to a resident account, so I can share general information and pass a note to the office.`;
+      return `Hi. ${intro} I couldn't match you to a resident account, but I can answer general questions and save a note for the office.`;
     default:
       return `Hi! ${intro} Are you looking for a home, or do you already live at a McKinley community?`;
   }
@@ -203,6 +203,7 @@ export const UI = {
     // NEEDS McKINLEY REVIEW: public demo (no sign-in) - say plainly what a visitor cannot do here
     guestOnlyAbout: "On this public demo everyone is a guest: you can ask general questions, request a tour or leave a note for the office. Resident features such as repairs on your account and request status need a sign-in, which this demo does not have.",
     demoClose: "Close",
+    buildLabel: "Version",
     safetyInfo: "If that happens",
   },
   es: {
@@ -266,6 +267,7 @@ export const UI = {
     // NEEDS McKINLEY REVIEW
     guestOnlyAbout: "En esta demostración pública todos son invitados: puede hacer preguntas generales, pedir una visita o dejar una nota para la oficina. Las funciones para residentes, como reparaciones en su cuenta y el estado de sus solicitudes, requieren iniciar sesión, algo que esta demostración no tiene.",
     demoClose: "Cerrar",
+    buildLabel: "Versión",
     gasCall: "Salga y luego llame al 911",
     safetyInfo: "Si eso pasa",
     whatItSaid: "Lo que decía",
