@@ -491,10 +491,6 @@ def run_turn(
     safety_notice = st.safety_notice if ekind else None
     if gate and gate.urgency == "emergency" and not safety_notice:  # e.g. an LLM gate said emergency: generic text
         safety_notice = risk_responses.generic_steps(lang)
-    if safety_notice:  # each emergency instruction once per message; approved steps untouched (app/safety_dedupe.py)
-        reply, dropped = safety_dedupe.drop_repeated_reminders(reply)
-        if dropped:
-            trace.add("8_validate", "ok", f"emergency reminder already said in this reply: {len(dropped)} removed")
     care_kind = st.care_kind if not safety_notice else None
     care_note = st.care_note if care_kind else None
     if care_kind:
@@ -511,6 +507,12 @@ def run_turn(
     else:
         trace.add("8_validate", "warn" if failed else "ok",
                   f"failed checks: {failed}" if failed else "all checks passed")
+    # each emergency instruction once per message (app/safety_dedupe.py): backend wording only (never model text, whose
+    # negations could look like cover), after any replacement above; approved steps and the safety fields are untouched
+    if safety_notice and reply_source != "model":
+        reply, dropped = safety_dedupe.drop_repeated_reminders(reply)
+        if dropped:
+            trace.add("8_validate", "ok", f"emergency reminder already said in this reply: {len(dropped)} removed")
 
     # 9. handoff recommendation (recommendation only; nothing is sent)
     signals = pre_model_gates(msg) + (context_signals(ctx) if mode == "aware" else [])

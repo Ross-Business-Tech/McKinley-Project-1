@@ -36,6 +36,8 @@ REMINDERS = _reminders()
 
 
 _CONDITION = re.compile(r"\b(?:if|when|unless|si|cuando)\b", re.I)
+# a negated mention ("I can't call 911 for you", "you don't need to call 911") never counts as having said it
+_NEGATED = re.compile(r"\b(?:can'?t|cannot|don'?t|do\s+not|won'?t|never|no\s+need|no\s+puedo|no\s+necesita)\b", re.I)
 
 
 def _instructions(sentence: str) -> set[str]:
@@ -44,19 +46,21 @@ def _instructions(sentence: str) -> set[str]:
 
 def _unconditional(sentence: str) -> set[str]:
     """Instructions given without any condition in the same sentence (only these can cover a later reminder)."""
-    return set() if _CONDITION.search(sentence) else _instructions(sentence)
+    return set() if _CONDITION.search(sentence) or _NEGATED.search(sentence) else _instructions(sentence)
 
 
 def drop_repeated_reminders(reply: str) -> tuple[str, list[str]]:
     """Return (reply, dropped sentences). Only `emergency_follow` reminders already covered earlier are dropped."""
     seen: set[str] = set()
-    kept: list[str] = []
+    out: list[str] = []
     dropped: list[str] = []
-    for s in _SENT.split(reply.strip()):
+    parts = re.split(r"((?<=[.!?])\s+)", reply)  # keep the original separators (newlines, spacing)
+    for i in range(0, len(parts), 2):
+        s, sep = parts[i], parts[i + 1] if i + 1 < len(parts) else ""
         ins = _instructions(s)
         if s.strip() in REMINDERS and ins and ins <= seen:
-            dropped.append(s)
+            dropped.append(s.strip())
             continue
         seen |= _unconditional(s)
-        kept.append(s)
-    return (" ".join(kept) if dropped else reply), dropped
+        out.append(s + sep)
+    return ("".join(out).rstrip() if dropped else reply), dropped
