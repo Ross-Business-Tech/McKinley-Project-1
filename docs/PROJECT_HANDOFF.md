@@ -29,6 +29,10 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 - Sprint 6 (`feat/robust-workflow-safety-auth`): structured understanding layer, workflow state machine, server-side
   principal with deny-by-default data access, concept-based safety with persistent incident state
   ([evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md)).
+- Sprint 9 (`feat/warm-conversational-ux`, on top of PR #6): warm, concise customer wording; one honest status
+  ("Saved in demo") from `models.STATUS_LABEL` on every read; the demo limit said once per step (persistent demo
+  strip, one line on each card, short confirmation); validator check `_demo_status_claim`; compact saved cards
+  ([evaluation/SPRINT9_WARM_VOICE.md](evaluation/SPRINT9_WARM_VOICE.md)).
 - Sprint 8 (`feat/emergency-ux-maintenance-enhancements`, on top of `feat/s7-safety-regression-fixes`): no persistent
   911 control; backend `safety_state` + category-specific `safety_contacts` (normal / concern / active); R5c
   conditional questions with a confirmation escalation (R5f); repeat-issue history with community-manager review
