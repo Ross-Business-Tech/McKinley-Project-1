@@ -405,3 +405,25 @@ def test_correction_with_place_and_time_updates_both_and_booked_question_is_answ
     assert f["days"] == "Wednesday" and "9 AM" in f["time"]
     q = chat(client, "so Wednesday at 9 in Lansing is confirmed?", sid)["reply"]
     assert q.startswith("Nothing is booked yet")
+
+
+# ---- status-claim audit (paraphrased) ----
+
+def test_time_preference_after_send_is_never_claimed_as_noted(client):
+    sid = chat(client, "tour Heron Lake on Friday morning", "v27")["session_id"]
+    confirm(client, sid, "tour_request")
+    r = chat(client, "could you book me in for 10am?", sid)["reply"]
+    assert "noted" not in r.lower() and "isn't on it" in r
+
+
+def test_unlisted_city_does_not_become_the_profile_area(client):
+    r = chat(client, "looking to tour a place in Reno next month", "v28", persona="P-RELOCATE-AA")
+    area = {f["key"]: f["value"] for f in r["action"]["fields"]}.get("area")
+    assert area is None and "Reno" in r["reply"]
+
+
+def test_reference_question_after_send_gets_the_reference(client):
+    sid = chat(client, "tour Birchwood on Monday evening", "v29", persona="P-BROWSE-FL")["session_id"]
+    ref = confirm(client, sid, "tour_request", persona="P-BROWSE-FL")["record"]["id"]
+    r = chat(client, "what's the confirmation number for that visit?", sid, persona="P-BROWSE-FL")
+    assert ref in r["reply"] and r["action"] is None

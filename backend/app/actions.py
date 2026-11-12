@@ -318,6 +318,9 @@ _LEASING_REFERRAL = re.compile(r"\s*(?:The leasing team (?:can give you accurate
 # asks to be CONTACTED. Not "is there a text version?" or "can I text a friend?" (Sprint 9 review B-3).
 _CHECK_ON = re.compile(r"\bcheck (?:on|in on|up on)\b|\bwellness check|welfare check|"
                        r"make sure (?:she|he|they)(?:'s| is| are) (?:ok|okay|alright|fine)|\bver c[oó]mo est[aá]", re.I)
+_ASKS_REF = re.compile(r"\b(?:reference|ref|confirmation|tracking|ticket|request) (?:number|no\.?|#|id|code)\b|"
+                       r"\bwhat(?:'s| is) (?:my|the) (?:reference|ref)\b|"
+                       r"\bn[uú]mero de (?:referencia|solicitud)\b", re.I)
 _OFFICE_HOURS_Q = re.compile(r"\b(?:open|opens|close|closes|closed|hours)\b", re.I)
 _WANTS_NOTE = re.compile(r"\b(?:leave|send|write|make|start|pass|drop|put)(?: them| the office| it)?(?: in)? "
                          r"(?:a|the|that)? ?note\b|\bnote (?:for|to) (?:the office|them)\b|"
@@ -2506,6 +2509,14 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         r0 = sent_wo0[0]  # P-2: a detail for the request already sent goes to the office with its reference
         return handoff_plan("maint_add_detail", f"Add a detail to {r0['id']} (staff update sent requests).",
                             topic=f"Add to {r0['id']}", ref=r0["id"], detail=redact(add)[:160])
+    if sent and _ASKS_REF.search(msg) and gate.urgency != "emergency" and not (draft and not draft.get("stale")):
+        # audit (holdout3): "what's my reference number for the tour?" after Send: the reference, not a new tour
+        kind_q = "tour_request" if re.search(r"\btour|visit", msg, re.I) else "maintenance_request" if re.search(
+            r"\brepair|maintenance|work order", msg, re.I) else None
+        r0 = next((r for r in sent if not kind_q or r["kind"] == kind_q), sent[0])
+        return done(TurnPlan(template=t("ref_answer", lang, what=WHAT[r0["kind"]][lang], ref=r0["id"]),
+                             functions=[KIND_FN[r0["kind"]], "F8"], skip_model=True, consumed_by_draft=True,
+                             workflow=_sel("status_lookup", "Asked for the reference of a saved request.")))
     if sent and (is_after_send_question(msg) or (u.asks_visit and not wants_person)) and \
             not (draft and not draft.get("stale")):
         r0 = sent[0]  # D-9: the request just sent (records come newest first)
@@ -3482,11 +3493,14 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              workflow=_sel("tour_request", "Office-hours question: answered; the tour card stays.")))
     if not is_resident and is_booking_question(msg) and (in_tour_draft or tour_mine):
         pref = extract_clock_preference(msg)
-        pref_txt = (f"I've noted {pref[1]} as your preference. " if lang == "en"
-                    else f"Anoté {pref[1]} como su preferencia. ") if pref else ""
+        pref_txt = ""
         if in_tour_draft and draft and pref:
             _set(draft, "time", f"{pref[0]} ({pref[1]})", "you_said")
             save("tour_request", draft)
+            pref_txt = (f"I've noted {pref[1]} as your preference. " if lang == "en"
+                        else f"Anoté {pref[1]} como su preferencia. ")
+        elif pref:  # status-claim audit: after Send nothing is stored, so never "I've noted …" (Sprint 9)
+            pref_txt = t("pref_not_on_saved", lang, pref=pref[1]) + " "
         ref = t("booking_saved_ref", lang, ref=tour_mine[0]["id"]) if tour_mine and not in_tour_draft else ""
         return done(TurnPlan(template=t("booking_q", lang, pref=pref_txt, ref=ref).strip(), functions=["F5"],
                              skip_model=True, consumed_by_draft=True,
@@ -3664,7 +3678,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             # before the profile's on-file values
             if k in LABEL and v and not d["fields"].get(k, {}).get("value"):
                 _set(d, k, v, "you_said")
-        if not d["fields"].get("area") and (area := _ctx_value(ctx, "interest_area")):
+        named_elsewhere = unlisted_area or _unknown_place(effective) or mem.get("unlisted_area")
+        if not d["fields"].get("area") and (area := _ctx_value(ctx, "interest_area")) and not named_elsewhere:
+            # audit: "tour something in Boise" never silently becomes the profile's Ann Arbor area
             if "no community selected" not in area:
                 _set(d, "area", area, "on_file")
         if not d["fields"].get("beds") and (beds := _ctx_value(ctx, "desired_floor_plan")):
