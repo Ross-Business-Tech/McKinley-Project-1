@@ -66,6 +66,9 @@ The live service (`mckinley-backend`, branch `development`, auto-deploy on commi
 **Dashboard → Environment**, not from `render.yaml`. Since 2026-11-11 a hosted backend **refuses to start** unless
 `LLM_PROVIDER` is set explicitly, so a release can never switch provider silently (a refused start leaves the
 previous deploy serving).
+0. Preconditions: the claim-grounding PR and `feat/warm-conversational-ux` are merged into `development`, the blockers
+   in [GEMINI_GATEWAY_ACCEPTANCE.md §F](../evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) are closed, and ITS has reset the
+   gateway key's usage limit and agreed a budget for a public site.
 1. Before merging the Gemini code into `development`: confirm the Dashboard has `LLM_PROVIDER=openrouter` (it is the
    documented live value). If it is missing, add it first, or the next deploy will refuse to start.
 2. When acceptance passes, in the Dashboard add `GEMINI_API_KEY` (secret), `GEMINI_BASE_URL` (secret, the gateway

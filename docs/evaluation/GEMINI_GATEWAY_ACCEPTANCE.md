@@ -1,10 +1,48 @@
-# Gemini through the U-M gateway: live acceptance (2026-11-11)
+# Gemini through the U-M gateway: live acceptance (2026-11-11/12)
 
-**Verdict (latest run, `4047176`): close, not yet accepted for the deployed site.** See the per-run claim table in §2. Gemini answers reliably and quickly through the gateway,
-and every deterministic workflow, privacy and safety journey passed. On `f6a32a7` about 1 in 6 Gemini replies implied
-that pressing Send reaches staff; after the validator fix in `90d1aa7` this is **1 of 56** ("A member of our leasing
-team can follow up with exact parking details"). The criterion is 0, so Render stays on OpenRouter until that last
-phrasing is handled and the suite passes again.
+**Final verdict (2026-11-12): NOT accepted for the deployed site yet. Render stays on OpenRouter.**
+Gemini itself works: fast, reliable replies in the strict JSON contract, no reply errors except when the gateway
+key hit its usage limit. With the claim-grounding layer (`feat/gemini-claim-grounding`, stacked on
+`feat/warm-conversational-ux`) no model-written false claim reached a customer in the final measured set, records are
+intact and there are no duplicate submissions. Acceptance still fails on blockers outside the adapter (§F below):
+one false action claim in fixed backend wording, one duplicate urgent note, a saved record that contradicts the reply,
+pre-existing safety false alarms, and the gateway key's usage limit.
+
+## Final acceptance (2026-11-12, build = warm-UX `5ac4b1e`..`61dc653` + claim grounding + this adapter)
+Commit measured: grounding branch `48429d1` (local SHA at run time) + this branch's adapter, `GEMINI_THINKING_LEVEL=low`.
+
+| Set | Conversations | Completed / verdicts | Claims reaching the customer | Duplicate records |
+| --- | --- | --- | --- | --- |
+| 35 adaptive journeys (same as every run) | 35 | 33 PASS, 2 WARN, 0 FAIL | 0 | 0 |
+| Holdout 1 (independent writer; used to find fixes) | 30 | 28 clean | 0 | 0 |
+| Holdout 2 (independent writer; used to find fixes) | 30 | 29 clean | 0 | 0 |
+| **Holdout 3 (independent writer, never used for fixes)** | 30 | 25 clean; 5 workflow/safety issues | 0 | 0 |
+
+Independent status-claim audit of all 506 replies against the run's database: **"YES WITH EXCEPTIONS"**. About 595
+status sentences supported; 2 unsupported (one fixed backend template, one model reply with no card, now caught); 11
+borderline (now caught or listed); 42 offers of the note action (an open wording decision). All 97 records map to a
+Send press, a typed send on a ready card, or an automatic emergency note; every cited reference exists and is the
+person's own. Earlier audit of the previous build found 4 model claims (mostly Spanish) and a missing record check;
+both fixed before the final run.
+
+Latency (final run): reply median 3.3 s, p90 5.0 s, max 8.6 s; safety classifier median 1.3 s. Errors: 36 HTTP 412
+"Usage Limit Exceeded" in 24 s at the end of holdout 3 (customers got the approved fixed wording; no error shown),
+3 classifier timeouts. Total Gemini usage of all local testing: ~2,500 calls, ~3.05 M input + 0.33 M output tokens.
+
+## F. Blockers before switching Render
+1. **Gateway key usage limit reached** (HTTP 412). No Gemini call works until ITS resets or raises it. A public site
+   spends it on every visitor (up to 2 calls per turn): agree a budget with ITS first.
+2. **False action claim in fixed wording** (warm-UX branch): after a tour was already sent, "I've noted around 4 PM
+   as your preference" although nothing was stored.
+3. **Duplicate urgent note**: an emergency follow-up question ("is someone on their way?") saved a second urgent note
+   for the same incident.
+4. **Saved record contradicts the reply**: a tour promised for an unlisted city was saved with the on-file area.
+5. **Safety false alarms (pre-existing on `development`, need a reviewed safety change)**: Spanish "un quemador de la
+   estufa no prende, no huele a gas" triggers the fire alert and an urgent note; "my neighbour isn't answering her door"
+   shows the medical alert identically three times.
+6. Open wording decisions for the team/McKinley: offers such as "I can pass your question to the leasing team in a
+   note" (Send only saves it); answering emergency follow-ups directly ("should we crack a window?") needs new approved
+   safety text; "urgent note is saved in the staff queue" wording.
 
 All data is synthetic (the sample workbook personas and invented messages). No real resident data was sent.
 
