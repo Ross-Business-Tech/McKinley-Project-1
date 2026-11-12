@@ -1543,10 +1543,12 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             hd["summary"] = "Possible emergency involving a person: check on the resident (prototype)."
         hd["priority"], hd["hazard"] = "urgent", kind
         same = [r for r in mine if r.get("status") == "urgent_queued" and r.get("hazard") == kind]
-        if not same and not people:
+        if not same and not people and not emergency_kind(msg):
             # Sprint 9 (status-claim audit, holdout3 m18): ONE urgent note per active property incident. Water on a
             # breaker panel can be re-read as electrical on the follow-up; that is the same incident, not a second
-            # note. A person in danger (people hazards) or a new incident still gets its own note.
+            # note. Only when THIS message describes no hazard itself (a follow-up question such as "is someone on
+            # their way?"): a new danger the person reports (gas, then "smoke and flames too") is a new note (F P0-2),
+            # and so is a person in danger or a new incident.
             from app.risk.incident import active as incident_active
             inc_a = incident_active(store, session_id, getattr(store, "persona_key", pkey))
             if inc_a:

@@ -436,13 +436,30 @@ def _urgent(client, sid, persona):
     return [r for r in get_state().store.records(session_id=sid) if r.get("status") == "urgent_queued"]
 
 
-def test_one_urgent_note_when_a_property_incident_is_re_read_as_another_kind(client):
+def test_a_follow_up_question_in_an_incident_writes_no_second_note(client, monkeypatch):
+    # m18 (live): the follow-up question was re-read as another hazard kind. Offline the classifier doesn't do that,
+    # so the risk step's kind for the follow-up is forced to "electrical" here to reproduce it.
+    import app.chat_engine as engine
     p = "R003"
     sid = chat(client, "water is coming through the ceiling onto the electrical panel", "v30", persona=p)["session_id"]
     first = _urgent(client, sid, p)
-    chat(client, "now there are sparks coming out of that panel", sid, persona=p)  # electrical, same incident
+    real = engine.plan_turn
+
+    def plan_as_electrical(*a, **kw):
+        if kw.get("hazard") == "flood":
+            kw["hazard"] = "electrical"
+        return real(*a, **kw)
+    monkeypatch.setattr(engine, "plan_turn", plan_as_electrical)
+    chat(client, "is anybody coming out to help?", sid, persona=p)
     after = _urgent(client, sid, p)
     assert len(first) == 1 and len(after) == 1, [r.get("hazard") for r in after]
+
+
+def test_a_new_danger_during_a_property_incident_is_a_new_note(client):
+    p = "R003"
+    sid = chat(client, "water is coming through the ceiling onto the electrical panel", "v32", persona=p)["session_id"]
+    chat(client, "now there are flames coming out of that panel", sid, persona=p)
+    assert len(_urgent(client, sid, p)) == 2
 
 
 def test_a_person_in_danger_during_a_property_incident_still_gets_its_own_note(client):
