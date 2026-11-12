@@ -190,3 +190,11 @@ def test_chat_booking_claim_never_reaches_a_prospect(client, monkeypatch):
     r = _chat(client, "Can I tour a two-bed in Ann Arbor on Saturday morning?", "g-book", persona="P-RELOCATE-AA")
     assert "booked" not in r["reply"].lower() and "will call" not in r["reply"].lower()
     assert r["records_created"] == []
+
+
+def test_journey_evaluator_treats_an_echoed_budget_as_the_users_number():
+    from app.usability.journey_evaluator import _echoes_user_amount
+
+    assert _echoes_user_amount("I can't confirm rates for 1 beds under $1,300 right now.", "i need under 1300. yes?")
+    assert not _echoes_user_amount("A one-bed is $1,150 a month.", "i need under 1300")
+    assert not _echoes_user_amount("No amounts here.", "1300")
