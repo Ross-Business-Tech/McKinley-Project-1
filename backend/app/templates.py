@@ -1399,6 +1399,33 @@ T: dict[str, dict[Lang, str]] = {
         "en": "Your {what}'s reference is {ref}. It's saved in this demo only.",
         "es": "La referencia de su {what} es {ref}. Solo está guardada en esta demostración.",
     },
+    "faq_sample_lead": {  # Sprint 10: shown only with KNOWLEDGE_CONTENT_MODE=demo_samples (local demo)
+        "en": "Here's the sample answer this demo uses (made-up example content, not McKinley's real policy):",
+        "es": "Esta es la respuesta de ejemplo de la demostración (contenido inventado, no es la política real de "
+              "McKinley):",
+    },
+    "capabilities_guest": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "I can answer general questions, help you put together a tour request, and save a note for the office. "
+              "What would you like to do?",
+        "es": "Puedo responder preguntas generales, ayudarle a preparar una solicitud de visita y guardar una nota "
+              "para la oficina. ¿Qué le gustaría hacer?",
+    },
+    "capabilities_resident": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "I can help you report a repair, check your open requests, ask about your renewal, or save a note for "
+              "the office. What would you like to do?",
+        "es": "Puedo ayudarle a reportar una reparación, revisar sus solicitudes, preguntar por su renovación o "
+              "guardar una nota para la oficina. ¿Qué le gustaría hacer?",
+    },
+    "bot_answer": {  # Sprint 10, NEEDS McKINLEY REVIEW (I-01 AI disclosure)
+        "en": "I'm McKinley's automated assistant, not a person. If you'd rather talk to someone, tap \"Talk to a "
+              "person\" and I'll start a note for the office.",
+        "es": "Soy el asistente automático de McKinley, no una persona. Si prefiere hablar con alguien, toque "
+              "\"Hablar con una persona\" y empiezo una nota para la oficina.",
+    },
+    "contact_left_out": {  # Sprint 10, NEEDS McKINLEY REVIEW: a phone or email typed with a tour request
+        "en": "I left your contact details out, since this demo doesn't keep phone numbers or emails.",
+        "es": "Dejé fuera sus datos de contacto, porque esta demostración no guarda teléfonos ni correos.",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",

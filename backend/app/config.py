@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # so nothing is shown) | demo_drafts = also the team DRAFT tips, labelled as drafts, on APP_ENV=local only. A hosted
     # backend refuses demo_drafts at startup (hosted_problems) and is forced to approved_only (fail closed).
     quickfix_content_mode: Literal["off", "approved_only", "demo_drafts"] = "approved_only"
+    # Sprint 10: approved_only = only McKinley-approved knowledge-base answers; demo_samples = also the labelled SAMPLE
+    # answers in knowledge_base.json (made-up example content for a supervised local demo; refused when hosted)
+    knowledge_content_mode: Literal["approved_only", "demo_samples"] = "approved_only"
 
     # ---- default target used by /api/chat ----
     # Gemini is the default chat provider (2026-11-11). Deployments still pin LLM_PROVIDER explicitly (render.yaml),
@@ -158,6 +161,9 @@ class Settings(BaseSettings):
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
+        if self.knowledge_content_mode == "demo_samples":
+            out.append("KNOWLEDGE_CONTENT_MODE must not be demo_samples: sample answers are made up and are for a "
+                       "supervised local demo only")
         if self.quickfix_content_mode == "demo_drafts":
             out.append("QUICKFIX_CONTENT_MODE must not be demo_drafts: draft tips are not "
                        "McKinley-approved and are for a local demo only")

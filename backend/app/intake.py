@@ -502,13 +502,22 @@ class KBTopic:
     answer: str | None
     answer_es: str | None
     source: str
+    # Sprint 10 (review P1 content): SAMPLE text for a local, supervised demo only (KNOWLEDGE_CONTENT_MODE=
+    # demo_samples, refused on a hosted deployment). Never McKinley policy; always shown labelled as a sample.
+    sample_answer: str | None = None
+    sample_answer_es: str | None = None
+    # what to say instead of "I don't have approved details about X" when that would be unhelpful (e.g. a password)
+    pending_reply: str | None = None
+    pending_reply_es: str | None = None
 
 
 @lru_cache
 def knowledge_base() -> tuple[str, list[tuple[KBTopic, list[str]]]]:
     data: dict[str, Any] = json.loads(KB_PATH.read_text(encoding="utf-8"))
     topics = [(KBTopic(id=t["id"], label=t["label"], status=t["status"], answer=t.get("answer"),
-                       answer_es=t.get("answer_es"), source=t["source"]), [k.lower() for k in t["keywords"]])
+                       answer_es=t.get("answer_es"), source=t["source"], sample_answer=t.get("sample_answer"),
+                       sample_answer_es=t.get("sample_answer_es"), pending_reply=t.get("pending_reply"),
+                       pending_reply_es=t.get("pending_reply_es")), [k.lower() for k in t["keywords"]])
               for t in data["topics"]]
     return data["version"], topics
 

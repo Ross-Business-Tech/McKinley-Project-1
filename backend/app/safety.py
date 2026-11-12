@@ -73,7 +73,39 @@ _INJECTION = re.compile(
 
 
 def looks_like_injection(text: str) -> bool:
+    """Broad screen for STORED / retrieved data (staff notes, history, workbook fields): any of these words there is
+    dropped. Never use it on what a customer types: "I forgot my portal password" is not an attack (review P0)."""
     return bool(_INJECTION.search(text))
+
+
+# Customer messages (review P0, Sprint 10): only an attempt to give the assistant instructions counts: an override
+# ("ignore your previous instructions"), a request for the system prompt or keys, a role change ("you are now",
+# "pretend to be the admin"), a role marker ("SYSTEM:"), a forced reply. Everyday words (password, secret, reveal,
+# act as, override, disregard on their own) are ordinary customer language.
+_MESSAGE_INJECTION = re.compile(
+    r"\b(?:ignore|disregard|forget|override|bypass|skip)\s+(?:all\s+|any\s+|of\s+)?(?:your|the|my|these|those|previous|"
+    r"prior|earlier|above|system|safety|existing|original)?\s*(?:previous\s+|prior\s+|earlier\s+|above\s+|system\s+|"
+    r"safety\s+)?(?:instructions?|rules|prompts?|guidelines|directions|policies|programming|guardrails|constraints)\b|"
+    r"\bsystem\s+prompt\b|\b(?:your|the)\s+(?:hidden|internal|initial|original)\s+(?:instructions?|prompt|rules)\b|"
+    r"\b(?:reveal|show|print|repeat|output|tell me|give me|dump)\s+(?:me\s+)?(?:your|the)\s+(?:instructions?|prompt|"
+    r"configuration|config|api[ _-]?key|secrets?|safe_context)\b|\bapi[ _-]?key\b|"
+    r"\byou are now\b|\bfrom now on,?\s+you\b|\bnew instructions?\s*:|\bdeveloper mode\b|\bjailbreak\b|"
+    r"(?-i:\bDAN mode\b)|"
+    r"\b(?:act|behave)\s+as\s+(?:if\s+you\s+(?:are|were)\s+)?(?:an?\s+|the\s+)?(?:admin|administrator|developer|system|"
+    r"unrestricted|unfiltered|staff member|manager with|root)\b|"
+    r"\bpretend\s+(?:to\s+be|you\s+are)\s+(?:an?\s+|the\s+)?(?:property\s+)?(?:admin|administrator|developer|system|staff|manager|"
+    r"leasing agent|unrestricted)\b|"
+    r"</?\s*(?:system|safe_context|instructions?)\s*>|(?:^|\n)\s*>?\s*(?:system|assistant|developer)\s*:|"
+    r"\b(?:assistant|system|ai|bot|developer)\s+(?:instructions?|override|command)\b|"
+    r"\breply (?:only )?with ['\"]|\brespond (?:only )?with ['\"]",
+    re.IGNORECASE,
+)
+
+
+def looks_like_message_injection(text: str) -> bool:
+    """Is this CUSTOMER message trying to instruct the assistant? (The message is data either way: this only decides
+    whether to say "I can't follow instructions written inside a message".)"""
+    return bool(_MESSAGE_INJECTION.search(text))
 
 
 def sanitize_field(text: str, max_len: int = 120) -> str | None:

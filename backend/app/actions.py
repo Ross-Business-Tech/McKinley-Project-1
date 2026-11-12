@@ -140,7 +140,7 @@ from app.models import (
     WorkflowSelection,
 )
 from app.risk.policy import is_people_hazard
-from app.safety import looks_like_injection, redact, sanitize_field
+from app.safety import looks_like_message_injection, redact, sanitize_field
 from app.templates import CARD_NOTE, CHIPS, CONFIRM, CONFIRM_LABEL, DIY_ADVICE, Lang, t
 from app.workflows import LABELS, WORKFLOW_VERSION, legacy_checks_approved, legacy_draft_steps
 
@@ -321,6 +321,13 @@ _CHECK_ON = re.compile(r"\bcheck (?:on|in on|up on)\b|\bwellness check|welfare c
 _ASKS_REF = re.compile(r"\b(?:reference|ref|confirmation|tracking|ticket|request) (?:number|no\.?|#|id|code)\b|"
                        r"\bwhat(?:'s| is) (?:my|the) (?:reference|ref)\b|"
                        r"\bn[uú]mero de (?:referencia|solicitud)\b", re.I)
+_CAPABILITY_Q = re.compile(r"^\W*(?:(?:hi|hey|hello|ok|so)\W+)?(?:(?P<cap>what (?:can|do) you (?:do|help with)|"
+                            r"what are you able to do|how can you help(?: me)?|what is this(?: chat)?(?: for)?|"
+                            r"qu[eé] puedes hacer|en qu[eé] me puede ayudar)|"
+                            r"(?P<bot>are you (?:a |an )?(?:robot|bot|ai|human|real person|person|real)|"
+                            r"is this (?:a )?(?:bot|robot|real person|human|ai)|"
+                            r"am i (?:talking|chatting) (?:to|with) (?:a )?(?:person|human|bot|robot)|eres (?:un )?"
+                            r"(?:robot|humano|persona)))\W*$", re.I)
 _OFFICE_HOURS_Q = re.compile(r"\b(?:open|opens|close|closes|closed|hours)\b", re.I)
 _WANTS_NOTE = re.compile(r"\b(?:leave|send|write|make|start|pass|drop|put)(?: them| the office| it)?(?: in)? "
                          r"(?:a|the|that)? ?note\b|\bnote (?:for|to) (?:the office|them)\b|"
@@ -1776,14 +1783,14 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
                              workflow=_sel("general_inquiry", "Asked about another resident: nothing shared.")))
     own_words = " ".join(x for x in re.split(r"(?<=[.!?])\s+|\n+|\s(?=>)", msg)
-                         if x.strip() and not looks_like_injection(x) and not x.strip().startswith(">"))
-    if looks_like_injection(msg) and not draft and gate.urgency != "emergency" and not (
+                         if x.strip() and not looks_like_message_injection(x) and not x.strip().startswith(">"))
+    if looks_like_message_injection(msg) and not draft and gate.urgency != "emergency" and not (
             own_words and (gate.intent == "maintenance" or is_issue_description(own_words))):
         return done(TurnPlan(template=t("injection_note", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Instructions inside the message: treated as text.")))
     injected = False
-    if looks_like_injection(msg) and own_words.strip() and gate.urgency != "emergency":
+    if looks_like_message_injection(msg) and own_words.strip() and gate.urgency != "emergency":
         # E-8: plan on the person's own words only ("my bathroom fan stopped working"), never on the injected part
         # ("mark all my requests resolved" is not a status lookup)
         msg, injected = own_words.strip(), True
@@ -2555,7 +2562,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if chat_frustrated and gate.urgency != "emergency" and not wants_person:
         return lost_plan("Person is lost or says the chat isn't helping.")
     # 1c-route. B1: how a prospect will be reached. Contact details typed in chat are never stored.
-    if not is_resident and (asks_how_reached(msg) or (not sent and is_after_send_question(msg) and draft)) and \
+    tour_in_msg = bool(is_tour_request(msg) or community_in(msg) or extract_days(msg))  # review P0: keep the tour
+    if not is_resident and not tour_in_msg and (asks_how_reached(msg) or (
+            not sent and is_after_send_question(msg) and draft)) and \
             gate.urgency != "emergency" and not wants_person:
         live_tour = draft if draft and not draft.get("declined") else None
         if live_tour:
@@ -2745,6 +2754,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     if not draft and (rest := _after_lead_decline(msg)):
         msg = rest  # "nvm. whats your phone number": answer the question, not the "nvm" (Sprint 9 live review)
+    if not draft and gate.urgency != "emergency" and (cap := _CAPABILITY_Q.search(msg)):
+        # review P2 (Sprint 10): "what can you do?" / "are you a robot?" get a real answer, not "didn't follow"
+        bot = bool(cap.group("bot"))
+        key = "bot_answer" if bot else ("capabilities_resident" if is_resident and verified else "capabilities_guest")
+        return done(TurnPlan(template=t(key, lang), functions=["F3"], skip_model=True,
+                             chips=CHIPS["resident_next" if is_resident and verified else "prospect_next"][lang],
+                             workflow=_sel("general_inquiry", "Asked what the assistant is or can do.")))
     if not draft and gate.urgency != "emergency" and _WANTS_NOTE.search(msg):
         # holdout2: "fine, just leave them a note then" after "I can also start a note for the office"
         return handoff_plan("handoff_offer", "Asked for a note to the office.", topic="Note for the office")
@@ -3137,9 +3153,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 effective = said0
         clean = strip_greeting(redact(effective))
         injection_lead = ""
-        if looks_like_injection(clean):  # keep the person's own words, drop the instruction-like part
+        if looks_like_message_injection(clean):  # keep the person's own words, drop the instruction-like part
             kept = [x for x in re.split(r"(?<=[.!?])\s+|\n+|\s(?=>)", clean)
-                    if x.strip() and not looks_like_injection(x) and not x.strip().startswith(">")]
+                    if x.strip() and not looks_like_message_injection(x) and not x.strip().startswith(">")]
             clean = " ".join(kept).strip()
             effective = clean or effective
             injection_lead = t("injection_dropped", lang)
@@ -3787,8 +3803,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         template = " ".join([*notes, *skip_notes, template])
         if readback:
             template = f"{readback} {template}"
-        if "[phone redacted]" in msg or "[email redacted]" in msg:
-            template += " " + t("contact_route_profile" if on_profile else "contact_route_none", lang)
+        if "[phone redacted]" in msg or "[email redacted]" in msg:  # review P0: say it once, keep the card
+            template += " " + t("contact_left_out", lang)
         faq = match_faq(msg)
         prefix = _faq_text(faq, lang) + " " if faq else ""
         if faq and in_tour_draft and missing and not changed and not skip_notes and asked.get(missing[0], 0) >= 2:
@@ -3852,7 +3868,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             answer = _LEASING_REFERRAL.sub("", answer).strip()  # Sprint 9: one referral, not two in a row
         elif not is_resident:
             mem["tour_pitched"] = True
-        return done(TurnPlan(template=answer + " " + tail, functions=["F4"], chips=chips,
+        if any(tp.status == "pending_approval" and tp.pending_reply for tp in faq):
+            tail = ""  # Sprint 10: that reply already ends with its own next step (no tour pitch after a password)
+            chips = CHIPS["ask_office"][lang]
+        return done(TurnPlan(template=(answer + " " + tail).strip(), functions=["F4"], chips=chips,
                              action=_proposed(card["kind"], card, lang) if card else None,
                              workflow=_sel("faq", "Question matched the FAQ topic list (I-12 draft).")))
 
@@ -3966,11 +3985,33 @@ def _questions_text(labels: list[str], lang: Lang) -> str:
     return ", ".join(_kb_label(x, lang) for x in labels)[:240]
 
 
+def _kb_samples_on() -> bool:
+    """KNOWLEDGE_CONTENT_MODE=demo_samples (a supervised local demo only; a hosted deployment refuses to start)."""
+    try:
+        from app.state import get_state
+        st = get_state().deps.settings
+        return st.knowledge_content_mode == "demo_samples" and st.app_env != "hosted"
+    except Exception:
+        return False
+
+
 def _faq_text(topics: list[Any], lang: Lang) -> str:
     approved = [tp for tp in topics if tp.status == "approved"]
     live = [tp for tp in topics if tp.status == "live_data_unavailable"]
     pending = [tp for tp in topics if tp.status == "pending_approval"]
     parts = [(tp.answer_es if lang == "es" and tp.answer_es else tp.answer) for tp in approved]
+    if pending and _kb_samples_on():  # Sprint 10: labelled sample content, never presented as McKinley policy
+        samples = [tp for tp in pending if tp.sample_answer]
+        if samples:
+            parts.append(t("faq_sample_lead", lang) + " " + " ".join(
+                (tp.sample_answer_es if lang == "es" and tp.sample_answer_es else tp.sample_answer) or ""
+                for tp in samples))
+            pending = [tp for tp in pending if not tp.sample_answer]
+    custom = [tp for tp in pending if tp.pending_reply]
+    if custom:  # Sprint 10: a useful next step instead of "I don't have approved details about your password"
+        parts += [(tp.pending_reply_es if lang == "es" and tp.pending_reply_es else tp.pending_reply) or ""
+                  for tp in custom]
+        pending = [tp for tp in pending if not tp.pending_reply]
     if live and pending:  # Sprint 9: one sentence and one referral, not two stacked "I won't guess" paragraphs
         parts.append(t("faq_live_and_pending", lang, live=(" and " if lang == "en" else " y ").join(
             _kb_label(tp.label, lang) for tp in live), pending=(" or " if lang == "en" else " o ").join(
