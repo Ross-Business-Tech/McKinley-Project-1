@@ -316,6 +316,8 @@ _LEASING_REFERRAL = re.compile(r"\s*(?:The leasing team (?:can give you accurate
                                r"arrendamiento (?:puede darle información exacta[^.]*|tiene la información actual))\.")
 # "will someone call me?", "is anyone going to email me?", "when will I hear back?", "¿me van a llamar?" — the person
 # asks to be CONTACTED. Not "is there a text version?" or "can I text a friend?" (Sprint 9 review B-3).
+_CHECK_ON = re.compile(r"\bcheck (?:on|in on|up on)\b|\bwellness check|welfare check|"
+                       r"make sure (?:she|he|they)(?:'s| is| are) (?:ok|okay|alright|fine)|\bver c[oó]mo est[aá]", re.I)
 _LEAD_DECLINE = re.compile(r"^\W*(?:nvm|never ?mind|nevermind|forget (?:it|that)|no thanks|nah|scratch that|"
                            r"olv[ií]d(?:elo|alo)|no importa|d[eé]jalo)\b[\s,.;:!-]*", re.I)
 
@@ -1706,7 +1708,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 "fields", {}).get("days"):
             store.clear_draft(session_id, pkey)
             touched["draft"] = True
-        return done(TurnPlan(template=t("account_boundary", lang), functions=["F3"], skip_model=True,
+        mem["boundary_said"] = mem.get("boundary_said", 0) + 1  # Sprint 9: the full refusal once, then shorter
+        return done(TurnPlan(template=t("account_boundary" if mem["boundary_said"] == 1 else "account_boundary_again",
+                                        lang), functions=["F3"], skip_model=True,
                              consumed_by_draft=True,
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
                              workflow=_sel("general_inquiry", "Account details asked for without that account "
@@ -1721,8 +1725,15 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if gate.urgency != "emergency" and (asks_about_other_resident(msg) or (
             mem.get("other_resident") and re.search(r"\b(?:him|her|he|she|his|them|their|roommate|live with)\b", msg,
                                                     re.I) and not is_issue_description(msg))):
+        if mem.get("other_resident") and _CHECK_ON.search(msg):
+            # Sprint 9 (j-safe-neighbor-info): "can someone from the office check on her?" is a request for the office,
+            # not another request for her details: a note, with nothing about her shared
+            return handoff_plan("welfare_note", "Asked the office to check on another resident (nothing shared).",
+                                topic="Asked the office to check on a neighbour")
+        again = bool(mem.get("other_resident") or mem.get("boundary_said"))  # one full refusal per conversation
         mem["other_resident"] = True  # R-4: a clear boundary; never a repair card or an office-number answer
-        return done(TurnPlan(template=t("other_resident", lang), functions=["F3"], skip_model=True,
+        return done(TurnPlan(template=t("other_resident_again" if again else "other_resident", lang), functions=["F3"],
+                             skip_model=True,
                              consumed_by_draft=True,
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
                              workflow=_sel("general_inquiry", "Asked about another resident: nothing shared.")))
@@ -1770,6 +1781,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                          "the leasing team" if lang == "en" else "el equipo de arrendamiento"))
         if r0["kind"] == "tour_request":
             return t("after_send_tour", lang, ref=r0["id"])
+        if r0["kind"] == "staff_handoff" and r0.get("priority") != "urgent":
+            return t("after_send_note", lang, what=what_txt, ref=r0["id"])  # Sprint 9: no urgency line on a status
         if saved:
             return t("after_send_saved", lang, what=what_txt, ref=r0["id"], team=team_txt, saved=saved)
         return t("after_send", lang, what=what_txt, ref=r0["id"], team=team_txt)
@@ -2258,7 +2271,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 return card_reply(live, sorry, "Answer plus 'I already told you': answer saved first.")
             if budget and live["kind"] == "tour_request" and not (extract_days(msg) or extract_time_of_day(msg)
                                                                    or community_in(msg) or city_in(msg)):
-                return card_reply(live, t("budget_noted", lang, value=budget), "Budget noted on the tour card.")
+                noted_c = t("budget_noted", lang, value=budget[0].lower() + budget[1:] if lang == "en" else budget)
+                return card_reply(live, noted_c + " " + t("budget_no_quote", lang), "Budget noted on the tour card.")
             if act.correction and act.correction[0] == "contact" and not appliance_in(msg) and not wants_person and \
                     not _LATER_SYMPTOM.search(msg) and len(msg.split()) <= 14:  # A-3: "change the contact pref to call"
                 pref = _prefers(act.correction[1], lang) or act.correction[1]
@@ -2290,8 +2304,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 mem["tour_pitched"] = True
                 price_line = _faq_text([tp for tp in match_faq(msg) if tp.status != "approved"], lang) \
                     if _QUESTIONISH_END.search(msg) else ""  # "anything under $1400?" also gets the honest price line
-                return done(TurnPlan(template=(price_line + " " if price_line else "") +
-                                     t("budget_noted", lang, value=budget) + " " + tail, functions=["F4"],
+                noted = t("budget_noted", lang, value=budget[0].lower() + budget[1:] if lang == "en" else budget)
+                if not price_line:
+                    noted += " " + t("budget_no_quote", lang)  # Sprint 9: the no-quote line once, not twice
+                return done(TurnPlan(template=(price_line + " " if price_line else "") + noted + " " + tail,
+                                     functions=["F4"],
                                      skip_model=True, consumed_by_draft=True, chips=CHIPS["prospect_next"][lang],
                                      workflow=_sel("leasing", "Budget noted for the leasing team (no prices).")))
         if not is_resident and mem.get("questions") and accepts_question_note(msg):

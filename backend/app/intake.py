@@ -1453,7 +1453,7 @@ _OTHER_RESIDENT = re.compile(
     r"\b(?:give|tell|show|send) me (?:his|her|their)\b|\bwhat (?:repairs?|requests?|work orders?) (?:he|she|"
     r"they) (?:has|"
     r"have|had)\b|\b(?:he|she) has (?:open|any)\b|\b(?:his|her) (?:phone|number|email|rent|balance|unit|"
-    r"apartment number|"
+    r"apartment(?: number)?|address|last name|full name|"
     r"account|lease|requests?|repairs?|work orders?|ac|a/c) (?:request|status|is|paid)?|\bcall (?:him|her)\b|"
     r"\b(?-i:[A-Z][a-z]+)'s (?:unit|apartment|phone|number|rent|ac|a/c|repairs?|requests?|account|balance|email|"
     r"lease)\b|"

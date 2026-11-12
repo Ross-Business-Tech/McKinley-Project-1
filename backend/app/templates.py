@@ -975,9 +975,9 @@ T: dict[str, dict[Lang, str]] = {
         "en": " Your unsent {what} is back below, so you can send it too.",
         "es": " Su {what} no enviada está de nuevo abajo, para que también pueda enviarla.",
     },
-    "budget_noted": {
-        "en": "I've noted your budget ({value}) for the leasing team. I can't quote prices or say what's available.",
-        "es": "Anoté su presupuesto ({value}) para el equipo. No puedo dar precios ni decir qué hay disponible.",
+    "budget_noted": {  # Sprint 9: a sentence, not "(Up to 1,300)"
+        "en": "Got it, I've noted a budget of {value}.",
+        "es": "Entendido, anoté un presupuesto de {value}.",
     },
     "note_added": {
         "en": "Added to the card: {value}.",
@@ -1349,6 +1349,36 @@ T: dict[str, dict[Lang, str]] = {
     "nvm_ack": {  # Sprint 9, NEEDS McKINLEY REVIEW: "nvm" after something was cancelled
         "en": "No problem. Is there anything else I can help with?",
         "es": "No hay problema. ¿Le ayudo con algo más?",
+    },
+    "budget_no_quote": {  # Sprint 9, NEEDS McKINLEY REVIEW
+        "en": "I can't quote prices or say what's available.",
+        "es": "No puedo dar precios ni decir qué hay disponible.",
+    },
+    "after_send_note": {  # Sprint 9, NEEDS McKINLEY REVIEW: a plain status question about a saved (non-urgent) note
+        "en": "{what} ({ref}) is saved in this demo, but it hasn't been sent to the office, so no one will reach out "
+              "from it. In the real service, the office would read it and get back to you.",
+        "es": "{what} ({ref}) está guardada en esta demostración, pero no se envió a la oficina, así que nadie le "
+              "contactará por ella. En el servicio real, la oficina la leería y le respondería.",
+    },
+    "welfare_note": {  # Sprint 9, NEEDS McKINLEY REVIEW (j-safe-neighbor-info): no details about the neighbour
+        "en": "That's kind of you. I can't share anything about your neighbor, but I've started a note asking the "
+              "office to check in. If you think someone is in danger right now, call 911. Send the note when it "
+              "looks right.",
+        "es": "Es muy amable de su parte. No puedo compartir nada sobre su vecino, pero empecé una nota para que la "
+              "oficina le pregunte cómo está. Si cree que alguien corre peligro ahora, llame al 911. Envíe la nota "
+              "cuando esté bien.",
+    },
+    "other_resident_again": {  # Sprint 9, NEEDS McKINLEY REVIEW: the same refusal, said shorter the second time
+        "en": "I understand, but I still can't share anything about another resident, even with their permission. I "
+              "can send a note to the office about your own question.",
+        "es": "Le entiendo, pero sigo sin poder compartir nada sobre otro residente, aunque dé su permiso. Puedo "
+              "enviar una nota a la oficina sobre su propia pregunta.",
+    },
+    "account_boundary_again": {  # Sprint 9, NEEDS McKINLEY REVIEW
+        "en": "I'm sorry, I still can't read account details here without a sign-in to that account, so there's "
+              "nothing I can look up. I can send a note to the office instead.",
+        "es": "Lo siento, sigo sin poder leer datos de una cuenta aquí sin iniciar sesión en ella, así que no puedo "
+              "buscar nada. Puedo enviar una nota a la oficina.",
     },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
