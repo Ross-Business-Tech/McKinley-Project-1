@@ -317,11 +317,11 @@ T: dict[str, dict[Lang, str]] = {
         "en": "Of course! I can continue in Spanish.",
         "es": "¡Claro! Con gusto le ayudo en español. ¿Busca un hogar o ya vive en una comunidad de McKinley?",
     },
-    "accommodation": {
-        "en": "Thank you for telling me. Requests like this are handled by a trained team member, who can go "
-              "through it with you. I've prepared a note for the office.",
-        "es": "Gracias por decírmelo. Estas solicitudes las atiende un miembro capacitado del equipo, quien la "
-              "revisará con usted. Preparé una nota para la oficina.",
+    "accommodation": {  # Sprint 9: who handles it is said as the real-service process, not as something underway
+        "en": "Thank you for telling me. In the real service, requests like this go to a trained team member, who "
+              "would go through it with you. I've prepared a note for the office.",
+        "es": "Gracias por decírmelo. En el servicio real, estas solicitudes las atiende un miembro capacitado del "
+              "equipo, que la revisaría con usted. Preparé una nota para la oficina.",
     },
     # ---- F3 vendor (D-06) ----
     "vendor": {
@@ -1091,11 +1091,12 @@ T: dict[str, dict[Lang, str]] = {
         "en": " Your other request (\"{topic}\") is in the same note, so it isn't lost.",
         "es": " Su otra solicitud (\"{topic}\") va en la misma nota, así que no se pierde.",
     },
-    "all_clear_ack": {  # NEEDS McKINLEY REVIEW: after a safety retraction; nothing else changes
-        "en": "Thanks for letting me know, I'm glad it's okay. Nothing else was changed, and the urgent note stays for "
-              "staff to close. Is there anything else I can help with?",
-        "es": "Gracias por avisarme, me alegra que todo esté bien. No cambié nada más y la nota urgente queda para que "
-              "el personal la cierre. ¿Le ayudo con algo más?",
+    "all_clear_ack": {  # NEEDS McKINLEY REVIEW: after a safety retraction; nothing else changes (Sprint 9: no
+        # "for staff to close": nobody at McKinley sees the demo note)
+        "en": "Thanks for letting me know, I'm glad it's okay. Nothing else was changed, and the urgent note stays "
+              "saved in this demo. Is there anything else I can help with?",
+        "es": "Gracias por avisarme, me alegra que todo esté bien. No cambié nada más y la nota urgente queda guardada "
+              "en esta demostración. ¿Le ayudo con algo más?",
     },
     # ---- Sprint 8 (D) quick-fix tips before a repair request. NEEDS McKINLEY REVIEW (all four keys) ----
     "quickfix_offer": {
