@@ -57,7 +57,8 @@ _STAFF_ACTION = re.compile(
 _PURPOSE = re.compile(rf"\b(?:so(?:\s+that)?|para\s+que)\s+{_PARTY}\s+(?:\w+\s+){{0,3}}{_ACT}\b"
                       rf"|\bfor\s+{_PARTY}\s+to\s+\w+"
                       rf"|\bso(?:\s+that)?\s+they\s+(?:can|could|will|'ll|’ll)\s+(?:\w+\s+){{0,1}}(?:{_CONTACT}|help\s+you)\b"
-                      rf"|\bso(?:\s+that)?\s+you\s+can\s+(?:connect|talk|speak|meet)\s+with\s+(?:someone|somebody|a\s+person|"
+                      rf"|\b(?:so(?:\s+that)?\s+you\s+can|for\s+you\s+to)\s+(?:connect|talk|speak|meet)\s+with\s+(?:someone|"
+                      rf"somebody|a\s+person|"
                       rf"staff|{_PARTY})", re.I)
 _DELIVERY = re.compile(rf"\b(?:send|submit|pass|forward|route|share|escalat\w+|hand(?:\s+(?:it|this))?\s+(?:over|off)|"
                        rf"get\s+(?:it|this))\w*\s+(?:\w+\s+){{0,4}}(?:to|over\s+to|along\s+to|with)\s+{_PARTY}"

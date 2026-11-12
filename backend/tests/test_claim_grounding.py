@@ -244,6 +244,7 @@ AUDIT_FALSE = [  # (clause, state) the audit showed passing both grounding and t
     ("I've started a note for our office team so you can connect with someone about your deposit.", READY),
     ("I'll pass your request to the leasing team in a note so they can help you with current rates.", READY),
     ("I can gather your details for the leasing team to check open two-bed floor plans.", READY),
+    ("I can help start a tour request for you to connect with our Florida leasing team.", READY),
 ]
 # An offer of the real note/request action ("I can save a tour request to share with the leasing team", "I can send a
 # note to the office") is kept, consistent with the approved backend offers; whether offers should be reworded is a
