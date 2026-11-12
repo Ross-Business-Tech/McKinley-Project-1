@@ -1,9 +1,10 @@
 """Provider contract: the SAME application-level expectations run against every hosted adapter.
 
 OpenRouter is driven through `httpx.MockTransport` (OpenAI-style JSON); Gemini through a fake `google-genai` client
-(like tests/test_gemini_provider.py); the Mock provider joins where the expectation is meaningful for it. No network,
-no keys. Genuine differences between adapters are asserted explicitly in the "Documented differences" section, never
-skipped silently.
+(like tests/test_gemini_provider.py) and, with GEMINI_BASE_URL set, through `httpx.MockTransport` as an
+OpenAI-compatible gateway ("gemini_gateway"); the Mock provider joins where the expectation is meaningful for it.
+No network, no keys. Genuine differences between adapters are asserted explicitly in the "Documented differences"
+section, never skipped silently.
 """
 
 import json
@@ -52,7 +53,7 @@ def no_sleep(monkeypatch):
 class ORHarness:
     """OpenRouter over httpx.MockTransport. A 'spec' is a JSON body (200), an httpx.Response, or an exception."""
 
-    name, model = "openrouter", OR_MODEL
+    name, model, wire = "openrouter", OR_MODEL, "openai"
 
     def __init__(self) -> None:
         self.requests: list[dict[str, Any]] = []
@@ -102,7 +103,7 @@ class ORHarness:
 class GeminiHarness:
     """Gemini with a fake google-genai client. A 'spec' is a response object or an exception."""
 
-    name, model = "gemini", GEM_MODEL
+    name, model, wire = "gemini", GEM_MODEL, "genai"
 
     def __init__(self) -> None:
         self.requests: list[dict[str, Any]] = []
@@ -153,7 +154,22 @@ class GeminiHarness:
         return self.requests[-1]["config"].temperature
 
 
-HARNESSES = {"openrouter": ORHarness, "gemini": GeminiHarness}
+class GeminiGatewayHarness(ORHarness):
+    """Gemini behind an OpenAI-compatible gateway (GEMINI_BASE_URL), over httpx.MockTransport."""
+
+    name, model, wire = "gemini", GEM_MODEL, "openai"
+
+    def provider(self, spec: Any) -> GeminiProvider:  # type: ignore[override]
+        def handler(req: httpx.Request) -> httpx.Response:
+            self.requests.append(json.loads(req.content))
+            if isinstance(spec, Exception):
+                raise spec
+            return spec if isinstance(spec, httpx.Response) else httpx.Response(200, json=spec)
+        return GeminiProvider(FAKE_KEY, base_url="https://gateway.test/v1",
+                              http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+
+HARNESSES = {"openrouter": ORHarness, "gemini": GeminiHarness, "gemini_gateway": GeminiGatewayHarness}
 
 
 @pytest.fixture(params=list(HARNESSES))
@@ -201,7 +217,7 @@ def test_each_app_schema_is_passed_as_structured_output(h, use):
                                                           schema_name=u.schema_name)
     name, schema = h.schema()
     assert schema == u.schema
-    if h.name == "openrouter":
+    if h.wire == "openai":
         assert name == u.schema_name  # OpenAI json_schema carries a name; Gemini's response_json_schema does not
 
 
@@ -248,7 +264,7 @@ def test_usage_without_thinking_details(h):
     assert r.input_tokens == 120 and r.extra["thinking_tokens"] is None
     # Documented difference: OpenRouter's completion_tokens is the full output (42); Gemini reports only the visible
     # answer (30) when there is no thoughts count. Either way output_tokens never under-counts what was reported.
-    assert r.output_tokens == (42 if h.name == "openrouter" else 30)
+    assert r.output_tokens == (42 if h.wire == "openai" else 30)
 
 
 # ------------------------------------------------------------------------------------------- error contract
@@ -390,7 +406,7 @@ def test_difference_schema_name_only_on_openrouter(h):
     h.provider(h.ok(json.dumps(GATE))).complete("s", HISTORY, target(h), CFG, schema=GATE_SCHEMA,
                                                 schema_name=GATE_SCHEMA_NAME)
     name, _ = h.schema()
-    assert name == (GATE_SCHEMA_NAME if h.name == "openrouter" else None)
+    assert name == (GATE_SCHEMA_NAME if h.wire == "openai" else None)
 
 
 def test_openrouter_only_payment_required_and_error_inside_200():
@@ -432,9 +448,10 @@ def test_gemini_only_invalid_key_400_is_auth_and_prompt_block_is_refusal():
 
 
 def test_difference_retries_are_done_by_different_layers(h):
-    """OpenRouter: app.llm.http retries 429/5xx/timeouts itself. Gemini: the SDK retries (HttpRetryOptions)."""
+    """OpenRouter and the Gemini gateway: app.llm.http retries 429/5xx/timeouts itself. Gemini SDK: the SDK retries
+    (HttpRetryOptions)."""
     cfg = GenerationConfig(max_tokens=100, temperature=None, timeout_seconds=5, max_retries=2)
-    if h.name == "openrouter":
+    if h.wire == "openai":
         calls: list[int] = []
 
         def handler(req):

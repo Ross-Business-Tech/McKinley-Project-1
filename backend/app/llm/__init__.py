@@ -38,7 +38,8 @@ def _mock(s: Settings) -> LLMProvider:
 
 def _gemini(s: Settings) -> LLMProvider:
     from app.llm.gemini_provider import GeminiProvider
-    return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None)
+    return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None,
+                          base_url=s.base_url_for("gemini"))
 
 
 def _anthropic(s: Settings) -> LLMProvider:

@@ -46,6 +46,8 @@ def _reply(model: str, text: str = "Thanks for reaching out. Which community are
 
 
 def _settings(tmp_path: Path, key: str | None = FAKE_KEY, **kw) -> Settings:
+    kw.setdefault("llm_provider", "openrouter")  # these tests cover the OpenRouter path (Gemini is now the default)
+    kw.setdefault("llm_model", "nvidia/nemotron-3.5-super-vl:free")
     return Settings(_env_file=None, openrouter_api_key=key, llm_max_retries=kw.pop("retries", 0),  # type: ignore[call-arg]
                     db_path=tmp_path / "t.sqlite3", **kw)
 
