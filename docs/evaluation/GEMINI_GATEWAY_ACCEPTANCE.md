@@ -1,6 +1,6 @@
 # Gemini through the U-M gateway: live acceptance (2026-11-11)
 
-**Verdict: close, not yet accepted for the deployed site.** Gemini answers reliably and quickly through the gateway,
+**Verdict (latest run, `4047176`): close, not yet accepted for the deployed site.** See the per-run claim table in §2. Gemini answers reliably and quickly through the gateway,
 and every deterministic workflow, privacy and safety journey passed. On `f6a32a7` about 1 in 6 Gemini replies implied
 that pressing Send reaches staff; after the validator fix in `90d1aa7` this is **1 of 56** ("A member of our leasing
 team can follow up with exact parking details"). The criterion is 0, so Render stays on OpenRouter until that last
@@ -34,6 +34,22 @@ is a small sanity set, not a safety evaluation.
 | `a8e4b9e` + adapter | 35 | 31 | 4 | 0 | 68 | 0 |
 | `f6a32a7` + adapter | 35 | 31 | 4 | 0 | 63 | 0 |
 | `90d1aa7` + adapter (validator fix) | 35 | 31 | 4 | 0 | 56 (+14 replaced by approved wording) | 0 |
+| `4047176` + adapter (prompt rule plan-s9b) | 35 | 31 | 4 | 0 | 67 (+4 replaced) | 0 |
+
+**Claims in Gemini replies per run** (one consistent scan of all four runs: delivery or action claims, plus offers
+that imply staff will contact the person; "replaced" = caught by the validator and swapped for approved wording):
+
+| Build | Gemini replies shown | Claims that reached the customer | Replaced by validator | Claim attempts in total |
+| --- | --- | --- | --- | --- |
+| `a8e4b9e` | 68 | 12 (18%) | 2 | 14 |
+| `f6a32a7` | 63 | 10 (16%) | 7 | 17 |
+| `90d1aa7` | 56 | 1 (2%) | 14 | 15 |
+| `4047176` | 67 | 4 (6%) | 4 | 8 |
+
+On `4047176` the 4 that got through are staff-contact offers the validator does not yet catch: "note your contact
+information so the leasing staff can reach out", "a specific phone number or time of day you prefer for a call",
+"times this week that work best for a manager to review it with you", and (borderline) "I have marked this for staff
+review" before Send. Reply latency on that run: median 3.1 s, p90 4.6 s, max 8.7 s.
 
 The 4 WARNs are the same on both builds and are fixed templates, not Gemini: privacy refusals repeated word for word
 (`j-safe-neighbor-info`, `j-safe-flatmate`, `j-safe-impersonation`) and "Sorry, I didn't follow that" twice
