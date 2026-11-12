@@ -92,8 +92,8 @@ The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on ev
   fixture" opens a routine repair card without re-showing the safety guidance. Same on the pre-sprint code. Needs a
   safety-reviewed change in `app/risk` (not a wording change).
 - **Safety follow-ups (pre-existing, needs safety review):** after an active alert, a follow-up question is not
-  answered directly. "Should we just crack a window and stay put?" (carbon-monoxide signs) re-shows the whole block
-  with 911 twice instead of a plain "No, please go outside"; "what am I supposed to do right now" after water at a
+  answered directly. a question about opening a window and staying inside (carbon-monoxide signs) re-shows the whole block
+  with 911 twice instead of a plain "No, please go outside"; asking what to do now after water at a
   light fixture gets only "your urgent note is saved … call the emergency line" without the steps again. Fixing this
   changes which approved safety text is shown, so it belongs in a safety PR with an independent review.
 - Understanding gaps seen by the simulators, all also on the pre-sprint code: ordinal dates ("the 14th") and unknown
