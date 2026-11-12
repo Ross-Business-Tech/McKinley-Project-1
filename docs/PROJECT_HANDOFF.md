@@ -3,6 +3,15 @@
 For the next developer or Claude Code session. Read with [`../README.md`](../README.md) and
 [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md); old chat history is not needed.
 
+> **Sprint 10 (2026-11-12):** independent prototype review remediated on `feat/review-remediation`; read
+> [`evaluation/PROTOTYPE_REVIEW_REMEDIATION.md`](evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) first. New behaviour to
+> know: hosted rate limits (30/min per visitor, 15/min per conversation; `RATE_LIMIT_PER_MINUTE`,
+> `RATE_LIMIT_PER_SESSION_MINUTE`), 64 KB body cap (`MAX_REQUEST_BYTES`), a retried confirm returns
+> `ALREADY_SAVED` with the same reference, `/api/health` reports `version` and `commit`, and
+> `KNOWLEDGE_CONTENT_MODE=demo_samples` shows labelled SAMPLE answers locally only (refused when hosted). Set
+> `LLM_CALL_BUDGET`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES` in the Render dashboard; `render.yaml` alone does not
+> change the live service.
+
 ## Where things are
 - **Branches:** sprints 1–3 + consolidation were merged into `development` (PR #1) and then into `main` (PR #2).
   Deployment preparation is on **`feat/gemini-supabase-deployment`** (from `development`, includes the teammate
@@ -29,6 +38,10 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 - Sprint 6 (`feat/robust-workflow-safety-auth`): structured understanding layer, workflow state machine, server-side
   principal with deny-by-default data access, concept-based safety with persistent incident state
   ([evaluation/SPRINT6_RESULTS.md](evaluation/SPRINT6_RESULTS.md)).
+- Sprint 9 (`feat/warm-conversational-ux`, on top of PR #6): warm, concise customer wording; one honest status
+  ("Saved in demo") from `models.STATUS_LABEL` on every read; the demo limit said once per step (persistent demo
+  strip, one line on each card, short confirmation); validator check `_demo_status_claim`; compact saved cards
+  ([evaluation/SPRINT9_WARM_VOICE.md](evaluation/SPRINT9_WARM_VOICE.md)).
 - Sprint 8 (`feat/emergency-ux-maintenance-enhancements`, on top of `feat/s7-safety-regression-fixes`): no persistent
   911 control; backend `safety_state` + category-specific `safety_contacts` (normal / concern / active); R5c
   conditional questions with a confirmation escalation (R5f); repeat-issue history with community-manager review

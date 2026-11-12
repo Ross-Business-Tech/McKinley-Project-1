@@ -39,7 +39,8 @@ def test_maintenance_intake_readback_confirm_and_status(client):
     res = confirm(client, "maintenance_request")
     assert res["ok"] and res["record"]["id"].startswith("DEMO-WO-") and res["record"]["system"] == "prototype"
     assert res["record"]["status"] == "submitted_for_review"
-    assert confirm(client, "maintenance_request")["error_code"] == "NO_PENDING_ACTION"  # no double submit
+    again = confirm(client, "maintenance_request")  # no double submit: a retry returns the saved record (Sprint 10)
+    assert again["error_code"] == "ALREADY_SAVED" and again["record"]["id"] == res["record"]["id"]
 
     st = chat(client, "What's the status of my requests?")
     refs = [i["reference"] for i in st["status_items"]]
@@ -87,7 +88,8 @@ def test_unverified_claims_unlock_nothing(client):
     m = chat(client, "My bathroom sink is leaking", persona="U-NOMATCH", session="u2")
     assert m["action"]["kind"] == "staff_handoff"  # no work-order draft without a record
     g = chat(client, "My bathroom sink is leaking", persona="", session="g")
-    assert g["action"] is None and "sign in" in g["reply"].lower()
+    # Sprint 10 (review P1): a guest's repair is a note for the office (no work order without a record), not a dead end
+    assert g["action"]["kind"] == "staff_handoff" and "sign-in" in g["reply"].lower().replace("sign in", "sign-in")
 
 
 @pytest.mark.parametrize("persona", ["", "P-BROWSE-FL", "U-NOMATCH", "R002"])
@@ -110,7 +112,7 @@ def test_tour_request_change_midway_is_never_a_booking(client):
     vals = {f["key"]: f["value"] for f in r["action"]["fields"]}
     assert vals["days"] == "Sunday" and vals["time"] == "Afternoon" and r["action"]["stage"] == "ready"
     res = confirm(client, "tour_request", persona="", session="t")
-    assert res["record"]["status"] == "requested" and "isn't a booking yet" in res["message"]
+    assert res["record"]["status"] == "requested" and "time isn't confirmed" in res["message"]
     assert not re.search(r"\b\d{1,2}(:\d{2})?\s?(am|pm)\b", res["message"], re.I)
 
 

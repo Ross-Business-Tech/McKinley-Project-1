@@ -9,12 +9,14 @@ Modes: baseline (generic prompt; steps 4-6 and 9 skipped), prompt_only (McKinley
 resident context), aware (everything). See docs/diagrams/chat-turn-sequence.md.
 """
 
+import logging
 import re
 import time
 import uuid
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
+from app import claim_grounding, safety_dedupe
 from app import understanding as und
 from app import workflow_state as wf
 from app.actions import TurnPlan, identity_note, plan_turn, resident_for, synthesize_handoff
@@ -153,7 +155,7 @@ FALLBACK_CODES = {"MODEL_API_ERROR", "MODEL_CONNECTION_ERROR", "MODEL_TIMEOUT", 
 REPLACE_ON_FAIL = CRITICAL_CHECKS | {"no_invented_price", "no_invented_time", "terminology"}
 
 CHANNEL_RULES = {
-    "web_chat": "Channel: web chat. 2-4 short sentences.",
+    "web_chat": "Channel: web chat. 1-3 short sentences; longer only for safety guidance.",
     "sms": "Channel: SMS (I-07 team draft). At most 2 short sentences, under 320 characters, no lists.",
     "email": "Channel: email (I-07 team draft). Complete sentences; end with the line "
              "'McKinley resident services assistant (AI)'.",
@@ -161,7 +163,7 @@ CHANNEL_RULES = {
 
 
 # Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
-PLAN_SECTION_VERSION = "plan-s51b"
+PLAN_SECTION_VERSION = "plan-s9b"
 
 # Allowlisted, synthetic facts the model may state: community -> region, read from the demo workbook only.
 FACT_RULES = ("Only state a community's location, size, features, availability or price if that fact is in the "
@@ -186,8 +188,8 @@ def card_instructions(plan: TurnPlan) -> list[str]:
     if not a:
         return []
     if a.stage == "submitted":
-        return [f"The {a.title} was saved in the prototype (reference shown on the card). Nobody is notified "
-                "automatically; do not promise a call, a visit or a time."]
+        return [f"The {a.title} was saved in this demo only (the card shows its reference and details). It was NOT "
+                "sent to McKinley staff: never say anyone received it, will call, will visit or will confirm a time."]
     out = [f"A {a.title} card is open on screen and is NOT sent yet. That card is the request: never say you can't "
            "create or file it, never tell the person to submit a request somewhere else, and never offer to write a "
            "note or request that is already on screen."]
@@ -195,7 +197,8 @@ def card_instructions(plan: TurnPlan) -> list[str]:
         out.append(f"Still needed on the card: {', '.join(a.missing)}. Ask only for {a.missing[0]}, with the "
                    "question the draft reply asks; do not skip it and do not ask for anything else.")
     else:
-        out.append("The card is ready: tell the person to check it and press Send. Typing 'yes' does not send it.")
+        out.append("The card is ready: ask the person to check it and press Send (typing 'yes' does not send it, but "
+                   "do not lecture about typing unless they typed yes).")
     return out
 
 
@@ -205,10 +208,20 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str 
         "## Backend next step (authoritative)",
         CHANNEL_RULES[channel],
         f"Reply language: {'Spanish' if lang == 'es' else 'English'}.",
-        "Rewrite the backend draft reply below in your own warm, plain words. Keep every fact and every "
-        "limitation it states. Do not add facts, times, prices, names of staff or promises. Do not say anything was "
-        "sent, submitted, created or scheduled unless the draft says so. The interface shows any form or "
-        "confirmation button separately, so do not repeat field lists.",
+        "Rewrite the backend draft reply below in your own warm, plain words, like a thoughtful McKinley "
+        "representative (you are an automated assistant, never claim to be a person). Answer the person's actual "
+        "question first. Keep every fact and every limitation the draft states, but do not add disclaimers, "
+        "apologies or caveats it does not contain: the screen already shows a demo notice. Do not add facts, times, "
+        "prices, names of staff or promises. Do not say anything was sent, submitted, created or scheduled unless "
+        "the draft says so. The interface shows any form, reference number and confirmation button separately, so "
+        "do not repeat field lists, and you may leave out a reference number the card already shows. Ask at most "
+        "one question. No filler openers ('Certainly!', 'Great question!'). Match empathy to the situation (more for "
+        "a repeat problem or frustration, none for a plain status question) in one short phrase; never apologize "
+        "twice. Talk to the person about their situation, not about the interface: never say 'a card is open on "
+        "your screen'; say 'your request below' at most. In this demo Send only SAVES the request: nobody at McKinley "
+        "receives it, so never say what staff will, can or should do next (follow up, call, review, confirm, receive) "
+        "and never say Send submits it to a team, unless the draft itself says it, framed 'in the real service'. Say "
+        "'press Send to save it' at most.",
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")
@@ -438,11 +451,35 @@ def run_turn(
                                      "recommended_handoff": plan.force_handoff})
 
     # 8. validate (model output is untrusted)
-    raw_reply = out.reply.strip()
+    raw_reply = model_text = out.reply.strip()
+    # 8a. ground claims about requests and staff in this turn's backend state (app/claim_grounding.py): clauses
+    # asserting a side effect the state does not contain are removed; the validator below remains the backstop.
+    grounding = None
+    if reply_source == "model" and plan and enforce_validation:
+        own = ([*deps.store.records(session_id=session_id, limit=100),
+                *(deps.store.records(persona_id=persona_id, limit=100) if persona_id else [])]
+               if (deps.store and use_history) else [])
+        session_refs = tuple(sorted({str(r.get("id")) for r in own if r.get("id")}))  # this principal's own records
+        grounding = claim_grounding.ground_reply(raw_reply, claim_grounding.TurnState.from_plan(
+            plan, lang, session_records=session_refs))
+        if grounding.needs_template:
+            raw_reply = plan.template.strip()
+            reply_source = "template_after_validation"
+            trace.add("8_validate", "warn", "unsupported staff/action claims removed left nothing usable: "
+                                            "backend template used")
+        elif grounding.changed:
+            raw_reply = grounding.reply
+            trace.add("8_validate", "warn", claim_grounding.check_detail(grounding))
     allowed_text = " ".join(f.value for f in ctx.fields)
-    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None,
-                                              user_text=" ".join([*said_ever, msg]),
-                                              nothing_sent=not (plan and plan.records))
+    check_args = dict(urgency=gate.urgency if gate else None, user_text=" ".join([*said_ever, msg]),
+                      nothing_sent=not (plan and plan.records))
+    # staff diagnostics show what the MODEL wrote (its raw failures stay visible); the replace decision below uses
+    # the grounded reply that would actually be shown
+    checks: list[OutputCheck] = output_checks(model_text, allowed_text, **check_args)  # type: ignore[arg-type]
+    shown_checks = (output_checks(raw_reply, allowed_text, **check_args)  # type: ignore[arg-type]
+                    if grounding is not None and grounding.changed and not grounding.needs_template else None)
+    if grounding is not None:
+        checks.append(OutputCheck(code="claims_grounded", passed=True, detail=claim_grounding.check_detail(grounding)))
     checks.append(OutputCheck(
         code="structured_output",
         passed=result.parse_mode != "text_fallback",
@@ -467,7 +504,8 @@ def run_turn(
     # sprint 8: the UI safety state follows exactly what is shown (app/risk/ui_state.py)
     safety_state, safety_contacts = safety_ui(rd, alert_shown=bool(safety_notice), care_kind=care_kind, lang=lang)
     failed = [c.code for c in checks if not c.passed]
-    unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
+    unsafe = [c for c in ([x.code for x in shown_checks if not x.passed] if shown_checks is not None else failed)
+              if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
         reply = redact(plan.template)
         reply_source = "template_after_validation"
@@ -475,6 +513,12 @@ def run_turn(
     else:
         trace.add("8_validate", "warn" if failed else "ok",
                   f"failed checks: {failed}" if failed else "all checks passed")
+    # each emergency instruction once per message (app/safety_dedupe.py): backend wording only (never model text, whose
+    # negations could look like cover), after any replacement above; approved steps and the safety fields are untouched
+    if safety_notice and reply_source != "model":
+        reply, dropped = safety_dedupe.drop_repeated_reminders(reply)
+        if dropped:
+            trace.add("8_validate", "ok", f"emergency reminder already said in this reply: {len(dropped)} removed")
 
     # 9. handoff recommendation (recommendation only; nothing is sent)
     signals = pre_model_gates(msg) + (context_signals(ctx) if mode == "aware" else [])
@@ -508,7 +552,7 @@ def run_turn(
         trace.add("9_handoff", "skipped", "baseline: model's own recommendation only")
 
     # 10. persist safe metadata (turn text for session memory; gate log has no message text)
-    if deps.store and use_history:
+    def _persist() -> None:
         shown = ("emergency safety steps" + (" and 988 crisis line" if ekind == "self_harm" or rd.also_988
                                              else " and 911")
                  if safety_notice else {"distress": "988 care line", "danger": "911 safety line",
@@ -528,7 +572,15 @@ def run_turn(
                 "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
                 "planner_memory": plan.memory if plan else {},
             })
-    trace.add("10_persist", "ok" if (deps.store and use_history) else "skipped",
+
+    persisted = True
+    if deps.store and use_history:
+        try:
+            _persist()
+        except Exception as e:  # Sprint 10 (review P1): a failed save never replaces the reply, safety text included
+            persisted = False
+            logging.getLogger("mckinley").error("turn not persisted: %s", type(e).__name__)
+    trace.add("10_persist", ("ok" if persisted else "warn") if (deps.store and use_history) else "skipped",
               "gate metadata logged (no message text)" if (deps.store and use_history and gate) else
               "session turns stored" if (deps.store and use_history) else "eval run: not stored as session")
 

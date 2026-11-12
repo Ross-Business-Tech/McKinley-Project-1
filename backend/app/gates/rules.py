@@ -5,7 +5,7 @@ import re
 from app.context import MAINTENANCE_TOPICS, detect_topics
 from app.gates.base import ALWAYS_HUMAN_FLAGS, LOW_CONFIDENCE_THRESHOLD, GateContext
 from app.models import GateDecision, Intent, Urgency
-from app.safety import looks_like_injection, normalize_for_matching, pre_model_gates
+from app.safety import looks_like_message_injection, normalize_for_matching, pre_model_gates
 
 _LEASING = re.compile(
     r"\btour\b|\bapply\b|application|availab|floor ?plans?|\b\d\s?-?\s?(bed|br|bedroom)s?\b|\bbeds?\b|bedroom|"
@@ -105,7 +105,7 @@ def classify_rules(message: str, ctx: GateContext) -> GateDecision:
         flags.append("explicit_human_request")  # switches to the handoff workflow (soft asks do not)
         if "human_requested" not in flags:
             flags.append("human_requested")
-    if looks_like_injection(message):
+    if looks_like_message_injection(message):
         flags.append("message_injection_attempt")  # informational: message is data, never instructions
     if _FRUSTRATION.search(message):
         flags.append("complaint_or_frustration")

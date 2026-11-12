@@ -326,6 +326,9 @@ export interface Health {
   database?: "sqlite" | "postgres" | ""; // "" = public health subset (not staff)
   resident_source?: string | null;
   is_mock?: boolean;
+  /** Sprint 10: API version and the short git commit of the deployment (when the host provides it). */
+  version?: string;
+  commit?: string | null;
   // false = this backend has no demo personas (APP_ENV=hosted): hide the demo sign-in, guest only
   demo_personas_enabled?: boolean;
 }

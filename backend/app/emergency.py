@@ -658,6 +658,8 @@ _NEGATED = re.compile(
     r"\bnot (?:a |any )?(?:flood\w*|fire|on fire|smok\w+|sparking|sparks|gas(?: leak| smell)?|an emergency|emergency|"
     r"burning)\b|"
     r"\bnever (?:reported|said|mentioned|told you|claimed)\W+(?:\w+\W+){0,3}(?:gas|fire|smoke|leak|emergency)\w*|"
+    # Sprint 10 (simulator safety miss): in "oh no smoke coming from the outlet", "oh no" is an exclamation
+    r"(?<!\boh )(?<!\bohh )(?<!\boh, )"
     r"\b(?:no|not any|without(?: any)?|zero|never (?:saw|smelled|had))\s+(?:\w+\s+)?(?:signs? of\s+)?(?:smoke|fire|"
     r"flames?|sparks?|sparking|gas(?: smell| leak)?|smell of gas|burning(?: smell)?|water on the floor|flooding|blood|"
     r"injur\w+|beeping)\b|"

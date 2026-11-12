@@ -1,13 +1,17 @@
 """FastAPI entrypoint. Run: uv run uvicorn app.main:app --reload"""
 
 import logging
+import os
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import actions, chat, evals, gates
 from app.api.errors import http_error_response
+from app.api.protection import BodyLimitMiddleware, CatchAllMiddleware
 from app.api.staff_guard import request_is_local, staff_allowed
 from app.auth import demo_personas_enabled
 from app.chat_engine import prompt_for
@@ -16,11 +20,17 @@ from app.llm import LLMGateway
 from app.models import HealthResponse, ModelTarget
 from app.state import AppState, get_state
 
+API_VERSION = "0.4.0"
+# Sprint 10 (review P1): the deployed commit, so anyone can tell what is live (Render sets RENDER_GIT_COMMIT)
+DEPLOYED_COMMIT = (os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or "")[:12] or None
+
 
 class HealthWithAuth(HealthResponse):
     # False = this deployment has no demo personas (APP_ENV=hosted): the website hides the demo sign-in picker and
     # the assistant answers public information only. Never a secret.
     demo_personas_enabled: bool = False
+    version: str = API_VERSION
+    commit: str | None = None  # short git commit of this deployment, when the host provides it
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -34,14 +44,31 @@ if not _ready:  # visible in the host's logs; the value of any key is never logg
     logging.getLogger("mckinley").warning("default provider %s is not ready (%s): model turns will return errors; "
                                           "set the key or LLM_PROVIDER=mock", _settings.llm_provider, _status)
 
-app = FastAPI(title="McKinley AI Prototype API", version="0.3.0",
-              description="Synthetic-data prototype. No live Yardi, Databricks, messaging or work-order writes.")
+_hosted = _settings.app_env == "hosted"
+app = FastAPI(title="McKinley AI Prototype API", version=API_VERSION,
+              description="Synthetic-data prototype. No live Yardi, Databricks, messaging or work-order writes.",
+              # Sprint 10: the interactive API docs are a developer tool, not public on a hosted deployment
+              docs_url=None if _hosted else "/docs", redoc_url=None if _hosted else "/redoc",
+              openapi_url=None if _hosted else "/openapi.json")
+# order matters: the last middleware added is the outermost, so CORS headers reach errors and 413s too
+app.add_middleware(CatchAllMiddleware)
+app.add_middleware(BodyLimitMiddleware, max_bytes=_settings.max_request_bytes)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.cors_origin_list,
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def _invalid(_: Request, exc: RequestValidationError):  # noqa: ANN202 - FastAPI handler signature
+    """The standard error shape, naming the fields only: the request is never echoed back (review P1: a 5 MB body
+    came back in full, and a typed SSN verbatim)."""
+    fields = sorted({".".join(str(x) for x in e.get("loc", ())[1:]) or "body" for e in exc.errors()})[:10]
+    return JSONResponse(status_code=422, content={"error": {
+        "code": "INVALID_REQUEST", "message": "The request was not valid: " + ", ".join(fields) + ".",
+        "retryable": False}})
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -78,6 +105,7 @@ def health(request: Request, state: AppState = Depends(get_state)) -> HealthWith
         database="",
         resident_source=None,
         is_mock=gw.default_target.provider == "mock",
+        commit=DEPLOYED_COMMIT,
     )
     if not staff_allowed(request, state):
         return public
@@ -90,8 +118,11 @@ def health(request: Request, state: AppState = Depends(get_state)) -> HealthWith
 
 
 @app.get("/api/models", response_model=list[ModelTarget])
-def models(state: AppState = Depends(get_state)) -> list[ModelTarget]:
-    """Server-configured provider:model targets. Never includes keys or base URLs."""
+def models(request: Request, state: AppState = Depends(get_state)) -> list[ModelTarget]:
+    """Server-configured provider:model targets. Never includes keys or base URLs. Hosted: staff only (an empty
+    list otherwise, so the locked staff console still loads)."""
+    if state.deps.settings.app_env == "hosted" and not staff_allowed(request, state):
+        return []
     gw = state.deps.llm
     out = []
     for t in gw.eval_targets():

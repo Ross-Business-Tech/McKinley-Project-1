@@ -108,6 +108,7 @@ const COVERAGE_TONE: Record<CoverageStatus, { tone: StateTone; text: string }> =
 
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
+  const [view, setView] = useState<"queue" | "demo">("queue");
   // On a hosted backend the staff routes refuse browsers (no staff sign-in yet): use the recorded demo there.
   const staffTools = Boolean(state?.live && state.health?.app_env !== "hosted");
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +150,22 @@ export function StaffConsole() {
             </span>
           </p>
         )}
-        {state?.live && state.health && (
+        {state && (
+          <div role="group" aria-label="Console view" className="inline-flex w-full rounded-lg border border-mk-line bg-mk-surface p-1 sm:w-auto">
+            {([["queue", "Staff queue"], ["demo", "Demo and evaluation"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={`mk-focus min-h-11 flex-1 rounded-md px-4 font-heading text-base font-medium sm:flex-none ${view === v ? "bg-mk-brand text-white" : "text-mk-muted hover:text-mk-ink"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {view === "demo" && state?.live && state.health && (
           <div role="note" data-testid="backend-status" className="rounded-lg border border-mk-line bg-mk-surface px-4 py-3">
             <p className="sr-only">Backend status</p>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm lg:grid-cols-4">
@@ -184,19 +200,16 @@ export function StaffConsole() {
         )}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
-          <Tabs defaultValue={staffTools ? "records" : "inspector"}>
+          <Tabs key={view} defaultValue={view === "queue" ? "records" : "inspector"}>
             {/* One row on every width; on phones it scrolls sideways (the next tab peeks in). Selected = 3px blue bar. */}
             <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] max-md:[mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:px-1">
               <TabsList variant="line" className="h-auto! w-max flex-nowrap justify-start gap-0 p-0">
-                {[
-                  ["records", "Saved requests"],
-                  ["live", "Live conversations"],
-                  ["inspector", "Conversation inspector"],
-                  ["coverage", "Workflow coverage"],
-                  ["usability", "Usability"],
-                  ["compare", "Model comparison"],
-                  ["evals", "Evaluation"],
-                ].map(([v, label]) => (
+                {/* Sprint 10 (review P1): what a McKinley employee would see, apart from the team's test tools */}
+                {(view === "queue"
+                  ? [["records", "Saved requests"], ["live", "Live conversations"]]
+                  : [["inspector", "Conversation inspector"], ["coverage", "Workflow coverage"], ["usability", "Usability"],
+                     ["compare", "Model comparison"], ["evals", "Evaluation"]]
+                ).map(([v, label]) => (
                   <TabsTrigger
                     key={v}
                     value={v}
@@ -486,6 +499,8 @@ function RecordStatus({ r }: { r: PrototypeRecord }) {
   return <StatusPill tone={statusTone(r.status_label, recordPriority(r))}>{r.status_label}</StatusPill>;
 }
 
+const PAGE = 20;
+
 function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | null }) {
   const [rows, setRows] = useState<PrototypeRecord[] | null>(live ? null : (snapshot?.prototype_records ?? []));
   const [err, setErr] = useState<string | null>(null);
@@ -498,10 +513,13 @@ function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | n
       .then(setRows)
       .catch((e: unknown) => setErr(e instanceof ApiError ? e.message : "Could not load records"));
   }, [live]);
-  const shown = useMemo(
+  const [pageSize, setPageSize] = useState(PAGE);
+  const matching = useMemo(
     () => sortQueue((rows ?? []).filter((r) => (kind === "all" || r.kind === kind) && (prio === "all" || recordPriority(r) === prio))),
     [rows, kind, prio],
   );
+  // Sprint 10 (review P1): 20 at a time (the full list was 8,685 px tall on a phone)
+  const shown = matching.slice(0, pageSize);
   const select = "mk-focus h-11 rounded-md border border-mk-line-strong bg-mk-surface px-3";
 
   return (
@@ -536,7 +554,7 @@ function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | n
             </select>
           </div>
           <p className="pb-2.5 text-sm text-mk-muted" role="status">
-            Showing {shown.length} of {rows.length}
+            Showing {shown.length} of {matching.length === rows.length ? rows.length : `${matching.length} matching (${rows.length} in all)`}
           </p>
         </div>
       )}
@@ -606,6 +624,15 @@ function Records({ live, snapshot }: { live: boolean; snapshot: DemoSnapshot | n
               </tbody>
             </table>
           </div>
+          {matching.length > shown.length && (
+            <button
+              type="button"
+              onClick={() => setPageSize((n) => n + PAGE)}
+              className="mk-focus inline-flex min-h-11 items-center rounded-md border border-mk-line-strong bg-mk-surface px-4 font-medium"
+            >
+              Show {Math.min(PAGE, matching.length - shown.length)} more
+            </button>
+          )}
         </>
       )}
     </section>

@@ -23,6 +23,7 @@ from app.intake import (
     matches_words,
     says_repeat_es,
 )
+from tests.wording import says_not_sent
 
 
 def chat(client, msg, session, persona="R001"):
@@ -145,14 +146,15 @@ def test_lost_with_open_card_apologises_once_restates_step_and_offers_a_person(c
     assert "Which room" not in r["reply"] and honest(r["reply"])
     r = chat(client, "this isn't helping", "l1")  # second time: the note, carrying the repair details
     assert r["action"]["kind"] == "staff_handoff" and "sink" in fields(r)["earlier"].lower()
-    assert "nobody is notified" in r["reply"] and not r["records_created"]
+    # Sprint 9: the demo limit is the note card's own line (said once, at the point of Send)
+    assert says_not_sent(r["action"]["note"]) and not r["records_created"]
     assert r["reply"].count("sorry") <= 1
 
 
 def test_lost_without_card_prepares_a_note_without_questions(client):
     r = chat(client, "this is useless", "l2")
     assert r["action"]["kind"] == "staff_handoff" and r["action"]["stage"] == "ready"
-    assert "?" not in r["reply"] and "nobody is notified" in r["reply"] and not r["records_created"]
+    assert "?" not in r["reply"] and says_not_sent(r["action"]["note"]) and not r["records_created"]
 
 
 def test_lost_prospect_keeps_the_tour_card(client):
@@ -209,7 +211,7 @@ def test_after_repair_sent_followups_answer_about_that_request(client):
     ref = confirm(client, "s1", "maintenance_request")["record"]["id"]
     for q in ("will someone call me?", "when will they confirm?", "did it go through?"):
         r = chat(client, q, "s1")
-        assert ref in r["reply"] and "faucet" in r["reply"].lower() and "nobody is notified" in r["reply"], q
+        assert ref in r["reply"] and "repair request" in r["reply"].lower() and says_not_sent(r["reply"]), q
         assert r["action"] is None and not r["records_created"] and honest(r["reply"])
 
 
@@ -217,8 +219,8 @@ def test_after_tour_sent_email_question_says_not_a_booking(client):
     chat(client, "tour Heron Lake saturday morning", "s2", persona=None)
     ref = confirm(client, "s2", "tour_request", persona=None)["record"]["id"]
     r = chat(client, "will someone email me?", "s2", persona=None)
-    assert ref in r["reply"] and "not a booking" in r["reply"] and "Heron Lake" in r["reply"]
-    assert "nobody is notified" in r["reply"] and "Happy to help" not in r["reply"]
+    assert ref in r["reply"] and "no time is booked" in r["reply"] and "Heron Lake" not in r["reply"]
+    assert says_not_sent(r["reply"]) and "Happy to help" not in r["reply"]
 
 
 def test_did_it_go_through_during_incomplete_draft_lists_what_is_missing(client):
@@ -248,14 +250,14 @@ def test_tour_question_is_not_asked_a_third_time(client):
     r2 = chat(client, "hmm", "t2", persona=None)
     assert "Which days" in r2["reply"]
     r3 = chat(client, "not sure", "t2", persona=None)
-    assert "Which days" not in r3["reply"] and "leasing team to ask" in r3["reply"]
+    assert "Which days" not in r3["reply"] and "left it open" in r3["reply"] and "leasing team" not in r3["reply"]
     assert "time of day" in r3["reply"].lower()
 
 
 def test_whenever_answers_the_days_question(client):
     chat(client, "I want to tour Heron Lake", "t3", persona=None)
     r = chat(client, "whenever", "t3", persona=None)
-    assert fields(r)["days"] == "Any day (flexible)" and "Preferred days: Any day" in r["reply"]
+    assert fields(r)["days"] == "Any day (flexible)" and "Sounds good" in r["reply"]
 
 
 # ---- D-14 / D-13 / D-15 ---------------------------------------------------------------------------------------
@@ -309,15 +311,15 @@ def test_tour_card_stages_and_corrections_say_what_changed(client):
     r = chat(client, "tour Heron Lake saturday", "b1", persona=None)
     assert r["action"]["stage"] == "collecting" and fields(r)["contact_route"] == "Not collected in this prototype"
     r = chat(client, "morning", "b1", persona=None)
-    assert r["action"]["stage"] == "ready" and "Time of day: Morning" in r["reply"]
+    assert r["action"]["stage"] == "ready" and "in the morning" in r["reply"]
     r = chat(client, "actually make it sunday", "b1", persona=None)
-    assert "Updated: Preferred days → Sunday" in r["reply"] and fields(r)["days"] == "Sunday"
+    assert "changed it to Sunday" in r["reply"] and fields(r)["days"] == "Sunday"
     r = chat(client, "actually Birchwood", "b1", persona=None)
-    assert "Updated: Community or city → Birchwood Commons" in r["reply"]
+    assert "updated the community" in r["reply"] and fields(r)["area"] == "Birchwood Commons"
     res = confirm(client, "b1", "tour_request", persona=None)
     assert res["ok"] and res["action"]["stage"] == "submitted"
-    assert res["record"]["status_label"] == "Requested; leasing team to confirm a time"
-    assert "booked" not in res["message"].lower() and "isn't a booking" in res["message"]
+    assert res["record"]["status_label"] == "Saved in demo"  # Sprint 9: nobody "will confirm" a demo request
+    assert "time isn't confirmed" in res["message"] and says_not_sent(res["message"])
 
 
 def test_cancelled_tour_card_is_cleared(client):
@@ -397,7 +399,7 @@ def test_spanish_repeat_words_raise_priority(client):
 def test_first_tour_value_is_not_called_an_update(client):
     chat(client, "I want to tour Heron Lake", "w1", persona=None)
     r = chat(client, "saturday", "w1", persona=None)
-    assert "Preferred days: Saturday" in r["reply"] and "Updated" not in r["reply"]
+    assert "Sounds good" in r["reply"] and "Updated" not in r["reply"]
 
 
 def test_more_tour_talk_after_sending_does_not_open_a_duplicate(client):

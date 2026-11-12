@@ -13,6 +13,7 @@ import pytest
 
 from app import maintenance_history as mh
 from app.state import get_state
+from tests.wording import says_not_sent
 
 NOW = datetime(2026, 11, 10, 12, 0)
 
@@ -174,8 +175,7 @@ def test_repeat_reply_names_the_real_count_and_window_and_record_carries_history
     chat(client, "Yes, you can enter")
     res = confirm(client)
     # lead: wording reconciled with the demo CONFIRM text ("no McKinley staff will see it"): marked for review, not seen
-    assert res["ok"] and "marked for community manager review" in res["message"] and "nobody sees it yet" in \
-        res["message"]
+    assert res["ok"] and "community manager review" in res["message"] and says_not_sent(res["message"])
     recs = stored("R001")
     assert len(recs) == 1
     rec = recs[0]
@@ -209,14 +209,14 @@ def test_one_own_earlier_request_gives_singular_wording(client):
         category="maintenance", subject="Dishwasher leaking", full_text="", status="closed", resolved_date=None,
         follow_up_needed=False))
     r = chat(client, "the dishwasher is leaking again", "R003", "b")
-    assert "I found 1 related maintenance request in the last 7 days" in r["reply"], r["reply"]
+    assert "I can see 1 related maintenance request in the last 7 days" in r["reply"], r["reply"]
     assert "You've reported this before" in r["reply"] and "this many" not in r["reply"]
-    assert "requests" not in r["reply"].split("community manager")[0].split("I found")[1]
+    assert "requests" not in r["reply"].split("community manager")[0].split("I can see")[1]
 
 
 def test_spanish_reply_names_count_and_window(client):
     r = chat(client, "el aire acondicionado no enfría otra vez", "R001", "es")
-    assert "Encontré 3 solicitudes de mantenimiento relacionadas desde junio" in r["reply"]
+    assert "Veo 3 solicitudes de mantenimiento relacionadas desde junio" in r["reply"]
     assert "gerente de la comunidad" in r["reply"] and not _DISHONEST.search(r["reply"])
 
 

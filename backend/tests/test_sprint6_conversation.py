@@ -447,7 +447,7 @@ def test_worked_example_ac_bedroom_history_manager(client, persona):
     assert r1["action"]["kind"] == "maintenance_request" and "AC" in fields(r1)["issue"]
     r2 = chat(client, "Actually, it is the bedroom AC.", s, persona)
     assert fields(r2)["location"] == "Bedroom" and fields(r2)["issue"] == fields(r1)["issue"]  # updated, not restarted
-    assert "Updated: Where → Bedroom" in r2["reply"] and "I'd be glad" not in r2["reply"]
+    assert "updated the room to Bedroom" in r2["reply"] and "I'd be glad" not in r2["reply"]
     r3 = chat(client, "Has anyone fixed this before?", s, persona)
     assert fields(r3) == fields(r2)  # draft intact
     assert ("I002" in r3["reply"]) if persona == "R001" else ("don't see an earlier repair" in r3["reply"])

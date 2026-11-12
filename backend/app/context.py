@@ -197,7 +197,9 @@ def build_workbook(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], s
 # ---- topic relevance -----------------------------------------------------------------
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "hvac": ["ac", "a/c", "air condition", "cooling", "cool", "heat", "heater", "hvac", "thermostat",
+    # Sprint 9: not a bare "cool" ("ok cool. mornings please" is an interjection, not an AC problem)
+    "hvac": ["ac", "a/c", "air condition", "cooling", "won't cool", "wont cool", "doesn't cool", "doesnt cool",
+             "not cool down", "heat", "heater", "hvac", "thermostat",
              "furnace", "compressor", "air handler",
              # Spanish (minimal; R012 prefers Spanish). Other languages: docs/architecture/decision-gate.md.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],

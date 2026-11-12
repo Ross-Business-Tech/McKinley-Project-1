@@ -357,7 +357,10 @@ _ENTRY_YES = re.compile(r"\b(yes|ok|okay|sure|si|sí)\b\W+(?:\w+\W+){0,2}(enter|
                         # W-12: "just go in", "go ahead and go in", "let yourselves in"
                         r"^\W*(?:ok(?:ay)?\W+|yes\W+|so\W+)?just (?:go|come) (?:on |right )?in\b|"
                         r"\bgo ahead and (?:go|come|let yourselves) in\b|\blet yourselves in\b|"
-                        r"\bwhatever works means (?:just )?(?:go|come) in\b", re.IGNORECASE)
+                        r"\bwhatever works means (?:just )?(?:go|come) in\b|"
+                        # Sprint 9 (holdout): "yes permission", "you have my permission", "permission granted"
+                        r"\byes\W+(?:you have |you've got )?(?:my )?permission\b|\b(?:you have|you've got) (?:my )?"
+                        r"permission\b|\bpermission (?:granted|given)\b", re.IGNORECASE)
 _ENTRY_NO = re.compile(r"(don'?t|dont|do not|please don'?t|no,? (don'?t|do not)) (come in|enter|go in)|without me\b|"
                        r"(call|contact|text|message) (me )?(first|before)|only (when|if) i'?m (home|there)|"
                        r"i (want|need) to be "
@@ -424,7 +427,7 @@ _DAYS = r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|
 _DAY_PHRASE = re.compile(
     rf"\b(this|next) (week|weekend|{_DAYS})\b|\b(tomorrow|today|this afternoon|tonight|weekends?|weekdays?|"
     rf"any ?day|anytime this week)\b|\b(?:on |this |next )?(?:{_DAYS})s?\b|\b(lunes|martes|mi[ée]rcoles|"
-    rf"jueves|viernes|s[áa]bado|domingo|ma[ñn]ana)\b", re.IGNORECASE)
+    rf"jueves|viernes|s[áa]bados?|domingos?|ma[ñn]ana)\b", re.IGNORECASE)  # Sprint 9: "los domingos"
 _TIME_OF_DAY = re.compile(r"\b(morning|mornings|afternoon|afternoons|evening|evenings|after work|lunch ?time|"
                           r"before work|ma[ñn]ana|tarde|noche)\b", re.IGNORECASE)
 _BEDS = re.compile(r"\b(\d|one|two|three|four|dos|tres|una?)\s?-?\s?(?:bed|br|bedroom|rec[aá]mara|habitaci[oó]n|"
@@ -499,13 +502,22 @@ class KBTopic:
     answer: str | None
     answer_es: str | None
     source: str
+    # Sprint 10 (review P1 content): SAMPLE text for a local, supervised demo only (KNOWLEDGE_CONTENT_MODE=
+    # demo_samples, refused on a hosted deployment). Never McKinley policy; always shown labelled as a sample.
+    sample_answer: str | None = None
+    sample_answer_es: str | None = None
+    # what to say instead of "I don't have approved details about X" when that would be unhelpful (e.g. a password)
+    pending_reply: str | None = None
+    pending_reply_es: str | None = None
 
 
 @lru_cache
 def knowledge_base() -> tuple[str, list[tuple[KBTopic, list[str]]]]:
     data: dict[str, Any] = json.loads(KB_PATH.read_text(encoding="utf-8"))
     topics = [(KBTopic(id=t["id"], label=t["label"], status=t["status"], answer=t.get("answer"),
-                       answer_es=t.get("answer_es"), source=t["source"]), [k.lower() for k in t["keywords"]])
+                       answer_es=t.get("answer_es"), source=t["source"], sample_answer=t.get("sample_answer"),
+                       sample_answer_es=t.get("sample_answer_es"), pending_reply=t.get("pending_reply"),
+                       pending_reply_es=t.get("pending_reply_es")), [k.lower() for k in t["keywords"]])
               for t in data["topics"]]
     return data["version"], topics
 
@@ -542,7 +554,9 @@ _BOOKING_Q = re.compile(r"\b(am i|are we|is it|is that) (booked|confirmed|schedu
 _BOOKING_Q2 = re.compile(r"\bis (?:my|the) (?:tour|visit|appointment) (?:booked|confirmed|scheduled|set)\b|"
                          r"\b(?:tour|it|that|visit|appointment)(?: is|'s) (?:booked|confirmed|scheduled|set) for\b|"
                          r"\b(?:booked|confirmed|scheduled) for (?:mon|tues|wednes|thurs|fri|satur|sun|tomorrow|"
-                         r"today|next)",
+                         r"today|next)|"
+                         # Sprint 9 (holdout3): "so Friday at 11 in Detroit is booked?" (status at the end)
+                         r"\b(?:is|it'?s|that'?s|are we|am i)(?: all)? (?:booked|confirmed|scheduled|set)\W*\?\s*$",
                          re.I)
 
 
@@ -769,7 +783,7 @@ def strip_language_request(message: str) -> str:
 
 
 _PROMISE = re.compile(r"\bpromise\b|guarantee|\bby (mon|tues|wednes|thurs|fri|satur|sun)day\b|in writing|\b(rent"
-                      r" )?credit\b|"
+                      r" )?credit\b(?! (?:score|check|history|report|rating|requirement))|"
                       r"compensat|reimburs|refund|money back|discount on (my )?rent|prom[eé]tame|garant", re.I)
 
 
@@ -1450,10 +1464,14 @@ def asks_privacy(message: str) -> bool:
 # R-4: asking about, or acting for, another resident (roommate, friend, family). Routing only: the account-holder rule
 # itself lives elsewhere and is not changed here.
 _OTHER_RESIDENT = re.compile(
+    # Sprint 10 (journey j-safe-courier): a named resident's number, or "confirm their last name" (stricter only)
+    r"\b(?:number|phone|email|address|apartment|unit|cell)(?: number)? (?:to reach|for|of) (?-i:[A-Z][a-z]+)\b|"
+    r"\b(?:confirm|tell me|give me|what'?s|read me) (?:their|his|her) (?:last name|full name|surname|apartment|unit|"
+    r"phone(?: number)?|cell|number|address)\b|"
     r"\b(?:give|tell|show|send) me (?:his|her|their)\b|\bwhat (?:repairs?|requests?|work orders?) (?:he|she|"
     r"they) (?:has|"
     r"have|had)\b|\b(?:he|she) has (?:open|any)\b|\b(?:his|her) (?:phone|number|email|rent|balance|unit|"
-    r"apartment number|"
+    r"apartment(?: number)?|address|last name|full name|"
     r"account|lease|requests?|repairs?|work orders?|ac|a/c) (?:request|status|is|paid)?|\bcall (?:him|her)\b|"
     r"\b(?-i:[A-Z][a-z]+)'s (?:unit|apartment|phone|number|rent|ac|a/c|repairs?|requests?|account|balance|email|"
     r"lease)\b|"

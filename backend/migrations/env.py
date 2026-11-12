@@ -17,7 +17,9 @@ def database_url() -> str:
     raw = s.database_url.get_secret_value().strip() if s.database_url else ""
     if raw:
         return sqlalchemy_url(raw)
-    return f"sqlite:///{s.resolve(s.db_path)}"
+    path = s.resolve(s.db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)  # fresh clone: backend/data/ is git-ignored (review P1)
+    return f"sqlite:///{path}"
 
 
 def sqlalchemy_url(raw: str) -> str:

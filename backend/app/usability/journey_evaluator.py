@@ -148,7 +148,8 @@ def evaluate_journey(j: Journey, convo: dict[str, Any], *, db_records: list[dict
         if not seen_record and not t.get("records") and (m := _SENT_CLAIM.search(text)) and not _NEG.search(
                 text[max(0, m.start() - 60):m.start()]):
             claims.append(f"turn {i + 1}: says it was sent before anything was saved: '{m.group(0)}'")
-        if (pm := _PRICE.search(text)) and not _PRICE.search(user_so_far):
+        if (pm := _PRICE.search(text)) and not _PRICE.search(user_so_far) and \
+                not _echoes_user_amount(text, user_so_far):
             claims.append(f"turn {i + 1}: price '{pm.group(0)}'")
         if am := _AVAIL.search(text):
             claims.append(f"turn {i + 1}: availability '{am.group(0)}'")
@@ -283,3 +284,14 @@ def evaluate_journey(j: Journey, convo: dict[str, Any], *, db_records: list[dict
                          "by_kind": dict(by_kind), "duplicates": duplicates, "not_shown_to_person": unreported},
         "transitions": transitions, "transcript": transcript, "truncated": convo.get("truncated"),
     }
+
+
+_AMOUNT = re.compile(r"\$\s?(\d[\d,]*)(?:\.\d{2})?")
+
+
+def _echoes_user_amount(reply: str, user_text: str) -> bool:
+    """Every $ amount in the reply is a number the person typed themselves ("under 1300" -> "$1,300"): an echo of
+    their budget, not an invented price."""
+    said = {n.replace(",", "") for n in re.findall(r"\b\d[\d,]*\b", user_text)}
+    amounts = [a.replace(",", "") for a in _AMOUNT.findall(reply)]
+    return bool(amounts) and all(a in said for a in amounts)

@@ -353,7 +353,24 @@ _OTHER_TOPIC = re.compile(
     r"apartment|unit|move|pet|noise|appointment|tomorrow|morning|afternoon|anytime|any time|reparar|arreglar|roto|"
     r"tapad[oa]|gotea|visita|oficina|horario|renta|pago|estacionamiento|entrar|llave|mantenimiento|cita|mañana)\b",
     re.I)
-_NEUTRAL = re.compile(r"^\W*(?:ok(?:ay)?|k|thanks?|thank you|h+m+|um+|uh+|wait|one sec(?:ond)?|a sec(?:ond)?|just a "
+# Sprint 10 (review P0): "thanks" / "thank you" / "gracias" ACKNOWLEDGE the information and close the question; they
+# are not "hold on" fillers (a later unrelated turn must never confirm it)
+_THANKS = re.compile(r"^\W*(?:(?:ok(?:ay)?|great|cool|got it|perfect)\W+)?(?:thanks?(?: you)?(?: so much)?|thank you|"
+                     r"thx|ty|gracias|muchas gracias)\W*$", re.I)
+# a present-tense confirmation at any point while the question is open ("I think I smell it now")
+_AFFIRM_NOW = re.compile(r"\b(?:i (?:actually |think i |can )?)?(?:smell|see|hear|feel) (?:it|that|gas|smoke)"
+                         r"(?: \w+){0,4} (?:now|right now|again)\b|"
+                         r"\b(?:it'?s|it is|the alarm'?s|the alarm is|that'?s) (?:\w+ )?(?:going off|beeping|"
+                         r"sounding|ringing|chirping|happening)(?: \w+){0,2} (?:right )?now\b|"
+                         r"\b(?:it |that )?(?:kind of |kinda |really )?(?:smells?|looks?|sounds?) like "
+                         r"(?:that|it|this|gas|smoke)(?: \w+){0,2} (?:right )?now\b|"
+                         r"\bit'?s happening (?:now|right now)\b|\bit is happening\b|\bnow it is\b|"
+                         r"\bit'?s happening\b|\bahora (?:s[ií]|huele|lo huelo)\b|\best[aá] pasando ahora\b", re.I)
+# pending kinds an "unwell" sign belongs to (gas or CO symptoms, a medical question); "distress" only to a
+# personal-safety or self-harm question. Anything else is the policy's own decision, never relabelled (Sprint 10).
+_UNWELL_KINDS = {"gas", "co", "carbon_monoxide", "fire_smoke", "medical", "poison", "heat", "cold", "exposure"}
+_DISTRESS_KINDS = {"self_harm", "personal_safety"}
+_NEUTRAL = re.compile(r"^\W*(?:ok(?:ay)?|k|h+m+|um+|uh+|wait|one sec(?:ond)?|a sec(?:ond)?|just a "
                       r"(?:sec(?:ond)?|minute|moment)|hold on|hang on|brb|sorry(?:,? my phone)?|sorry,? (?:one sec|"
                       r"hold on)|my phone|gracias|espera|un momento|un segundo|perd[oó]n|disculpa)\W*$", re.I)
 MAX_FILLERS = 2  # filler turns ("one sec", "hold on") that keep the question open
@@ -378,19 +395,33 @@ def _set_pending(store: Any, session_id: str, persona_key: str, data: dict[str, 
         pass  # only the follow-up escalation is lost; this turn's safety text is unaffected
 
 
-def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True) -> bool:
-    """A sign described, a "he is / she isn't" answer about a person, or (only on the very next turn) a bare "yes"."""
+def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True, kind: str | None = None,
+                     acked: bool = False) -> bool:
+    """Does this turn answer "is it happening now?" with yes? A hazard sign in this message, a sign that belongs to
+    the pending kind, a short "he is / she isn't" answer about a person, a present-tense "I smell it now", or (only
+    on the very next turn) a bare "yes".
+
+    Sprint 10 (review P0): a sign of a DIFFERENT kind never confirms ("I feel really hopeless lately" after a gas
+    question is the policy's own care decision, not a gas alert), and a long sentence that merely has a person as its
+    subject ("my neighbor is being really loud") is not an answer."""
     det = risk.deterministic
     fr = det.frame or {}
     people = [w for w in fr.get("who") or [] if w not in ("pet",)]
-    sign = bool(det.kind or det.care in ("distress", "unwell") or (fr.get("states") and people)
-                or scan(message)[0] or possible_risk(message) in ("distress", "unwell"))
+    care = det.care or possible_risk(message)
+    related_care = (care == "unwell" and (kind is None or kind in _UNWELL_KINDS)) or (
+        care == "distress" and (kind is None or kind in _DISTRESS_KINDS))
+    text = message.strip()
+    short = len(re.findall(r"\w+", text)) <= 5
+    sign = bool(det.kind or scan(message)[0] or related_care or (fr.get("states") and people and short))
     if sign:
         return True
-    text = message.strip()
-    if _DENY.search(text):
+    if _DENY.search(text) and not _AFFIRM_NOW.search(text):
         return False
-    if _AFFIRM_PERSON.search(text):
+    if _AFFIRM_NOW.search(text):
+        return True
+    if acked:  # after "thanks": a person-subject sentence or a bare "yes" is not an answer any more
+        return False
+    if _AFFIRM_PERSON.search(text) and (short or re.search(r"\bhelp\b|\bayuda\b", text, re.I)):
         return True
     return next_turn and bool(_AFFIRM_BARE.search(text)) and not _OTHER_TOPIC.search(text)
 
@@ -419,7 +450,12 @@ def _apply_pending(store: Any, session_id: str, persona_key: str, message: str, 
         gap = turn - last
         if d.response == "full_alert":
             _set_pending(store, session_id, persona_key, {**pend, "open": False, "closed": "alert"})
-        elif confirms_pending(message, risk, next_turn=gap == 1):
+        elif _THANKS.search(message) and not _AFFIRM_NOW.search(message):
+            # thanks acknowledges the information: from now on only a present-tense report ("yes it's going off
+            # now") or a sign of this kind confirms; an ordinary sentence never does (Sprint 10, holdout P1)
+            _set_pending(store, session_id, persona_key, {**pend, "last": turn, "acked": True})
+        elif confirms_pending(message, risk, next_turn=gap == 1 and not pend.get("acked"), kind=pend.get("kind"),
+                              acked=bool(pend.get("acked"))):
             from app.risk.category import refine
             kind, reason = refine(pend["kind"], message)
             nd = d.model_copy(update={

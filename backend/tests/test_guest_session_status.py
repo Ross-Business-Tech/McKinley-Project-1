@@ -1,5 +1,6 @@
 """Public demo (not signed in): "what's the status of my tour request?" lists what THIS conversation sent and nothing
 from any other conversation (found on the live Render deployment, 2026-11-11: the model said "nothing on file")."""
+from tests.wording import says_not_sent
 
 
 def _chat(c, msg, sid):
@@ -21,7 +22,7 @@ def test_guest_status_lists_this_conversations_request(client):
     sid, ref = _tour(client, "guest-status-a")
     d = _chat(client, "What's the status of my tour request?", sid)
     assert ref in d["reply"] and "tour request" in d["reply"]
-    assert "nobody at McKinley is notified" in d["reply"]
+    assert says_not_sent(d["reply"])
     assert d["reply_source"] != "model"
 
 

@@ -32,7 +32,7 @@ def test_chat_aware_vs_baseline(client):
     assert a["is_mock"] and a["provider"] == "mock" and a["model"] == "mock-deterministic-v1"
     assert a["recommended_handoff"] and a["handoff_is_recommendation_only"]
     assert a["source_context_fields"] and b["source_context_fields"] == []
-    assert a["prompt_version"].startswith("mckinley-v0.1") and b["prompt_version"].startswith("baseline-v1")
+    assert a["prompt_version"].startswith("mckinley-v0.2") and b["prompt_version"].startswith("baseline-v1")
     assert {c["code"] for c in a["output_checks"]} >= {"terminology", "no_false_action_claim", "structured_output"}
 
 

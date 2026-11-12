@@ -209,6 +209,23 @@ class ProposedAction(BaseModel):
     record: "PrototypeRecord | None" = None
 
 
+# Sprint 9: the ONE customer- and staff-facing status for a saved prototype record, derived from its status code on
+# every read (old rows with older wording are relabelled too). Honest about the demo: nothing reaches McKinley staff,
+# so no label may say a team "will confirm", "is reviewing" or "received" it. The model never writes a status.
+STATUS_LABEL: dict[str, str] = {
+    "submitted_for_review": "Saved in demo",
+    "requested": "Saved in demo",
+    "queued": "Saved in demo",
+    "urgent_queued": "Urgent · saved in demo",
+}
+
+
+def with_status_label(record: dict) -> dict:
+    """The record with its status_label taken from STATUS_LABEL (unknown codes keep their stored label)."""
+    label = STATUS_LABEL.get(str(record.get("status") or ""))
+    return {**record, "status_label": label} if label else record
+
+
 class PrototypeRecord(BaseModel):
     """A row in the clearly-labelled prototype store. Not Yardi, not a real queue; nobody is notified."""
 

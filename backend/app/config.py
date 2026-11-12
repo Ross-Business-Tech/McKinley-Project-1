@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # so nothing is shown) | demo_drafts = also the team DRAFT tips, labelled as drafts, on APP_ENV=local only. A hosted
     # backend refuses demo_drafts at startup (hosted_problems) and is forced to approved_only (fail closed).
     quickfix_content_mode: Literal["off", "approved_only", "demo_drafts"] = "approved_only"
+    # Sprint 10: approved_only = only McKinley-approved knowledge-base answers; demo_samples = also the labelled SAMPLE
+    # answers in knowledge_base.json (made-up example content for a supervised local demo; refused when hosted)
+    knowledge_content_mode: Literal["approved_only", "demo_samples"] = "approved_only"
 
     # ---- default target used by /api/chat ----
     # Gemini is the default chat provider (2026-11-11). Deployments still pin LLM_PROVIDER explicitly (render.yaml),
@@ -73,6 +76,11 @@ class Settings(BaseSettings):
     # Central live-call budget: 0 = unlimited. Counted across processes when LLM_CALL_LEDGER is set (one JSON line
     # per real model call, metadata only: no prompts, no replies, no keys). Mock calls are never counted.
     llm_call_budget: int = 0
+    # Sprint 10 (review P1, public endpoints): None = the default (30 requests a minute per visitor and 15 per
+    # conversation on a hosted deployment, off locally); 0 = off. Bodies over max_request_bytes get 413.
+    rate_limit_per_minute: int | None = Field(default=None, ge=0, le=10_000)
+    rate_limit_per_session_minute: int | None = Field(default=None, ge=0, le=10_000)
+    max_request_bytes: int = Field(default=64 * 1024, ge=0, le=10_000_000)
     llm_call_ledger: Path | None = None
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
 
@@ -158,6 +166,9 @@ class Settings(BaseSettings):
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
         if self.gate_override_enabled:
             out.append("GATE_OVERRIDE_ENABLED must be false")
+        if self.knowledge_content_mode == "demo_samples":
+            out.append("KNOWLEDGE_CONTENT_MODE must not be demo_samples: sample answers are made up and are for a "
+                       "supervised local demo only")
         if self.quickfix_content_mode == "demo_drafts":
             out.append("QUICKFIX_CONTENT_MODE must not be demo_drafts: draft tips are not "
                        "McKinley-approved and are for a local demo only")

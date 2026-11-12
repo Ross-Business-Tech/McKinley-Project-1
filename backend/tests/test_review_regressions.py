@@ -329,9 +329,9 @@ def test_email_redaction_spares_words_and_is_fast():  # F N4
 
 def test_every_backend_template_passes_output_checks():  # F N8
     from app.emergency import CARE_NOTE, NOTICE, QUEUE_NOTE, REFUSE_LEAD
-    from app.templates import CONFIRM, DIY_ADVICE, T
-
+    from app.templates import CARD_NOTE, CONFIRM, DIY_ADVICE, T
     texts = [v for d in T.values() for v in d.values()] + [v for d in CONFIRM.values() for v in d.values()]
+    texts += [v for st in CARD_NOTE.values() for d in st.values() for v in d.values()]  # Sprint 9 card lines
     texts += [v for d in DIY_ADVICE.values() for v in d.values()] + [v for d in CARE_NOTE.values() for v in d.values()]
     texts += [REFUSE_LEAD[lang] + n for d in NOTICE.values() for lang, n in d.items()]
     texts += [n + QUEUE_NOTE[lang] for d in NOTICE.values() for lang, n in d.items()]
@@ -349,7 +349,9 @@ def test_every_backend_template_passes_output_checks():  # F N8
                                                                 note="High priority", ask="Which room is it in?",
                                                                 items="tour request DEMO-TOUR-1001",
                                                                 window="last 30 days",  # Sprint 8 C
-                                                                thing="heater"),
+                                                                thing="heater", live="prices", values="Sunday",
+                                                                name="the room",
+                                                                when=" for Sunday"),  # Sprint 9
                                                 urgency="emergency" if "911" in text else None) if not c.passed]
         assert not set(failed) - {"emergency_guidance"}, (text[:60], failed)
 
@@ -409,7 +411,7 @@ def test_booked_question_after_sending(client):  # D NEW-5
     chat(client, "Could I tour a 2 bed in Ypsilanti on Saturday morning?", persona="", session="bks")
     tour = confirm(client, "tour_request", persona="", session="bks")["record"]["id"]
     r = chat(client, "So I'm booked Thursday at 4pm right?", persona="", session="bks")
-    assert tour in r["reply"] and "nothing is booked" in r["reply"] and r["action"] is None
+    assert tour in r["reply"] and "nothing is booked" in r["reply"].lower() and r["action"] is None
 
 
 def test_price_questions_do_not_become_tours(client):  # B N2

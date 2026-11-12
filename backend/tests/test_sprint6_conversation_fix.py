@@ -101,7 +101,7 @@ def test_correction_replaces_the_field_and_says_so(client, msg, key, value):
     chat(client, "yes you can come in", s, "R001")
     r = chat(client, msg, s, "R001")
     f = fields(r)
-    assert f[key] == value and "Also:" not in f["issue"] and "Updated:" in r["reply"]
+    assert f[key] == value and "Also:" not in f["issue"] and "I've updated" in r["reply"]
     assert not records(s)
 
 
@@ -282,7 +282,7 @@ def test_yes_send_them_my_questions_opens_the_leasing_note(client):
     s = "offer-note"
     chat(client, "how much is a 2 bedroom at sandpiper pointe?", s, None)
     r = chat(client, "is there an application fee? and do you allow cats", s, None)
-    assert "send them your question" in r["reply"]
+    assert "pass your question" in r["reply"]
     r = chat(client, "yeah send them my questions", s, None)
     assert r["action"] and r["action"]["kind"] == "staff_handoff" and not records(s)  # Send still needed
 
@@ -398,7 +398,7 @@ def test_saved_question_with_a_draft_open_is_honest(client):
     s = "saved-1"
     chat(client, "my kitchen sink is leaking", s, "R003")
     r = chat(client, "what have you saved so far?", s, "R003")
-    assert "nothing has been sent" in r["reply"] and r["action"]["kind"] == "maintenance_request"
+    assert "nothing has been saved" in r["reply"].lower() and r["action"]["kind"] == "maintenance_request"
 
 
 HIST_YES = ["did someone already look at this before?", "did someone already look at it?",
@@ -477,7 +477,7 @@ def test_note_confirmation_with_details_says_so(client):
     chat(client, "my bathroom fan is buzzing", s, "R003")
     chat(client, "I want to talk to a manager", s, "R003")
     r = press_send(client, s, "staff_handoff", "R003")
-    assert r["ok"] and "with the details" in r["message"]
+    assert r["ok"] and "with what you told me" in r["message"]
 
 
 # ---- coordinator additions: frustrated repair reports, staff complaints, repeats --------------------------------

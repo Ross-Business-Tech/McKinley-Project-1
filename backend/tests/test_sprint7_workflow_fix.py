@@ -18,6 +18,7 @@ from app.state import get_state
 from app.understanding import contact_pref, entry_value, field_edits, understand_rules
 from app.utterance import ends_as_question, split_problems
 from tests.test_sprint6_conversation import chat, fields, press_send
+from tests.wording import says_not_sent
 
 P = "P-RELOCATE-AA"
 FIRST = "Contact me first; only enter when I'm home"
@@ -416,7 +417,7 @@ def test_saved_reply_matches_the_demo_card(client):
     chat(client, "my kitchen sink is leaking", s, "R001")
     chat(client, "yes you can come in", s, "R001")
     r = press_send(client, s, "maintenance_request", "R001")
-    assert "no McKinley staff will see it" in r["message"] and "nobody is notified" in r["message"]
+    assert "saved in this demo" in r["message"] and says_not_sent(r["message"])
 
 
 def test_spanish_after_send_names_the_team_in_spanish(client):

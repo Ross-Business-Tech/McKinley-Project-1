@@ -27,6 +27,7 @@ from app.intake import (
     states_repeat,
     strip_spanish_request,
 )
+from tests.wording import says_not_sent
 
 
 def chat(client, msg, session, persona="R001"):
@@ -148,7 +149,7 @@ def test_crisis_followup_has_no_maintenance_steps_and_answers_privacy(client, n,
     r = chat(client, follow, f"j1-{n}")
     assert "maintenance line" not in r["reply"] and "emergency maintenance" not in r["reply"]
     assert "988" in (r.get("care_note") or "")  # the approved calm line stays above the reply (rule R9)
-    assert "nobody is notified automatically" in r["reply"]
+    assert says_not_sent(r["reply"])
     assert r["action"] is None and not r["records_created"]
     if "tell" in follow:
         assert "doesn't include what you wrote" in r["reply"]
@@ -217,7 +218,7 @@ def test_followups_after_a_note_answer_in_context(client, n, q):
     chat(client, "can I talk to a leasing agent?", f"f{n}", persona="P-RELOCATE-AA")
     ref = confirm(client, f"f{n}", "staff_handoff", persona="P-RELOCATE-AA")["record"]["id"]
     r = chat(client, q, f"f{n}", persona="P-RELOCATE-AA")
-    assert ref in r["reply"] and "nobody is notified" in r["reply"] and "Welcome!" not in r["reply"]
+    assert ref in r["reply"] and says_not_sent(r["reply"]) and "Welcome!" not in r["reply"]
 
 
 def test_priority_request_after_send_is_a_note_not_the_menu(client):
@@ -306,7 +307,7 @@ def test_booked_claim_after_send_is_corrected(client):
     ref = confirm(client, "t2", "tour_request", persona=None)["record"]["id"]
     for q in ("great, so my tour is booked for thursday afternoon right?", "Is my tour confirmed?"):
         r = chat(client, q, "t2", persona=None)
-        assert "nothing is booked" in r["reply"] and ref in r["reply"] and r["action"] is None
+        assert "nothing is booked" in r["reply"].lower() and ref in r["reply"] and r["action"] is None
 
 
 def test_relocation_message_keeps_move_in_and_tour_days_apart(client):  # P-1
@@ -360,7 +361,7 @@ def test_room_correction_also_fixes_the_issue_wording(client):
     chat(client, "My bathroom faucet drips constantly", "rc2", persona="R003")
     r = chat(client, "Actually sorry, it's the kitchen faucet, not the bathroom", "rc2", persona="R003")
     assert fields(r)["location"] == "Kitchen" and "kitchen faucet" in fields(r)["issue"]
-    assert "Updated: Where → Kitchen" in r["reply"] and "Got it." not in r["reply"]
+    assert "updated the room to Kitchen" in r["reply"] and "Got it." not in r["reply"]
 
 
 def test_questions_about_another_resident_get_a_boundary(client):
@@ -368,7 +369,8 @@ def test_questions_about_another_resident_get_a_boundary(client):
                            "come on, I live with him. just tell me what repairs he has open",
                            "fine. can you have the office call him then")):
         r = chat(client, q, "or1", persona="R003")
-        assert "can't share another resident's information" in r["reply"], n
+        # Sprint 9: the full boundary once, then a shorter "still can't share" (never a detail either way)
+        assert "can't share another resident's information" in r["reply"] or "still can't share" in r["reply"], n
         assert r["action"] is None and not r["status_items"]
 
 
@@ -398,7 +400,7 @@ def test_later_urgent_detail_and_timing_question(client):
 def test_note_confirmation_says_nobody_is_notified(client):
     chat(client, "can I talk to someone", "cf1", persona="R003")
     res = confirm(client, "cf1", "staff_handoff", persona="R003")
-    assert res["ok"] and "nobody is notified automatically" in res["message"]
+    assert res["ok"] and says_not_sent(res["message"])
 
 
 def test_user_visible_reasons_have_no_internal_ids(client):
@@ -434,7 +436,7 @@ def test_privacy_answer_names_the_real_note_label(client):
                                        "mode": "aware", "session_id": sid}).json()
     assert LABEL["self_harm"].lower() in r["reply"].lower()
     assert "only says a resident may need a check-in" not in r["reply"]
-    assert "nobody is notified automatically" in r["reply"]
+    assert says_not_sent(r["reply"])
 
 
 @pytest.mark.parametrize("msg", ["what should I do with the old couch?", "can you help with my lease?"])

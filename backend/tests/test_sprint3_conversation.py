@@ -3,6 +3,8 @@
 Each test reproduces the pattern with the implementer's own wording (not the simulators' transcripts verbatim).
 """
 
+from tests.wording import says_not_sent
+
 
 def chat(client, msg, session, persona="R001"):
     return client.post("/api/chat", json={"message": msg, "persona_id": persona, "mode": "aware",
@@ -24,7 +26,7 @@ def test_status_meta_question_never_opens_a_new_card(client):
     assert confirm(client, "m1", "maintenance_request")["ok"]
     for q in ("did that go in?", "is the real repair request in or just a note?", "will a human actually read it?"):
         r = chat(client, q, "m1")
-        assert r["action"] is None and "saved" in r["reply"] and "nobody is notified" in r["reply"], q
+        assert r["action"] is None and "saved" in r["reply"] and says_not_sent(r["reply"]), q
         assert not r["records_created"]
 
 
@@ -37,7 +39,7 @@ def test_meta_question_with_unsent_card_says_it_is_not_sent(client):
 def test_room_correction_with_qualifier_replaces_location(client):
     chat(client, "the bathroom sink is clogged", "loc1")
     r = chat(client, "the guest one, not the main one", "loc1")
-    assert fields(r)["location"] == "Guest bathroom" and "Updated" in r["reply"]
+    assert fields(r)["location"] == "Guest bathroom" and "updated" in r["reply"].lower()
 
 
 def test_ruled_out_day_is_removed_and_change_is_said(client):

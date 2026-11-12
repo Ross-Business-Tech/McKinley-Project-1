@@ -2,6 +2,8 @@
 resident, D=ordinary resident, E=prospect, G=safety). Mock model; tests the deterministic product pipeline."""
 
 
+from tests.wording import says_not_sent
+
 from .test_customer_flows import chat, confirm
 
 
@@ -27,7 +29,7 @@ def test_correction_replaces_issue_and_drops_repeat_flag(client):  # B1
 def test_location_change_is_applied_and_announced(client):  # B3 (J12)
     chat(client, "toilet keeps running", persona="R003", session="lc1")
     r = chat(client, "Change the location to the hall bathroom", persona="R003", session="lc1")
-    assert "Updated" in r["reply"] and fields(r)["location"] in ("Bathroom", "Hall bathroom")
+    assert "updated" in r["reply"].lower() and fields(r)["location"] in ("Bathroom", "Hall bathroom")
 
 
 def test_decline_can_be_undone_once(client):  # B2, B4
@@ -46,7 +48,7 @@ def test_after_send_questions_are_answered_honestly(client):  # E F9, C-8, G12
     confirm(client, "staff_handoff", persona="P-RELOCATE-AA", session="as1")
     for q in ("when will they call me?", "did someone get it??", "so a tech is coming tomorrow?"):
         r = chat(client, q, persona="P-RELOCATE-AA", session="as1")
-        assert "nobody is notified" in r["reply"] and r["action"] is None and not r["records_created"], q
+        assert says_not_sent(r["reply"]) and r["action"] is None and not r["records_created"], q
 
 
 def test_send_it_after_sending_points_to_existing_request(client):  # suite r-drop-and-return, C-3
