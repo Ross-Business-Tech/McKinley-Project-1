@@ -23,10 +23,10 @@ T: dict[str, dict[Lang, str]] = {
     },
     "guest_resident": {
         "en": "Thanks! Repairs and request status need a resident sign-in, which this public demo doesn't have. I "
-              "can still answer general questions or start a note for the office.",
+              "can still answer general questions, or tap \"Talk to a person\" to leave a note for the office.",
         "es": "¡Gracias! Las reparaciones y el estado de solicitudes requieren iniciar sesión como residente, algo "
-              "que esta demostración pública no tiene. Igual puedo responder preguntas generales o empezar una nota "
-              "para la oficina.",
+              "que esta demostración pública no tiene. Igual puedo responder preguntas generales, o toque \"Hablar "
+              "con una persona\" para dejar una nota a la oficina.",
     },
     "unclear": {
         "en": "I want to make sure I get this right. Could you tell me a little more about what you need?",
@@ -79,10 +79,11 @@ T: dict[str, dict[Lang, str]] = {
               "de emergencias de mantenimiento ahora.",
     },
     "maint_guest": {
-        "en": "Repair requests need a resident sign-in, which this public demo doesn't have. I can start a note for "
-              "the office instead. For anything dangerous, call 911 now.",
+        "en": "Repair requests need a resident sign-in, which this public demo doesn't have. To leave a note for the "
+              "office instead, tap \"Talk to a person\". For anything dangerous, call 911 now.",
         "es": "Las solicitudes de reparación requieren iniciar sesión como residente, algo que esta demostración "
-              "pública no tiene. Puedo empezar una nota para la oficina. Si hay peligro, llame al 911 ahora.",
+              "pública no tiene. Para dejar una nota a la oficina, toque \"Hablar con una persona\". Si hay peligro, "
+              "llame al 911 ahora.",
     },
     "maint_change": {
         "en": "Your {ref} is already saved, so I can't change it here. I've prepared a note for the office about the "
@@ -1216,9 +1217,9 @@ T: dict[str, dict[Lang, str]] = {
     },
     "repeat_history_saved": {  # NEEDS McKINLEY REVIEW: after Send; the prototype record holds the history
         "en": " It's marked as a repeat issue for community manager review, with your earlier related requests "
-              "included.",
+              "included, though in this demo no one at McKinley sees it, the community manager included.",
         "es": " Quedó marcada como problema repetido para revisión del gerente de la comunidad, con sus solicitudes "
-              "relacionadas anteriores incluidas.",
+              "relacionadas anteriores, aunque en esta demostración nadie de McKinley la ve, ni el gerente.",
     },
     "multi_issue_named": {  # NEEDS McKINLEY REVIEW: two problems in one message, the second named and queued
         "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}. Waiting "
@@ -1342,6 +1343,10 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Su solicitud de visita {ref} solo está guardada en esta demostración, así que el equipo de "
               "arrendamiento no la recibió.",
     },
+    "side_resume": {  # Sprint 9, NEEDS McKINLEY REVIEW: after a second side question in a row (no repeated question)
+        "en": "Whenever you're ready, we can pick your {what} back up.",
+        "es": "Cuando quiera, seguimos con su {what}.",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",
@@ -1388,10 +1393,10 @@ CONFIRM: dict[str, dict[Lang, str]] = {
     # Sprint 9 (NEEDS McKINLEY REVIEW): short and truthful. The card shows the reference and details, and says once
     # that it is saved in the demo only; this line says what that means for the person (nothing sent, nothing booked).
     "maintenance_request": {
-        "en": "Your repair request is saved in this demo. It hasn't been sent to maintenance, so no visit is scheduled "
-              "yet. You can ask me about it anytime.",
+        "en": "Your repair request is saved in this demo. It hasn't been sent to maintenance, so no visit is "
+              "scheduled. You can ask me about it anytime.",
         "es": "Su solicitud de reparación quedó guardada en esta demostración. No se envió a mantenimiento, así que "
-              "todavía no hay una visita programada. Puede preguntarme por ella cuando quiera.",
+              "no hay una visita programada. Puede preguntarme por ella cuando quiera.",
     },
     "tour_request": {  # {when} = " for next week in the morning" (tour_saved_when) or ""
         "en": "Your tour request{when} is saved in this demo! The time isn't confirmed, and it hasn't been sent to the "
@@ -1401,16 +1406,15 @@ CONFIRM: dict[str, dict[Lang, str]] = {
     },
     "staff_handoff": {
         "en": "Your note is saved in this demo with what you told me. It hasn't been sent to the office, so no one "
-              "will reach out from it yet.",
-        "es": "Su nota quedó guardada en esta demostración con lo que me dijo. No se envió a la oficina, así que nadie "
-              "le contactará por ella todavía.",
+              "will reach out from it.",
+        "es": "Su nota quedó guardada en esta demostración con lo que me dijo. No se envió a la oficina, así que "
+              "nadie le contactará por ella.",
     },
     # a note with no details of the person's own (never claims "with what you told me")
     "staff_handoff_plain": {
-        "en": "Your note is saved in this demo. It hasn't been sent to the office, so no one will reach out from it "
-              "yet.",
+        "en": "Your note is saved in this demo. It hasn't been sent to the office, so no one will reach out from it.",
         "es": "Su nota quedó guardada en esta demostración. No se envió a la oficina, así que nadie le contactará por "
-              "ella todavía.",
+              "ella.",
     },
 }
 

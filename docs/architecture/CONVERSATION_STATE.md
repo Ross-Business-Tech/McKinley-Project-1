@@ -69,16 +69,15 @@ stateDiagram-v2
   declined --> ready: send it after all
   submitted --> [*]: saved in the prototype store with a reference
   note right of submitted
-    Tour: Requested, leasing team to confirm a time
-    Repair: Submitted, waiting for staff review
+    Tour, repair or note: Saved in demo
     Nobody is notified. No external system.
   end note
 ```
 
 - **Only Send saves.** A record is written only by the Send button or an explicit typed instruction ("send it",
   "yes send it", "submit it", "envíelo"). Saving is idempotent: a card identical to a request already saved in this
-  chat shows that request ("…didn't save it twice") and writes nothing. A bare "yes", "ok", "sure" or "sí" on a ready card gets "Tap Send to pass
-  it on" and the card stays. A card is never submitted by the model, and green appears only after the backend
+  chat shows that request ("…didn't save it twice") and writes nothing. A bare "yes", "ok", "sure" or "sí" on a ready card gets "Tap Send when it looks
+  right" and the card stays. A card is never submitted by the model, and green appears only after the backend
   returns a saved record.
 - **Cancel and restore:** "never mind, don't send it" cancels even inside a longer sentence, and so do
   paraphrases ("scrap that, I don't need it anymore", "call it off"). "Don't cancel it" does not. A cancel word
@@ -107,7 +106,7 @@ stateDiagram-v2
 | Intent detected | "I'd be glad to set up a tour request…" | Draft created |
 | Collecting | One question at a time (community, days, time); move-in is stored separately from tour timing | `stage=collecting` |
 | Ready | Card plus "Check, then send"; "this isn't a booking yet" | `stage=ready` |
-| Submitted / pending staff review | "Requested; leasing team to confirm a time", plus a reference | `prototype_records`, status `requested` |
+| Saved in demo | "Saved in demo" (one label for every kind since Sprint 9, from `models.STATUS_LABEL` on every read), plus a reference | `prototype_records`, status `requested` |
 | Confirmed by an external system | **Not implemented** (no CRM or calendar integration); never claimed | — |
 | Cancelled | "Okay, I haven't sent anything." | Draft marked declined |
 

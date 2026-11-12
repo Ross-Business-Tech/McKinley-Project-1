@@ -144,7 +144,8 @@ def test_plan_section_tells_the_model_not_to_add_disclaimers():
     from app.chat_engine import PLAN_SECTION_VERSION, plan_prompt_section
 
     text = plan_prompt_section(SimpleNamespace(template="Hi.", action=None, facts=[]), "web_chat", "en")
-    assert PLAN_SECTION_VERSION == "plan-s9" and "do not add disclaimers" in text and "reference number" in text and "never apologize" in text
+    assert PLAN_SECTION_VERSION == "plan-s9" and "do not add disclaimers" in text and "reference number" in text
+    assert "never apologize" in text
     assert "1-3 short sentences" in text
 
 
@@ -226,3 +227,36 @@ def test_nothing_saved_summary_has_no_contradiction(client):
     sid = chat(client, "My kitchen faucet is dripping", "v11", persona="R003")["session_id"]
     r = chat(client, "did that go in?", sid, persona="R003")["reply"]
     assert "saved: nothing" not in r and "Nothing has been saved in this chat yet" in r
+
+
+# ---- Sprint 9 final review round (independent safety reviewer G, regression verifier H) ----
+
+@pytest.mark.parametrize("text", [
+    "I can't book it. The office will call you to confirm.", "No time is set. Staff will review it shortly.",
+    "No problem! I've sent it to the office.", "Don't worry, the leasing team will reach out soon.",
+    "Sin problema, fue enviada al equipo.", "Your visit is confirmed.", "It's in the maintenance queue.",
+    "It's on its way to the office.", "Su solicitud fue enviada a mantenimiento.", "El equipo le llamará.",
+    "If you send it, the office will get back to you.",
+])
+def test_validator_negation_is_scoped_to_the_same_sentence(text):
+    from app.safety import _demo_status_claim
+    assert _demo_status_claim(text), text
+
+
+def test_tour_time_correction_reads_back_the_time(client):
+    sid = chat(client, "tour Heron Lake", "v12")["session_id"]
+    chat(client, "Saturday", sid)
+    chat(client, "morning", sid)
+    r = chat(client, "actually make it 3pm", sid)
+    assert "3 PM" in r["reply"] and "changed it to Saturday." not in r["reply"]
+
+
+def test_guest_repair_reply_points_to_a_path_that_exists(client):
+    r = chat(client, "my sink is leaking", "v13")
+    assert "sign-in" in r["reply"] and "Talk to a person" in r["reply"] and "I can start a note" not in r["reply"]
+
+
+def test_repeat_history_save_says_nobody_sees_it():
+    from app.templates import t
+    assert "no one at McKinley sees it" in t("repeat_history_saved") and "community manager" in t(
+        "repeat_history_saved")

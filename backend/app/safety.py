@@ -277,20 +277,33 @@ _DEMO_STATUS_CLAIM = re.compile(
     r"call|contact|schedule|follow up|be in touch|pick a time)\b|"
     rf"\b(?:waiting|queued|pending) (?:for|with|in) {_STAFF}(?: (?:review|to review it))?\b|"
     r"\b(?:we|they|the team|staff)(?: have| has)? received your (?:request|note|message)\b|"
-    r"\b(?:fue|ha sido|qued[oó]) enviad[oa] (?:al|a la|a el)\b|\ble confirmar[áa]n?\b|\brecibi(?:ó|eron) su\b",
+    r"\b(?:is|are|'s) (?:now )?(?:in|on (?:its|the) way to) (?:the )?(?:office|maintenance|leasing)(?: team)?"
+    r"(?: queue)?\b|"
+    r"\b(?:your |the )?(?:visit|tour|appointment|booking|repair)(?: request)? (?:is|has been) (?:now )?(?:confirmed|"
+    r"booked|scheduled)\b|"
+    r"\b(?:fue|ha sido|qued[oó]) enviad[oa] (?:al|a la|a el|a mantenimiento|a la oficina)\b|\ble confirmar[áa]n?\b|"
+    r"\ble llamar[áa]n?\b|\brecibi(?:ó|eron) su\b",
     re.IGNORECASE,
 )
 
 
-_NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|sin|nadie|nunca)|n['\u2019]t)\W+"
+_NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|nadie|nunca)|n['\u2019]t)\W+"
                   r"(?:\w+\W+){0,5}$", re.IGNORECASE)
+# idioms that are not a negation of what follows ("No problem! I've sent it to the office." is a claim)
+_NOT_IDIOM = re.compile(r"\b(?:no problem|no worries|not a problem|don'?t worry|no te preocupes|no se preocupe|"
+                        r"sin problema)\b\W*", re.IGNORECASE)
+# only the explicit "in the real service" framing (or "would") makes a staff action hypothetical; "if you send it,
+# the office will get back to you" is still false in this demo (review G-1)
+_REAL_SERVICE = re.compile(r"\bin (?:the|a) real (?:service|deployment|system)\b|\bwould\b|\bel servicio real\b|"
+                           r"\b\w+r[íi]a(?:n)?\b", re.IGNORECASE)
 
 
 def _demo_status_claim(reply: str) -> str | None:
     for m in _DEMO_STATUS_CLAIM.finditer(reply):
         start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
         clause = reply[start + 1:m.end()]
-        if _CONDITIONAL.search(clause) or _NOT.search(reply[max(0, m.start() - 60):m.start()]):
+        before = _NOT_IDIOM.sub("", clause[: len(clause) - len(m.group(0))])  # same sentence only (review G-1)
+        if _REAL_SERVICE.search(clause) or _NOT.search(before[-60:]):
             continue
         return m.group(0)
     return None

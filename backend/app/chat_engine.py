@@ -195,7 +195,8 @@ def card_instructions(plan: TurnPlan) -> list[str]:
         out.append(f"Still needed on the card: {', '.join(a.missing)}. Ask only for {a.missing[0]}, with the "
                    "question the draft reply asks; do not skip it and do not ask for anything else.")
     else:
-        out.append("The card is ready: tell the person to check it and press Send. Typing 'yes' does not send it.")
+        out.append("The card is ready: ask the person to check it and press Send (typing 'yes' does not send it, but "
+                   "do not lecture about typing unless they typed yes).")
     return out
 
 
@@ -214,7 +215,8 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str 
         "do not repeat field lists, and you may leave out a reference number the card already shows. Ask at most "
         "one question. No filler openers ('Certainly!', 'Great question!'). Match empathy to the situation (more for "
         "a repeat problem or frustration, none for a plain status question) in one short phrase; never apologize "
-        "twice.",
+        "twice. Talk to the person about their situation, not about the interface: never say 'a card is open on "
+        "your screen'; say 'your request below' at most.",
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")

@@ -341,13 +341,15 @@ def tour_when(draft: dict[str, Any], lang: Lang) -> str:
                                                                                          days, re.I):
         return ""  # a list of days ("this weekend, Next Monday") reads badly in one phrase: the card shows it
     days = re.sub(r"^(?:on|this coming|for)\s+", "", days, flags=re.I) or days  # "on Saturday"
-    if re.match(r"(?:mon|tue|wed|thu|fri|sat|sun)", days, re.I):
-        days = days[0].upper() + days[1:]  # "saturday" -> "Saturday"
-    elif not re.match(r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d)", days, re.I):
-        days = days.lower()  # "Next week" -> "next week", "Next Monday" stays readable as "next monday"
+    if not re.match(r"(?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d)", days,
+                    re.I):
+        days = days.lower()  # "Next week" -> "next week"
+    days = re.sub(r"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b", lambda m: m.group(0).capitalize(), days, flags=re.I)
     phrase = days
-    if time_.lower().rstrip("s") in ("morning", "afternoon", "evening"):
-        phrase += f" in the {time_.lower().rstrip('s')}"
+    # "Afternoon (around 3 PM)" -> "in the afternoon, around 3 PM": the time the person gave is read back (review H-3)
+    tm = re.match(r"(morning|afternoon|evening)s?\b(?:\s*\((?:around\s+)?([^)]{1,20})\))?", time_, re.I)
+    if tm:
+        phrase += f" in the {tm.group(1).lower()}" + (f", around {tm.group(2)}" if tm.group(2) else "")
     return phrase
 
 
@@ -1873,6 +1875,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         repeat_step = bool(lead) and card.get("last_side_step") == step
         card["last_side_step"] = step if lead else None
         save(card["kind"], card)
+        if repeat_step:  # the step itself is not asked again, but there is still a gentle way forward
+            lead = f"{lead} {t('side_resume', lang, what=WHAT[card['kind']][lang])}"
         return done(TurnPlan(template=lead if repeat_step else f"{lead} {step}".strip(),
                              functions=fns or [KIND_FN[card["kind"]]],
                              action=_proposed(card["kind"], card, lang), chips=chips if chips is not None
