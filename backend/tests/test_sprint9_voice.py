@@ -427,3 +427,27 @@ def test_reference_question_after_send_gets_the_reference(client):
     ref = confirm(client, sid, "tour_request", persona="P-BROWSE-FL")["record"]["id"]
     r = chat(client, "what's the confirmation number for that visit?", sid, persona="P-BROWSE-FL")
     assert ref in r["reply"] and r["action"] is None
+
+
+# ---- status-claim audit: one urgent note per active property incident (holdout3 m18, paraphrased) ----
+
+def _urgent(client, sid, persona):
+    from app.state import get_state
+    return [r for r in get_state().store.records(session_id=sid) if r.get("status") == "urgent_queued"]
+
+
+def test_one_urgent_note_when_a_property_incident_is_re_read_as_another_kind(client):
+    p = "R003"
+    sid = chat(client, "water is coming through the ceiling onto the electrical panel", "v30", persona=p)["session_id"]
+    first = _urgent(client, sid, p)
+    chat(client, "now there are sparks coming out of that panel", sid, persona=p)  # electrical, same incident
+    after = _urgent(client, sid, p)
+    assert len(first) == 1 and len(after) == 1, [r.get("hazard") for r in after]
+
+
+def test_a_person_in_danger_during_a_property_incident_still_gets_its_own_note(client):
+    p = "R003"
+    sid = chat(client, "water is coming through the ceiling onto the electrical panel", "v31", persona=p)["session_id"]
+    chat(client, "my son touched it and now he's unconscious and not breathing", sid, persona=p)
+    hazards = sorted(str(r.get("hazard")) for r in _urgent(client, sid, p))
+    assert len(hazards) == 2 and any(h in ("medical",) for h in hazards), hazards

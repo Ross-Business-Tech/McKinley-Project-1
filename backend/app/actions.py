@@ -1543,6 +1543,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             hd["summary"] = "Possible emergency involving a person: check on the resident (prototype)."
         hd["priority"], hd["hazard"] = "urgent", kind
         same = [r for r in mine if r.get("status") == "urgent_queued" and r.get("hazard") == kind]
+        if not same and not people:
+            # Sprint 9 (status-claim audit, holdout3 m18): ONE urgent note per active property incident. Water on a
+            # breaker panel can be re-read as electrical on the follow-up; that is the same incident, not a second
+            # note. A person in danger (people hazards) or a new incident still gets its own note.
+            from app.risk.incident import active as incident_active
+            inc_a = incident_active(store, session_id, getattr(store, "persona_key", pkey))
+            if inc_a:
+                same = [r for r in mine if r.get("status") == "urgent_queued" and r.get("hazard") in inc_a.kinds
+                        and not is_people_hazard(str(r.get("hazard"))) and str(r.get("created_at", "")) >=
+                        inc_a.started_at[:19]]
         records: list[PrototypeRecord] = []
         existed = bool(same)
         rec: PrototypeRecord | None = PrototypeRecord.model_validate(same[0]) if same else None
