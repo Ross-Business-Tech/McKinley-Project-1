@@ -220,3 +220,58 @@ def test_collecting_reply_claiming_ready_falls_back_to_the_question():
 def test_not_ready_is_honest_on_any_stage():
     line = "Your tour request isn't sent yet; it's waiting for you to press Send."
     assert unsupported_claim(line, TurnState(card_stage="collecting")) is None
+
+
+# ---- independent status-claim audit (2026-11-12): every probe it showed passing must now be caught ---------------
+NO_CARD = TurnState()
+AUDIT_FALSE = [  # (clause, state) the audit showed passing both grounding and the validator
+    ("Your request is saved.", NO_CARD),
+    ("Your work order DEMO-WO-9999 is saved.", NO_CARD),
+    ("Your request has been received.", NO_CARD),
+    ("Your request went to the office.", NO_CARD),
+    ("You're all set for Saturday at 10!", NO_CARD),
+    ("No need to wait, someone will contact you within 24 hours.", NO_CARD),
+    ("Your tour is not a problem, they will confirm it.", NO_CARD),
+    ("They will call you tomorrow.", NO_CARD),
+    ("Expect a call within 24 hours.", NO_CARD),
+    ("A technician is on the way.", NO_CARD),
+    ("We'll be in touch shortly.", NO_CARD),
+    ("Un miembro de nuestro equipo deberá ponerse en contacto con usted para ayudarle con los detalles.", READY),
+    ("He preparado una nota para que un agente lo revise.", READY),
+    ("The leasing office will be glad to walk you through all of your options.", READY),
+    ("Puede indicar su respuesta y presionar Enviar para guardarla.", TurnState(card_stage="collecting", lang="es")),
+    ("I am recommending that our office staff review this request right away.", READY),
+    ("I've started a note for our office team so you can connect with someone about your deposit.", READY),
+    ("I'll pass your request to the leasing team in a note so they can help you with current rates.", READY),
+    ("I can gather your details for the leasing team to check open two-bed floor plans.", READY),
+]
+# An offer of the real note/request action ("I can save a tour request to share with the leasing team", "I can send a
+# note to the office") is kept, consistent with the approved backend offers; whether offers should be reworded is a
+# product decision recorded in docs/evaluation/GEMINI_GATEWAY_ACCEPTANCE.md.
+
+
+@pytest.mark.parametrize("clause,state", AUDIT_FALSE, ids=[c[:40] for c, _ in AUDIT_FALSE])
+def test_audit_probes_are_caught(clause, state):
+    assert unsupported_claim(clause, state) is not None
+
+
+def test_saved_and_references_are_checked_against_real_records():
+    real = TurnState(card_stage="submitted", records_written=("DEMO-WO-1001",))
+    assert unsupported_claim("Your repair request DEMO-WO-1001 is saved.", real) is None
+    assert unsupported_claim("Your repair request DEMO-WO-1002 is saved.", real) == "invented_reference"
+    later = TurnState(session_records=("DEMO-TOUR-1010",))  # an earlier turn saved it; no card now
+    assert unsupported_claim("Your tour request DEMO-TOUR-1010 is saved in this demo.", later) is None
+    assert unsupported_claim("Your request is saved.", TurnState()) == "saved_without_record"
+
+
+@pytest.mark.parametrize("clause", [
+    "I've marked your preference for a morning time.",
+    "Nothing has been saved in this chat yet.",
+    "It hasn't been sent to maintenance, so no visit is scheduled.",
+    "No one will call you from this demo.",
+    "If maintenance comes while you're out, may they enter, or should they contact you first?",
+    "The leasing team can answer that.",
+    "Our leasing team has current rent prices.",
+])
+def test_audit_honest_sentences_survive(clause):
+    assert unsupported_claim(clause, READY) is None

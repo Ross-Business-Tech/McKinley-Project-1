@@ -455,7 +455,12 @@ def run_turn(
     # asserting a side effect the state does not contain are removed; the validator below remains the backstop.
     grounding = None
     if reply_source == "model" and plan and enforce_validation:
-        grounding = claim_grounding.ground_reply(raw_reply, claim_grounding.TurnState.from_plan(plan, lang))
+        own = ([*deps.store.records(session_id=session_id, limit=100),
+                *(deps.store.records(persona_id=persona_id, limit=100) if persona_id else [])]
+               if (deps.store and use_history) else [])
+        session_refs = tuple(sorted({str(r.get("id")) for r in own if r.get("id")}))  # this principal's own records
+        grounding = claim_grounding.ground_reply(raw_reply, claim_grounding.TurnState.from_plan(
+            plan, lang, session_records=session_refs))
         if grounding.needs_template:
             raw_reply = plan.template.strip()
             reply_source = "template_after_validation"
