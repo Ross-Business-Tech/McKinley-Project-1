@@ -1346,6 +1346,10 @@ T: dict[str, dict[Lang, str]] = {
         "en": "Whenever you're ready, we can pick your {what} back up.",
         "es": "Cuando quiera, seguimos con su {what}.",
     },
+    "nvm_ack": {  # Sprint 9, NEEDS McKINLEY REVIEW: "nvm" after something was cancelled
+        "en": "No problem. Is there anything else I can help with?",
+        "es": "No hay problema. ¿Le ayudo con algo más?",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",

@@ -316,6 +316,17 @@ _LEASING_REFERRAL = re.compile(r"\s*(?:The leasing team (?:can give you accurate
                                r"arrendamiento (?:puede darle información exacta[^.]*|tiene la información actual))\.")
 # "will someone call me?", "is anyone going to email me?", "when will I hear back?", "¿me van a llamar?" — the person
 # asks to be CONTACTED. Not "is there a text version?" or "can I text a friend?" (Sprint 9 review B-3).
+_LEAD_DECLINE = re.compile(r"^\W*(?:nvm|never ?mind|nevermind|forget (?:it|that)|no thanks|nah|scratch that|"
+                           r"olv[ií]d(?:elo|alo)|no importa|d[eé]jalo)\b[\s,.;:!-]*", re.I)
+
+
+def _after_lead_decline(msg: str) -> str:
+    """'nvm. whats your phone number' -> 'whats your phone number'; '' when nothing (of 2+ words) follows."""
+    m = _LEAD_DECLINE.match(msg or "")
+    rest = msg[m.end():].strip() if m else ""
+    return rest if len(rest.split()) >= 2 else ""
+
+
 _ASKS_CONTACT = re.compile(r"\b(?:call|phone|ring|email|e-?mail|text|contact|reach|message)(?:s|ing|ed)? (?:me|us)\b|"
                            r"\b(?:will|is|are|does|did|can|could) (?:someone|anyone|somebody|anybody|they|you|the "
                            r"\w+(?: team)?|staff)(?: going to| gonna)? (?:call|phone|email|e-?mail|text|contact|reach)"
@@ -2659,10 +2670,15 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              if f.get("key") == "entry" and f.get("value")), "") if same else act.value
                 effective = "Contact me first" if (prev or "").startswith(("Contact", "Contactar")) else \
                     "Yes, you can enter" if prev else effective
-    elif (is_decline(msg) or is_affirmative(msg)) and not mine:
-        return done(TurnPlan(template=t("nothing_pending", lang), functions=[], skip_model=True,
+    elif (is_decline(msg) or is_affirmative(msg)) and not mine and not (rest := _after_lead_decline(msg)):
+        # Sprint 9 (live review): "nvm" after a cancel is an acknowledgment, not "nothing waiting to be sent"
+        return done(TurnPlan(template=t("nvm_ack" if is_decline(msg) else "nothing_pending", lang), functions=[],
+                             skip_model=True,
                              consumed_by_draft=True, chips=CHIPS["resident_next" if is_resident else "prospect_next"]
                              [lang], workflow=_sel("general_inquiry", "Nothing pending to confirm or cancel.")))
+
+    if not draft and (rest := _after_lead_decline(msg)):
+        msg = rest  # "nvm. whats your phone number": answer the question, not the "nvm" (Sprint 9 live review)
 
     # 3. Languages without approved templates → universal 911 line + staff.
     if non_latin_script(msg):

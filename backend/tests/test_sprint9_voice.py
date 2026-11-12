@@ -287,3 +287,13 @@ def test_ok_cool_is_not_an_ac_repair(client):
     from app.context import detect_topics
     assert "hvac" in detect_topics("the AC won't cool") and "hvac" in detect_topics("it wont cool anymore")
     assert "hvac" not in detect_topics("ok cool, thanks")
+
+
+def test_nvm_after_cancel_answers_the_question_that_follows(client):
+    # live Gemini review (peer session): "nvm. whats your phone number" got "There's nothing waiting to be sent"
+    sid = chat(client, "can i talk to a human", "v15")["session_id"]
+    client.post("/api/actions/cancel", json={"session_id": sid, "persona_id": None, "kind": "staff_handoff"})
+    r = chat(client, "nvm. whats your phone number", sid)["reply"]
+    assert "phone" in r.lower() or "number" in r.lower()
+    assert "nothing waiting" not in r and "911" in r
+    assert chat(client, "nvm", sid)["reply"].startswith("No problem")
