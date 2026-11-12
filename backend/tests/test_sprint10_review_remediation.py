@@ -324,3 +324,46 @@ def test_guest_who_is_only_looking_gets_the_tour_not_the_repair_note(client):
     assert "set the repair note aside" in r["reply"] and r["action_cleared"] == "staff_handoff"
     r2 = chat(client, "could I tour Birchwood next week?", sid)
     assert r2["action"]["kind"] == "tour_request"
+
+
+# ---- independent QA findings (paraphrased) ----
+
+def test_rate_limit_uses_the_proxy_added_address_not_a_spoofed_first_hop():
+    from types import SimpleNamespace
+
+    from app.api.protection import client_key
+    req = SimpleNamespace(headers={"x-forwarded-for": "1.2.3.4, 203.0.113.50"}, client=SimpleNamespace(host="10.0.0.2"))
+    assert client_key(req, hosted=True) == "203.0.113.50"
+
+
+@pytest.mark.parametrize("msg", ["is this an automated chat?", "you guys are the worst", "this bot is pointless",
+                                 "reset please"])
+def test_more_everyday_openers_get_an_answer(client, msg):
+    r = chat(client, msg, f"op{abs(hash(msg)) % 10**6}")["reply"]
+    assert "didn't follow" not in r and "Which McKinley community" not in r
+
+
+def test_a_complaint_with_a_real_problem_is_not_just_an_apology(client):
+    r = chat(client, "this is useless, my bathroom sink is broken", "cp2", "R003")
+    assert r["action"] and r["action"]["kind"] in ("maintenance_request", "staff_handoff")
+
+
+def test_contact_route_keeps_the_time(client):
+    sid = chat(client, "tour Fernhill on Monday afternoon", "rt9")["session_id"]
+    r = chat(client, "call me anytime after 6pm", sid)
+    route = {f["key"]: f["value"] for f in r["action"]["fields"]}["contact_route"].lower()
+    assert "after 6" in route
+
+
+def test_worry_about_covering_rent_with_a_repair_open_is_a_billing_note(client):
+    sid = chat(client, "the dryer won't spin", "rn2", "R003")["session_id"]
+    chat(client, "you can let yourselves in", sid, "R003")
+    r = chat(client, "I'm worried we won't be able to cover the rent this month", sid, "R003")
+    assert r["action"]["kind"] == "staff_handoff"
+
+
+def test_present_tense_smell_report_with_a_place_alerts_after_thanks(client):
+    sid = chat(client, "what do I do if I ever smell gas?", "sp1", "R003")["session_id"]
+    chat(client, "thanks!", sid, "R003")
+    r = chat(client, "wait I smell it in the laundry room now", sid, "R003")
+    assert r["safety_state"] == "active"

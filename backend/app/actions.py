@@ -344,8 +344,8 @@ _NOT_A_RESIDENT_YET = re.compile(r"\b(?:i )?(?:don'?t|do not) live (?:there|here
                                  r"(?:tenant|resident)\b|\b(?:just )?(?:looking|shopping) (?:to rent|around|for "
                                  r"(?:a|an) (?:place|apartment|home))\b|\bno vivo (?:ah[ií]|aqu[ií])\b|\bbusco "
                                  r"(?:departamento|apartamento|casa|d[oó]nde vivir)\b", re.I)
-_TOUR_ROUTE = re.compile(r"\b(?:please |pls )?(?:text|call|email|e-mail|phone) me\b(?: (?:after|before|at|in the|on) "
-                         r"[\w: ]{1,15})?|"
+_TOUR_ROUTE = re.compile(r"\b(?:please |pls )?(?:text|call|email|e-mail|phone) me\b(?: (?:any ?time |only )?(?:after|"
+                         r"before|at|in the|on|between) [\w: ]{1,15})?|"
                          r"\b(?:texting|a text|text|calling|a call|email|e-mail)(?: me)? (?:is|works|would"
                          r" be) (?:best|better|fine|easiest)\b|"
                          r"\b(?:i )?prefer (?:a )?(?:texts?|calls?|emails?|phone)\b|"
@@ -372,15 +372,18 @@ _LEASE_DATE_Q = re.compile(r"\bwhen (?:does|do|is) (?:my|our) lease (?:end|expir
 _BARE_COMPLAINT = re.compile(r"^\W*(?:(?:honestly|seriously|man|ugh|wow)\W+)?(?:(?:your|this|the) (?:company|"
                              r"service|place|management|office|chat|bot|app)\s+(?:is\s+)?(?:sucks?|"
                              r"is (?:terrible|awful|the worst|"
-                             r"useless|a joke)|stinks)|you (?:guys )?(?:suck|are useless|are terrible)|this is "
-                             r"(?:useless|ridiculous|a joke)|worst (?:company|service) ever)\W*$", re.I)
+                             r"useless|a joke)|stinks)|you (?:guys )?(?:suck|are useless|are terrible|are the worst)|"
+                             r"this (?:chat ?bot |bot |chat |assistant |thing )?is (?:useless|ridiculous|a joke|"
+                             r"garbage|pointless)|worst (?:company|service) ever)(?:\W+\w+){0,4}\W*$", re.I)
 _RESTART = re.compile(r"^\W*(?:(?:ok|okay|can we|let'?s|please|i want to|i'?d like to)\W+)?(?:start (?:over|again|"
                       r"fresh|from scratch)|restart|reset(?: (?:the|this) chat)?|new conversation|begin again|"
-                      r"empe(?:zar|cemos) de nuevo|volver a empezar)\W*$", re.I)
+                      r"empe(?:zar|cemos) de nuevo|volver a empezar)(?:\W+(?:please|pls|thanks|por favor))?\W*$", re.I)
 _HYPOTHETICAL_MAINT = re.compile(r"^\W*(?:(?:so|and|but|also|ok|hey)\W+)?(?:what (?:if|happens if|should i do if|do i "
                                  r"do if)|in case|how do i (?:prevent|avoid|stop)|how can i (?:prevent|avoid)|"
                                  r"qu[eé] (?:pasa|hago) si)\b", re.I)
-_RENT_TROUBLE = re.compile(r"\b(?:can'?t|cannot|won'?t be able to|unable to|not able to|struggling to|late (?:on|with) "
+_RENT_TROUBLE = re.compile(r"\b(?:worried (?:i|we) (?:won'?t|can'?t) (?:be able to )?(?:pay|cover|make)|"
+                           r"(?:can'?t|won'?t be able to|unable to) cover)(?: \w+){0,2} rent\b|"
+                           r"\b(?:can'?t|cannot|won'?t be able to|unable to|not able to|struggling to|late (?:on|with) "
                            r"(?:my )?)(?: \w+){0,2} (?:pay|make) (?:my |the |this month'?s )?rent\b|"
                            r"\blate on (?:my )?rent\b|"
                            r"\b(?:can'?t|cannot) afford (?:my |the )?rent\b|\bno puedo pagar (?:la )?renta\b", re.I)
@@ -388,7 +391,7 @@ _CAPABILITY_Q = re.compile(r"^\W*(?:(?:hi|hey|hello|ok|so)\W+)?(?:(?P<cap>what (
                             r"what are you able to do|how can you help(?: me)?|what is this(?: chat)?(?: for)?|"
                             r"qu[eé] puedes hacer|en qu[eé] me puede ayudar)|"
                             r"(?P<bot>are you (?:a |an )?(?:robot|bot|ai|human|real person|person|real)|"
-                            r"is this (?:a )?(?:bot|robot|real person|human|ai)|"
+                            r"is this (?:a |an )?(?:bot|robot|real person|human|ai|chatbot|automated)|"
                             r"am i (?:talking|chatting) (?:to|with) (?:a )?(?:person|human|bot|robot)|eres (?:un )?"
                             r"(?:robot|humano|persona)))\W*$", re.I)
 _OFFICE_HOURS_Q = re.compile(r"\b(?:open|opens|close|closes|closed|hours)\b", re.I)
@@ -2862,7 +2865,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return done(TurnPlan(template=t("hypothetical_maint", lang), functions=["F4"], skip_model=True,
                              chips=CHIPS["resident_next" if is_resident and verified else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "A what-if maintenance question: information, no form.")))
-    if not draft and gate.urgency != "emergency" and not hazard and not care and _BARE_COMPLAINT.search(msg):
+    if not draft and gate.urgency != "emergency" and not hazard and not care and _BARE_COMPLAINT.search(msg) and \
+            not is_issue_description(msg) and not _things_in(msg):
         # review P2: "Your company sucks" gets an apology and a way forward, never a tour pitch
         return done(TurnPlan(template=t("complaint_open", lang), functions=["F9"], skip_model=True,
                              chips=CHIPS["lost"][lang], workflow=_sel("general_inquiry", "Complaint with no details.")))

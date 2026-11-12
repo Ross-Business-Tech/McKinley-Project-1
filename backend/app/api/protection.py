@@ -153,12 +153,13 @@ SESSION_LOCKS = SessionLocks()
 
 
 def client_key(request: Any, hosted: bool) -> str:
-    """The caller's address. Behind Render's proxy the first X-Forwarded-For hop is the visitor (spoofable, which is
-    why a per-session limit also applies)."""
+    """The caller's address. Behind Render's proxy the LAST X-Forwarded-For entry is the one the proxy added (the
+    visitor's real address); earlier entries are whatever the client sent, so trusting the first one let a rotating
+    fake header through every limit (independent QA, Sprint 10)."""
     if hosted:
         fwd = request.headers.get("x-forwarded-for", "")
         if fwd:
-            return fwd.split(",")[0].strip()[:64]
+            return fwd.split(",")[-1].strip()[:64]
     return (request.client.host if request.client else "unknown")[:64]
 
 

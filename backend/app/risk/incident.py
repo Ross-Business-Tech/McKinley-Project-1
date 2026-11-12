@@ -358,8 +358,9 @@ _OTHER_TOPIC = re.compile(
 _THANKS = re.compile(r"^\W*(?:(?:ok(?:ay)?|great|cool|got it|perfect)\W+)?(?:thanks?(?: you)?(?: so much)?|thank you|"
                      r"thx|ty|gracias|muchas gracias)\W*$", re.I)
 # a present-tense confirmation at any point while the question is open ("I think I smell it now")
-_AFFIRM_NOW = re.compile(r"\b(?:i (?:think i |can )?)?(?:smell|see|hear|feel) (?:it|that|gas|smoke) (?:now|right now|"
-                         r"again)\b|\b(?:it'?s|it is|the alarm'?s|the alarm is|that'?s) (?:\w+ )?(?:going off|beeping|"
+_AFFIRM_NOW = re.compile(r"\b(?:i (?:actually |think i |can )?)?(?:smell|see|hear|feel) (?:it|that|gas|smoke)"
+                         r"(?: \w+){0,4} (?:now|right now|again)\b|"
+                         r"\b(?:it'?s|it is|the alarm'?s|the alarm is|that'?s) (?:\w+ )?(?:going off|beeping|"
                          r"sounding|ringing|chirping|happening)(?: \w+){0,2} (?:right )?now\b|"
                          r"\b(?:it |that )?(?:kind of |kinda |really )?(?:smells?|looks?|sounds?) like "
                          r"(?:that|it|this|gas|smoke)(?: \w+){0,2} (?:right )?now\b|"
