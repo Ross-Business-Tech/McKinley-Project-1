@@ -190,6 +190,7 @@ export const UI = {
     newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
     // NEEDS McKINLEY REVIEW (Sprint 9): the persistent demo identity; the details are in "About this demo"
     prototype: "Demo · Sample data · No requests sent to staff",
+    prototypeShort: "Demo · sample data",
     demoAbout: "This is a prototype with made-up sample data. Requests you save stay in this demo: McKinley staff don't see them and no one is notified, so nothing is booked, scheduled or charged.",
     // NEEDS McKINLEY REVIEW (Sprint 8): the only always-on mention of 911. Plain muted text, deliberately not a link.
     emergencyFooter: "In an emergency, call 911.",
@@ -253,6 +254,7 @@ export const UI = {
     newChat: "Empezar de nuevo",
     newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
     prototype: "Demo · Datos de ejemplo · No se envía nada al personal",
+    prototypeShort: "Demo · datos de ejemplo",
     demoAbout: "Este es un prototipo con datos ficticios de ejemplo. Lo que guarde se queda en esta demostración: el personal de McKinley no lo ve y no se avisa a nadie, así que no se reserva, programa ni cobra nada.",
     // NEEDS McKINLEY REVIEW (Sprint 8)
     emergencyFooter: "En una emergencia, llame al 911.",

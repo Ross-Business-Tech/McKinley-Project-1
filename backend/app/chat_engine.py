@@ -211,8 +211,10 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str 
         "apologies or caveats it does not contain: the screen already shows a demo notice. Do not add facts, times, "
         "prices, names of staff or promises. Do not say anything was sent, submitted, created or scheduled unless "
         "the draft says so. The interface shows any form, reference number and confirmation button separately, so "
-        "do not repeat field lists or reference numbers. Ask at most one question. No filler openers "
-        "('Certainly!', 'Great question!') and at most one short empathy phrase, only when the draft has one.",
+        "do not repeat field lists, and you may leave out a reference number the card already shows. Ask at most "
+        "one question. No filler openers ('Certainly!', 'Great question!'). Match empathy to the situation (more for "
+        "a repeat problem or frustration, none for a plain status question) in one short phrase; never apologize "
+        "twice.",
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")

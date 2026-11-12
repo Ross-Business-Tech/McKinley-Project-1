@@ -384,8 +384,9 @@ describe("Sprint 5.1 UI fixes", () => {
     expect(within(group).queryByText(/Not collected in this prototype/)).not.toBeInTheDocument();
     await user.click(within(group).getByRole("button", { name: "Send repair request" }));
     // Sprint 9: one backend-written demo line on the saved card, the status pill says "Saved in demo", reference below
-    expect(await screen.findByText("Not sent to maintenance. No visit is scheduled.")).toBeInTheDocument();
+    expect(await screen.findByText(/Not sent to maintenance\. No visit is scheduled\./)).toBeInTheDocument();
     const saved = screen.getAllByTestId("action-card").at(-1)!;
+    expect(within(saved).getByTestId("card-summary")).toHaveTextContent("Kitchen faucet drips");
     expect(within(saved).getByText("Saved in demo")).toBeInTheDocument();
     expect(within(saved).getByTestId("card-reference")).toHaveTextContent("DEMO-WO-1001");
     expect(within(saved).queryByText(/No McKinley staff will see it/)).not.toBeInTheDocument();

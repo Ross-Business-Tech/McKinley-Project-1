@@ -352,7 +352,7 @@ export function CustomerApp() {
     if (safety === "active") return setAnnouncement("");
     const s = UI[r.language ?? "en"];
     const a = r.action;
-    const card = a ? ` ${a.title}: ${a.stage === "submitted" ? (a.record?.status_label ?? "") : s.stage[a.stage]}.` : "";
+    const card = a ? ` ${a.title}: ${a.stage === "submitted" ? s.statusText(a.record?.status_label ?? "") : s.stage[a.stage]}.` : "";
     // concern: the calm note is read first, politely, once, as part of this reply's single announcement
     const note = safety === "concern" ? (r.care_note ?? r.safety_notice) : null;
     setAnnouncement(`${s.assistantSaid} ${note ? `${note} ` : ""}${r.reply}${card}`);
@@ -615,7 +615,7 @@ export function CustomerApp() {
             </div>
           ))}
           {tasks.length > 0 && (
-            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-10 sm:max-w-md">
+            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-10 max-[374px]:pl-0 sm:max-w-md">
               <ul className="overflow-hidden rounded-xl border border-mk-line bg-mk-surface shadow-[0_1px_2px_rgb(28_37_48/0.06)]">
                 {tasks.map((c) => (
                   <li key={c.label} className="border-b border-mk-line last:border-b-0">
@@ -663,7 +663,7 @@ export function CustomerApp() {
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="mb-2 flex flex-wrap gap-2 py-1 sm:px-1 [@media(max-height:480px)]:group-data-typing/composer:hidden [html[data-mk-short]_&]:group-data-typing/composer:hidden [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
+              className="mb-2 flex flex-wrap gap-2 py-1 max-[374px]:flex-nowrap max-[374px]:overflow-x-auto sm:px-1 [@media(max-height:480px)]:group-data-typing/composer:hidden [html[data-mk-short]_&]:group-data-typing/composer:hidden [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
             >
               {chips.map((c) => (
                 <button
@@ -751,7 +751,7 @@ export function CustomerApp() {
           </div>
           <p id={statusId} className="pb-0.5 text-sm text-mk-muted [@media(max-height:480px)]:sr-only [html[data-mk-short]_&]:sr-only" lang={lang}>
             {/* Sprint 9: the demo identity is in the strip on the public site; here only when the strip is a sign-in */}
-            {(state.mode === "preview" || state.demoSignIn) && <>{t.prototype}. </>}
+            {state.mode === "preview" || state.demoSignIn ? <>{t.prototype}. </> : <span className="sm:hidden">{t.prototypeShort}. </span>}
             <span data-testid="emergency-footer">{t.emergencyFooter}</span>
           </p>
         </div>
@@ -894,9 +894,9 @@ function Message({
   }
 
   return (
-    <div ref={focusRef} tabIndex={-1} lang={msg.lang} role="article" aria-label={t.assistantMessage} className="mk-focus max-w-[95%] rounded-md outline-none">
+    <div ref={focusRef} tabIndex={-1} lang={msg.lang} role="article" aria-label={t.assistantMessage} className="max-w-[95%] rounded-md outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-mk-brand/50">
       {speaker && <Speaker t={t} />}
-      <div className="pl-10">
+      <div className="pl-10 max-[374px]:pl-0">
         <span className="sr-only">{t.assistantSaid} </span>
         {/* Sprint 8: the alert comes first in the turn, above the reply, status list and any card, so nothing covers it.
             No animation. Links are explicit tel:/sms: links: nothing dials or opens on render. */}
@@ -921,7 +921,7 @@ function Message({
         {safety === "concern" && (
           <CareNote kind={r?.care_kind ?? "unwell"} note={r?.care_note ?? r?.safety_notice ?? null} contacts={contacts} t={t} />
         )}
-        {!templateCoversNotice && <p className="max-w-prose text-base leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>}
+        {!templateCoversNotice && <p className="max-w-prose text-base leading-relaxed break-words whitespace-pre-wrap"><NoBreakRefs text={msg.text} /></p>}
         {r?.status_items && r.status_items.length > 0 && <StatusList items={r.status_items} t={t} />}
         {action && cardState && (action.stage === "collecting" ? (
           cardState === "current" && <ProgressHint action={action} t={t} />
@@ -970,6 +970,12 @@ function SafetyContacts({ contacts, strong }: { contacts: SafetyContact[]; stron
       ))}
     </>
   );
+}
+
+/** A request reference never breaks across lines ("DEMO-TOUR-" / "1052"). */
+function NoBreakRefs({ text }: { text: string }) {
+  const parts = text.split(/(\bDEMO-[A-Z]+-\d+\b)/);
+  return <>{parts.map((p, i) => (i % 2 ? <span key={i} className="whitespace-nowrap">{p}</span> : p))}</>;
 }
 
 /** A phone number in a label never breaks across lines ("1-" / "800-222-1222"). */

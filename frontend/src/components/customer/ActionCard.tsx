@@ -6,7 +6,7 @@ import { type UIStrings, actionTone } from "@/lib/customer";
 import { cn } from "@/lib/utils";
 import type { ProposedAction } from "@/lib/types";
 
-import { ListChecks } from "lucide-react";
+import { ChevronDown, ListChecks } from "lucide-react";
 
 import { StatusPill, type StatusTone } from "./StatusPill";
 
@@ -44,7 +44,9 @@ export function ActionCard({
   const base = actionTone(action);
   const tone: StatusTone = declined ? "declined" : base === "sent" ? "submitted" : base;
   const stageText = declined ? t.notSent : submitted && action.record ? t.statusText(action.record.status_label) : t.stage[action.stage];
-  const shownFields = action.fields.filter((f) => f.value);
+  const shownFields = action.fields.filter((f) => f.value && !SYSTEM_ONLY.test(f.value));
+  // Sprint 9: a saved card shows its main details in one line; the full list stays behind "Details"
+  const summary = shownFields.slice(0, 3).map((f) => sentenceCase(firstLine(f.value ?? ""))).join(" · ");
   const open = !declined && !submitted;
   const urgent = tone === "urgent";
 
@@ -68,11 +70,15 @@ export function ActionCard({
       </div>
 
       {open && shownFields.length > 0 && <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />}
+      {submitted && summary && <p className="mt-1.5 text-base break-words" data-testid="card-summary">{summary}</p>}
       {(submitted || declined) && shownFields.length > 0 && (
-        <details className="mt-1">
+        <details className="group/details mt-0.5">
           {/* WebKit ignores display:flex on <summary>, so the 44px target height lives on an inner span. */}
           <summary className="mk-focus block w-fit min-h-11 cursor-pointer text-mk-brand-hover underline underline-offset-2">
-            <span className="inline-flex min-h-11 items-center">{submitted ? t.whatWasSent : t.whatItSaid}</span>
+            <span className="inline-flex min-h-11 items-center gap-1">
+              {submitted ? t.whatWasSent : t.whatItSaid}
+              <ChevronDown aria-hidden className="size-4 transition-transform group-open/details:rotate-180" />
+            </span>
           </summary>
           <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />
         </details>
@@ -85,11 +91,17 @@ export function ActionCard({
       )}
 
       {/* Sprint 9: the ONE demo line for this request, from the backend (what Send will not do / did not do). */}
-      {!declined && <p className="mt-2 text-sm text-mk-muted" data-testid="card-note">{action.note}</p>}
-
-      {action.record && (
-        <p className="mt-1.5 text-xs text-mk-muted" data-testid="card-reference">
-          {t.reference} <span className="tabular-nums">{action.record.id}</span>
+      {!declined && (
+        <p className="mt-2 text-sm text-mk-muted" data-testid="card-note">
+          {action.note}
+          {action.record && (
+            <>
+              {" · "}
+              <span data-testid="card-reference" className="whitespace-nowrap">
+                {t.reference} <span className="tabular-nums">{action.record.id}</span>
+              </span>
+            </>
+          )}
         </p>
       )}
 
@@ -126,7 +138,7 @@ const ENGLISH_VALUE =
   /\b(the|and|by|prefers?|afternoons?|mornings?|evenings?|weekdays?|weekends?|email|phone|text|chat|am|pm|kitchen|bathroom|bedroom|living room|hallway|heating|cooling|system)\b/i;
 
 /** Rows that describe the demo system rather than the request: not shown to customers (staff console keeps them). */
-const SYSTEM_ONLY = /^(not collected in this prototype|no se recoge en este prototipo|signed-in resident \(demo account\)|signed in(?: as [^()]+)? \(demo account\))$/i;
+const SYSTEM_ONLY = /^(not collected in this prototype|no se recoge en este prototipo|signed-in resident \(demo account\)|signed in(?: as [^()]+)? \(demo account\)|not signed in|sin iniciar sesión)$/i;
 
 function FieldList({ fields, t, onFileLabel }: { fields: ProposedAction["fields"]; t: UIStrings; onFileLabel?: string }) {
   const spanish = t.lang === "es";
@@ -140,11 +152,16 @@ function FieldList({ fields, t, onFileLabel }: { fields: ProposedAction["fields"
             className="col-span-2 col-start-1 row-start-2 text-base break-words sm:col-span-1 sm:col-start-2 sm:row-start-1"
             lang={spanish && f.source !== "you_said" && ENGLISH_VALUE.test(f.value ?? "") ? "en" : undefined}
           >
-            {sentenceCase(f.value ?? "")}
+            {(f.value ?? "").split(" | ").map((line, i) => (
+              <span key={i} className="block">{sentenceCase(line)}</span>
+            ))}
           </dd>
-          <dd className="col-start-2 row-start-1 text-right text-xs text-mk-muted sm:col-start-3">
-            {f.source === "on_file" && onFileLabel ? onFileLabel : (t.source[f.source as keyof UIStrings["source"]] ?? f.source)}
-          </dd>
+          {/* Sprint 9: "You told us" on every row is noise; only rows that came from elsewhere are labelled */}
+          {f.source !== "you_said" && (
+            <dd className="col-start-2 row-start-1 text-right text-xs text-mk-muted sm:col-start-3">
+              {f.source === "on_file" && onFileLabel ? onFileLabel : (t.source[f.source as keyof UIStrings["source"]] ?? f.source)}
+            </dd>
+          )}
         </div>
       ))}
     </dl>
@@ -154,6 +171,10 @@ function FieldList({ fields, t, onFileLabel }: { fields: ProposedAction["fields"
 /** "Community or city, Time of day" → "community or city, time of day" (a progress line, not a form). */
 function lowerList(items: string[]): string {
   return items.map((m) => m.charAt(0).toLowerCase() + m.slice(1)).join(", ");
+}
+
+function firstLine(v: string): string {
+  return v.split(" | ")[0];
 }
 
 function sentenceCase(v: string): string {
