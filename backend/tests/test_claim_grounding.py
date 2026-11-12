@@ -276,3 +276,24 @@ def test_saved_and_references_are_checked_against_real_records():
 ])
 def test_audit_honest_sentences_survive(clause):
     assert unsupported_claim(clause, READY) is None
+
+
+# ---- final independent audit (2026-11-12) -------------------------------------------------------------------------
+@pytest.mark.parametrize("clause,state", [
+    ("Could you update your contact details on your request below before pressing Send to save it?", NO_CARD),
+    ("Please check your request below and press Send to save it for review.", READY),
+    ("Please check it and press Send to save it for staff review.", READY),
+    ("I'm recommending a handoff so a staff member can connect with you directly.", READY),
+    ("I've prepared this so we can connect you with the right team.", READY),
+    ("I've started a note for our office to connect you with staff.", TurnState(card_kind="staff_handoff",
+                                                                                 card_stage="ready")),
+])
+def test_final_audit_borderlines_are_caught(clause, state):
+    assert unsupported_claim(clause, state) is not None
+
+
+def test_note_for_the_office_describing_its_content_is_kept():
+    st = TurnState(card_kind="staff_handoff", card_stage="ready")
+    line = 'I\'ve prepared a note for the office to add "the window latch" to your request.'
+    assert unsupported_claim(line, st) is None
+    assert unsupported_claim("I've prepared a note below asking the office to check on her.", st) is None

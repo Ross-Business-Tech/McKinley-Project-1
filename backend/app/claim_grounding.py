@@ -105,8 +105,13 @@ _NEGATED = re.compile(r"\b(?:no\s+one|nobody|nothing|nadie|nada|ning[uú]n\w*|no
                       r"haven'?t|wasn'?t|can'?t|cannot|no|ni)\b|n't\b", re.I)
 # The note's own address ("a note for the office to add X", "una nota para que la oficina ..."): the card really is a
 # note addressed to the office; what Send does with it is stated on the card itself.
-_NOTE_FOR = re.compile(r"\bnote\s+for\s+(?:the|our)\s+(?:\w+\s+)?office(?:\s+(?:team\s+)?to\s+\w+)?|"
-                       r"\bnota\s+para\s+(?:que\s+)?la\s+oficina(?:\s+\w+)?", re.I)
+_NOTE_FOR = re.compile(r"\bnote\s+for\s+(?:the|our)\s+(?:\w+\s+)?office"
+                       r"(?:\s+(?:team\s+)?to\s+(?:add|include|mention|say|note|know|ask|check\s+on))?|\bnota\s+para\s+(?:que\s+)?la\s+oficina(?:\s+(?:agregue|incluya|sepa|"
+                       r"pregunte|anote))?", re.I)
+# Review / connection implied without a promise verb: "save it for staff review", "connect you with the right team".
+_REVIEW_OR_CONNECT = re.compile(r"\b(?:save|send|keep|mark|flag)\w*\s+(?:it|this)\s+for\s+(?:\w+\s+)?review\b|"
+                                r"\bconnect\s+you\s+(?:directly\s+)?(?:with|to)\b|"
+                                r"\b(?:staff|team)\s+member\s+(?:can|could|will|'ll)\s+connect\b", re.I)
 _OWN_PREFERENCE = re.compile(r"\bhow\s+you(?:'?d|\s+would)\s+(?:like|prefer)\s+to\s+be\s+(?:reached|contacted)\b", re.I)
 _NOT_NEGATION = re.compile(r"\b(?:don'?t\s+worry|no\s+problem|no\s+worries|not\s+sure|no\s+rush|"
                            r"no\s+need(?:\s+to\s+\w+)?|not\s+a\s+problem|don'?t\s+hesitate)\b", re.I)
@@ -126,7 +131,8 @@ _REFERRAL = re.compile(rf"\b{_PARTY}\s+(?:\w+\s+){{0,2}}(?:has|have|knows?|keeps
 
 # What the card's stage allows the reply to say about pressing Send. Only a READY card has a Send button to press;
 # "press Send" or "your request is ready" while the card is still collecting, already saved, or absent is false.
-_SEND_STEP = re.compile(r"\b(?:press|tap|click|hit)\s+(?:the\s+)?[\"“']?send\b|\bcan\s+now\s+(?:press|send|save)\b|"
+_SEND_STEP = re.compile(r"\b(?:press|tap|click|hit)(?:es|s|ing|ed)?\s+(?:the\s+)?[\"“']?send\b|"
+                        r"\bcan\s+now\s+(?:press|send|save)\b|"
                         r"\b(?:request|card|note|it)\s+(?:is|'s)\s+(?:now\s+|all\s+)?ready\b|"
                         r"\bready\s+(?:to\s+(?:send|save)|below)\b|\best[áa]\s+lista\b|"
                         r"\b(?:presion\w*|puls\w*|toque|tocar|oprim\w*)\s+(?:el\s+bot[oó]n\s+)?[\"“']?enviar\b", re.I)
@@ -266,6 +272,8 @@ def unsupported_claim(clause: str, state: TurnState) -> str | None:
     if _claims(_ALL_SET, clause) or _claims(_BOOKED, clause):
         return "booking"
     if _claims(_AGENTLESS, clause) and not _ENTRY_QUESTION.search(clause):
+        return "staff_action"
+    if _claims(_REVIEW_OR_CONNECT, clause) and not (labelled and re.search(r"\brepeat|urgent|priorit", clause, re.I)):
         return "staff_action"
     if _claims(_CALL_PREF, clause) and not (_THEIR_ASK.search(clause) or _OWN_PREFERENCE.search(clause)):
         return "staff_action"
