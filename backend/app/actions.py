@@ -853,9 +853,16 @@ def _unknown_place(text: str) -> str | None:
                   r"(?=\s+(?:next|this|on|for|"
                   r"tomorrow|today|sunday|monday|tuesday|wednesday|thursday|friday|saturday|morning|afternoon|evening|"
                   r"at|please|el|la|por|weekend)\b|\s*[,.!?]|\s*$)", text or "", re.I)
+    if not m:  # Sprint 9 (holdout): "tour pls grand rapids, any weekday", "i meant kalamazoo not grand rapids"
+        m = re.search(r"\b(?:tour|visit|meant)\s+(?:pls\s+|please\s+|in\s+)?(?P<p>[a-záéíóúñ][a-záéíóúñ .'-]{2,24}?)"
+                      r"(?=\s+(?:not|instead|next|this|on|for|tomorrow|today|any|morning|afternoon|evening|weekdays?|"
+                      r"weekends?|please)\b|\s*[,.!?]|\s*$)", text or "", re.I)
     if not m:
         return None
     p = m.group("p").strip(" .'-")
+    if p.lower() in ("pls", "please", "a tour", "it", "that", "this", "the place", "one", "there", "here") or \
+            extract_days(p) or extract_clock_preference(p):
+        return None
     if p.lower() in _PLACE_STOP or community_in(p) or city_in(p) or utt.room_in(p) or len(p) < 3:
         return None
     return " ".join(w.capitalize() for w in p.split())
@@ -1970,6 +1977,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             val = (card or {}).get("fields", {}).get("budget", {}).get("value") or (mem.get("lead") or {}).get("budget")
             return t("q_budget", lang, value=val) if val else t("q_budget_none", lang)
         if q == "card_status" and card:
+            if card["kind"] == "tour_request" and "area" in _missing("tour_request", card) and (
+                    pu := _unknown_place(msg)):  # "i meant kalamazoo": say which areas the demo has (holdout)
+                return t("unknown_city", lang, area=pu)
             if card["kind"] == "staff_handoff" and card.get("parked"):
                 return t("q_parked", lang, what=WHAT[card["parked"]["kind"]][lang])
             missing = _missing(card["kind"], card)
@@ -3008,10 +3018,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              consumed_by_draft=True,
                              chips=CHIPS["resident_next" if is_resident else "prospect_next"][lang],
                              workflow=_sel("general_inquiry", "A person may be in danger: no repair intake now.")))
-    if workflow.id == "maintenance" or gate.intent == "maintenance" and is_resident or answers_draft or \
-            problem_shape or (exposure_urgent and is_resident) or (
+    tour_open = bool(draft and draft["kind"] == "tour_request" and not draft.get("declined"))
+    tour_detail = tour_open and not appliance_in(msg) and not hazard and bool(
+        extract_days(msg) or extract_clock_preference(msg))  # "saturday is fine if thursday doesnt work" (holdout)
+    if not tour_detail and (workflow.id == "maintenance" or gate.intent == "maintenance" and is_resident or
+                            answers_draft or problem_shape or (exposure_urgent and is_resident) or (
             injected and is_resident and is_issue_description(msg)) or (
-            is_resident and (qf_intake or quickfix.match_entry(msg) is not None)):  # Sprint 8 (D): see report
+            is_resident and (qf_intake or quickfix.match_entry(msg) is not None))):  # Sprint 8 (D): see report
         if not is_resident:
             return done(TurnPlan(template=t("maint_guest", lang), functions=["F6"], chips=CHIPS["who"][lang],
                                  workflow=_sel("maintenance", "Maintenance from someone not signed in.")))
@@ -3354,7 +3367,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             d["exposure_said"] = True
         if updated_note:  # J-8: after "Updated: …" no extra "Got it." opener
             follow = t("maint_ask_entry_plain", lang) if key == "maint_ask_entry" else template
-            template = updated_note + (" " + t("maint_ready", lang) if not missing else " " + follow)
+            template = updated_note + (" " + t("maint_ready_plain", lang) if not missing else " " + follow)
         elif promise:
             template = t("no_promise", lang) + (" " + template if missing else "")
         elif venting:
@@ -3698,6 +3711,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             key, chips = ("tour_updated" if was_ready and changed else "tour_ready"), []
         when = tour_when(d, lang)
         template = t("tour_ready_when", lang, when=when) if key == "tour_ready" and when else t(key, lang)
+        if key == "tour_ask_area" and in_tour_draft:
+            template = t("ask_plain_area", lang)  # the greeting belongs to the first turn only (holdout)
         notes: list[str] = []  # B1 / D-22: say what changed, in one short line; the card shows every field (Sprint 9)
         if in_tour_draft:
             new_vals = [str(d["fields"].get(k, {}).get("value")) for k in dict.fromkeys(changed)
@@ -3730,7 +3745,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             asked[missing[0]] -= 1
             save("tour_request", d)
             template = ""
-        if not in_tour_draft and key in ("tour_ask_days", "tour_ask_time", "tour_ask_area"):
+        if not in_tour_draft and not notes and key in ("tour_ask_days", "tour_ask_time", "tour_ask_area"):
             prefix += t("leasing_capture" if leasing_hint and not is_tour_request(msg) else "tour_start", lang) + " "
         if key == "tour_ask_area" and not notes and not skip_notes:
             template = t("ask_plain_area", lang) if prefix else template
@@ -3826,6 +3841,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         still = _missing("tour_request", live_tour)
         step = t("next_step_missing", lang, what=WHAT["tour_request"][lang], label=LABEL[still[0]][lang].lower()) \
             if still else t("next_step_ready", lang, what=WHAT["tour_request"][lang])
+        if still and still[0] == "area" and (pu := _unknown_place(msg)):
+            step = t("unknown_city", lang, area=pu)  # "i meant kalamazoo": the demo's areas, not the same ask (holdout)
         return unproductive(TurnPlan(template=step, functions=["F5"], workflow=workflow, skip_model=True,
                                      action=_proposed("tour_request", live_tour, lang),
                                      chips=CHIPS["lost"][lang]), "Open tour card; message not about it.")

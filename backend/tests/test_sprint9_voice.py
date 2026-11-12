@@ -347,3 +347,24 @@ def test_note_status_has_no_urgency_line(client):
     confirm(client, sid, "staff_handoff")
     r = chat(client, "what happens next?", sid)["reply"]
     assert "If it's urgent" not in r and says_not_sent(r)
+
+
+# ---- holdout routing fixes (paraphrased; the holdout wording itself is never used in tests) ----
+
+def test_extra_tour_day_with_doesnt_work_stays_a_tour(client):
+    sid = chat(client, "I'd like to tour Ann Arbor", "v20")["session_id"]
+    chat(client, "Tuesdays, mornings", sid)
+    r = chat(client, "friday could also work if tuesday doesnt work out", sid)
+    assert r["action"]["kind"] == "tour_request" and "sign-in" not in r["reply"]
+
+
+def test_corrected_unknown_city_lists_the_demo_areas(client):
+    sid = chat(client, "tour please flint, weekends, evenings", "v21", persona="P-BROWSE-FL")["session_id"]
+    r = chat(client, "oops i meant saginaw instead", sid, persona="P-BROWSE-FL")["reply"]
+    assert "Saginaw" in r and "Ann Arbor" in r and "The one thing I still need" not in r
+
+
+def test_yes_permission_answers_the_entry_question(client):
+    sid = chat(client, "the freezer stopped freezing", "v22", persona="R003")["session_id"]
+    r = chat(client, "it's in the kitchen. yes permission", sid, persona="R003")
+    assert r["action"]["stage"] == "ready" and r["reply"].count("Thanks") <= 1

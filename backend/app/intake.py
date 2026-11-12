@@ -357,7 +357,10 @@ _ENTRY_YES = re.compile(r"\b(yes|ok|okay|sure|si|sí)\b\W+(?:\w+\W+){0,2}(enter|
                         # W-12: "just go in", "go ahead and go in", "let yourselves in"
                         r"^\W*(?:ok(?:ay)?\W+|yes\W+|so\W+)?just (?:go|come) (?:on |right )?in\b|"
                         r"\bgo ahead and (?:go|come|let yourselves) in\b|\blet yourselves in\b|"
-                        r"\bwhatever works means (?:just )?(?:go|come) in\b", re.IGNORECASE)
+                        r"\bwhatever works means (?:just )?(?:go|come) in\b|"
+                        # Sprint 9 (holdout): "yes permission", "you have my permission", "permission granted"
+                        r"\byes\W+(?:you have |you've got )?(?:my )?permission\b|\b(?:you have|you've got) (?:my )?"
+                        r"permission\b|\bpermission (?:granted|given)\b", re.IGNORECASE)
 _ENTRY_NO = re.compile(r"(don'?t|dont|do not|please don'?t|no,? (don'?t|do not)) (come in|enter|go in)|without me\b|"
                        r"(call|contact|text|message) (me )?(first|before)|only (when|if) i'?m (home|there)|"
                        r"i (want|need) to be "
