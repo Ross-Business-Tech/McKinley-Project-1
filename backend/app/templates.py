@@ -1391,6 +1391,14 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Sigo sin ver {area} entre las zonas de esta demostración. ¿Cuál de Ann Arbor, Ypsilanti, Detroit, "
               "Lansing, Orlando o Tampa prefiere, o lo dejo pendiente por ahora?",
     },
+    "pref_not_on_saved": {  # Sprint 9, NEEDS McKINLEY REVIEW: a time preference after the tour request was saved
+        "en": "Your saved request can't be changed here, so {pref} isn't on it.",
+        "es": "Su solicitud guardada no se puede cambiar aquí, así que {pref} no quedó en ella.",
+    },
+    "ref_answer": {  # Sprint 9, NEEDS McKINLEY REVIEW
+        "en": "Your {what}'s reference is {ref}. It's saved in this demo only.",
+        "es": "La referencia de su {what} es {ref}. Solo está guardada en esta demostración.",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",

@@ -101,6 +101,10 @@ The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on ev
   "quemador" read as fire), so no repair is created; a neighbour "not answering her door" raises the full medical
   alert and the same 911 text on three turns; a bystander reporting someone calling for help gets the notice written
   for the person in danger.
+- **Approved emergency wording:** "An urgent note is saved in the staff queue" (21 times in the final audit run) is true
+  of the prototype but reads as if staff will see it. Change only with McKinley / safety review.
+- **Not reproduced here:** the audit's second urgent note for one electrical emergency (holdout3, a follow-up
+  question); local mock runs with similar follow-ups create one note. Needs the exact turn sequence.
 - **Wording decision for McKinley:** fixed offers such as "I can pass your question to the leasing team in a note"
   describe a delivery that never happens in the demo (the note's card says so). Keep, or reword to "save your
   question in a note for the office".
