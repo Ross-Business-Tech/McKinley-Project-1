@@ -1,0 +1,154 @@
+"""Sprint 9: warm, concise replies; one honest status; the demo limit said once per step (layered disclosure).
+
+The tour journey below is the product owner's own development example. Independent unseen scenarios were run by
+separate reviewers outside the repo; these tests pin the behaviour, not those transcripts."""
+import re
+
+import pytest
+
+from app.models import STATUS_LABEL, with_status_label
+from app.templates import CARD_NOTE, CONFIRM, T
+from tests.wording import says_not_sent
+
+# Phrases the pre-Sprint 9 replies repeated in nearly every turn
+_OLD_BOILERPLATE = re.compile(r"in this prototype nobody is notified|no McKinley staff will see it|office's real "
+                              r"contact details aren't connected|In the real service the leasing team would pick", re.I)
+_READBACK = re.compile(r"(?:Community or city|Preferred days|Time of day):")
+_FALSE_STATUS = re.compile(r"leasing team to confirm|waiting for staff review|in the office queue|team (?:has|have) "
+                           r"received|will confirm|confirmed booking|is booked", re.I)
+
+
+def chat(client, msg, session, persona=None):
+    return client.post("/api/chat", json={"message": msg, "persona_id": persona, "mode": "aware",
+                                          "session_id": session}).json()
+
+
+def confirm(client, session, kind, persona=None):
+    return client.post("/api/actions/confirm", json={"session_id": session, "persona_id": persona,
+                                                     "kind": kind}).json()
+
+
+def words(text: str) -> int:
+    return len(text.split())
+
+
+def test_product_owner_tour_example_is_warm_short_and_honest(client):
+    r = chat(client, "Request a tour", "v1")
+    sid = r["session_id"]
+    assert r["reply"].startswith("I'd be happy to help") and "community" in r["reply"] and words(r["reply"]) <= 25
+    r = chat(client, "Ann Arbor, next week", sid)
+    # no form-like read-back, and only a city was given: never "you've chosen the Ann Arbor community"
+    assert not _READBACK.search(r["reply"]) and "Ann Arbor" not in r["reply"] and "time of day" in r["reply"].lower()
+    r = chat(client, "Morning", sid)
+    assert r["action"]["stage"] == "ready" and "next week in the morning" in r["reply"] and not _READBACK.search(
+        r["reply"])
+    assert says_not_sent(r["action"]["note"]) and "no time is booked" in r["action"]["note"]  # at the point of Send
+    res = confirm(client, sid, "tour_request")
+    assert res["ok"] and res["record"]["status_label"] == "Saved in demo"
+    msg = res["message"]
+    assert "saved in this demo" in msg and "time isn't confirmed" in msg and says_not_sent(msg)
+    assert res["record"]["id"] not in msg and not _READBACK.search(msg) and words(msg) <= 30
+    assert not _OLD_BOILERPLATE.search(msg) and not _FALSE_STATUS.search(msg)
+    nxt = chat(client, "What happens next?", sid)["reply"]
+    assert says_not_sent(nxt) and "no time is confirmed" in nxt and not _READBACK.search(nxt) and words(nxt) <= 40
+    call = chat(client, "Will someone call me?", sid)["reply"]
+    assert call.startswith("No,") and says_not_sent(call) and words(call) <= 40
+    assert nxt != call  # the two follow-ups get different, direct answers (not the same paragraph twice)
+
+
+def test_status_labels_are_one_honest_vocabulary():
+    assert set(STATUS_LABEL) == {"submitted_for_review", "requested", "queued", "urgent_queued"}
+    for label in STATUS_LABEL.values():
+        assert "demo" in label.lower() and not _FALSE_STATUS.search(label)
+    old = {"status": "requested", "status_label": "Requested; leasing team to confirm a time"}
+    assert with_status_label(old)["status_label"] == "Saved in demo"  # rows saved before Sprint 9 are relabelled
+    assert with_status_label({"status": "unknown", "status_label": "x"})["status_label"] == "x"
+
+
+def test_record_reads_use_the_authoritative_label(client):
+    sid = chat(client, "tour Heron Lake saturday morning", "v2")["session_id"]
+    rec = confirm(client, sid, "tour_request")["record"]
+    from app.state import get_state
+    rows = get_state().store.records(session_id=sid)
+    assert rows and rows[0]["id"] == rec["id"] and rows[0]["status_label"] == rec["status_label"] == "Saved in demo"
+
+
+def test_card_notes_state_the_demo_limit_once_per_kind():
+    for stage in ("open", "saved"):
+        for kind in ("maintenance_request", "tour_request", "staff_handoff"):
+            for lang in ("en", "es"):
+                note = CARD_NOTE[stage][kind][lang]
+                assert says_not_sent(note) and len(note.split()) <= 18, (stage, kind, lang)
+
+
+@pytest.mark.parametrize("kind", ["maintenance_request", "tour_request", "staff_handoff", "staff_handoff_plain"])
+def test_confirmations_are_short_and_say_nothing_was_sent(kind):
+    for lang in ("en", "es"):
+        text = CONFIRM[kind][lang].format(id="DEMO-X-1001", when="")
+        assert says_not_sent(text) and words(text) <= 32 and not _OLD_BOILERPLATE.search(text), (kind, lang)
+        assert "DEMO-X-1001" not in text  # the card shows the reference
+
+
+def test_tour_correction_is_one_natural_sentence(client):
+    sid = chat(client, "I'd like to tour Heron Lake on Saturday morning", "v3")["session_id"]
+    r = chat(client, "actually make it Sunday afternoon", sid)
+    assert "changed it to Sunday in the afternoon" in r["reply"] and "Updated:" not in r["reply"]
+    assert {f["key"]: f["value"] for f in r["action"]["fields"]}["days"] == "Sunday"
+
+
+def test_side_questions_do_not_repeat_the_same_tour_question(client):
+    sid = chat(client, "Do you have 2 bed floor plans under $1400?", "v4")["session_id"]
+    a = chat(client, "What's available right now?", sid)["reply"]
+    b = chat(client, "Do you accept housing vouchers?", sid)
+    ask = "Which McKinley community"
+    assert (ask in a) + (ask in b["reply"]) <= 1 and b["action"]["stage"] == "collecting"  # card kept, asked once
+
+
+def test_live_and_unapproved_topics_share_one_referral(client):
+    r = chat(client, "Do you have 2 bed floor plans under $1400?", "v5")
+    assert r["reply"].count("leasing team") <= 2 and r["reply"].count("won't guess") + r["reply"].count(
+        "rather not guess") == 1
+
+
+def test_resident_repair_journey_is_concise(client):
+    sid = chat(client, "My kitchen faucet is dripping", "v6", persona="R003")["session_id"]
+    r = chat(client, "yes you can come in", sid, persona="R003")
+    assert r["action"]["stage"] == "ready" and words(r["reply"]) <= 25
+    res = confirm(client, sid, "maintenance_request", persona="R003")
+    assert res["ok"] and res["record"]["status_label"] == "Saved in demo" and says_not_sent(res["message"])
+    assert "no visit is scheduled" in res["message"] and words(res["message"]) <= 30
+    came = chat(client, "is someone coming today?", sid, persona="R003")["reply"]
+    assert says_not_sent(came) and res["record"]["id"] in came and "on the way" not in came.lower()
+
+
+def test_repeat_issue_has_one_apology_and_no_double_opener(client):
+    r = chat(client, "my AC is broken again, it's blowing warm air", "v7", persona="R001")
+    reply = r["reply"]
+    assert reply.count("sorry") == 1 and "Got it" not in reply and "repeat issue" in reply
+
+
+def test_system_prompt_states_the_voice_rules():
+    from app.config import Settings
+    from app.prompts import load_aware_prompt
+
+    p = load_aware_prompt(Settings(_env_file=None).prompt_path)
+    assert p.version.startswith("mckinley-v0.2")
+    for rule in ("1–3 short sentences", "never pretend to be a person", "never shorten emergency steps",
+                 "Do not apologize in every message"):
+        assert rule in p.system
+
+
+def test_plan_section_tells_the_model_not_to_add_disclaimers():
+    from types import SimpleNamespace
+
+    from app.chat_engine import PLAN_SECTION_VERSION, plan_prompt_section
+
+    text = plan_prompt_section(SimpleNamespace(template="Hi.", action=None, facts=[]), "web_chat", "en")
+    assert PLAN_SECTION_VERSION == "plan-s9" and "do not add disclaimers" in text and "reference numbers" in text
+    assert "1-3 short sentences" in text
+
+
+def test_safety_templates_are_not_shortened():
+    # Sprint 9 must not touch the fixed emergency wording (shown in full, never model-written)
+    assert "Leave the area now and call 911" in T["emergency_steps"]["en"]
+    assert "call 911" in T["lockout"]["en"] and "after-hours or emergency maintenance line" in T["lockout"]["en"]

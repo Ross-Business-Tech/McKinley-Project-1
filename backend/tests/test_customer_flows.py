@@ -110,7 +110,7 @@ def test_tour_request_change_midway_is_never_a_booking(client):
     vals = {f["key"]: f["value"] for f in r["action"]["fields"]}
     assert vals["days"] == "Sunday" and vals["time"] == "Afternoon" and r["action"]["stage"] == "ready"
     res = confirm(client, "tour_request", persona="", session="t")
-    assert res["record"]["status"] == "requested" and "isn't a booking yet" in res["message"]
+    assert res["record"]["status"] == "requested" and "time isn't confirmed" in res["message"]
     assert not re.search(r"\b\d{1,2}(:\d{2})?\s?(am|pm)\b", res["message"], re.I)
 
 

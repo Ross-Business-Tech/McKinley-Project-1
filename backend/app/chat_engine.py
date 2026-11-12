@@ -153,7 +153,7 @@ FALLBACK_CODES = {"MODEL_API_ERROR", "MODEL_CONNECTION_ERROR", "MODEL_TIMEOUT", 
 REPLACE_ON_FAIL = CRITICAL_CHECKS | {"no_invented_price", "no_invented_time", "terminology"}
 
 CHANNEL_RULES = {
-    "web_chat": "Channel: web chat. 2-4 short sentences.",
+    "web_chat": "Channel: web chat. 1-3 short sentences; longer only for safety guidance.",
     "sms": "Channel: SMS (I-07 team draft). At most 2 short sentences, under 320 characters, no lists.",
     "email": "Channel: email (I-07 team draft). Complete sentences; end with the line "
              "'McKinley resident services assistant (AI)'.",
@@ -161,7 +161,7 @@ CHANNEL_RULES = {
 
 
 # Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
-PLAN_SECTION_VERSION = "plan-s51b"
+PLAN_SECTION_VERSION = "plan-s9"
 
 # Allowlisted, synthetic facts the model may state: community -> region, read from the demo workbook only.
 FACT_RULES = ("Only state a community's location, size, features, availability or price if that fact is in the "
@@ -186,8 +186,8 @@ def card_instructions(plan: TurnPlan) -> list[str]:
     if not a:
         return []
     if a.stage == "submitted":
-        return [f"The {a.title} was saved in the prototype (reference shown on the card). Nobody is notified "
-                "automatically; do not promise a call, a visit or a time."]
+        return [f"The {a.title} was saved in this demo only (the card shows its reference and details). It was NOT "
+                "sent to McKinley staff: never say anyone received it, will call, will visit or will confirm a time."]
     out = [f"A {a.title} card is open on screen and is NOT sent yet. That card is the request: never say you can't "
            "create or file it, never tell the person to submit a request somewhere else, and never offer to write a "
            "note or request that is already on screen."]
@@ -205,10 +205,14 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str 
         "## Backend next step (authoritative)",
         CHANNEL_RULES[channel],
         f"Reply language: {'Spanish' if lang == 'es' else 'English'}.",
-        "Rewrite the backend draft reply below in your own warm, plain words. Keep every fact and every "
-        "limitation it states. Do not add facts, times, prices, names of staff or promises. Do not say anything was "
-        "sent, submitted, created or scheduled unless the draft says so. The interface shows any form or "
-        "confirmation button separately, so do not repeat field lists.",
+        "Rewrite the backend draft reply below in your own warm, plain words, like a thoughtful McKinley "
+        "representative (you are an automated assistant, never claim to be a person). Answer the person's actual "
+        "question first. Keep every fact and every limitation the draft states, but do not add disclaimers, "
+        "apologies or caveats it does not contain: the screen already shows a demo notice. Do not add facts, times, "
+        "prices, names of staff or promises. Do not say anything was sent, submitted, created or scheduled unless "
+        "the draft says so. The interface shows any form, reference number and confirmation button separately, so "
+        "do not repeat field lists or reference numbers. Ask at most one question. No filler openers "
+        "('Certainly!', 'Great question!') and at most one short empathy phrase, only when the draft has one.",
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")

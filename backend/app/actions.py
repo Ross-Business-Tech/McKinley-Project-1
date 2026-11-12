@@ -123,6 +123,7 @@ from app.intake import (
     visit_note,
 )
 from app.models import (
+    STATUS_LABEL,
     ActionField,
     ActionKind,
     ActionResult,
@@ -140,7 +141,7 @@ from app.models import (
 )
 from app.risk.policy import is_people_hazard
 from app.safety import looks_like_injection, redact, sanitize_field
-from app.templates import CHIPS, CONFIRM, CONFIRM_LABEL, DIY_ADVICE, PROTOTYPE_NOTE, Lang, t
+from app.templates import CARD_NOTE, CHIPS, CONFIRM, CONFIRM_LABEL, DIY_ADVICE, Lang, t
 from app.workflows import LABELS, WORKFLOW_VERSION, legacy_checks_approved, legacy_draft_steps
 
 log = logging.getLogger("mckinley.actions")
@@ -302,18 +303,36 @@ def _vague_issue(text: str) -> bool:
 def _proposed(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> ProposedAction:
     missing = _missing(kind, draft)
     stage = "ready" if not missing else "collecting"
-    note = {"maintenance_request": {"en": "Nothing is sent until you press send. Staff review it before scheduling.",
-                                    "es": "No se envía nada hasta que pulse enviar. El personal la revisa antes."},
-            "tour_request": {"en": "A request, not a booking: the leasing team picks the time.",
-                             "es": "Una solicitud, no una cita: el equipo elige la hora."},
-            "staff_handoff": {"en": "Nothing is sent until you press send.",
-                              "es": "No se envía nada hasta que pulse enviar."}}[kind][lang]
+    note = CARD_NOTE["open"][kind][lang]  # Sprint 9: the one action-level demo line, shown at the point of Send
     queued = [q for q in (draft.get("queued") or []) if q]
     if kind == "maintenance_request" and queued:  # Sprint 6: the other problems are named, never merged or lost
         note += " " + t("queued_note", lang, items="; ".join(f"\"{q}\"" for q in queued))
     return ProposedAction(kind=kind, stage=stage, title=TITLE[kind][lang], fields=_draft_fields(draft, lang),
                           missing=[LABEL[m][lang] for m in missing],
                           confirm_label=CONFIRM_LABEL[kind][lang] if stage == "ready" else None, note=note)
+
+
+_ASKS_CONTACT = re.compile(r"\b(?:call|calls|calling|phone|email|e-mail|text|contact|reach|hear back|get back|follow"
+                           r"[- ]?up|someone|anyone|llam\w*|contact\w*|escrib\w*)\b", re.I)
+_DAY_KEEP = re.compile(r"^(?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d)", re.I)
+
+
+def tour_when(draft: dict[str, Any], lang: Lang) -> str:
+    """'next week in the morning' from the tour card's own fields (Sprint 9 read-back in one phrase), or '' when the
+    days are missing, skipped or flexible. English only: a Spanish reply uses the sentence without it."""
+    if lang != "en":
+        return ""
+    f = draft.get("fields", {})
+    days = str((f.get("days") or {}).get("value") or "").strip()
+    time_ = str((f.get("time") or {}).get("value") or "").strip()
+    unusable = {_SKIPPED["en"].lower(), _FLEXIBLE["days"]["en"].lower(), _FLEXIBLE["time"]["en"].lower()}
+    if not days or days.lower() in unusable or len(days) > 40:
+        return ""
+    days = re.sub(r"^(?i:on|this coming|for)\s+(?=[A-Z])", "", days) or days  # "on Saturday"
+    phrase = days if _DAY_KEEP.match(days) else days[0].lower() + days[1:]
+    if time_.lower().rstrip("s") in ("morning", "afternoon", "evening"):
+        phrase += f" in the {time_.lower().rstrip('s')}"
+    return phrase
 
 
 def _set(draft: dict[str, Any], key: str, value: str | None, source: str) -> bool:
@@ -371,18 +390,18 @@ def _record(store: Store, kind: ActionKind, session_id: str, persona_id: str | N
 def _record_data(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> dict[str, Any]:
     fields = [f.model_dump() for f in _draft_fields(draft, lang)]
     if kind == "maintenance_request":
-        status, label = "submitted_for_review", "Submitted, waiting for staff review"
+        status = "submitted_for_review"
         issue = draft["fields"].get("issue", {}).get("value", "Repair request").split(" Also: ")[0]
         title = issue if len(issue) <= 58 else issue[:58].rsplit(" ", 1)[0] + "…"
     elif kind == "tour_request":
-        status, label = "requested", "Requested; leasing team to confirm a time"
+        status = "requested"
         title = "Tour request (community to be decided)" if "area" in draft.get("skipped", []) else \
             f"Tour of {draft['fields'].get('area', {}).get('value', 'a community')}"
     else:
         urgent = draft.get("priority") == "urgent"
         status = "urgent_queued" if urgent else "queued"
-        label = "Urgent; in the office queue" if urgent else "In the office queue"
         title = draft.get("topic", "Note for the office")
+    label = STATUS_LABEL[status]  # Sprint 9: one authoritative, honest label (app/models.py)
     return {"status": status, "status_label": label, "title": title, "summary": draft.get("summary", title),
             "fields": fields, "team": draft.get("team"), "priority": draft.get("priority"),
             "category": draft.get("category"), "repeat": draft.get("repeat", False), "hazard": draft.get("hazard"),
@@ -513,8 +532,7 @@ WHAT: dict[str, dict[Lang, str]] = {
 
 _FLEXIBLE: dict[str, dict[Lang, str]] = {"days": {"en": "Any day (flexible)", "es": "Cualquier día (flexible)"},
                                          "time": {"en": "Any time (flexible)", "es": "Cualquier hora (flexible)"}}
-_SKIPPED: dict[Lang, str] = {"en": "Not given yet; the leasing team will ask",
-                             "es": "Sin indicar; el equipo preguntará"}
+_SKIPPED: dict[Lang, str] = {"en": "Not given yet", "es": "Sin indicar"}  # Sprint 9: nobody "will ask" in the demo
 _ROUTE: dict[str, dict[Lang, str]] = {"profile": {"en": "On your profile", "es": "En su perfil"},
                                       "none": {"en": "Not collected in this prototype",
                                                "es": "No se recoge en este prototipo"}}
@@ -986,6 +1004,12 @@ _ADD_TAIL = re.compile(r"(?:^|[.!?;]\s+|,\s*)(?:and |also |plus )?(?:add|also no
                        r"(?P<v>[^.!?]{3,160})", re.I)
 
 
+_FIELD_NAME = {"issue": "the problem", "location": "the room", "entry": "entry permission",
+               "contact": "your contact preference", "entry_window": "the best time for visits",
+               "area": "the community", "days": "the days", "time": "the time of day", "beds": "the number of beds",
+               "move_in": "the move-in date", "pets": "pets", "budget": "your budget"}
+
+
 def _apply_edits(card: dict[str, Any], edits: list[Any], msg: str, lang: Lang) -> str:
     """Replace each named field (never append to "What's wrong") and return the "Updated: X → Y" lines."""
     notes: list[str] = []
@@ -1006,7 +1030,10 @@ def _apply_edits(card: dict[str, Any], edits: list[Any], msg: str, lang: Lang) -
             if (tail := _ADD_TAIL.search(msg)) and tail.group("v").strip().lower() not in val.lower():
                 val = f"{val}. Also: {_cap(tail.group('v').strip())}"[:400]
         _set(card, c.field, val, "you_said")
-        notes.append(t("field_updated", lang, label=LABEL[c.field][lang], value=val))
+        name = _FIELD_NAME.get(c.field) if lang == "en" else None  # Sprint 9: a sentence; the card shows the value
+        notes.append(t("location_updated", lang, loc=val) if c.field == "location" else
+                     t("field_changed", lang, name=name) if name else
+                     t("field_updated", lang, label=LABEL[c.field][lang], value=val))
     if card["kind"] == "maintenance_request" and (note := visit_note(msg)) and note.lower() not in \
             _fval(card, "notes").lower():  # "call me first, i have a dog": the dog is a note for the visit
         prev = _fval(card, "notes")
@@ -1699,11 +1726,16 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         team_es = _TEAM_ES.get(team.lower(), team.lower())
         team_txt = (f"the {team.lower()} team" if lang == "en" else f"el equipo de {team_es}") \
             if r0.get("team") else ("the team" if lang == "en" else "el equipo")
-        what_txt = WHAT[r0["kind"]][lang].capitalize()
+        what_txt = ("Your " if lang == "en" else "Su ") + WHAT[r0["kind"]][lang]
         saved = _saved_summary(r0)
+        if _ASKS_CONTACT.search(msg):  # Sprint 9: "will someone call me?" gets a direct no, not the whole record
+            urgent_kind = r0["kind"] == "maintenance_request" or r0.get("priority") == "urgent"
+            return t("after_send_contact_tour" if r0["kind"] == "tour_request" else "after_send_contact_urgent"
+                     if urgent_kind else "after_send_contact", lang, ref=r0["id"],
+                     what=WHAT[r0["kind"]][lang], team=team_txt if r0["kind"] != "tour_request" else (
+                         "the leasing team" if lang == "en" else "el equipo de arrendamiento"))
         if r0["kind"] == "tour_request":
-            route = t("route_profile" if _ctx_value(ctx, "preferred_contact_channel") else "route_none", lang)
-            return t("after_send_tour", lang, ref=r0["id"], saved=saved or "-", route=route)
+            return t("after_send_tour", lang, ref=r0["id"])
         if saved:
             return t("after_send_saved", lang, what=what_txt, ref=r0["id"], team=team_txt, saved=saved)
         return t("after_send", lang, what=what_txt, ref=r0["id"], team=team_txt)
@@ -1815,9 +1847,13 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     def card_reply(card: dict[str, Any], lead: str, reason: str, chips: list[str] | None = None,
                    fns: list[FunctionId] | None = None) -> TurnPlan:
-        save(card["kind"], card)
         step, step_chips = _next_step(card, lang)
-        return done(TurnPlan(template=f"{lead} {step}".strip(), functions=fns or [KIND_FN[card["kind"]]],
+        # Sprint 9: after a second side question in a row the same step isn't asked again (the card still shows it)
+        repeat_step = bool(lead) and card.get("last_side_step") == step
+        card["last_side_step"] = step if lead else None
+        save(card["kind"], card)
+        return done(TurnPlan(template=lead if repeat_step else f"{lead} {step}".strip(),
+                             functions=fns or [KIND_FN[card["kind"]]],
                              action=_proposed(card["kind"], card, lang), chips=chips if chips is not None
                              else step_chips, skip_model=True, consumed_by_draft=True,
                              workflow=_sel(KIND_WF[card["kind"]], reason)))
@@ -2464,7 +2500,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         team_txt = (f"the {team.lower()} team" if lang == "en" else f"el equipo de {team_es}") if team \
             else ("the team" if lang == "en" else "el equipo")
         lead = t("listening", lang).split(". ")[0] + ". " if not send_again else ""
-        what_txt = WHAT[r0["kind"]][lang].capitalize()
+        what_txt = ("Your " if lang == "en" else "Su ") + WHAT[r0["kind"]][lang]
         return done(TurnPlan(template=lead + t("after_send", lang, what=what_txt, ref=r0["id"],
                                                team=team_txt),
                              functions=[KIND_FN[r0["kind"]], "F8"], skip_model=True, consumed_by_draft=True,
@@ -3283,6 +3319,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             template = t(_heard_key(history.count), lang) + " " + template.replace(
                 "I'm sorry this is happening again. ", "").replace("Lamento que vuelva a pasar. ", "")
             d["repeat_heard"] = True
+        if key == "maint_ask_entry" and not template.startswith(t(key, lang)):
+            # Sprint 9: after an apology or a repeat line, the question alone (no second "Got it" opener)
+            template = template.replace(t(key, lang), t("maint_ask_entry_plain", lang))
         legacy = quickfix.legacy_checks(
             msg, risk, mode=quickfix_mode, category=triage.category, steps=legacy_draft_steps(triage.category),
             approved=legacy_checks_approved(), urgency=gate.urgency, repeat=repeat, lang=lang,  # type: ignore[arg-type]
@@ -3601,13 +3640,20 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             chips = {"days": CHIPS["tour_days"][lang], "time": CHIPS["tour_time"][lang]}.get(missing[0], [])
         else:
             key, chips = ("tour_updated" if was_ready and changed else "tour_ready"), []
-        template = t(key, lang)
-        notes: list[str] = []  # B1 / D-22: say what changed ("Updated: Preferred days → Saturday")
+        when = tour_when(d, lang)
+        template = t("tour_ready_when", lang, when=when) if key == "tour_ready" and when else t(key, lang)
+        notes: list[str] = []  # B1 / D-22: say what changed, in one short line; the card shows every field (Sprint 9)
         if in_tour_draft:
-            for k in dict.fromkeys(changed):
-                if k in LABEL and (val := d["fields"].get(k, {}).get("value")):
-                    notes.append(t("field_updated" if before.get(k) else "field_first", lang, label=LABEL[k][lang],
-                                   value=val))
+            new_vals = [str(d["fields"].get(k, {}).get("value")) for k in dict.fromkeys(changed)
+                        if k in LABEL and d["fields"].get(k, {}).get("value") and before.get(k)]
+            first = [k for k in dict.fromkeys(changed) if k in LABEL and d["fields"].get(k, {}).get("value")
+                     and not before.get(k)]
+            changed_when = {k for k in changed if before.get(k)} <= {"days", "time"} and tour_when(d, lang)
+            if new_vals:
+                notes.append(t("tour_changed", lang, values=changed_when or ", ".join(
+                    v[0].lower() + v[1:] if not _DAY_KEEP.match(v) else v for v in new_vals)))
+            elif first and missing:
+                notes.append(t("tour_ack", lang))
         if was_ready and changed and notes:
             template = t("tour_recheck", lang) if not missing else template
         elif "area" in changed and old_area and was_ready:
@@ -3619,13 +3665,19 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             template += " " + t("contact_route_profile" if on_profile else "contact_route_none", lang)
         faq = match_faq(msg)
         prefix = _faq_text(faq, lang) + " " if faq else ""
+        if faq and in_tour_draft and missing and not changed and not skip_notes and asked.get(missing[0], 0) >= 2:
+            # Sprint 9: a side question while the tour card is open gets its answer, not the same tour question
+            # again (the card's progress line still shows what's needed); the unasked question isn't counted
+            asked[missing[0]] -= 1
+            save("tour_request", d)
+            template = ""
         if not in_tour_draft and key in ("tour_ask_days", "tour_ask_time", "tour_ask_area"):
             prefix += t("leasing_capture" if leasing_hint and not is_tour_request(msg) else "tour_start", lang) + " "
         if key == "tour_ask_area" and not notes and not skip_notes:
-            template = t("tour_ask_area", lang).split(". ", 1)[-1] if prefix else template
+            template = t("ask_plain_area", lang) if prefix else template
         if missing and missing[0] == "area" and (pu := _unknown_place(effective)):
             prefix, template = "", t("unknown_city", lang, area=pu)  # Sprint 7: honest about the demo's markets
-        tplan = TurnPlan(template=prefix + template, functions=["F5"] + (["F4"] if faq else []),
+        tplan = TurnPlan(template=(prefix + template).strip(), functions=["F5"] + (["F4"] if faq else []),
                          action=_proposed("tour_request", d, lang), chips=chips,
                          consumed_by_draft=in_tour_draft and not is_tour_request(msg),
                          workflow=_sel("tour_request", "Tour request from a prospect or visitor."))
@@ -3787,6 +3839,11 @@ def _faq_text(topics: list[Any], lang: Lang) -> str:
     live = [tp for tp in topics if tp.status == "live_data_unavailable"]
     pending = [tp for tp in topics if tp.status == "pending_approval"]
     parts = [(tp.answer_es if lang == "es" and tp.answer_es else tp.answer) for tp in approved]
+    if live and pending:  # Sprint 9: one sentence and one referral, not two stacked "I won't guess" paragraphs
+        parts.append(t("faq_live_and_pending", lang, live=(" and " if lang == "en" else " y ").join(
+            _kb_label(tp.label, lang) for tp in live), pending=(" or " if lang == "en" else " o ").join(
+            _kb_label(tp.label, lang) for tp in pending)))
+        return " ".join(p for p in parts if p)
     if live:
         parts.append(t("faq_live_unavailable", lang, topics=(" and " if lang == "en" else " y ").join(
             _kb_label(tp.label, lang) for tp in live)))
@@ -3802,8 +3859,6 @@ def _faq_text(topics: list[Any], lang: Lang) -> str:
 def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: ActionKind, ctx: SafeContext,
             lang: Lang = "en") -> ActionResult:
     """Write the server-side draft for this session after the person confirmed it (atomic: one record at most)."""
-    from app.templates import NO_CONTACT_SUFFIX
-
     pkey = persona_id or "none"
     draft = store.get_draft(session_id, pkey) if store else None
     if not draft or draft.get("kind") != kind:
@@ -3827,7 +3882,8 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
         # The same request is already saved in this chat: show that record, never write it twice.
         rec0 = PrototypeRecord.model_validate(dup)
         action0 = _proposed(kind, taken, lang).model_copy(update={
-            "stage": "submitted", "record": rec0, "confirm_label": None, "missing": [], "note": PROTOTYPE_NOTE[lang]})
+            "stage": "submitted", "record": rec0, "confirm_label": None, "missing": [],
+            "note": CARD_NOTE["saved"][kind][lang]})
         return ActionResult(ok=True, error_code="ALREADY_SAVED", action=action0, record=rec0,
                             message=t("already_saved", lang, what=WHAT[kind][lang].capitalize(), ref=rec0.id))
     own_any = store.records(persona_id=persona_id, kind=kind, limit=200) if (persona_id and _verified(ctx) and
@@ -3847,8 +3903,10 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                             message="Sorry, that didn't save, so nothing was sent. Please try again, or contact the "
                                     "office directly.")
     action = _proposed(kind, taken, lang).model_copy(update={
-        "stage": "submitted", "record": rec, "confirm_label": None, "missing": [], "note": PROTOTYPE_NOTE[lang]})
-    message = CONFIRM[kind][lang].format(id=rec.id)
+        "stage": "submitted", "record": rec, "confirm_label": None, "missing": [],
+        "note": CARD_NOTE["saved"][kind][lang]})
+    when = tour_when(taken, lang) if kind == "tour_request" else ""
+    message = CONFIRM[kind][lang].format(id=rec.id, when=t("tour_saved_when", lang, when=when) if when else "")
     if kind == "maintenance_request" and (taken.get("repeat_history") or {}).get("count"):
         message += t("repeat_history_saved", lang)  # Sprint 8 C: on the prototype record; nobody is notified
     if kind == "staff_handoff":
@@ -3859,8 +3917,6 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                                                                 and not und.requests_human(said))
         if not has_details:  # never claim "with the details" when the note holds none of the person's own
             message = CONFIRM["staff_handoff_plain"][lang].format(id=rec.id)
-    if not _verified(ctx) and ctx.persona_kind != "prospect":
-        message += NO_CONTACT_SUFFIX[lang]
     if kind == "staff_handoff" and (back := taken.get("parked")):  # W-4: the card the note parked comes back
         store.save_draft(session_id, pkey, back["kind"], {**back, "stale": False, "lang": lang})
         message += t("parked_back", lang, what=WHAT[back["kind"]][lang])

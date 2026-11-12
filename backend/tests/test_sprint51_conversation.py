@@ -35,6 +35,7 @@ from app.intake import (
     visit_note,
 )
 from app.state import get_state
+from tests.wording import says_not_sent
 
 
 def chat(client, msg, session, persona="R001"):
@@ -320,7 +321,7 @@ def test_bare_yes_on_a_ready_card_does_not_save(client):
             assert r["records_created"] == [] and "Tap Send" in r["reply"] and r["action"]["stage"] == "ready"
         r = chat(client, "yes send it", s, persona)
         assert r["records_created"] and r["action"]["stage"] == "submitted"
-        assert "nobody is notified automatically" in r["reply"]  # W-11
+        assert says_not_sent(r["reply"])  # W-11
 
 
 # ---- A-4 / A-5 / A-12 / B-7 / D-8: honest answers, card visible -------------------------------------------------
@@ -348,7 +349,7 @@ def test_questions_after_send(client):
     chat(client, "I want to talk to a manager. not a bot. a real manager. now.", s, "R003")
     assert confirm(client, s, "staff_handoff", "R003")["ok"]
     r = chat(client, "is a manager going to call me today?", s, "R003")
-    assert "didn't follow" not in r["reply"] and "nobody is notified" in r["reply"]
+    assert "didn't follow" not in r["reply"] and says_not_sent(r["reply"])
     r = chat(client, "will my neighbor know i complained", s, "R003")
     assert "neighbors" in r["reply"] and not (r.get("action") or {}).get("kind")
     r = chat(client, "so is it urgent now?", s, "R003")
@@ -758,7 +759,7 @@ def test_plain_who_sees_has_no_neighbour_line_and_tech_today_is_a_clear_no(clien
     r = chat(client, "who can see this request?", s, "R003")
     assert "office queue" in r["reply"] and "neighbor" not in r["reply"]
     r = chat(client, "ok so maintenance is coming tomorrow right? confirm", s, "R003")
-    assert r["reply"].startswith("No. Nothing is scheduled") and r["action"]["kind"] == "maintenance_request"
+    assert r["reply"].startswith("No, nothing is scheduled") and r["action"]["kind"] == "maintenance_request"
 
 
 @pytest.mark.parametrize("msg,kind", [("so the plumber is coming tomorrow right?", "confirm_visit"),

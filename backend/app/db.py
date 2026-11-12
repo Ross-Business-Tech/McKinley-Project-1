@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.models import with_status_label
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS chat_turns (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -494,8 +496,8 @@ class Store:
             self._q(
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
                 "data) VALUES (?,?,?,?,?,?,?,?)", (seq, rid, kind, shash, skey, persona_id, created, json.dumps(data)))
-        return {**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
-                "created_at": created}
+        return with_status_label({**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
+                                  "created_at": created})
 
     def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                         data: dict[str, Any], once_key: str) -> dict[str, Any]:
@@ -507,8 +509,9 @@ class Store:
                                         f"persona_id {self._same} ?", (skey, kind, persona_id)).fetchall():
                 d = json.loads(r["data"])
                 if d.get("once_key") == once_key:
-                    return {**d, "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
-                            "persona_id": r["persona_id"], "created_at": r["created_at"], "_existing": True}
+                    return with_status_label({**d, "id": r["id"], "kind": r["kind"],
+                                              "session_hash": r["session_hash"], "persona_id": r["persona_id"],
+                                              "created_at": r["created_at"], "_existing": True})
             seq = self._q("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"] + 1
             rid, created = f"{prefix}-{1000 + seq}", now_iso()
             payload = {**data, "once_key": once_key}
@@ -516,8 +519,8 @@ class Store:
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
                 "data) VALUES (?,?,?,?,?,?,?,?)",
                 (seq, rid, kind, shash, skey, persona_id, created, json.dumps(payload)))
-        return {**payload, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
-                "created_at": created}
+        return with_status_label({**payload, "id": rid, "kind": kind, "session_hash": shash,
+                                  "persona_id": persona_id, "created_at": created})
 
     def records(self, persona_id: str | None = None, kind: str | None = None,
                 session_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
@@ -535,8 +538,9 @@ class Store:
         args.append(limit)
         with self._lock:
             rows = self._q(sql, args).fetchall()
-        return [{**json.loads(r["data"]), "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
-                 "persona_id": r["persona_id"], "created_at": r["created_at"]} for r in rows]
+        return [with_status_label({**json.loads(r["data"]), "id": r["id"], "kind": r["kind"],
+                                   "session_hash": r["session_hash"], "persona_id": r["persona_id"],
+                                   "created_at": r["created_at"]}) for r in rows]
 
     # ---- evals ----
     def create_run(self, targets: list[str], aware_v: str, baseline_v: str, temperature: float | None) -> int:

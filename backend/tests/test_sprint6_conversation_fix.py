@@ -101,7 +101,7 @@ def test_correction_replaces_the_field_and_says_so(client, msg, key, value):
     chat(client, "yes you can come in", s, "R001")
     r = chat(client, msg, s, "R001")
     f = fields(r)
-    assert f[key] == value and "Also:" not in f["issue"] and "Updated:" in r["reply"]
+    assert f[key] == value and "Also:" not in f["issue"] and "I've updated" in r["reply"]
     assert not records(s)
 
 
@@ -477,7 +477,7 @@ def test_note_confirmation_with_details_says_so(client):
     chat(client, "my bathroom fan is buzzing", s, "R003")
     chat(client, "I want to talk to a manager", s, "R003")
     r = press_send(client, s, "staff_handoff", "R003")
-    assert r["ok"] and "with the details" in r["message"]
+    assert r["ok"] and "with what you told me" in r["message"]
 
 
 # ---- coordinator additions: frustrated repair reports, staff complaints, repeats --------------------------------

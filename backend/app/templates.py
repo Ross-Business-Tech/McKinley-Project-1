@@ -48,13 +48,15 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Lamento la molestia. ¿En qué parte del apartamento es?",
     },
     "maint_ask_entry": {
-        "en": "Got it. If maintenance comes while you're out, may they enter, or should they contact you first?",
-        "es": "Entendido. Si mantenimiento llega cuando usted no está, ¿pueden entrar o prefieren contactarle "
-              "primero?",
+        "en": "Got it, let's get a repair request started. If maintenance comes while you're out, may they enter, or "
+              "should they contact you first?",
+        "es": "Entendido, empecemos una solicitud de reparación. Si mantenimiento llega cuando usted no está, "
+              "¿pueden entrar o "
+              "prefieren contactarle primero?",
     },
     "maint_ready": {
-        "en": "Thanks. Here's your request. Check it over, then send it when it looks right.",
-        "es": "Gracias. Aquí está su solicitud. Revísela y envíela cuando esté correcta.",
+        "en": "Thanks! Your repair request is ready below. Take a look, then send it when it looks right.",
+        "es": "¡Gracias! Su solicitud de reparación está lista abajo. Revísela y envíela cuando esté bien.",
     },
     "maint_ready_repeat": {
         "en": "I'm sorry this keeps happening. I can see related requests on your record, so I've marked this one "
@@ -174,12 +176,12 @@ T: dict[str, dict[Lang, str]] = {
               "(Prototipo: no se envían mensajes reales.)",
     },
     "tour_area_updated": {
-        "en": "Updated to {area}. Check it over before you send it.",
-        "es": "Actualizado a {area}. Revísela antes de enviarla.",
+        "en": "No problem, I've changed it to {area}. Take a look before you send it.",
+        "es": "Sin problema, lo cambié a {area}. Revísela antes de enviarla.",
     },
     "leasing_capture": {
-        "en": "Thanks. I can pass what you've told me to the leasing team as a tour request.",
-        "es": "Gracias, lo anoté. Puedo pasar sus datos al equipo de arrendamiento como solicitud de visita.",
+        "en": "I can also start a tour request for you.",
+        "es": "También puedo empezar una solicitud de visita.",
     },
     # ---- emergency (I-17/I-18 conservative placeholder) ----
     # Generic safety steps when the hazard kind is unknown ("other"). No claim about a saved note: the planner adds
@@ -203,10 +205,10 @@ T: dict[str, dict[Lang, str]] = {
     # ---- F8 status lookup ----
     # Public demo, not signed in: a status question lists only what THIS conversation sent (server-issued session).
     "guest_session_status": {
-        "en": "In this conversation you sent: {items}. It's saved in this demo only: nobody at McKinley is notified, "
-              "and without a sign-in I can't look up requests from other visits.",
-        "es": "En esta conversación envió: {items}. Solo se guardó en esta demostración: nadie de McKinley recibe "
-              "un aviso y, sin iniciar sesión, no puedo buscar solicitudes de otras visitas.",
+        "en": "This conversation saved: {items}. It's kept in this demo and hasn't been sent to McKinley staff. "
+              "Without a sign-in, I can't see requests from other visits.",
+        "es": "Esta conversación guardó: {items}. Queda en esta demostración y no se envió al personal de McKinley. "
+              "Sin iniciar sesión, no puedo ver solicitudes de otras visitas.",
     },
     "status_none": {
         "en": "I don't see any open requests on your record right now. If something isn't fixed, I can help you "
@@ -232,29 +234,27 @@ T: dict[str, dict[Lang, str]] = {
     },
     # ---- F5 tour scheduling (I-15/I-16 drafts) ----
     "tour_ask_area": {
-        "en": "I'd be glad to set up a tour request. Which city or McKinley community would you like to see?",
-        "es": "Con gusto preparo una solicitud de visita. ¿Qué ciudad o comunidad de McKinley quiere ver?",
+        "en": "I'd be happy to help you plan a visit! Which McKinley community, or which city, are you interested in?",
+        "es": "¡Con gusto le ayudo a planear una visita! ¿Qué comunidad de McKinley, o qué ciudad, le interesa?",
     },
     "tour_start": {
-        "en": "I'd be glad to set up a tour request for you.",
-        "es": "Con gusto preparo una solicitud de visita.",
+        "en": "I'd be happy to help you plan a visit!",
+        "es": "¡Con gusto le ayudo a planear una visita!",
     },
     "tour_ask_days": {
-        "en": "Which days work for you to visit?",
-        "es": "¿Qué días le funcionan para la visita?",
+        "en": "Which days would work for a visit?",
+        "es": "¿Qué días le vendrían bien para la visita?",
     },
     "tour_ask_time": {
-        "en": "What time of day is easiest: morning, afternoon or evening?",
-        "es": "¿Qué hora del día le conviene más: mañana, tarde o noche?",
+        "en": "What time of day works best: morning, afternoon or evening?",
+        "es": "¿Le conviene más en la mañana, la tarde o la noche?",
     },
     "tour_ready": {
-        "en": "Here's your tour request. The leasing team picks the exact time, so this isn't a booking yet. "
-              "Send it when it looks right.",
-        "es": "Aquí está su solicitud de visita. El equipo de arrendamiento elige la hora exacta, así que todavía no "
-              "es una cita confirmada. Envíela cuando esté correcta.",
+        "en": "Perfect, your tour request is ready below. Take a look, then send it when it looks right.",
+        "es": "Perfecto, su solicitud de visita está lista abajo. Revísela y envíela cuando esté bien.",
     },
     "tour_updated": {
-        "en": "No problem, I've updated your tour request. Check it over before you send it.",
+        "en": "No problem, I've updated your tour request. Take a look before you send it.",
         "es": "Sin problema, actualicé su solicitud de visita. Revísela antes de enviarla.",
     },
     # ---- F4 FAQ (I-14 answer rules) ----
@@ -264,11 +264,17 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Todavía no tengo información aprobada sobre {topics} y prefiero no adivinar. El equipo de "
               "arrendamiento puede darle información exacta.",
     },
+    "faq_live_and_pending": {  # Sprint 9, NEEDS McKINLEY REVIEW
+        "en": "I can't see live {live} or approved details on {pending} here, so I won't guess. The leasing team can "
+              "give you accurate, current information.",
+        "es": "Aquí no veo {live} en tiempo real ni información aprobada sobre {pending}, así que no voy a adivinar. "
+              "El equipo de arrendamiento puede darle información exacta y actual.",
+    },
     "faq_live_unavailable": {
-        "en": "I can't see live prices or what's available today, so I won't quote a number that might be wrong. "
-              "The leasing team has current {topics}.",
-        "es": "No tengo acceso a precios ni disponibilidad en tiempo real, así que no daré un número que podría "
-              "estar mal. El equipo de arrendamiento tiene la información actual.",
+        "en": "I can't see live prices or availability, so I won't quote numbers that might be wrong. The leasing team "
+              "has current {topics}.",
+        "es": "No veo precios ni disponibilidad en tiempo real, así que no daré números que podrían estar mal. El "
+              "equipo de arrendamiento tiene la información actual.",
     },
     "faq_offer_tour": {
         "en": "Would you like to request a tour?",
@@ -327,10 +333,10 @@ T: dict[str, dict[Lang, str]] = {
     },
     # ---- F9 handoff (I-27) ----
     "handoff_offer": {
-        "en": "A team member should handle this. I've written a short note so you won't have to repeat yourself. "
-              "Send it to the office when you're ready.",
-        "es": "Un miembro del equipo debe atender esto. Escribí una nota corta para que no tenga que repetirlo. "
-              "Envíela a la oficina cuando quiera.",
+        "en": "Of course. I've started a note for the office with what you've told me, so you won't have to repeat "
+              "yourself. Send it when it looks right.",
+        "es": "Por supuesto. Empecé una nota para la oficina con lo que me dijo, para que no tenga que repetirlo. "
+              "Envíela cuando esté bien.",
     },
     "sensitive": {
         "en": "Please don't share card numbers, Social Security numbers or birth dates in chat. I've hidden what "
@@ -346,10 +352,10 @@ T: dict[str, dict[Lang, str]] = {
               "Yo no puedo dar ni cambiar condiciones de renovación. Preparé una nota para ellos{contact}.",
     },
     "frustrated": {
-        "en": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. A team member should "
-              "look at it, so I've drafted a note with the details below. Send it and you won't have to start over.",
-        "es": "Lo siento, es frustrante y no debería tener que insistir. Un miembro del equipo debe revisarlo, así que "
-              "preparé abajo una nota con los detalles. Envíela y no tendrá que empezar de nuevo.",
+        "en": "I understand why that's frustrating, especially when you've already reported it. I've drafted a note "
+              "for a team member with the details below, so you won't have to start over.",
+        "es": "Entiendo que sea frustrante, sobre todo si ya lo reportó. Preparé abajo una nota con los detalles "
+              "para un miembro del equipo, para que no tenga que empezar de nuevo.",
     },
     "frustrated_repair": {
         "en": "I'm sorry. That's frustrating, and you shouldn't have to keep chasing this. When you send this request "
@@ -411,10 +417,10 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Disculpe, no le entendí. ¿Lo puede decir de otra forma? O puedo pasar lo que escribió a la oficina.",
     },
     "note_exists": {
-        "en": "Your note {ref} is already saved for the office with what you told me. In this prototype nobody is "
-              "notified, so please also contact the office if it's urgent. Want to send another note?",
-        "es": "Su nota {ref} ya está guardada para la oficina con lo que me dijo. En este prototipo no se avisa a "
-              "nadie; si es urgente, comuníquese también con la oficina. ¿Quiere enviar otra nota?",
+        "en": "Your note {ref} is already saved with what you told me. If it's urgent, please contact the office "
+              "directly too. Want to add another note?",
+        "es": "Su nota {ref} ya está guardada con lo que me dijo. Si es urgente, comuníquese también directamente "
+              "con la oficina. ¿Quiere agregar otra nota?",
     },
     "premise_check": {
         "en": "I can't see anything like that on your account, and I can't confirm, waive or change fees, rent, "
@@ -478,23 +484,23 @@ T: dict[str, dict[Lang, str]] = {
               "de su comunidad; ahí atienden los cierres. Si no se siente seguro donde está, llame al 911.",
     },
     "sent_summary": {
-        "en": "Here's what this chat has done: {sent}.{pending} In this prototype nothing reaches a real system and "
-              "nobody is notified; saved items wait for a staff member to review them.",
-        "es": "Esto es lo que se ha hecho en este chat: {sent}.{pending} En este prototipo nada llega a un sistema "
-              "real y no se avisa a nadie; lo guardado espera a que alguien del personal lo revise.",
+        "en": "So far this chat has saved: {sent}.{pending} Saved items stay in this demo; nothing has been sent to "
+              "McKinley staff.",
+        "es": "Hasta ahora este chat guardó: {sent}.{pending} Lo guardado queda en esta demostración; no se envió "
+              "nada al personal de McKinley.",
     },
     "after_send": {
-        "en": "{what} {ref} is saved for {team} to review. In this prototype nobody is notified and no time is set, "
-              "so no one will call or come because of this chat yet. If it's urgent, please contact the office.",
-        "es": "{what} {ref} está guardada para que {team} la revise. En este prototipo no se avisa a nadie ni se fija "
-              "una hora, así que nadie llamará ni vendrá todavía por este chat. Si es urgente, llame a la oficina.",
+        "en": "{what} ({ref}) is saved in this demo, but it hasn't been sent to {team}, so nothing is scheduled. If "
+              "it's urgent, please contact the office directly.",
+        "es": "{what} ({ref}) está guardada en esta demostración, pero no se envió al personal de McKinley, así que "
+              "no hay nada programado. Si es urgente, comuníquese directamente con la oficina.",
     },
     "issue_updated": {
         "en": "No problem, I've changed the problem to \"{issue}\".",
         "es": "Listo, cambié el problema a \"{issue}\".",
     },
     "location_updated": {
-        "en": "Updated: Where → {loc}.",
+        "en": "Got it, I've updated the room to {loc}.",
         "es": "Actualizado: Dónde → {loc}.",
     },
     "contact_noted": {
@@ -522,8 +528,8 @@ T: dict[str, dict[Lang, str]] = {
               "arrendamiento confirma los precios y ofertas vigentes. Puedo incluir lo que vio para que lo revisen.",
     },
     "repeat_heard": {  # NEEDS McKINLEY REVIEW (Sprint 8 C: 3 or more earlier requests; was "this many visits")
-        "en": "That's not okay after this many times, and I'm not going to ask you to troubleshoot again.",
-        "es": "Eso no está bien después de tantas veces, y no le voy a pedir que lo revise otra vez.",
+        "en": "I'm sorry you're dealing with this again. After this many times, I won't ask you to troubleshoot it.",
+        "es": "Lamento que vuelva a pasarle. Después de tantas veces, no le voy a pedir que lo revise otra vez.",
     },
     # ---- Sprint 8 C last round (all NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
     "followup_extra_asks": {  # NEEDS McKINLEY REVIEW: a refund / credit / callback ask said with a follow-up
@@ -548,11 +554,9 @@ T: dict[str, dict[Lang, str]] = {
     },
     "payment_plan": {  # NEEDS McKINLEY REVIEW: no plan is set up or approved here
         "en": "I can't set up or approve a payment plan here; the office decides that. I've prepared a note asking "
-              "them about a payment plan. Send it when you're ready. In this prototype nobody is notified "
-              "automatically.",
+              "them about one. Send it when you're ready.",
         "es": "Aquí no puedo crear ni aprobar un plan de pagos; eso lo decide la oficina. Preparé una nota para "
-              "preguntarles por un plan de pagos. Envíela cuando quiera. En este prototipo no se avisa a nadie "
-              "automáticamente.",
+              "preguntarles. Envíela cuando quiera.",
     },
     "resume_after_alert": {  # NEEDS McKINLEY REVIEW: after the safety alert, the earlier card comes back (never
         # assumes the danger is over: the safety guidance shown earlier still applies)
@@ -585,18 +589,17 @@ T: dict[str, dict[Lang, str]] = {
               "pondré todo lo que me dijo en una nota para la oficina, para que no tenga que responder nada otra vez.",
     },
     "lost_note": {
-        "en": "I'm sorry this hasn't been helpful. A person at the office can take it from here: I've written a note "
-              "with what you've told me, so you won't have to repeat anything. Send it when you're ready. In this "
-              "prototype nobody is notified automatically, so if it's urgent, please also contact the office.",
-        "es": "Lamento que esto no le haya ayudado. Una persona de la oficina puede seguir desde aquí: escribí una "
-              "nota con lo que me dijo, para que no tenga que repetir nada. Envíela cuando quiera. En este prototipo "
-              "no se avisa a nadie automáticamente; si es urgente, comuníquese también con la oficina.",
+        "en": "I'm sorry this hasn't been helpful. I've written a note with what you've told me, so you won't have "
+              "to repeat anything. Send it when you're ready, and if it's urgent, please contact the office directly "
+              "too.",
+        "es": "Lamento que esto no le haya ayudado. Escribí una nota con lo que me dijo, para que no tenga que "
+              "repetir nada. Envíela cuando quiera y, si es urgente, comuníquese también directamente con la oficina.",
     },
     "lost_note_open": {
         "en": "The note for the office is below with everything you've told me. Press \"Send note to the office\" "
-              "to save it for them. In this prototype nobody is notified automatically.",
-        "es": "La nota para la oficina está abajo con todo lo que me dijo. Pulse \"Enviar nota a la oficina\" para "
-              "guardarla. En este prototipo no se avisa a nadie automáticamente.",
+              "when it looks right.",
+        "es": "La nota para la oficina está abajo con todo lo que me dijo. Pulse \"Enviar nota a la oficina\" cuando "
+              "esté bien.",
     },
     "next_step_missing": {
         "en": "Your {what} isn't sent yet. The one thing I still need is: {label}.",
@@ -615,22 +618,19 @@ T: dict[str, dict[Lang, str]] = {
         "es": " Su {what} todavía no está enviada: no está completa. Falta: {missing}.",
     },
     "after_send_saved": {
-        "en": "{what} {ref} is saved for {team} to review, with: {saved}. In the real service the team would follow "
-              "up with you. In this prototype nobody is notified automatically and no time is set, so no one will "
-              "call, email or come because of this chat yet. If it's urgent, please contact the office.",
-        "es": "{what} {ref} está guardada para que {team} la revise, con: {saved}. En el servicio real el equipo le "
-              "daría seguimiento. En este prototipo no se avisa a nadie automáticamente ni se fija una hora, así que "
-              "nadie llamará, escribirá ni vendrá todavía por este chat. Si es urgente, llame a la oficina.",
+        "en": "{what} ({ref}) is saved in this demo, but it hasn't been sent to {team}, so nothing is scheduled. In "
+              "the real service, {team} would review it and follow up with you. If it's urgent, please contact the "
+              "office directly.",
+        "es": "{what} ({ref}) está guardada en esta demostración, pero no se envió al personal de McKinley, así que "
+              "no hay nada programado. En el servicio real, {team} la revisaría y le daría seguimiento. Si es "
+              "urgente, comuníquese directamente con la oficina.",
     },
     "after_send_tour": {
-        "en": "Tour request {ref} is saved for the leasing team, with: {saved}. It's a request, not a booking: no "
-              "time is confirmed. In the real service the leasing team would follow up to confirm a time; {route}. "
-              "In this prototype nobody is notified automatically, so no one will call or email because of this chat "
-              "yet.",
-        "es": "La solicitud de visita {ref} está guardada para el equipo de arrendamiento, con: {saved}. Es una "
-              "solicitud, no una cita: no hay hora confirmada. En el servicio real el equipo le contactaría para "
-              "confirmar una hora; {route}. En este prototipo no se avisa a nadie automáticamente, así que nadie le "
-              "llamará ni escribirá todavía por este chat.",
+        "en": "Your tour request ({ref}) is saved in this demo, but it hasn't been sent to the leasing team, so no "
+              "time is confirmed. In the real service, they'd reach out to set up a time with you.",
+        "es": "Su solicitud de visita ({ref}) está guardada en esta demostración, pero no se envió al equipo de "
+              "arrendamiento, así que no hay hora confirmada. En el servicio real, le contactarían para fijar una "
+              "hora.",
     },
     "route_profile": {
         "en": "they would use the contact on your profile",
@@ -649,12 +649,11 @@ T: dict[str, dict[Lang, str]] = {
               "recojo teléfonos ni correos en el chat, así que lo que escriba aquí no se guarda.",
     },
     "contact_route_none": {
-        "en": "I don't collect phone numbers or emails in chat yet, and there's no contact on a profile here, so "
-              "nothing you type is saved. The leasing office's real contact details aren't connected to this "
-              "prototype either, so for now the request can't reach you on its own.",
-        "es": "Todavía no recojo teléfonos ni correos en el chat y aquí no hay un contacto en un perfil, así que lo "
-              "que escriba no se guarda. Los datos de contacto reales de la oficina tampoco están conectados a este "
-              "prototipo, así que por ahora la solicitud no puede llegarle por sí sola.",
+        "en": "I don't collect phone numbers or emails in chat, so nothing you type is saved. This demo isn't "
+              "connected to the leasing office, so the request can't reach you on its own yet.",
+        "es": "No recojo teléfonos ni correos en el chat, así que lo que escriba no se guarda. Esta demostración no "
+              "está conectada con la oficina de arrendamiento, así que la solicitud todavía no puede llegarle por sí "
+              "sola.",
     },
     "lease_break": {
         "en": "Moving out early is handled by the leasing office directly: the options and any costs depend on your "
@@ -715,12 +714,10 @@ T: dict[str, dict[Lang, str]] = {
               "diga \"cancelar {ref}\" y prepararé una nota para la oficina con su número.",
     },
     "priority_offer": {
-        "en": "Staff set the priority when they review {ref}; I can't change it from here. I've prepared a note asking "
-              "them to treat it as a priority. Send it when you're ready. In this prototype nobody is notified "
-              "automatically.",
-        "es": "El personal fija la prioridad cuando revisa {ref}; yo no puedo cambiarla. Preparé una nota pidiendo "
-              "que la traten como prioridad. Envíela cuando quiera. En este prototipo no se avisa a nadie "
-              "automáticamente.",
+        "en": "Staff set the priority when they review {ref}, so I can't change it from here. I've prepared a note "
+              "asking them to treat it as a priority. Send it when you're ready.",
+        "es": "El personal fija la prioridad cuando revisa {ref}, así que no puedo cambiarla. Preparé una nota "
+              "pidiendo que la traten como prioridad. Envíela cuando quiera.",
     },
     "contact_not_saved": {
         "en": "No, I can't save phone numbers or emails here, so I haven't kept it.",
@@ -731,10 +728,9 @@ T: dict[str, dict[Lang, str]] = {
         "es": "En este prototipo la oficina le contacta según la preferencia de contacto de su cuenta.",
     },
     "contact_followup_none": {
-        "en": "The leasing team's follow-up isn't connected to this prototype, so nothing reaches you automatically "
-              "yet.",
-        "es": "El seguimiento del equipo de arrendamiento no está conectado a este prototipo, así que por ahora no le "
-              "llega nada automáticamente.",
+        "en": "This demo isn't connected to the leasing team, so nothing reaches you automatically yet.",
+        "es": "Esta demostración no está conectada con el equipo de arrendamiento, así que por ahora no le llega "
+              "nada automáticamente.",
     },
     "status_none_history": {
         "en": "I don't see any open requests on your record right now. The related requests I mentioned are earlier "
@@ -777,14 +773,15 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Eso ya está en la nota para la oficina. Envíela cuando quiera.",
     },
     "tour_already_sent": {
-        "en": "Your tour request {ref} is already saved for the leasing team ({saved}). To add or change details, I "
-              "can prepare a note for them. To see a different community, just tell me which one.",
-        "es": "Su solicitud de visita {ref} ya está guardada para el equipo de arrendamiento ({saved}). Para agregar o "
-              "cambiar datos, puedo preparar una nota. Para ver otra comunidad, dígame cuál.",
+        "en": "Your tour request {ref} is already saved ({saved}). To change details, I can start a note for the "
+              "leasing team, or tell me another community you'd like to see.",
+        "es": "Su solicitud de visita {ref} ya está guardada ({saved}). Para cambiar datos puedo empezar una nota "
+              "para el equipo de arrendamiento, o dígame otra comunidad que quiera ver.",
     },
-    "tour_skip_slot": {  # C-6 / W-11: never "I'll leave X for the team" as if the person had declined it
-        "en": "I'll mark {label} as not given yet for the leasing team to ask you about.",
-        "es": "Marco {label} como pendiente, para que el equipo de arrendamiento se lo pregunte.",
+    "tour_skip_slot": {  # C-6 / W-11: never "I'll leave X for the team" as if the person had declined it; Sprint 9: and
+        # never "the leasing team will ask you" (nobody receives the demo request)
+        "en": "No problem, I've marked {label} as not given yet.",
+        "es": "Sin problema, marqué {label} como pendiente.",
     },
     # ---- sprint 5.1: answers while a card is open (TEAM DRAFTS; Spanish needs review) ----
     "q_who_sees": {
@@ -796,16 +793,16 @@ T: dict[str, dict[Lang, str]] = {
               "mencione su nombre, agréguelo a la nota.",
     },
     "q_who_sees_plain": {
-        "en": "In this prototype, only McKinley staff who review the office queue can see it. Nobody is notified "
-              "automatically.",
-        "es": "En este prototipo solo el personal de McKinley que revisa la cola de la oficina puede verlo. No se "
-              "avisa a nadie automáticamente.",
+        "en": "In this demo, nobody at McKinley sees it. In the real service, only staff who review the office queue "
+              "would.",
+        "es": "En esta demostración nadie de McKinley la ve. En el servicio real, solo el personal que revisa la "
+              "cola de la oficina la vería.",
     },
     "q_no_visit": {
-        "en": "No. Nothing is scheduled: the team reviews the request first, and in this prototype nobody is "
-              "notified automatically, so I can't confirm a visit or a time.",
-        "es": "No. No hay nada programado: el equipo revisa la solicitud primero y en este prototipo no se avisa a "
-              "nadie, así que no puedo confirmar una visita ni una hora.",
+        "en": "No, nothing is scheduled. This demo doesn't send requests to McKinley staff, so I can't confirm a "
+              "visit or a time.",
+        "es": "No, no hay nada programado. Esta demostración no envía solicitudes al personal de McKinley, así que "
+              "no puedo confirmar una visita ni una hora.",
     },
     "q_count": {
         "en": "In this chat you've sent {n}: {items}.",
@@ -830,16 +827,16 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Perdone.",
     },
     "q_what_send": {
-        "en": "Pressing Send saves this {what} in the prototype for staff to review. Nothing else happens: nobody "
-              "is notified automatically, nothing is scheduled and nothing is charged.",
-        "es": "Al pulsar Enviar, esta {what} se guarda en el prototipo para que el personal la revise. No pasa nada "
-              "más: no se avisa a nadie, no se programa nada y no se cobra nada.",
+        "en": "Pressing Send saves this {what} in the demo. It isn't sent to McKinley staff, so nothing is scheduled "
+              "and nothing is charged.",
+        "es": "Al pulsar Enviar, esta {what} se guarda en la demostración. No se envía al personal de McKinley, así "
+              "que no se programa ni se cobra nada.",
     },
     "q_what_send_none": {
-        "en": "There's nothing waiting to send right now. When a card is shown, pressing Send saves it in the "
-              "prototype for staff to review; nobody is notified automatically and nothing is charged.",
-        "es": "Ahora no hay nada pendiente de enviar. Cuando aparece una tarjeta, Enviar la guarda en el prototipo "
-              "para que el personal la revise; no se avisa a nadie y no se cobra nada.",
+        "en": "There's nothing waiting to send right now. When a card is shown, Send saves it in this demo; it isn't "
+              "sent to McKinley staff and nothing is charged.",
+        "es": "Ahora no hay nada pendiente de enviar. Cuando aparece una tarjeta, Enviar la guarda en esta "
+              "demostración; no se envía al personal de McKinley y no se cobra nada.",
     },
     "q_cost": {
         "en": "Nothing in this chat charges you anything: pressing Send only saves the request for staff to review. "
@@ -856,16 +853,14 @@ T: dict[str, dict[Lang, str]] = {
         "es": " La tarjeta ya les pide revisarla: {note}.",
     },
     "q_priority_sent": {
-        "en": "Staff set the priority when they review {ref}; I can't mark it urgent from here. In this prototype "
-              "nobody is notified automatically.",
-        "es": "El personal fija la prioridad cuando revisa {ref}; yo no puedo marcarla como urgente. En este "
-              "prototipo no se avisa a nadie automáticamente.",
+        "en": "Staff set the priority when they review {ref}, so I can't mark it urgent from here.",
+        "es": "El personal fija la prioridad cuando revisa {ref}, así que no puedo marcarla como urgente.",
     },
     "q_timing": {
-        "en": "I can't promise a call or a time. Once you press Send, it waits for staff to review; in this "
-              "prototype nobody is notified automatically, so no one will call because of this chat yet.",
-        "es": "No puedo prometer una llamada ni una hora. Cuando pulse Enviar, queda para revisión del personal; en "
-              "este prototipo no se avisa a nadie, así que nadie llamará todavía por este chat.",
+        "en": "I can't promise a call or a time. This demo doesn't send requests to McKinley staff, so no one will "
+              "call because of this chat.",
+        "es": "No puedo prometer una llamada ni una hora. Esta demostración no envía solicitudes al personal de "
+              "McKinley, así que nadie llamará por este chat.",
     },
     "q_phone": {
         "en": "I don't have a phone number for the office in this prototype, so I can't connect you to a call. Your "
@@ -994,18 +989,15 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Actualizado: preferencia de contacto → {value}.",
     },
     "followup_existing": {
-        "en": "That sounds like {title} ({ref}), which is already open, so I won't start a duplicate. A request "
-              "that's already sent can't be edited here, so I've prepared a follow-up note for the office that "
-              "cites {ref}. Send it when you're ready. In this prototype nobody is notified automatically.",
+        "en": "That sounds like {title} ({ref}), which is already open, so I won't start a duplicate. A sent request "
+              "can't be edited here, so I've prepared a follow-up note for the office about it. Send it when you're "
+              "ready.",
         "es": "Parece ser {title} ({ref}), que ya está abierta, así que no abro otra. Una solicitud enviada no se "
-              "puede editar aquí, así que preparé una nota de seguimiento para la oficina que menciona {ref}. "
-              "Envíela cuando quiera. En este prototipo no se avisa a nadie automáticamente.",
+              "puede editar aquí, así que preparé una nota de seguimiento para la oficina. Envíela cuando quiera.",
     },
     "questions_note": {
-        "en": "I've put your questions ({value}) in a note for the leasing team. Send it when you're ready. In this "
-              "prototype nobody is notified automatically.",
-        "es": "Puse sus preguntas ({value}) en una nota para el equipo de arrendamiento. Envíela cuando quiera. En "
-              "este prototipo no se avisa a nadie automáticamente.",
+        "en": "I've put your questions ({value}) in a note for the leasing team. Send it when you're ready.",
+        "es": "Puse sus preguntas ({value}) en una nota para el equipo de arrendamiento. Envíela cuando quiera.",
     },
     "account_boundary": {
         "en": "I can't look up or share account details in this chat unless you're signed in to that account, and "
@@ -1024,16 +1016,20 @@ T: dict[str, dict[Lang, str]] = {
         "es": "¿En qué parte del apartamento es?",
     },
     "ask_plain_area": {
-        "en": "Which city or McKinley community would you like to see?",
-        "es": "¿Qué ciudad o comunidad de McKinley quiere ver?",
+        "en": "Which McKinley community, or which city, are you interested in?",
+        "es": "¿Qué comunidad de McKinley, o qué ciudad, le interesa?",
     },
     "tour_recheck": {
-        "en": "Check it over before you send it.",
+        "en": "Take a look before you send it.",
         "es": "Revísela antes de enviarla.",
     },
     "field_updated": {
         "en": "Updated: {label} → {value}.",
         "es": "Actualizado: {label} → {value}.",
+    },
+    "field_changed": {  # Sprint 9, NEEDS McKINLEY REVIEW (English only; Spanish keeps field_updated)
+        "en": "Got it, I've updated {name}.",
+        "es": "Listo, lo actualicé.",
     },
     "field_first": {
         "en": "{label}: {value}.",
@@ -1201,17 +1197,16 @@ T: dict[str, dict[Lang, str]] = {
     # request being written now is never counted). Never say anyone was notified; no callback, refund, rent concession
     # or completion date.
     "repeat_history_many": {  # NEEDS McKINLEY REVIEW
-        "en": "I found {n} related maintenance requests {window}, so I've marked this as a repeat issue. I'll include "
-              "that history in your request, so it's on the record for the community manager to review.",
-        "es": "Encontré {n} solicitudes de mantenimiento relacionadas {window}, así que la marqué como problema "
-              "repetido. Incluiré ese historial en su solicitud para que quede registrado y el gerente de la "
-              "comunidad lo revise.",
+        "en": "I can see {n} related maintenance requests {window}, so I've marked this as a repeat issue for the "
+              "community manager to review.",
+        "es": "Veo {n} solicitudes de mantenimiento relacionadas {window}, así que la marqué como problema repetido "
+              "para que la revise el gerente de la comunidad.",
     },
     "repeat_history_one": {  # NEEDS McKINLEY REVIEW
-        "en": "I found 1 related maintenance request {window}, so I've marked this as a repeat issue. I'll include "
-              "it in your request, so it's on the record for the community manager to review.",
-        "es": "Encontré 1 solicitud de mantenimiento relacionada {window}, así que la marqué como problema repetido. "
-              "La incluiré en su solicitud para que quede registrada y el gerente de la comunidad la revise.",
+        "en": "I can see 1 related maintenance request {window}, so I've marked this as a repeat issue for the "
+              "community manager to review.",
+        "es": "Veo 1 solicitud de mantenimiento relacionada {window}, así que la marqué como problema repetido para "
+              "que la revise el gerente de la comunidad.",
     },
     "repeat_history_lead": {  # NEEDS McKINLEY REVIEW: the apology before the history line
         "en": "I'm sorry this is happening again.",
@@ -1222,10 +1217,10 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Revísela y envíela.",
     },
     "repeat_history_saved": {  # NEEDS McKINLEY REVIEW: after Send; the prototype record holds the history
-        "en": " The related history is saved with this prototype record, marked for community manager review once "
-              "this is connected; in this demo nobody sees it yet.",
-        "es": " El historial relacionado quedó guardado con este registro de prueba, marcado para que el gerente de la "
-              "comunidad lo revise cuando esto esté conectado; en esta demo nadie lo ve todavía.",
+        "en": " It's marked as a repeat issue for community manager review, with your earlier related requests "
+              "included.",
+        "es": " Quedó marcada como problema repetido para revisión del gerente de la comunidad, con sus solicitudes "
+              "relacionadas anteriores incluidas.",
     },
     "multi_issue_named": {  # NEEDS McKINLEY REVIEW: two problems in one message, the second named and queued
         "en": "You mentioned {n} separate problems, so each gets its own request. Let's start with: {first}. Waiting "
@@ -1284,12 +1279,10 @@ T: dict[str, dict[Lang, str]] = {
               "pregunta o pasar una nota a la oficina. Dígame con sus palabras qué necesita, o elija una opción abajo.",
     },
     "frustrated_again": {  # NEEDS McKINLEY REVIEW: frustration a second time: no repeated apology, the human path
-        "en": "I hear you. Rather than go around again, your note for the office is below with everything you've told "
-              "me. Send it and a team member will read it; in this prototype nobody is notified, so if it's urgent "
-              "please contact the office directly too.",
-        "es": "Le entiendo. En lugar de dar más vueltas, su nota para la oficina está abajo con todo lo que me dijo. "
-              "Envíela y un miembro del equipo la leerá; en este prototipo no se avisa a nadie, así que si es urgente "
-              "comuníquese también con la oficina.",
+        "en": "I hear you. Your note for the office is below with everything you've told me. Send it when you're "
+              "ready, and if it's urgent, please contact the office directly too.",
+        "es": "Le entiendo. Su nota para la oficina está abajo con todo lo que me dijo. Envíela cuando quiera y, si "
+              "es urgente, comuníquese también directamente con la oficina.",
     },
     "issue_dropped": {  # NEEDS McKINLEY REVIEW: "never mind the smoke detector, only the faucet"
         "en": "Okay, I've taken {detail} off. This request is now: \"{issue}\".",
@@ -1304,12 +1297,47 @@ T: dict[str, dict[Lang, str]] = {
         "es": "¿{value} es para la visita o para la mudanza?",
     },
     "staff_complaint_note": {  # NEEDS McKINLEY REVIEW: a complaint about a visit or staff member
-        "en": "I'm sorry that happened. A manager should hear about this directly, so I've written a note with what "
-              "you said. It isn't a repair request. Send it to the office when you're ready. In this prototype nobody "
-              "is notified automatically.",
-        "es": "Lamento que haya pasado. Un gerente debe enterarse directamente, así que escribí una nota con lo que "
-              "dijo. No es una solicitud de reparación. Envíela a la oficina cuando quiera. En este prototipo no se "
-              "avisa a nadie automáticamente.",
+        "en": "I'm sorry that happened. A manager should hear about this, so I've written a note with what you said. "
+              "Send it to the office when you're ready.",
+        "es": "Lamento que haya pasado. Un gerente debe enterarse, así que escribí una nota con lo que dijo. Envíela "
+              "a la oficina cuando quiera.",
+    },
+    # ---- Sprint 9 (TEAM DRAFTS, NEEDS McKINLEY REVIEW; Spanish is a draft translation) ----
+    "after_send_contact": {
+        "en": "No, nobody will call or email from this demo, because your {what} ({ref}) wasn't sent to McKinley "
+              "staff. In the real service, {team} would follow up with you.",
+        "es": "No, nadie le llamará ni escribirá desde esta demostración, porque su {what} ({ref}) no se envió al "
+              "personal de McKinley. En el servicio real, {team} le daría seguimiento.",
+    },
+    "after_send_contact_tour": {
+        "en": "No, nobody will call or email from this demo, because your tour request ({ref}) wasn't sent to the "
+              "leasing team, and no time is booked. In the real service, they'd reach out to set up a time.",
+        "es": "No, nadie le llamará ni escribirá desde esta demostración, porque su solicitud de visita ({ref}) no se "
+              "envió al equipo de arrendamiento y no hay hora reservada. En el servicio real, le contactarían para "
+              "fijar una hora.",
+    },
+    "after_send_contact_urgent": {
+        "en": "No, nobody will call or come from this demo, because your {what} ({ref}) wasn't sent to McKinley "
+              "staff. If it's urgent, please contact the office directly.",
+        "es": "No, nadie le llamará ni vendrá desde esta demostración, porque su {what} ({ref}) no se envió al "
+              "personal de McKinley. Si es urgente, comuníquese directamente con la oficina.",
+    },
+    "tour_ack": {
+        "en": "Sounds good!",
+        "es": "¡Muy bien!",
+    },
+    "tour_changed": {
+        "en": "No problem, I've changed it to {values}.",
+        "es": "Sin problema, lo cambié a {values}.",
+    },
+    "tour_ready_when": {
+        "en": "Perfect, I've put together your tour request for {when}. Take a look below, then send it when it "
+              "looks right.",
+        "es": "Perfecto, preparé su solicitud de visita para {when}. Revísela abajo y envíela cuando esté bien.",
+    },
+    "tour_saved_when": {
+        "en": " for {when}",
+        "es": " para {when}",
     },
     "next_leasing_note": {
         "en": "The leasing team can answer that: I can send them your question as a note.",
@@ -1350,44 +1378,56 @@ DIY_ADVICE: dict[str, dict[Lang, str]] = {
 # Confirmation messages returned by the action endpoint after a prototype record was actually written (I-22,
 # I-16 drafts). They state the real outcome and never promise timing.
 CONFIRM: dict[str, dict[Lang, str]] = {
+    # Sprint 9 (NEEDS McKINLEY REVIEW): short and truthful. The card shows the reference and details, and says once
+    # that it is saved in the demo only; this line says what that means for the person (nothing sent, nothing booked).
     "maintenance_request": {
-        # NEEDS McKINLEY REVIEW (Sprint 7): same honesty as the card ("Demo only ... No McKinley staff will see it")
-        "en": "Request {id} is saved in this demo. In the real service a team member would review it before anything "
-              "is scheduled; in this prototype nobody is notified automatically and no McKinley staff will see it. You "
-              "can ask me for its status anytime.",
-        "es": "La solicitud {id} quedó guardada en esta demostración. En el servicio real un miembro del equipo la "
-              "revisaría antes de programar algo; en este prototipo no se avisa a nadie automáticamente y nadie del "
-              "personal de McKinley la verá. Puede "
-              "preguntarme por su estado cuando quiera.",
+        "en": "Your repair request is saved in this demo. It hasn't been sent to maintenance, so no visit is scheduled "
+              "yet. You can ask me about it anytime.",
+        "es": "Su solicitud de reparación quedó guardada en esta demostración. No se envió a mantenimiento, así que "
+              "todavía no hay una visita programada. Puede preguntarme por ella cuando quiera.",
     },
-    "tour_request": {
-        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
-        "en": "Tour request {id} is saved in this demo. It isn't a booking yet: in the real service the leasing team "
-              "would pick a time from your preferences; in this prototype nobody is notified automatically and no "
-              "McKinley staff will see it.",
-        "es": "La solicitud de visita {id} quedó guardada en esta demostración. No es una cita: en el servicio real el "
-              "equipo de arrendamiento elegiría una hora según sus preferencias; aquí nadie del personal de McKinley "
-              "la verá ni recibirá aviso.",
+    "tour_request": {  # {when} = " for next week in the morning" (tour_saved_when) or ""
+        "en": "Your tour request{when} is saved in this demo! The time isn't confirmed, and it hasn't been sent to the "
+              "leasing team.",
+        "es": "¡Su solicitud de visita{when} quedó guardada en esta demostración! La hora no está confirmada y no se "
+              "envió al equipo de arrendamiento.",
     },
     "staff_handoff": {
-        # NEEDS McKINLEY REVIEW (Sprint 7): consistent with the demo card
-        "en": "Note {id} is saved in this demo with the details, so you won't have to repeat yourself. In this "
-              "prototype nobody is notified automatically and no McKinley staff will see it.",
-        "es": "La nota {id} quedó guardada en esta demostración con los detalles, para que no tenga que repetirlos. "
-              "Aquí nadie del personal de McKinley la verá ni recibirá aviso.",
+        "en": "Your note is saved in this demo with what you told me. It hasn't been sent to the office, so no one "
+              "will reach out from it yet.",
+        "es": "Su nota quedó guardada en esta demostración con lo que me dijo. No se envió a la oficina, así que nadie "
+              "le contactará por ella todavía.",
     },
-    # NEEDS McKINLEY REVIEW: a note with no details of the person's own (never claims "with the details")
+    # a note with no details of the person's own (never claims "with what you told me")
     "staff_handoff_plain": {
-        "en": "Note {id} is saved for the office. In this prototype nobody is notified automatically.",
-        "es": "La nota {id} quedó guardada para la oficina. En este prototipo no se avisa a nadie automáticamente.",
+        "en": "Your note is saved in this demo. It hasn't been sent to the office, so no one will reach out from it "
+              "yet.",
+        "es": "Su nota quedó guardada en esta demostración. No se envió a la oficina, así que nadie le contactará por "
+              "ella todavía.",
     },
 }
 
-NO_CONTACT_SUFFIX: dict[Lang, str] = {
-    "en": " This prototype doesn't collect a way to reach you, and the office's real contact details aren't connected "
-          "here yet.",
-    "es": " Este prototipo no recoge sus datos de contacto, y los datos reales de la oficina todavía no están "
-          "conectados aquí.",
+# Sprint 9: the one demo line on a card. Before Send it says what Send will (not) do; after Send, what happened.
+CARD_NOTE: dict[str, dict[str, dict[Lang, str]]] = {
+    "open": {
+        "maintenance_request": {"en": "Sending saves a demo request. It won't notify McKinley staff or schedule a "
+                                      "visit.",
+                                "es": "Enviar guarda una solicitud de demostración. No avisa al personal de McKinley "
+                                      "ni programa una visita."},
+        "tour_request": {"en": "Sending saves a demo request. It won't notify McKinley staff, and no time is booked.",
+                         "es": "Enviar guarda una solicitud de demostración. No avisa al personal de McKinley y no "
+                               "reserva una hora."},
+        "staff_handoff": {"en": "Sending saves a demo note. It won't notify McKinley staff.",
+                          "es": "Enviar guarda una nota de demostración. No avisa al personal de McKinley."},
+    },
+    "saved": {
+        "maintenance_request": {"en": "Not sent to maintenance. No visit is scheduled.",
+                                "es": "No se envió a mantenimiento. No hay visita programada."},
+        "tour_request": {"en": "Not sent to the leasing team. No time is booked.",
+                         "es": "No se envió al equipo de arrendamiento. No hay hora reservada."},
+        "staff_handoff": {"en": "Not sent to the office. No one is notified.",
+                          "es": "No se envió a la oficina. No se avisa a nadie."},
+    },
 }
 
 CONFIRM_LABEL: dict[str, dict[Lang, str]] = {
