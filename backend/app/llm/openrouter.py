@@ -10,6 +10,9 @@ from app.llm.http import map_status, post_json
 
 class OpenRouterProvider:
     name = "openrouter"
+    token_param = "max_tokens"  # newer OpenAI models (U-M Toolkit) need "max_completion_tokens"
+    missing_key = ("OPENROUTER_API_KEY is not configured on the backend. Add it to backend/.env (free key at "
+                   "openrouter.ai) or set LLM_PROVIDER=mock.")
 
     def __init__(self, api_key: str | None, base_url: str, app_title: str, client: httpx.Client | None = None,
                  reasoning_effort: str | None = None):
@@ -19,17 +22,19 @@ class OpenRouterProvider:
         self._app_title = app_title
         self._client = client
 
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._api_key}", "X-Title": self._app_title}
+
     def complete(self, system: str, messages: list[dict[str, str]], target: Target,
                  cfg: GenerationConfig, schema: dict[str, Any] | None = None,
                  schema_name: str = "mckinley_reply") -> LLMResult:
         schema = schema or OUTPUT_SCHEMA
         if not self._api_key:
-            raise LLMError("NEEDS_API_KEY", "OPENROUTER_API_KEY is not configured on the backend. Add it to "
-                           "backend/.env (free key at openrouter.ai) or set LLM_PROVIDER=mock.", http_status=503)
+            raise LLMError("NEEDS_API_KEY", self.missing_key, http_status=503)
         payload: dict[str, Any] = {
             "model": target.model,
             "messages": [{"role": "system", "content": system}, *messages],
-            "max_tokens": cfg.max_tokens,
+            self.token_param: cfg.max_tokens,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {"name": schema_name, "strict": True, "schema": schema},
@@ -40,10 +45,7 @@ class OpenRouterProvider:
             payload["temperature"] = cfg.temperature
         if self._reasoning:
             payload["reasoning"] = {"enabled": False} if self._reasoning == "none" else {"effort": self._reasoning}
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "X-Title": self._app_title,
-        }
+        headers = self._headers()
         data, latency_ms = post_json(self.name, f"{self._base_url}/chat/completions", payload, headers,
                                      cfg.timeout_seconds, cfg.max_retries, self._client)
         if "error" in data:
@@ -54,17 +56,17 @@ class OpenRouterProvider:
             code = err.get("code") if isinstance(err, dict) else None
             if isinstance(code, int) and 400 <= code < 600:
                 raise map_status(self.name, code, str(msg)[:200])
-            raise LLMError("MODEL_API_ERROR", f"openrouter error: {str(msg)[:200]}")
+            raise LLMError("MODEL_API_ERROR", f"{self.name} error: {str(msg)[:200]}")
         choices = data.get("choices") or []
         if not choices:
-            raise LLMError("MODEL_EMPTY_RESPONSE", "openrouter returned no choices.")
+            raise LLMError("MODEL_EMPTY_RESPONSE", f"{self.name} returned no choices.")
         choice = choices[0]
         finish = choice.get("finish_reason")
         if finish == "length":
             raise LLMError("MODEL_TRUNCATED", "Model output hit max_tokens before completing.")
         message = choice.get("message") or {}
         if finish == "content_filter" or message.get("refusal"):
-            raise LLMError("MODEL_REFUSAL", f"openrouter: the model or provider declined the request ({finish}).")
+            raise LLMError("MODEL_REFUSAL", f"{self.name}: the model or provider declined the request ({finish}).")
         content = message.get("content") or ""
         output, mode = parse_output(content)
         usage = data.get("usage") or {}
