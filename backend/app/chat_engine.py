@@ -15,7 +15,7 @@ import uuid
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
-from app import claim_grounding
+from app import claim_grounding, safety_dedupe
 from app import understanding as und
 from app import workflow_state as wf
 from app.actions import TurnPlan, identity_note, plan_turn, resident_for, synthesize_handoff
@@ -491,6 +491,10 @@ def run_turn(
     safety_notice = st.safety_notice if ekind else None
     if gate and gate.urgency == "emergency" and not safety_notice:  # e.g. an LLM gate said emergency: generic text
         safety_notice = risk_responses.generic_steps(lang)
+    if safety_notice:  # each emergency instruction once per message; approved steps untouched (app/safety_dedupe.py)
+        reply, dropped = safety_dedupe.drop_repeated_reminders(reply)
+        if dropped:
+            trace.add("8_validate", "ok", f"emergency reminder already said in this reply: {len(dropped)} removed")
     care_kind = st.care_kind if not safety_notice else None
     care_note = st.care_note if care_kind else None
     if care_kind:
