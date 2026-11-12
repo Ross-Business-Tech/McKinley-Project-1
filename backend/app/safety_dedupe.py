@@ -5,7 +5,9 @@ reminder sentences ("If you haven't yet, call your community's emergency mainten
 unwell or is in danger, call 911.") can repeat what the steps just said, so "call 911" appeared two or three times.
 
 Rule (narrow on purpose): a reminder sentence of `emergency_follow` is dropped ONLY when the same instruction (911,
-or the community emergency maintenance line) already appears EARLIER in the same reply. The approved safety steps are
+or the community emergency maintenance line) already appears EARLIER in the same reply WITHOUT a condition. "Call 911
+if water reaches anything electrical" does not cover "If anyone feels unwell or is in danger, call 911": different
+conditions are different guidance, so that reminder stays. The approved safety steps are
 never removed, shortened or reworded, the first instruction always stays, and a reminder whose instruction the steps
 do not contain is kept (carbon monoxide steps say 911 but not the maintenance line, so that reminder stays).
 """
@@ -33,8 +35,16 @@ def _reminders() -> set[str]:
 REMINDERS = _reminders()
 
 
+_CONDITION = re.compile(r"\b(?:if|when|unless|si|cuando)\b", re.I)
+
+
 def _instructions(sentence: str) -> set[str]:
     return {k for k, rx in _INSTRUCTIONS.items() if rx.search(sentence)}
+
+
+def _unconditional(sentence: str) -> set[str]:
+    """Instructions given without any condition in the same sentence (only these can cover a later reminder)."""
+    return set() if _CONDITION.search(sentence) else _instructions(sentence)
 
 
 def drop_repeated_reminders(reply: str) -> tuple[str, list[str]]:
@@ -47,6 +57,6 @@ def drop_repeated_reminders(reply: str) -> tuple[str, list[str]]:
         if s.strip() in REMINDERS and ins and ins <= seen:
             dropped.append(s)
             continue
-        seen |= ins
+        seen |= _unconditional(s)
         kept.append(s)
     return (" ".join(kept) if dropped else reply), dropped

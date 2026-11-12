@@ -24,10 +24,19 @@ def test_co_follow_up_keeps_steps_first_and_the_maintenance_reminder():
     assert dropped == ["If anyone feels unwell or is in danger, call 911."]
 
 
-def test_electrical_follow_up_drops_both_repeats_and_keeps_steps():
+def test_electrical_follow_up_drops_the_repeated_line_but_keeps_a_differently_conditioned_911():
     out, dropped = drop_repeated_reminders(f"{ELECTRIC_STEPS} {FOLLOW}")
-    assert out == f"{ELECTRIC_STEPS} Your urgent note DEMO-TASK-1023 is saved, but this assistant hasn't sent anyone."
-    assert len(dropped) == 2 and out.count("911") == 1
+    # "call your community's emergency maintenance line" was said unconditionally: the reminder goes. The steps' 911
+    # depends on smoke/sparks/heat, so "If anyone feels unwell or is in danger, call 911" is different guidance: kept.
+    assert out == (f"{ELECTRIC_STEPS} Your urgent note DEMO-TASK-1023 is saved, but this assistant hasn't sent anyone. "
+                   "If anyone feels unwell or is in danger, call 911.")
+    assert dropped == ["If you haven't yet, call your community's emergency maintenance line."]
+
+
+def test_a_conditional_instruction_never_covers_a_reminder():
+    text = "Call 911 if water reaches anything electrical or anyone is in danger. If anyone feels unwell or is in " \
+           "danger, call 911."
+    assert drop_repeated_reminders(text) == (text, [])
 
 
 def test_follow_up_without_steps_keeps_every_reminder():
@@ -44,6 +53,10 @@ def test_spanish_follow_up():
     steps = "Salga ahora y llame al 911. Luego llame a la línea de emergencias de mantenimiento."
     out, dropped = drop_repeated_reminders(f"{steps} {t('emergency_follow', 'es', ref='DEMO-TASK-1')}")
     assert out.count("911") == 1 and len(dropped) == 2 and out.startswith(steps)
+    english_steps = "Get outside now and call 911."  # an English step never covers a Spanish reminder's wording
+    es_follow = t("emergency_follow", "es", ref="DEMO-TASK-1")
+    out2, _ = drop_repeated_reminders(f"{english_steps} {es_follow}")
+    assert "línea de emergencias de mantenimiento" in out2
 
 
 def test_follow_up_through_the_api_says_911_once(client):
@@ -55,8 +68,8 @@ def test_follow_up_through_the_api_says_911_once(client):
     second = chat("what should I do right now")
     assert first["safety_notice"] and second["safety_notice"]
     for r in (first, second):
-        assert r["reply"].lower().count("call 911") <= 1, r["reply"]
         assert r["reply"].lower().count("emergency maintenance line") <= 1, r["reply"]
+        assert r["reply"].lower().count("call 911") <= 2, r["reply"]  # at most once per distinct condition
 
 
 def test_red_alert_notice_state_and_contacts_are_untouched(client, monkeypatch):
