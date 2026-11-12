@@ -45,9 +45,9 @@ function live(chat: (body: { message: string }) => ChatResponse | Error) {
     }
     if (url.endsWith("/api/actions/cancel")) return new Response(JSON.stringify({ ok: true, message: "ok", action: null, record: null, error_code: null }));
     if (url.endsWith("/api/actions/confirm")) {
-      const record = { id: "DEMO-WO-1001", kind: "maintenance_request", status: "submitted_for_review", status_label: "Submitted, waiting for staff review", persona_id: "R001", session_hash: "abc", created_at: "2026-11-07T00:00:00Z", summary: "s", fields: [], system: "prototype" };
-      const action = { ...readyCard, stage: "submitted", confirm_label: null, record };
-      return new Response(JSON.stringify({ ok: true, message: "Request DEMO-WO-1001 is saved for staff review.", action, record, error_code: null }));
+      const record = { id: "DEMO-WO-1001", kind: "maintenance_request", status: "submitted_for_review", status_label: "Saved in demo", persona_id: "R001", session_hash: "abc", created_at: "2026-11-07T00:00:00Z", summary: "s", fields: [], system: "prototype" };
+      const action = { ...readyCard, stage: "submitted", confirm_label: null, record, note: "Not sent to maintenance. No visit is scheduled." };
+      return new Response(JSON.stringify({ ok: true, message: "Your repair request is saved in this demo. It hasn't been sent to maintenance.", action, record, error_code: null }));
     }
     throw new TypeError("fetch failed");
   }));
@@ -75,14 +75,14 @@ describe("CustomerApp", () => {
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   });
 
-  it("gives the 'What was sent' disclosure a 44px target (inner span; WebKit ignores flex on <summary>)", async () => {
+  it("gives the 'Details' disclosure a 44px target (inner span; WebKit ignores flex on <summary>)", async () => {
     live(() => resp({ reply: "Here's your request.", action: readyCard }));
     const user = userEvent.setup();
     render(<CustomerApp />);
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
     await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
     await user.click(await screen.findByRole("button", { name: "Send repair request" }));
-    const label = await screen.findByText("What was sent");
+    const label = await screen.findByText("Details");
     expect(label.tagName).toBe("SPAN");
     expect(label).toHaveClass("min-h-11");
     expect(label.closest("summary")).toHaveClass("min-h-11");
@@ -95,7 +95,7 @@ describe("CustomerApp", () => {
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
     await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
     await user.click(await screen.findByRole("button", { name: "Send repair request" }));
-    await screen.findByText(/Submitted, waiting for staff review/);
+    await screen.findByText(/Saved in demo/);
     expect(screen.queryByRole("button", { name: "Send repair request" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Don't send" })).not.toBeInTheDocument();
     // the press is shown as the person's own turn, so the saved message reads as the reply to it
@@ -111,7 +111,7 @@ describe("CustomerApp", () => {
     await user.selectOptions(await screen.findByLabelText("Demo sign-in"), "R001");
     await user.type(screen.getByLabelText("Message the assistant"), "My kitchen faucet drips{Enter}");
     await user.click(await screen.findByRole("button", { name: "Send repair request" }));
-    await screen.findByText(/Submitted, waiting for staff review/);
+    await screen.findByText(/Saved in demo/);
     const region = document.querySelector('[aria-live="polite"]');
     await waitFor(() => expect(region).toHaveTextContent(/Assistant said:.*DEMO-WO-/));
   });
@@ -165,7 +165,7 @@ describe("CustomerApp", () => {
     const reply = await screen.findByText("¿En qué parte del apartamento es?");
     expect(reply.closest("[lang]")).toHaveAttribute("lang", "es");
     // still collecting: a one-line progress note, not a full card
-    expect(screen.getByTestId("progress-hint")).toHaveTextContent("Falta: Dónde");
+    expect(screen.getByTestId("progress-hint")).toHaveTextContent("Falta agregar: dónde");
     expect(screen.queryByRole("group", { name: "Repair request" })).not.toBeInTheDocument();
     expect(screen.getByText("el horno no calienta").closest("[lang]")).toHaveAttribute("lang", "es");
   });
@@ -364,7 +364,7 @@ describe("Sprint 5.1 UI fixes", () => {
     expect(screen.getByTestId("choice").parentElement).toHaveTextContent("Not sent");
     expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent(/That didn't save/);
     await user.click(screen.getByRole("button", { name: /Send again/ }));
-    expect(await screen.findByText(/Submitted, waiting for staff review/)).toBeInTheDocument();
+    expect(await screen.findByText(/Saved in demo/)).toBeInTheDocument();
     // Sprint 7 (judge H-10): after the retry goes through, no stale "Send again" button stays on screen
     expect(screen.queryByRole("button", { name: /Send again/ })).not.toBeInTheDocument();
   });
@@ -383,7 +383,12 @@ describe("Sprint 5.1 UI fixes", () => {
     expect(within(group).queryByText(/demo account/)).not.toBeInTheDocument();
     expect(within(group).queryByText(/Not collected in this prototype/)).not.toBeInTheDocument();
     await user.click(within(group).getByRole("button", { name: "Send repair request" }));
-    expect(await screen.findByText(/No McKinley staff will see it or be notified/)).toBeInTheDocument();
+    // Sprint 9: one backend-written demo line on the saved card, the status pill says "Saved in demo", reference below
+    expect(await screen.findByText("Not sent to maintenance. No visit is scheduled.")).toBeInTheDocument();
+    const saved = screen.getAllByTestId("action-card").at(-1)!;
+    expect(within(saved).getByText("Saved in demo")).toBeInTheDocument();
+    expect(within(saved).getByTestId("card-reference")).toHaveTextContent("DEMO-WO-1001");
+    expect(within(saved).queryByText(/No McKinley staff will see it/)).not.toBeInTheDocument();
   });
 
   it("never pins more than three urgent rows and always shows the newest request", async () => {

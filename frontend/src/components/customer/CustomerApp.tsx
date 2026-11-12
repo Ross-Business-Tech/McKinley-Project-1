@@ -508,7 +508,7 @@ export function CustomerApp() {
               </>
             ) : (
               <p data-testid="guest-only" className="min-h-11 py-2.5 text-sm font-medium text-mk-muted">
-                {t.guestOnly}
+                {t.prototype}
               </p>
             )}
             <button
@@ -543,7 +543,7 @@ export function CustomerApp() {
               <div className="rounded-lg bg-mk-paper p-4">
                 <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
                 <p className="mt-1 text-sm text-mk-muted">
-                  {t.prototype} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
+                  {t.demoAbout} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
                 </p>
                 {state.mode === "live" && !state.demoSignIn && (
                   <p className="mt-2 text-sm text-mk-muted" data-testid="guest-only-about">{t.guestOnlyAbout}</p>
@@ -750,7 +750,9 @@ export function CustomerApp() {
             )}
           </div>
           <p id={statusId} className="pb-0.5 text-sm text-mk-muted [@media(max-height:480px)]:sr-only [html[data-mk-short]_&]:sr-only" lang={lang}>
-            {t.prototype} <span data-testid="emergency-footer">{t.emergencyFooter}</span>
+            {/* Sprint 9: the demo identity is in the strip on the public site; here only when the strip is a sign-in */}
+            {(state.mode === "preview" || state.demoSignIn) && <>{t.prototype}. </>}
+            <span data-testid="emergency-footer">{t.emergencyFooter}</span>
           </p>
         </div>
       </div>
@@ -919,7 +921,7 @@ function Message({
         {safety === "concern" && (
           <CareNote kind={r?.care_kind ?? "unwell"} note={r?.care_note ?? r?.safety_notice ?? null} contacts={contacts} t={t} />
         )}
-        {!templateCoversNotice && <p className="text-base leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>}
+        {!templateCoversNotice && <p className="max-w-prose text-base leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>}
         {r?.status_items && r.status_items.length > 0 && <StatusList items={r.status_items} t={t} />}
         {action && cardState && (action.stage === "collecting" ? (
           cardState === "current" && <ProgressHint action={action} t={t} />

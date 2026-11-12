@@ -67,12 +67,6 @@ export function ActionCard({
         <StatusPill tone={tone}>{stageText}</StatusPill>
       </div>
 
-      {action.record && (
-        <p className="mt-1 text-sm text-mk-muted">
-          {t.reference} <span className="font-semibold text-mk-ink tabular-nums">{action.record.id}</span>
-        </p>
-      )}
-
       {open && shownFields.length > 0 && <FieldList fields={shownFields} t={t} onFileLabel={onFileLabel} />}
       {(submitted || declined) && shownFields.length > 0 && (
         <details className="mt-1">
@@ -90,8 +84,14 @@ export function ActionCard({
         </p>
       )}
 
-      {/* A sent card gets one honest line instead of the backend's "Prototype…" note next to "waiting for review". */}
-      {!declined && <p className="mt-2 text-sm text-mk-muted">{submitted ? t.sentDemoNote : action.note}</p>}
+      {/* Sprint 9: the ONE demo line for this request, from the backend (what Send will not do / did not do). */}
+      {!declined && <p className="mt-2 text-sm text-mk-muted" data-testid="card-note">{action.note}</p>}
+
+      {action.record && (
+        <p className="mt-1.5 text-xs text-mk-muted" data-testid="card-reference">
+          {t.reference} <span className="tabular-nums">{action.record.id}</span>
+        </p>
+      )}
 
       {open && action.stage === "ready" && action.confirm_label && (confirmAvailable || cancelAvailable) && (
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -151,6 +151,11 @@ function FieldList({ fields, t, onFileLabel }: { fields: ProposedAction["fields"
   );
 }
 
+/** "Community or city, Time of day" → "community or city, time of day" (a progress line, not a form). */
+function lowerList(items: string[]): string {
+  return items.map((m) => m.charAt(0).toLowerCase() + m.slice(1)).join(", ");
+}
+
 function sentenceCase(v: string): string {
   return v ? v[0].toUpperCase() + v.slice(1) : v;
 }
@@ -162,7 +167,7 @@ export function ProgressHint({ action, t }: { action: ProposedAction; t: UIStrin
       <ListChecks aria-hidden className="mt-0.5 size-4 shrink-0 text-mk-brand" />
       <span>
         <span className="font-semibold text-mk-ink">{action.title}.</span>{" "}
-        {action.missing.length ? `${t.stillNeeded} ${action.missing.join(", ")}` : t.stage.collecting}
+        {action.missing.length ? `${t.stillNeeded} ${lowerList(action.missing)}` : t.stage.collecting}
       </span>
     </p>
   );

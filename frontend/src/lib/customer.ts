@@ -109,6 +109,9 @@ export function actionTone(a: ProposedAction): Tone {
 /** Backend record / status-list labels (English) in Spanish. Unknown labels are shown as they are. */
 const ES_STATUS: Record<string, string> = {
   "submitted, waiting for staff review": "Enviada, en espera de revisión del personal",
+  "saved in demo": "Guardada en la demo",
+  "urgent · saved in demo": "Urgente · guardada en la demo",
+  // labels stored before Sprint 9 (the backend now relabels them on read)
   "requested; leasing team to confirm a time": "Solicitada; el equipo de arrendamiento confirmará una hora",
   "in the office queue": "En la cola de la oficina",
   "urgent; in the office queue": "Urgente; en la cola de la oficina",
@@ -125,12 +128,12 @@ const ES_STATUS: Record<string, string> = {
 export const UI = {
   en: {
     lang: "en",
-    stage: { collecting: "Draft: a few details to go", ready: "Ready to send", submitted: "Sent", blocked: "Not available here" },
+    stage: { collecting: "Draft", ready: "Ready to send", submitted: "Saved in demo", blocked: "Not available here" },
     source: { you_said: "You told us", on_file: "On your account", assistant: "Added by the assistant", missing: "Still needed" },
-    stillNeeded: "Still needed:",
+    stillNeeded: "Still to add:",
     dontSend: "Don't send",
     sending: "Sending…",
-    whatWasSent: "What was sent",
+    whatWasSent: "Details",
     notSent: "Not sent",
     reference: "Reference",
     assistantSaid: "Assistant said:",
@@ -180,13 +183,14 @@ export const UI = {
     afterDecline: ["Send it after all", "Report a repair"],
     afterSendGuest: ["What happens next?"],
     subtitle: "Resident and leasing help",
-    sentDemoNote: "Demo only: saved in this prototype. No McKinley staff will see it or be notified.",
     statusText: (label: string) => label,
     talkToPerson: "Talk to a person",
     gasCall: "Get outside, then call 911",
     newChat: "Start over",
     newChatConfirm: "Start a new conversation? This one will be cleared from this screen.",
-    prototype: "Prototype with made-up data.",
+    // NEEDS McKINLEY REVIEW (Sprint 9): the persistent demo identity; the details are in "About this demo"
+    prototype: "Demo · Sample data · No requests sent to staff",
+    demoAbout: "This is a prototype with made-up sample data. Requests you save stay in this demo: McKinley staff don't see them and no one is notified, so nothing is booked, scheduled or charged.",
     // NEEDS McKINLEY REVIEW (Sprint 8): the only always-on mention of 911. Plain muted text, deliberately not a link.
     emergencyFooter: "In an emergency, call 911.",
     // NEEDS McKINLEY REVIEW (Sprint 8): contact link label and the alert heading when the backend sends none
@@ -195,8 +199,6 @@ export const UI = {
     demoButton: "Demo",
     demoTitle: "About this demo",
     demoSignIn: "Demo sign-in",
-    // NEEDS McKINLEY REVIEW: shown instead of the demo sign-in when the backend has no demo accounts (hosted)
-    guestOnly: "Guest: general questions and notes to the office",
     // NEEDS McKINLEY REVIEW: public demo (no sign-in) - say plainly what a visitor cannot do here
     guestOnlyAbout: "On this public demo everyone is a guest: you can ask general questions, request a tour or leave a note for the office. Resident features such as repairs on your account and request status need a sign-in, which this demo does not have.",
     demoClose: "Close",
@@ -204,12 +206,12 @@ export const UI = {
   },
   es: {
     lang: "es",
-    stage: { collecting: "Borrador: faltan algunos datos", ready: "Lista para enviar", submitted: "Enviada", blocked: "No disponible aquí" },
+    stage: { collecting: "Borrador", ready: "Lista para enviar", submitted: "Guardada en la demo", blocked: "No disponible aquí" },
     source: { you_said: "Lo que dijo", on_file: "En su cuenta", assistant: "Agregado por el asistente", missing: "Falta" },
-    stillNeeded: "Falta:",
+    stillNeeded: "Falta agregar:",
     dontSend: "No enviar",
     sending: "Enviando…",
-    whatWasSent: "Lo que se envió",
+    whatWasSent: "Detalles",
     notSent: "No enviada",
     reference: "Referencia",
     assistantSaid: "El asistente dijo:",
@@ -246,12 +248,12 @@ export const UI = {
     afterDecline: ["Envíelo", "Reportar una reparación"],
     afterSendGuest: ["¿Qué pasa ahora?"],
     subtitle: "Ayuda para residentes y arrendamiento",
-    sentDemoNote: "Solo demostración: guardada en este prototipo. Nadie del personal de McKinley la verá ni recibirá aviso.",
     statusText: (label: string) => ES_STATUS[label.trim().toLowerCase()] ?? label,
     talkToPerson: "Hablar con una persona",
     newChat: "Empezar de nuevo",
     newChatConfirm: "¿Empezar una conversación nueva? Esta se borrará de la pantalla.",
-    prototype: "Prototipo con datos ficticios.",
+    prototype: "Demo · Datos de ejemplo · No se envía nada al personal",
+    demoAbout: "Este es un prototipo con datos ficticios de ejemplo. Lo que guarde se queda en esta demostración: el personal de McKinley no lo ve y no se avisa a nadie, así que no se reserva, programa ni cobra nada.",
     // NEEDS McKINLEY REVIEW (Sprint 8)
     emergencyFooter: "En una emergencia, llame al 911.",
     callPoison: "Llamar a Poison Help 1-800-222-1222",
@@ -260,7 +262,6 @@ export const UI = {
     demoTitle: "Sobre esta demo",
     demoSignIn: "Inicio de sesión de demo",
     // NEEDS McKINLEY REVIEW
-    guestOnly: "Invitado: preguntas generales y notas a la oficina",
     guestOnlyAbout: "En esta demostración pública todos son invitados: puede hacer preguntas generales, pedir una visita o dejar una nota para la oficina. Las funciones para residentes, como reparaciones en su cuenta y el estado de sus solicitudes, requieren iniciar sesión, algo que esta demostración no tiene.",
     demoClose: "Cerrar",
     gasCall: "Salga y luego llame al 911",
