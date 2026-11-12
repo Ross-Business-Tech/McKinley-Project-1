@@ -87,7 +87,7 @@ def test_unverified_claims_unlock_nothing(client):
     m = chat(client, "My bathroom sink is leaking", persona="U-NOMATCH", session="u2")
     assert m["action"]["kind"] == "staff_handoff"  # no work-order draft without a record
     g = chat(client, "My bathroom sink is leaking", persona="", session="g")
-    assert g["action"] is None and "sign in" in g["reply"].lower()
+    assert g["action"] is None and "sign-in" in g["reply"].lower().replace("sign in", "sign-in")
 
 
 @pytest.mark.parametrize("persona", ["", "P-BROWSE-FL", "U-NOMATCH", "R002"])

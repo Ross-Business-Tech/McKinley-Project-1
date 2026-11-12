@@ -411,7 +411,7 @@ def test_booked_question_after_sending(client):  # D NEW-5
     chat(client, "Could I tour a 2 bed in Ypsilanti on Saturday morning?", persona="", session="bks")
     tour = confirm(client, "tour_request", persona="", session="bks")["record"]["id"]
     r = chat(client, "So I'm booked Thursday at 4pm right?", persona="", session="bks")
-    assert tour in r["reply"] and "nothing is booked" in r["reply"] and r["action"] is None
+    assert tour in r["reply"] and "nothing is booked" in r["reply"].lower() and r["action"] is None
 
 
 def test_price_questions_do_not_become_tours(client):  # B N2

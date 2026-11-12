@@ -312,8 +312,19 @@ def _proposed(kind: ActionKind, draft: dict[str, Any], lang: Lang) -> ProposedAc
                           confirm_label=CONFIRM_LABEL[kind][lang] if stage == "ready" else None, note=note)
 
 
-_ASKS_CONTACT = re.compile(r"\b(?:call|calls|calling|phone|email|e-mail|text|contact|reach|hear back|get back|follow"
-                           r"[- ]?up|someone|anyone|llam\w*|contact\w*|escrib\w*)\b", re.I)
+_LEASING_REFERRAL = re.compile(r"\s*(?:The leasing team (?:can give you accurate[^.]*|has current [^.]*)|El equipo de "
+                               r"arrendamiento (?:puede darle información exacta[^.]*|tiene la información actual))\.")
+# "will someone call me?", "is anyone going to email me?", "when will I hear back?", "¿me van a llamar?" — the person
+# asks to be CONTACTED. Not "is there a text version?" or "can I text a friend?" (Sprint 9 review B-3).
+_ASKS_CONTACT = re.compile(r"\b(?:call|phone|ring|email|e-?mail|text|contact|reach|message)(?:s|ing|ed)? (?:me|us)\b|"
+                           r"\b(?:will|is|are|does|did|can|could) (?:someone|anyone|somebody|anybody|they|you|the "
+                           r"\w+(?: team)?|staff)(?: going to| gonna)? (?:call|phone|email|e-?mail|text|contact|reach)"
+                           r"\b|\bhear (?:back|from (?:you|them|someone|anyone))\b|\bget back to (?:me|us)\b|"
+                           r"\bfollow(?:s|ing)?[- ]?up with (?:me|us)\b|\b(?:me|nos) (?:van a |va a )?(?:llam|"
+                           r"contact|escrib)\w*|\b(?:llamar[aá]n?|contactar[aá]n?|escribir[aá]n?)\b", re.I)
+_UPSET = re.compile(r"\bridiculous|frustrat\w*|fed up|unacceptable|useless|(?:three|four|five|\d+|many|multiple) "
+                    r"times|again and again|still (?:not|isn'?t|hasn'?t)|nobody (?:fixed|came|has)|"
+                    r"no one (?:fixed|came)|harta|hart[oa]|otra vez", re.I)
 _DAY_KEEP = re.compile(r"^(?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d)", re.I)
 
 
@@ -326,10 +337,15 @@ def tour_when(draft: dict[str, Any], lang: Lang) -> str:
     days = str((f.get("days") or {}).get("value") or "").strip()
     time_ = str((f.get("time") or {}).get("value") or "").strip()
     unusable = {_SKIPPED["en"].lower(), _FLEXIBLE["days"]["en"].lower(), _FLEXIBLE["time"]["en"].lower()}
-    if not days or days.lower() in unusable or len(days) > 40:
-        return ""
-    days = re.sub(r"^(?i:on|this coming|for)\s+(?=[A-Z])", "", days) or days  # "on Saturday"
-    phrase = days if _DAY_KEEP.match(days) else days[0].lower() + days[1:]
+    if not days or days.lower() in unusable or len(days) > 40 or "," in days or re.search(r"\b(?:or|and|y|o)\b",
+                                                                                         days, re.I):
+        return ""  # a list of days ("this weekend, Next Monday") reads badly in one phrase: the card shows it
+    days = re.sub(r"^(?:on|this coming|for)\s+", "", days, flags=re.I) or days  # "on Saturday"
+    if re.match(r"(?:mon|tue|wed|thu|fri|sat|sun)", days, re.I):
+        days = days[0].upper() + days[1:]  # "saturday" -> "Saturday"
+    elif not re.match(r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d)", days, re.I):
+        days = days.lower()  # "Next week" -> "next week", "Next Monday" stays readable as "next monday"
+    phrase = days
     if time_.lower().rstrip("s") in ("morning", "afternoon", "evening"):
         phrase += f" in the {time_.lower().rstrip('s')}"
     return phrase
@@ -365,7 +381,7 @@ def status_items(store: Store | None, resident: Resident | None, persona_id: str
             items.append(StatusItem(reference=r["id"], title=r.get("title", "Repair request"),
                                     status=r.get("status_label", "Submitted"), opened=r["created_at"][:10],
                                     source="prototype_store",
-                                    note="Sent through this assistant (prototype)."))
+                                    note="Saved through this assistant (demo)."))
     if resident:
         for i in resident.interactions:
             if i.category != "maintenance" or i.status == "closed":
@@ -1384,6 +1400,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         if mem.get("questions"):  # P-4: every question the assistant couldn't answer in this chat goes on the note
             _set(hd, "questions", _questions_text(mem["questions"], lang), "you_said")
         template = t(template_key, lang, **kw) + extra
+        if template_key == "followup_existing" and _UPSET.search(msg):
+            # Sprint 9 (judge: "This is ridiculous, I've reported it three times" got a ticket number first)
+            template = t("upset_followup_lead", lang) + " " + template
         if "[phone redacted]" in msg or "[email redacted]" in msg:  # never imply a typed number was stored
             template += t("contact_not_kept", lang)
         if card and draft and draft["kind"] in ("maintenance_request", "tour_request") and not draft.get("declined"):
@@ -1726,6 +1745,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         team_es = _TEAM_ES.get(team.lower(), team.lower())
         team_txt = (f"the {team.lower()} team" if lang == "en" else f"el equipo de {team_es}") \
             if r0.get("team") else ("the team" if lang == "en" else "el equipo")
+        if r0["kind"] == "staff_handoff":  # Sprint 9: a note is for "the office" everywhere (card, chat, follow-up)
+            team_txt = "the office" if lang == "en" else "la oficina"
         what_txt = ("Your " if lang == "en" else "Su ") + WHAT[r0["kind"]][lang]
         saved = _saved_summary(r0)
         if _ASKS_CONTACT.search(msg):  # Sprint 9: "will someone call me?" gets a direct no, not the whole record
@@ -2402,7 +2423,6 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     # "did that go in?", "is it in or just notes?"
     if meta_q and gate.urgency != "emergency" and not status_from_record:
         listed = [f"{WHAT[r['kind']][lang]} {r['id']} {'saved' if lang == 'en' else 'guardada'}" for r in sent[:4]]
-        none_txt = "nothing has been sent yet" if lang == "en" else "todavía no se ha enviado nada"
         pending = ""
         if draft and not draft.get("declined"):  # D-10: "press Send" only when there is a Send button
             still = _missing(draft["kind"], draft)
@@ -2411,7 +2431,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                 t("pending_ready", lang, what=WHAT[draft["kind"]][lang])
         live = bool(draft and not draft.get("declined"))
         text = after_send_text(sent[0]) if len(sent) == 1 and not live else \
-            t("sent_summary", lang, sent="; ".join(listed) or none_txt, pending=pending)
+            (t("sent_summary", lang, sent="; ".join(listed), pending=pending) if listed else
+             (t("q_count_none", lang) + pending).strip())
         return done(TurnPlan(template=text,
                              functions=["F8"], skip_model=True, consumed_by_draft=True,
                              action=_proposed(draft["kind"], draft, lang) if draft and not draft.get("declined")
@@ -3319,7 +3340,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             template = t(_heard_key(history.count), lang) + " " + template.replace(
                 "I'm sorry this is happening again. ", "").replace("Lamento que vuelva a pasar. ", "")
             d["repeat_heard"] = True
-        if key == "maint_ask_entry" and not template.startswith(t(key, lang)):
+        if key == "maint_ask_entry" and (in_maint_draft or not template.startswith(t(key, lang))):
             # Sprint 9: after an apology or a repeat line, the question alone (no second "Got it" opener)
             template = template.replace(t(key, lang), t("maint_ask_entry_plain", lang))
         legacy = quickfix.legacy_checks(
@@ -3397,10 +3418,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         if in_tour_draft and draft and pref:
             _set(draft, "time", f"{pref[0]} ({pref[1]})", "you_said")
             save("tour_request", draft)
-        ref = (f" Your request {tour_mine[0]['id']} is waiting for the leasing team." if lang == "en" else
-               f" Su solicitud {tour_mine[0]['id']} está pendiente con el equipo.") if tour_mine and not in_tour_draft \
-            else ""
-        return done(TurnPlan(template=t("booking_q", lang, pref=pref_txt, ref=ref), functions=["F5"],
+        ref = t("booking_saved_ref", lang, ref=tour_mine[0]["id"]) if tour_mine and not in_tour_draft else ""
+        return done(TurnPlan(template=t("booking_q", lang, pref=pref_txt, ref=ref).strip(), functions=["F5"],
                              skip_model=True, consumed_by_draft=True,
                              action=_proposed("tour_request", draft, lang) if in_tour_draft and draft else None,
                              workflow=_sel("tour_request", "Booking or exact-time question: not a booking.")))
@@ -3654,6 +3673,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                     v[0].lower() + v[1:] if not _DAY_KEEP.match(v) else v for v in new_vals)))
             elif first and missing:
                 notes.append(t("tour_ack", lang))
+            elif first and was_ready and lang == "en" and all(k in _FIELD_NAME for k in first):
+                # Sprint 9 (review B-4): say WHAT was added, so a misread ("ASAP" as the move-in) is visible
+                notes.append(t("field_changed", lang, name=" and ".join(_FIELD_NAME[k] for k in first)))
         if was_ready and changed and notes:
             template = t("tour_recheck", lang) if not missing else template
         elif "area" in changed and old_area and was_ready:
@@ -3720,6 +3742,7 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         toured = any(r["kind"] == "tour_request" for r in mine) or bool(draft and draft["kind"] == "tour_request")
         if not is_resident and (mem.get("tour_pitched") or toured):  # the tour pitch at most once per session
             tail, chips = t("next_leasing_note", lang), CHIPS["ask_leasing"][lang]
+            answer = _LEASING_REFERRAL.sub("", answer).strip()  # Sprint 9: one referral, not two in a row
         elif not is_resident:
             mem["tour_pitched"] = True
         return done(TurnPlan(template=answer + " " + tail, functions=["F4"], chips=chips,
@@ -3871,7 +3894,7 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
     missing = _missing(kind, draft)
     if missing:
         return ActionResult(ok=False, error_code="INCOMPLETE", action=_proposed(kind, draft, lang),
-                            message="A few details are still missing: " + ", ".join(LABEL[m][lang] for m in missing))
+                            message=t("send_missing", lang, missing=", ".join(LABEL[m][lang].lower() for m in missing)))
     assert store is not None
     taken = store.take_draft(session_id, pkey, kind)
     if taken is None:  # a concurrent confirm already took it

@@ -307,7 +307,7 @@ def test_booked_claim_after_send_is_corrected(client):
     ref = confirm(client, "t2", "tour_request", persona=None)["record"]["id"]
     for q in ("great, so my tour is booked for thursday afternoon right?", "Is my tour confirmed?"):
         r = chat(client, q, "t2", persona=None)
-        assert "nothing is booked" in r["reply"] and ref in r["reply"] and r["action"] is None
+        assert "nothing is booked" in r["reply"].lower() and ref in r["reply"] and r["action"] is None
 
 
 def test_relocation_message_keeps_move_in_and_tour_days_apart(client):  # P-1

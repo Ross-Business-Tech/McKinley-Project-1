@@ -263,6 +263,39 @@ _CONDITIONAL = re.compile(r"\b(?:once|after|when|if|as soon as)\s+(?:you|it|this
                           r"someone|leasing|maintenance)(?: member)?s? would\b", re.I)
 
 
+# Sprint 9: in this demo NOTHING reaches McKinley staff, so a reply may never state that a request was sent to, received
+# by, waiting with or about to be confirmed by a person, whether or not a prototype record was written this turn
+# (a saved demo record is not a sent one). Negated ("hasn't been sent to the leasing team") and conditional ("in the
+# real service they would confirm") clauses are honest and pass.
+_STAFF = (r"(?:the |our |your )?(?:office|leasing(?: team| office)?|maintenance(?: team)?|staff|team|manager|"
+          r"community manager|property management(?: team)?|front desk)")
+_DEMO_STATUS_CLAIM = re.compile(
+    rf"\b(?:sent|forwarded|passed|submitted|delivered|routed|escalated)(?: (?:it|this|that|them|your \w+(?: \w+)?))?"
+    rf"(?: (?:along|over|on))? to {_STAFF}\b|"
+    rf"\b{_STAFF} (?:has|have|has now|just) (?:received|got|seen|been sent)\b|"
+    rf"\b{_STAFF}(?:{_APOS}ll| will| is going to| are going to) (?:confirm|review|look (?:at|into)|get back|reach out|"
+    r"call|contact|schedule|follow up|be in touch|pick a time)\b|"
+    rf"\b(?:waiting|queued|pending) (?:for|with|in) {_STAFF}(?: (?:review|to review it))?\b|"
+    r"\b(?:we|they|the team|staff)(?: have| has)? received your (?:request|note|message)\b|"
+    r"\b(?:fue|ha sido|qued[oó]) enviad[oa] (?:al|a la|a el)\b|\ble confirmar[áa]n?\b|\brecibi(?:ó|eron) su\b",
+    re.IGNORECASE,
+)
+
+
+_NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|sin|nadie|nunca)|n['\u2019]t)\W+"
+                  r"(?:\w+\W+){0,5}$", re.IGNORECASE)
+
+
+def _demo_status_claim(reply: str) -> str | None:
+    for m in _DEMO_STATUS_CLAIM.finditer(reply):
+        start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
+        clause = reply[start + 1:m.end()]
+        if _CONDITIONAL.search(clause) or _NOT.search(reply[max(0, m.start() - 60):m.start()]):
+            continue
+        return m.group(0)
+    return None
+
+
 def _pending_promise(reply: str) -> str | None:
     for m in _PENDING_PROMISE.finditer(reply):
         start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
@@ -313,6 +346,8 @@ def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None
     claim_text = _unnegated(_ACTION_CLAIMS, reply)  # "No one has been dispatched" is honest, not a claim
     if claim_text is None and nothing_sent:
         claim_text = _pending_promise(reply)
+    if claim_text is None:
+        claim_text = _demo_status_claim(reply)
     checks.append(OutputCheck(
         code="no_false_action_claim",
         passed=claim_text is None,

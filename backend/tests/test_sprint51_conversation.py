@@ -739,7 +739,7 @@ def test_tour_correction_after_send_is_a_change_note_and_count_is_answered(clien
     r = chat(client, "can you change it on the one i sent?", s, None)  # the open change note stays on screen
     assert r["action"]["kind"] == "staff_handoff" and "Welcome" not in r["reply"]
     r = chat(client, "how many tour requests do i have now?", s, None)
-    assert f"sent 1: tour request {ref}" in r["reply"]
+    assert f"saved 1: tour request {ref}" in r["reply"]
     assert len([x for x in records(s) if x["kind"] == "tour_request"]) == 1
 
 

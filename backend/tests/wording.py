@@ -6,7 +6,8 @@ pin the fact, not the sentence."""
 import re
 
 _NOT_SENT = re.compile(r"hasn't been sent|wasn't sent|isn't sent|not sent to|doesn't send|won't notify|"
-                       r"nobody is notified|no one is notified|no se envi[oó]|no avisa|no se avisa", re.I)
+                       r"nobody is notified|no one is notified|n.t received|no se envi[oó]|no avisa|no se avisa|"
+                       r"no la recibi[oó]", re.I)
 
 
 def says_not_sent(text: str) -> bool:

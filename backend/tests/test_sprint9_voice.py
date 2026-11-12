@@ -152,3 +152,77 @@ def test_safety_templates_are_not_shortened():
     # Sprint 9 must not touch the fixed emergency wording (shown in full, never model-written)
     assert "Leave the area now and call 911" in T["emergency_steps"]["en"]
     assert "call 911" in T["lockout"]["en"] and "after-hours or emergency maintenance line" in T["lockout"]["en"]
+
+
+# ---- Sprint 9 review round (independent conversation, workflow and simulator findings) ----
+
+@pytest.mark.parametrize("text", [
+    "Your note was sent to the office.", "The leasing team will confirm a time.",
+    "Maintenance has received your request.", "It is waiting for staff review.",
+    "I've passed it along to the leasing team.", "Su solicitud fue enviada al personal.",
+    "El equipo le confirmará la hora.",
+])
+def test_validator_rejects_demo_status_claims(text):
+    from app.safety import output_checks
+    check = next(c for c in output_checks(text) if c.code == "no_false_action_claim")
+    assert not check.passed, text
+
+
+@pytest.mark.parametrize("text", [
+    "Your repair request (DEMO-WO-1001) is saved in this demo, but it hasn't been sent to the maintenance team.",
+    "No, nobody will call or email from this demo, because your note wasn't sent to McKinley staff.",
+    "In the real service, the leasing team would follow up with you.",
+    "Sending saves a demo request. It won't notify McKinley staff.",
+    "Su solicitud no se envió al personal de McKinley.",
+    "An urgent note is saved in the staff queue, but this prototype can't page or call anyone.",
+])
+def test_validator_allows_honest_negated_or_conditional_wording(text):
+    from app.safety import output_checks
+    assert next(c for c in output_checks(text) if c.code == "no_false_action_claim").passed, text
+
+
+@pytest.mark.parametrize("msg,contact", [
+    ("Will someone call me?", True), ("will you email me?", True), ("when will I hear back?", True),
+    ("¿Me van a llamar?", True), ("is anyone going to reach out", True),
+    ("is there a text version of the tips?", False), ("Can I text a friend the link?", False),
+    ("When will someone come?", False),
+])
+def test_contact_question_detection_is_narrow(msg, contact):
+    from app.actions import _ASKS_CONTACT
+    assert bool(_ASKS_CONTACT.search(msg)) is contact
+
+
+def test_booking_question_after_send_never_says_it_is_with_the_team(client):
+    sid = chat(client, "tour Heron Lake saturday morning", "v8")["session_id"]
+    confirm(client, sid, "tour_request")
+    r = chat(client, "so I'm booked for Saturday?", sid)["reply"]
+    assert "nothing is booked" in r.lower() and "waiting for the leasing team" not in r and says_not_sent(r)
+
+
+def test_guest_note_follow_up_names_the_office(client):
+    sid = chat(client, "Talk to a person", "v9")["session_id"]
+    confirm(client, sid, "staff_handoff")
+    r = chat(client, "Will someone call me?", sid)["reply"]
+    assert r.startswith("No,") and "leasing team would" not in r and "property management" not in r
+
+
+def test_upset_follow_up_on_an_open_request_is_acknowledged_first(client):
+    r = chat(client, "This is ridiculous, I've reported the AC three times and nobody fixed it", "v10",
+             persona="R001")["reply"]
+    assert r.startswith("I understand why that's frustrating") and r.count("sorry") + r.count("frustrating") <= 2
+
+
+def test_tour_when_handles_lists_and_lowercase_days():
+    from app.actions import tour_when
+    d = lambda days, time="Morning": {"fields": {"days": {"value": days}, "time": {"value": time}}}  # noqa: E731
+    assert tour_when(d("on saturday"), "en") == "Saturday in the morning"
+    assert tour_when(d("Next week"), "en") == "next week in the morning"
+    assert tour_when(d("this weekend, Next Monday"), "en") == ""
+    assert tour_when(d("next Tuesday or Wednesday"), "en") == ""
+    assert tour_when(d("Saturday"), "es") == ""
+
+
+def test_nothing_saved_summary_has_no_contradiction(client):
+    sid = chat(client, "My kitchen faucet is dripping", "v11", persona="R003")["session_id"]
+    r = chat(client, "did that go in?", sid, persona="R003")["reply"]
+    assert "saved: nothing" not in r and "Nothing has been saved in this chat yet" in r

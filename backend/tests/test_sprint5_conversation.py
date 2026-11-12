@@ -250,7 +250,7 @@ def test_tour_question_is_not_asked_a_third_time(client):
     r2 = chat(client, "hmm", "t2", persona=None)
     assert "Which days" in r2["reply"]
     r3 = chat(client, "not sure", "t2", persona=None)
-    assert "Which days" not in r3["reply"] and "not given yet" in r3["reply"] and "leasing team" not in r3["reply"]
+    assert "Which days" not in r3["reply"] and "left it open" in r3["reply"] and "leasing team" not in r3["reply"]
     assert "time of day" in r3["reply"].lower()
 
 
