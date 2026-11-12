@@ -15,6 +15,7 @@ import uuid
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
+from app import claim_grounding, safety_dedupe
 from app import understanding as und
 from app import workflow_state as wf
 from app.actions import TurnPlan, identity_note, plan_turn, resident_for, synthesize_handoff
@@ -449,11 +450,35 @@ def run_turn(
                                      "recommended_handoff": plan.force_handoff})
 
     # 8. validate (model output is untrusted)
-    raw_reply = out.reply.strip()
+    raw_reply = model_text = out.reply.strip()
+    # 8a. ground claims about requests and staff in this turn's backend state (app/claim_grounding.py): clauses
+    # asserting a side effect the state does not contain are removed; the validator below remains the backstop.
+    grounding = None
+    if reply_source == "model" and plan and enforce_validation:
+        own = ([*deps.store.records(session_id=session_id, limit=100),
+                *(deps.store.records(persona_id=persona_id, limit=100) if persona_id else [])]
+               if (deps.store and use_history) else [])
+        session_refs = tuple(sorted({str(r.get("id")) for r in own if r.get("id")}))  # this principal's own records
+        grounding = claim_grounding.ground_reply(raw_reply, claim_grounding.TurnState.from_plan(
+            plan, lang, session_records=session_refs))
+        if grounding.needs_template:
+            raw_reply = plan.template.strip()
+            reply_source = "template_after_validation"
+            trace.add("8_validate", "warn", "unsupported staff/action claims removed left nothing usable: "
+                                            "backend template used")
+        elif grounding.changed:
+            raw_reply = grounding.reply
+            trace.add("8_validate", "warn", claim_grounding.check_detail(grounding))
     allowed_text = " ".join(f.value for f in ctx.fields)
-    checks: list[OutputCheck] = output_checks(raw_reply, allowed_text, gate.urgency if gate else None,
-                                              user_text=" ".join([*said_ever, msg]),
-                                              nothing_sent=not (plan and plan.records))
+    check_args = dict(urgency=gate.urgency if gate else None, user_text=" ".join([*said_ever, msg]),
+                      nothing_sent=not (plan and plan.records))
+    # staff diagnostics show what the MODEL wrote (its raw failures stay visible); the replace decision below uses
+    # the grounded reply that would actually be shown
+    checks: list[OutputCheck] = output_checks(model_text, allowed_text, **check_args)  # type: ignore[arg-type]
+    shown_checks = (output_checks(raw_reply, allowed_text, **check_args)  # type: ignore[arg-type]
+                    if grounding is not None and grounding.changed and not grounding.needs_template else None)
+    if grounding is not None:
+        checks.append(OutputCheck(code="claims_grounded", passed=True, detail=claim_grounding.check_detail(grounding)))
     checks.append(OutputCheck(
         code="structured_output",
         passed=result.parse_mode != "text_fallback",
@@ -478,7 +503,8 @@ def run_turn(
     # sprint 8: the UI safety state follows exactly what is shown (app/risk/ui_state.py)
     safety_state, safety_contacts = safety_ui(rd, alert_shown=bool(safety_notice), care_kind=care_kind, lang=lang)
     failed = [c.code for c in checks if not c.passed]
-    unsafe = [c for c in failed if c in REPLACE_ON_FAIL]
+    unsafe = [c for c in ([x.code for x in shown_checks if not x.passed] if shown_checks is not None else failed)
+              if c in REPLACE_ON_FAIL]
     if enforce_validation and plan and unsafe and reply_source == "model":
         reply = redact(plan.template)
         reply_source = "template_after_validation"
@@ -486,6 +512,12 @@ def run_turn(
     else:
         trace.add("8_validate", "warn" if failed else "ok",
                   f"failed checks: {failed}" if failed else "all checks passed")
+    # each emergency instruction once per message (app/safety_dedupe.py): backend wording only (never model text, whose
+    # negations could look like cover), after any replacement above; approved steps and the safety fields are untouched
+    if safety_notice and reply_source != "model":
+        reply, dropped = safety_dedupe.drop_repeated_reminders(reply)
+        if dropped:
+            trace.add("8_validate", "ok", f"emergency reminder already said in this reply: {len(dropped)} removed")
 
     # 9. handoff recommendation (recommendation only; nothing is sent)
     signals = pre_model_gates(msg) + (context_signals(ctx) if mode == "aware" else [])
