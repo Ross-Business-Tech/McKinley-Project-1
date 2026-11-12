@@ -103,8 +103,12 @@ The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on ev
   for the person in danger.
 - **Approved emergency wording:** "An urgent note is saved in the staff queue" (21 times in the final audit run) is true
   of the prototype but reads as if staff will see it. Change only with McKinley / safety review.
-- **Not reproduced here:** the audit's second urgent note for one electrical emergency (holdout3, a follow-up
-  question); local mock runs with similar follow-ups create one note. Needs the exact turn sequence.
+- **Fixed, offline-tested (independent safety review: APPROVE):** the audit's second urgent note for one emergency
+  (water on a breaker panel, then a follow-up question the live classifier re-read as electrical). A follow-up with
+  no hazard of its own now reuses the active incident's note; a new danger the person reports, a person in danger or
+  a new incident still gets its own note. Remaining P2 risk: an escalation only the live classifier recognises
+  (e.g. "the water is now up to the outlets", "it's getting worse") reuses the earlier note, so the staff queue
+  shows only the first hazard; the person still sees the new safety text. Not yet re-checked live.
 - **Wording decision for McKinley:** fixed offers such as "I can pass your question to the leasing team in a note"
   describe a delivery that never happens in the demo (the note's card says so). Keep, or reword to "save your
   question in a note for the office".
