@@ -80,7 +80,7 @@ def test_repeat_marker_is_allowed_only_when_the_draft_carries_it():
 
 def test_a_real_integration_would_make_delivery_claims_supported():
     """Delivery is grounded in records: only a non-prototype system (none exists today) supports it."""
-    real = TurnState(card_stage="submitted", delivered_parties=frozenset({"maintenance"}))
+    real = TurnState(card_stage="ready", delivered_parties=frozenset({"maintenance"}))
     assert unsupported_claim("Press Send so our team receives your request.", real) is None
 
 
@@ -198,3 +198,25 @@ def test_journey_evaluator_treats_an_echoed_budget_as_the_users_number():
     assert _echoes_user_amount("I can't confirm rates for 1 beds under $1,300 right now.", "i need under 1300. yes?")
     assert not _echoes_user_amount("A one-bed is $1,150 a month.", "i need under 1300")
     assert not _echoes_user_amount("No amounts here.", "1300")
+
+
+@pytest.mark.parametrize("clause", [
+    "You can now press Send on your request below to save it.",
+    "Your request is ready below, so press Send when it looks right.",
+    "Presione Enviar cuando esté bien.",
+])
+def test_send_step_is_only_allowed_on_a_ready_card(clause):
+    assert unsupported_claim(clause, READY) is None
+    for stage in ("collecting", "submitted", None):
+        assert unsupported_claim(clause, TurnState(card_stage=stage)) == "card_stage", stage
+
+
+def test_collecting_reply_claiming_ready_falls_back_to_the_question():
+    res = ground_reply("Thank you for granting entry permission. You can now press Send on your request below to save "
+                       "it.", TurnState(card_kind="maintenance_request", card_stage="collecting"))
+    assert res.removed[0][0] == "card_stage" and res.needs_template
+
+
+def test_not_ready_is_honest_on_any_stage():
+    line = "Your tour request isn't sent yet; it's waiting for you to press Send."
+    assert unsupported_claim(line, TurnState(card_stage="collecting")) is None

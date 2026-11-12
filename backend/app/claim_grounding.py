@@ -43,7 +43,8 @@ _FUTURE = r"(?:will|'ll|’ll|shall|is\s+going\s+to|are\s+going\s+to|should|may|
 _CAN = r"(?:can|could)"
 _CONTACT = (r"(?:follow(?:s|ing)?\s+up|reach(?:es|ing)?\s+out|get(?:s|ting)?\s+(?:back|in\s+touch)|contact\w*|"
             r"call\w*|phone|text|e-?mail|review\s+(?:it|this|your|the)|visit\w*|come\s+(?:by|out|over)|stop\s+by|"
-            r"schedul\w+|book\w*|confirm\w*|receiv\w+|get\s+(?:it|this|your)|see\s+(?:it|this|your)|"
+            r"schedul\w+|book\w*|confirm\w*\s+(?:(?:your|the|a|an|that|this)\s+)?(?:\w+\s+)?(?:time|tour|booking|"
+            r"appointment|visit|date|it|this)\b|receiv\w+|get\s+(?:it|this|your)|see\s+(?:it|this|your)|"
             r"let\s+you\s+know|notif\w+|update\s+you|send\s+you|reply|respond\w*)")
 _DONE_PASSIVE = r"(?:received|notified|reviewed|scheduled|confirmed|assigned|alerted|informed|dispatched|told)"
 
@@ -111,6 +112,11 @@ _REFERRAL = re.compile(rf"\b{_PARTY}\s+(?:\w+\s+){{0,2}}(?:has|have|knows?|keeps
                        rf"(?:is|are|will\s+be)\s+(?:the\s+)?best\s+(?:placed|equipped|positioned|position)|"
                        rf"(?:is|are)\s+(?:in\s+)?the\s+best\s+position)\b", re.I)
 
+# What the card's stage allows the reply to say about pressing Send. Only a READY card has a Send button to press;
+# "press Send" or "your request is ready" while the card is still collecting, already saved, or absent is false.
+_SEND_STEP = re.compile(r"\b(?:press|tap|click|hit)\s+(?:the\s+)?[\"“']?send\b|\bcan\s+now\s+(?:press|send|save)\b|"
+                        r"\b(?:request|card|note|it)\s+(?:is|'s)\s+(?:now\s+|all\s+)?ready\b|"
+                        r"\bready\s+(?:to\s+(?:send|save)|below)\b|\bpresione\s+enviar\b|\best[áa]\s+lista\b", re.I)
 _STATE_LINE = {
     "en": "When it looks right, press Send to save it.",
     "es": "Cuando esté bien, presione Enviar para guardarla.",
@@ -193,6 +199,8 @@ def unsupported_claim(clause: str, state: TurnState) -> str | None:
             return "assistant_action"
     if _MARKED_ES.search(clause) and not labelled:
         return "assistant_action"
+    if state.card_stage != "ready" and _SEND_STEP.search(clause) and not _honest(clause):
+        return "card_stage"  # tells the person to press Send / says it's ready when the card is not ready
     if state.delivered_parties:
         return None  # a real integration delivered this turn's record (none exists in the prototype)
     if _CALL_PREF.search(clause) and not _THEIR_ASK.search(clause):
@@ -241,7 +249,6 @@ def ground_reply(reply: str, state: TurnState) -> GroundingResult:
     res = GroundingResult(reply=reply, removed=removed)
     if not removed:
         return res
-    asked_before = "?" in reply
     text = _join(kept)
     if state.card_stage == "ready" and not re.search(r"\b(?:send|enviar|envíe|envie)\b", text, re.I):
         line = _STATE_LINE.get(state.lang, _STATE_LINE["en"])
@@ -250,8 +257,8 @@ def ground_reply(reply: str, state: TurnState) -> GroundingResult:
         text = _join([*kept, line, *tail])
         res.status_line_added = True
     res.reply = text
-    if not text.strip() or (state.card_stage == "collecting" and asked_before and "?" not in text):
-        res.needs_template = True
+    if not text.strip() or (state.card_stage == "collecting" and "?" not in text):
+        res.needs_template = True  # a collecting card still needs its question: the planner's draft asks it
     return res
 
 
