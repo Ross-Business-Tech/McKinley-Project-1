@@ -783,7 +783,7 @@ def strip_language_request(message: str) -> str:
 
 
 _PROMISE = re.compile(r"\bpromise\b|guarantee|\bby (mon|tues|wednes|thurs|fri|satur|sun)day\b|in writing|\b(rent"
-                      r" )?credit\b|"
+                      r" )?credit\b(?! (?:score|check|history|report|rating|requirement))|"
                       r"compensat|reimburs|refund|money back|discount on (my )?rent|prom[eé]tame|garant", re.I)
 
 

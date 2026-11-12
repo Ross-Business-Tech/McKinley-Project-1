@@ -254,7 +254,8 @@ def test_tour_time_correction_reads_back_the_time(client):
 
 def test_guest_repair_reply_points_to_a_path_that_exists(client):
     r = chat(client, "my sink is leaking", "v13")
-    assert "sign-in" in r["reply"] and "Talk to a person" in r["reply"] and "I can start a note" not in r["reply"]
+    # Sprint 10: the path that exists is the note card itself (started, with the person's words)
+    assert "sign-in" in r["reply"] and r["action"]["kind"] == "staff_handoff" and "I can start a note" not in r["reply"]
 
 
 def test_repeat_history_save_says_nobody_sees_it():

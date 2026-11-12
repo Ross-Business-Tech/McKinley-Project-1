@@ -235,3 +235,67 @@ def test_health_reports_version_and_commit(client, monkeypatch):
     monkeypatch.setattr(main, "DEPLOYED_COMMIT", "abc1234def56")
     h = client.get("/api/health").json()
     assert h["version"] == main.API_VERSION and h["commit"] == "abc1234def56"
+
+
+# ---- routing (review P1/P2): structural fixes, team development wording ----
+
+def test_typed_start_over_restarts(client):
+    sid = chat(client, "the bathroom fan rattles", "so1", "R003")["session_id"]
+    r = chat(client, "let's start over", sid, "R003")
+    assert r["action"] is None and r["action_cleared"] == "maintenance_request" and "start fresh" in r["reply"]
+
+
+def test_what_if_maintenance_question_is_not_a_repair(client):
+    r = chat(client, "what happens if the water heater stops working over the holidays?", "wi1", "R003")
+    assert r["action"] is None and "repair request" in r["reply"]
+
+
+def test_rent_worry_with_a_repair_open_is_answered_not_absorbed(client):
+    sid = chat(client, "the oven won't heat up", "rw1", "R003")["session_id"]
+    chat(client, "you can go in", sid, "R003")
+    r = chat(client, "I won't be able to pay my rent this month", sid, "R003")
+    assert r["action"]["kind"] == "staff_handoff" and "balance" in r["reply"]
+    issue = next(f["value"] for f in r["action"]["fields"] if f["key"] == "earlier" or f["key"] == "message")
+    assert "oven" in issue.lower() or "rent" in issue.lower()
+
+
+def test_a_different_maintenance_problem_is_its_own_request(client):
+    sid = chat(client, "the kitchen faucet drips", "nt1", "R003")["session_id"]
+    chat(client, "yes you can enter", sid, "R003")
+    r = chat(client, "also there are ants all over the counter", sid, "R003")
+    issue = next(f["value"] for f in r["action"]["fields"] if f["key"] == "issue")
+    assert "ants" not in issue.lower()
+
+
+def test_guest_repair_becomes_a_note_for_the_office(client):
+    r = chat(client, "the heat in my apartment isn't working", "gr1")
+    assert r["action"]["kind"] == "staff_handoff" and "community and unit" in r["reply"]
+
+
+def test_bare_complaint_gets_an_apology_not_a_tour(client):
+    r = chat(client, "this service is terrible", "bc1")
+    assert r["action"] is None and "sorry" in r["reply"].lower() and "tour" not in r["reply"].lower()
+
+
+def test_lease_end_question_is_honest(client):
+    r = chat(client, "when is my lease up?", "le1", "R003")
+    assert "can't see your lease dates" in r["reply"] and r["action"]["kind"] == "staff_handoff"
+
+
+def test_impossible_date_is_not_saved(client):
+    sid = chat(client, "I'd like to tour Birchwood", "id1")["session_id"]
+    r = chat(client, "April 31", sid)
+    days = {f["key"]: f["value"] for f in r["action"]["fields"]}.get("days")
+    assert days is None and "isn't a date" in r["reply"]
+
+
+def test_credit_score_is_an_application_question_not_a_credit_request(client):
+    r = chat(client, "what's the minimum credit score to apply?", "cr1")["reply"]
+    assert "can't promise a credit" not in r
+
+
+def test_contact_route_goes_on_the_tour_card_without_the_number(client):
+    sid = chat(client, "tour Sandpiper Pointe on Sunday afternoon", "ct1")["session_id"]
+    r = chat(client, "text me after 6, my cell is 555-0177", sid)
+    f = {x["key"]: x["value"] for x in r["action"]["fields"]}
+    assert "text me" in f["contact_route"].lower() and "555" not in str(r["action"]) and f["time"] == "Afternoon"

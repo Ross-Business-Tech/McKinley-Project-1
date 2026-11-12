@@ -1426,6 +1426,59 @@ T: dict[str, dict[Lang, str]] = {
         "en": "I left your contact details out, since this demo doesn't keep phone numbers or emails.",
         "es": "Dejé fuera sus datos de contacto, porque esta demostración no guarda teléfonos ni correos.",
     },
+    "restart_ack": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "No problem, let's start fresh. What can I help you with?",
+        "es": "Sin problema, empecemos de nuevo. ¿En qué le puedo ayudar?",
+    },
+    "hypothetical_maint": {  # Sprint 10, NEEDS McKINLEY REVIEW: a what-if question is answered, not filed
+        "en": "If that happens, tell me and I'll help you start a repair request right away. I don't have approved "
+              "prevention tips in this demo, but the office can advise. If water is leaking or anything seems "
+              "dangerous at the time, call your community's emergency maintenance line.",
+        "es": "Si eso pasa, dígamelo y le ayudo a empezar una solicitud de reparación enseguida. No tengo consejos "
+              "de prevención aprobados en esta demostración, pero la oficina puede orientarle. Si hay una fuga o "
+              "algo parece peligroso en ese momento, llame a la línea de emergencias de mantenimiento de su "
+              "comunidad.",
+    },
+    "rent_aside": {  # Sprint 10, NEEDS McKINLEY REVIEW: rent worry while a repair card is open
+        "en": "Thanks for telling me. I can't see or change your balance, but the office can talk through options, "
+              "so I've started a note for them.",
+        "es": "Gracias por decírmelo. No puedo ver ni cambiar su saldo, pero la oficina puede revisar opciones con "
+              "usted, así que empecé una nota para ellos.",
+    },
+    "maint_guest_note": {  # Sprint 10, NEEDS McKINLEY REVIEW: a visitor's repair (no sign-in in this demo)
+        "en": "Repairs usually need a resident sign-in, which this demo doesn't have, so I've started a note for the "
+              "office with what you told me. Add your community and unit if you like, then send it. If anything is "
+              "dangerous, call 911 now.",
+        "es": "Las reparaciones normalmente requieren iniciar sesión, algo que esta demostración no tiene, así que "
+              "empecé una nota para la oficina con lo que me dijo. Agregue su comunidad y unidad si quiere, y "
+              "envíela. Si hay peligro, llame al 911 ahora.",
+    },
+    "resident_tour_aside": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "Tours of other communities go through the leasing team, and I can start a note for them once this "
+              "repair request is done.",
+        "es": "Las visitas a otras comunidades las coordina el equipo de arrendamiento; puedo empezar una nota para "
+              "ellos cuando termine esta solicitud de reparación.",
+    },
+    "complaint_open": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "I'm sorry you've had a frustrating experience. If you tell me what happened, I'll help where I can, "
+              "or I can start a note for the office.",
+        "es": "Lamento que haya tenido una experiencia frustrante. Si me cuenta qué pasó, le ayudo en lo que pueda, "
+              "o puedo empezar una nota para la oficina.",
+    },
+    "lease_end_note": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "I can't see your lease dates in this chat. The office can confirm your lease end date, so I've "
+              "started a note for them.",
+        "es": "En este chat no veo las fechas de su contrato. La oficina puede confirmar cuándo termina, así que "
+              "empecé una nota para ellos.",
+    },
+    "date_invalid": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "{value} isn't a date on the calendar. Which day would work for a visit?",
+        "es": "{value} no es una fecha del calendario. ¿Qué día le vendría bien para la visita?",
+    },
+    "route_noted": {  # Sprint 10, NEEDS McKINLEY REVIEW
+        "en": "Got it: \"{value}\" is now on your tour request.",
+        "es": "Listo: \"{value}\" ya está en su solicitud de visita.",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",
