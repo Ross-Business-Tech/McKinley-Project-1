@@ -161,7 +161,7 @@ CHANNEL_RULES = {
 
 
 # Bumped whenever the per-turn backend instructions below change, so evaluation runs stay comparable.
-PLAN_SECTION_VERSION = "plan-s9"
+PLAN_SECTION_VERSION = "plan-s9b"
 
 # Allowlisted, synthetic facts the model may state: community -> region, read from the demo workbook only.
 FACT_RULES = ("Only state a community's location, size, features, availability or price if that fact is in the "
@@ -216,7 +216,10 @@ def plan_prompt_section(plan: TurnPlan, channel: Channel, lang: str, facts: str 
         "one question. No filler openers ('Certainly!', 'Great question!'). Match empathy to the situation (more for "
         "a repeat problem or frustration, none for a plain status question) in one short phrase; never apologize "
         "twice. Talk to the person about their situation, not about the interface: never say 'a card is open on "
-        "your screen'; say 'your request below' at most.",
+        "your screen'; say 'your request below' at most. In this demo Send only SAVES the request: nobody at McKinley "
+        "receives it, so never say what staff will, can or should do next (follow up, call, review, confirm, receive) "
+        "and never say Send submits it to a team, unless the draft itself says it, framed 'in the real service'. Say "
+        "'press Send to save it' at most.",
     ]
     if plan.action:
         lines.append(f"Action card shown to the person: {plan.action.title} (stage={plan.action.stage}).")

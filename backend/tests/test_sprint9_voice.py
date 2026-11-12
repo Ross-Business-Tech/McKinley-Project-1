@@ -144,8 +144,9 @@ def test_plan_section_tells_the_model_not_to_add_disclaimers():
     from app.chat_engine import PLAN_SECTION_VERSION, plan_prompt_section
 
     text = plan_prompt_section(SimpleNamespace(template="Hi.", action=None, facts=[]), "web_chat", "en")
-    assert PLAN_SECTION_VERSION == "plan-s9" and "do not add disclaimers" in text and "reference number" in text
-    assert "never apologize" in text
+    assert PLAN_SECTION_VERSION.startswith("plan-s9") and "do not add disclaimers" in text
+    assert "reference number" in text
+    assert "never apologize" in text and "Send only SAVES the request" in text
     assert "1-3 short sentences" in text
 
 
