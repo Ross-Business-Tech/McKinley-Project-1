@@ -1384,6 +1384,12 @@ T: dict[str, dict[Lang, str]] = {
         "en": "Your repair request is ready below. Take a look, then send it when it looks right.",
         "es": "Su solicitud de reparación está lista abajo. Revísela y envíela cuando esté bien.",
     },
+    "unknown_city_again": {  # Sprint 9, NEEDS McKINLEY REVIEW: an unlisted place again (the full list was shown)
+        "en": "I still don't see {area} among this demo's areas. Which of Ann Arbor, Ypsilanti, Detroit, Lansing, "
+              "Orlando or Tampa would you like, or should I leave it open for now?",
+        "es": "Sigo sin ver {area} entre las zonas de esta demostración. ¿Cuál de Ann Arbor, Ypsilanti, Detroit, "
+              "Lansing, Orlando o Tampa prefiere, o lo dejo pendiente por ahora?",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",

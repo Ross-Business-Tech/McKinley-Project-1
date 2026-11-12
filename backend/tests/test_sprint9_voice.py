@@ -368,3 +368,22 @@ def test_yes_permission_answers_the_entry_question(client):
     sid = chat(client, "the freezer stopped freezing", "v22", persona="R003")["session_id"]
     r = chat(client, "it's in the kitchen. yes permission", sid, persona="R003")
     assert r["action"]["stage"] == "ready" and r["reply"].count("Thanks") <= 1
+
+
+# ---- holdout2 routing (paraphrased) ----
+
+def test_accepting_the_offered_note_opens_a_note(client):
+    sid = chat(client, "is there a number for the leasing office?", "v23")["session_id"]
+    r = chat(client, "alright, write the office a note then", sid)
+    assert r["action"]["kind"] == "staff_handoff" and "didn't follow" not in r["reply"]
+    r2 = chat(client, "are you open sundays?", sid)
+    assert "tour interest" not in r2["reply"].lower()
+
+
+def test_unlisted_city_is_not_saved_and_the_list_is_not_repeated_verbatim(client):
+    sid = chat(client, "could I see a place in Saginaw", "v24")["session_id"]
+    r1 = chat(client, "Saginaw", sid)
+    assert {f["key"] for f in r1["action"]["fields"]}.isdisjoint({"area"}) or all(
+        f["value"] != "Saginaw" for f in r1["action"]["fields"] if f["key"] == "area")
+    r2 = chat(client, "yes that one", sid)["reply"]
+    assert r1["reply"] != r2

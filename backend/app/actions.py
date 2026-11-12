@@ -318,6 +318,11 @@ _LEASING_REFERRAL = re.compile(r"\s*(?:The leasing team (?:can give you accurate
 # asks to be CONTACTED. Not "is there a text version?" or "can I text a friend?" (Sprint 9 review B-3).
 _CHECK_ON = re.compile(r"\bcheck (?:on|in on|up on)\b|\bwellness check|welfare check|"
                        r"make sure (?:she|he|they)(?:'s| is| are) (?:ok|okay|alright|fine)|\bver c[oó]mo est[aá]", re.I)
+_OFFICE_HOURS_Q = re.compile(r"\b(?:open|opens|close|closes|closed|hours)\b", re.I)
+_WANTS_NOTE = re.compile(r"\b(?:leave|send|write|make|start|pass|drop|put)(?: them| the office| it)?(?: in)? "
+                         r"(?:a|the|that)? ?note\b|\bnote (?:for|to) (?:the office|them)\b|"
+                         r"\b(?:yes|ok|okay|sure|fine)\W+(?:\w+\W+){0,3}(?:a |the )?note\b|"
+                         r"\bd[eé]j(?:e|eles|ame) una nota\b", re.I)
 _LEAD_DECLINE = re.compile(r"^\W*(?:nvm|never ?mind|nevermind|forget (?:it|that)|no thanks|nah|scratch that|"
                            r"olv[ií]d(?:elo|alo)|no importa|d[eé]jalo)\b[\s,.;:!-]*", re.I)
 
@@ -2706,6 +2711,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
 
     if not draft and (rest := _after_lead_decline(msg)):
         msg = rest  # "nvm. whats your phone number": answer the question, not the "nvm" (Sprint 9 live review)
+    if not draft and gate.urgency != "emergency" and _WANTS_NOTE.search(msg):
+        # holdout2: "fine, just leave them a note then" after "I can also start a note for the office"
+        return handoff_plan("handoff_offer", "Asked for a note to the office.", topic="Note for the office")
 
     # 3. Languages without approved templates → universal 911 line + staff.
     if non_latin_script(msg):
@@ -3496,6 +3504,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         tour_slots["days"] = _cap(wd.group(0).lower())  # "any weekday evening" answers the days question
     if in_tour_draft and draft and not tour_slots["area"] and _missing("tour_request", draft)[:1] == ["area"]:
         tour_slots["area"] = bare_area_answer(effective)
+    unlisted_area = None  # Sprint 9 (holdout2): "something in Flint" is not a demo area: never saved as the area
+    if tour_slots["area"] and not (community_in(tour_slots["area"]) or city_in(tour_slots["area"])) and \
+            _unknown_place(f"in {tour_slots['area']}"):
+        unlisted_area, tour_slots["area"] = _unknown_place(f"in {tour_slots['area']}"), None
     tour_mine0 = [r for r in mine if r["kind"] == "tour_request"]
     if tour_slots["days"] and tour_date and tour_date.lower() not in tour_slots["days"].lower() and \
             extract_days(effective) and (in_tour_draft or is_tour_request(msg) or tour_mine0):
@@ -3592,7 +3604,8 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                                  chips=CHIPS["ask_leasing"][lang][:1],
                                  workflow=_sel("tour_request", "A tour request is already saved in this chat.")))
     if not is_resident and open_note and draft and not tour_mine and gate.urgency != "emergency" and (
-            is_tour_request(msg) or any(tour_slots[k] for k in ("days", "time"))) and not wants_person:
+            is_tour_request(msg) or any(tour_slots[k] for k in ("days", "time"))) and not wants_person and not (
+            _OFFICE_HOURS_Q.search(msg) and not is_tour_request(msg)):  # "do they open on saturdays?" is office hours
         # Sprint 7 (judge H-4): tour details while a note for the leasing team is open never replace that note. They
         # go INTO the note, and the tour card is queued: after the note is sent (confirm), the tour card opens with
         # these values. One card at a time; nothing lost.
@@ -3749,8 +3762,11 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
             prefix += t("leasing_capture" if leasing_hint and not is_tour_request(msg) else "tour_start", lang) + " "
         if key == "tour_ask_area" and not notes and not skip_notes:
             template = t("ask_plain_area", lang) if prefix else template
-        if missing and missing[0] == "area" and (pu := _unknown_place(effective)):
-            prefix, template = "", t("unknown_city", lang, area=pu)  # Sprint 7: honest about the demo's markets
+        if missing and missing[0] == "area" and (pu := _unknown_place(effective) or unlisted_area or (
+                mem.get("unlisted_area") if is_affirmative(msg) else None)):
+            again = mem.get("unlisted_area") is not None  # the full list once; then a shorter line (holdout2)
+            mem["unlisted_area"] = pu
+            prefix, template = "", t("unknown_city_again" if again else "unknown_city", lang, area=pu)
         tplan = TurnPlan(template=(prefix + template).strip(), functions=["F5"] + (["F4"] if faq else []),
                          action=_proposed("tour_request", d, lang), chips=chips,
                          consumed_by_draft=in_tour_draft and not is_tour_request(msg),
