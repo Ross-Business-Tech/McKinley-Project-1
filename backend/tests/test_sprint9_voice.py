@@ -298,3 +298,23 @@ def test_nvm_after_cancel_answers_the_question_that_follows(client):
     assert "phone" in r.lower() or "number" in r.lower()
     assert "nothing waiting" not in r and "911" in r
     assert chat(client, "nvm", sid)["reply"].startswith("No problem")
+
+
+@pytest.mark.parametrize("text", [  # live Gemini run on 4047176 (peer session): offers/questions presuming contact
+    "Would you like me to note your contact information so the leasing staff can reach out to schedule an official "
+    "appointment?",
+    "Please check your request below and press Send to save it for our team—is there a specific phone number or time "
+    "of day you prefer for a call?",
+    "Would you like me to highlight any specific dates or times this week that work best for a manager to review it "
+    "with you?",
+])
+def test_validator_rejects_offers_that_presume_staff_contact(text):
+    from app.safety import _demo_status_claim
+    assert _demo_status_claim(text), text
+
+
+def test_would_you_like_is_not_a_real_service_hypothetical():
+    from app.safety import _demo_status_claim
+    assert not _demo_status_claim("Would you like to request a tour?")
+    assert not _demo_status_claim("In the real service, the maintenance team would review it and follow up with you.")
+    assert not _demo_status_claim("What time of day works best: morning, afternoon or evening?")

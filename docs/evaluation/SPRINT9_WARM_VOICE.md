@@ -66,7 +66,11 @@ can follow up"). The validator now rejects those phrasings (`90d1aa7`), so such 
 wording. Re-run live on `90d1aa7` (same session, Gemini): 35/35 completed, 31 PASS, 4 WARN, 0 FAIL, 0 duplicate
 records, reply p90 4.3 s; staff-delivery claims 1/56 (was 11/63), but `template_after_validation` 14 per run (was 7),
 about 20% of Gemini replies replaced. `4047176` adds the rule to the live-model instructions (plan-s9b) to cut that
-at the source; not yet re-measured.
+at the source. Re-run on `4047176`: 35/35, 31 PASS, 4 WARN, 0 FAIL; `template_after_validation` 4 per run; claim
+attempts 8/71 (about half of the previous run). The 3 that slipped through were offers or questions presuming staff
+contact ("so the leasing staff can reach out", "a phone number … for a call", "for a manager to review it with
+you"); the validator catches them from the next commit ("Would you like…" no longer counts as a real-service
+hypothetical; "Would you like me to pass it along…" stays an allowed offer).
 
 The final-commit OpenRouter run was **rate-limited** (`MODEL_RATE_LIMITED` on every call; replies were the labelled
 `template_after_model_error` fallback), so the final wording has not been measured on the live model.

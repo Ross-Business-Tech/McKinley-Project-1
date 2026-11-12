@@ -296,7 +296,13 @@ _DEMO_STATUS_CLAIM = re.compile(
     r"\bso (?:that )?(?:our |the |your )?(?:\w+ ){0,2}(?:team|office|staff|manager)(?: team)? (?:gets|receives|sees)\b|"
     r"\b(?:a |an |one of our )?(?:leasing|maintenance|office|staff)(?: team)? (?:member|representative|agent)s? "
     r"(?:should|will|can|is going to) (?:follow up|reach out|contact|call|get back|be in touch)\b|"
-    r"\bpara que (?:la|lo|las|los) (?:reciba|vea)n? (?:el|la|nuestro|nuestra)\b",
+    r"\bpara que (?:la|lo|las|los) (?:reciba|vea)n? (?:el|la|nuestro|nuestra)\b|"
+    # Gemini live run on 4047176: offers or questions that presume staff contact
+    r"\bsave (?:it|this|them) for (?:our|the|your) (?:\w+ )?(?:team|office|staff)\b|"
+    r"\b(?:phone number|number|time(?: of day)?|best time|day) (?:that )?(?:you(?:'d)? prefer |works? best |is best )?"
+    r"for (?:a|the|our|their) (?:call|callback|call back|visit)\b|"
+    r"\bfor (?:a|the|our) (?:\w+ )?(?:manager|staff member|team member|technician|leasing agent|agent) to "
+    r"(?:review|call|contact|visit|discuss|go over|meet)\w*(?: (?:it|this|that|them))? with you\b",
     re.IGNORECASE,
 )
 
@@ -307,11 +313,13 @@ _NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|
 _NOT_IDIOM = re.compile(r"\b(?:no problem|no worries|not a problem|don'?t worry|no te preocupes|no se preocupe|"
                         r"sin problema)\b\W*", re.IGNORECASE)
 # an offer is not a claim: "I can pass your question to the leasing team in a note" (the note is a demo card)
-_OFFER_LEAD = re.compile(r"\b(?:I can|I could|can I|could I|want me to|I'd be happy to|I(?:'m| am) happy to)\s+$",
+_OFFER_LEAD = re.compile(r"\b(?:I can|I could|can I|could I|want me to|would you like me to|shall I|should I|"
+                         r"I'd be happy to|I(?:'m| am) happy to)\s+$",
                          re.IGNORECASE)
 # only the explicit "in the real service" framing (or "would") makes a staff action hypothetical; "if you send it,
 # the office will get back to you" is still false in this demo (review G-1)
-_REAL_SERVICE = re.compile(r"\bin (?:the|a) real (?:service|deployment|system)\b|\bwould\b|\bel servicio real\b|"
+_REAL_SERVICE = re.compile(r"\bin (?:the|a) real (?:service|deployment|system)\b|\bwould\b(?! you\b)|"
+                           r"\bel servicio real\b|"
                            r"\b\w+r[íi]a(?:n)?\b", re.IGNORECASE)
 
 
