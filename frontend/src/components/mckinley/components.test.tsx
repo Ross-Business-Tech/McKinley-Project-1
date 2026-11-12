@@ -249,6 +249,9 @@ describe("Staff console on a hosted backend", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<StaffConsole />);
     expect(await screen.findByTestId("staff-locked")).toBeInTheDocument();
+    // Sprint 10: the backend status lives in "Demo and evaluation"; the default view is the staff queue
+    expect(screen.queryByTestId("backend-status")).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Demo and evaluation" }));
     expect(screen.getByTestId("backend-status")).toHaveTextContent(/gemini · gemini-3.6-flash \(live AI model\)/);
     expect(screen.getByTestId("backend-status")).toHaveTextContent(/Database\s*postgres/);
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/prototype/records"))).toBe(false);
@@ -267,6 +270,7 @@ describe("Staff console static demo fallback", () => {
     render(<StaffConsole />);
 
     await waitFor(() => expect(screen.getByText(/Recorded demo: no backend runs behind this link/)).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Demo and evaluation" }));
     await user.click(screen.getByRole("tab", { name: "Model comparison" }));
     expect(screen.getByLabelText(/Message/)).toBeDisabled();
     expect(screen.getByText(/needs the live backend/)).toBeInTheDocument();
