@@ -34,7 +34,7 @@ Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.m
 - **Detectors and safety regexes** (`emergency.py`, `intake.py`): extend, don't merge similar-looking patterns; each
   change needs positive and negative tests.
 - **Database:** schema changes only through a new Alembic migration in `backend/migrations/versions/` with raw SQL
-  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_migrations.py` (and
+  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_api_persistence.py` (and
   `TEST_DATABASE_URL` on a throwaway Postgres). Only the synthetic workbook may be seeded (`app.seed_synthetic`).
 - **Wording:** customer-facing text lives in `templates.py` / `customer.ts`; never split template strings to reuse
   part of them — add a key.

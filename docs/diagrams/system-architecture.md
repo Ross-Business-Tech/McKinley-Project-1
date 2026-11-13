@@ -6,23 +6,21 @@ Reflects the code on `feat/render-dual-deploy-supabase` (deployed from `developm
 flowchart LR
   subgraph Browser["Browser (static Next.js export in dist/)"]
     CV["Customer view /<br/>CustomerApp + ActionCard"]
-    SC["Staff and demo console /staff/<br/>Saved requests, Live conversations, Conversation inspector,<br/>Workflow coverage, Usability, Model comparison, Evaluation"]
-    SNAP[("demo/snapshot.json<br/>recorded journeys + evals")]
+    SC["Staff queue /staff/<br/>Saved requests, Live conversations"]
+    SNAP[("demo/snapshot.json<br/>recorded journeys + saved requests")]
   end
 
   subgraph API["FastAPI backend (backend/app)"]
     CHAT["POST /api/chat"]
     ACT["POST /api/actions/confirm | cancel"]
     REC["GET /api/prototype/records<br/>GET /api/staff/conversations"]
-    EV["/api/evals/* , /api/gates/*"]
     GUARD["staff_guard: loopback-only<br/>or X-Staff-Token"]
     ENG["chat_engine.run_turn<br/>(11 steps: 1, 2, 2b safety, 3-10)"]
     PLAN["actions.plan_turn<br/>(F2-F9 behaviour)"]
     GATE["DecisionGateService<br/>rules always + optional LLM / Jev"]
     SAFE["safety.py + emergency.py<br/>redaction, output checks,<br/>emergency rules (KINDS + CONCEPTS + framing)"]
     RISK["risk/ (sprint 3)<br/>detect -> semantic classifier -> policy R1-R9<br/>-> approved responses -> escalation"]
-    LIVE["live_eval/ (offline)<br/>preflight + controlled A/B/C runner<br/>BLOCKED without a key"]
-    UX["usability/ (offline)<br/>personas, scenarios, simulator,<br/>independent evaluator"]
+    LIVE["live_eval/ (dev only)<br/>preflight + budgeted smoke<br/>BLOCKED without a key"]
     CTX["context.py + personas.py<br/>allowlisted SAFE_CONTEXT"]
     TPL["templates.py + knowledge_base.json<br/>(team drafts)"]
     LLM["LLMGateway<br/>Gemini | OpenRouter | Ollama | Anthropic | Mock"]
@@ -30,7 +28,7 @@ flowchart LR
 
   subgraph Data["Local data (synthetic)"]
     XLSX[("Resident workbook<br/>(XLSX, not committed)")]
-    DB[("SQLite (local) or Postgres / Supabase (DATABASE_URL)<br/>chat_turns, gate_decisions, action_drafts,<br/>prototype_records, eval runs, synthetic residents")]
+    DB[("SQLite (local) or Postgres / Supabase (DATABASE_URL)<br/>chat_turns, gate_decisions, action_drafts,<br/>prototype_records, synthetic residents")]
   end
 
   CV -- "live mode" --> CHAT
@@ -38,9 +36,6 @@ flowchart LR
   CV -. "no backend: replay" .-> SNAP
   SC --> GUARD
   GUARD --> REC
-  GUARD --> EV
-  UX -- "real HTTP" --> CHAT
-  UX -- "real HTTP" --> ACT
   SC -. "no backend" .-> SNAP
   CHAT --> ENG
   ACT --> PLAN

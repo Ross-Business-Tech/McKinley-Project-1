@@ -30,7 +30,7 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 - **Models:** exactly one historical run used a real model (2026-11-01, sprint-1 pipeline). Everything since is the
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
   only (no key yet). The live A/B/C comparison and the semantic safety classifier are built but **blocked** until a
-  Gemini or OpenRouter key is configured ([live-LLM status](docs/evaluation/live-llm.md)).
+  Gemini or OpenRouter key is configured (live-LLM status (removed; in Git history at `59c155c`)).
 - **Sprint 8 (2026-11-11):**
   - **Calmer screen:** the always-visible 911 button is gone.
     - Normal chats show nothing safety-related.
@@ -44,7 +44,7 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
     McKinley approval, off by default, never on hosted, and safety checks run first.
   - **Safety holdout:** full alerts 88.1% → 89.5%, any guidance 90.7% → 91.7%; unsafe tips 2 → 0 of 40. **Missed
     emergencies remain release-blocking.**
-  - [Sprint 8 report](docs/evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
+  - Sprint 8 report (removed; in Git history at `59c155c`).
 - **Sprint 7 (2026-11-10):**
   - **Safety:**
     - Emergencies are now detected by structure (who, what state, what hazard, whether it is happening now) instead of
@@ -62,7 +62,7 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   - **Live OpenRouter:** 21 calls through the real pipeline, all valid.
   - **Merge state:** the first Sprint 7 candidate was merged to `development` early (PR #4) with known safety
     regressions; the fixes are on `feat/s7-safety-regression-fixes`.
-  - Fit for a supervised demo only ([Sprint 7 report](docs/evaluation/SPRINT7_GENERALIZATION.md)).
+  - Fit for a supervised demo only (Sprint 7 report (removed; in Git history at `59c155c`)).
 - **Sprint 6 (2026-11-10):**
   - **Conversation:** each message is understood once into a typed object, and an explicit state machine decides
     what may change. Corrections replace the field that was named, a side question never corrupts the open
@@ -73,7 +73,7 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
     85%. **16 immediate-danger messages still get nothing, which is release-blocking.**
   - **Journeys:** 29 of 35 PASS with 0 FAIL (Sprint 5.1: 27).
   - **Live OpenRouter: BLOCKED.** The free model's daily limit returned HTTP 429 all sprint.
-  - **Fit for a supervised demo only** ([Sprint 6 report](docs/evaluation/SPRINT6_RESULTS.md)).
+  - **Fit for a supervised demo only** (Sprint 6 report (removed; in Git history at `59c155c`)).
 - **Sprint 5.1 (2026-11-10):**
   - **Live OpenRouter verified:** 46 real calls, all on `nvidia/nemotron-3.5-super-vl:free`.
   - **Conversation reworked:** independent simulators drove two fix rounds and a typed dialogue-act step was
@@ -81,11 +81,11 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
   - **Results:** the journey suite went 21 → 27 of 35 PASS with 0 FAIL, and the held-out safety set went 53 → 54
     of 63 any-guidance.
   - **Fit for a supervised demo only**; safety and privacy blockers remain
-    ([Sprint 5.1 report](docs/evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md)).
+    (Sprint 5.1 report (removed; in Git history at `59c155c`)).
 - **Sprint 5 (2026-11-10):**
   - The conversation workflows were reworked from simulator findings, verified with the **mock** only.
   - OpenRouter and Gemini share a tested provider contract.
-  - **No live model call was made**, because there is no key. See [Sprint 5 report](docs/evaluation/SPRINT5_LIVE_CONVERSATION.md).
+  - **No live model call was made**, because there is no key. See Sprint 5 report (removed; in Git history at `59c155c`).
   - A new independent safety holdout found **10/63 immediate-danger messages with no guidance**, which is release-blocking.
 - **Deployment (2026-11-11):** a public, guest-only demo runs on Render: website
   https://mckinley-frontend.onrender.com, backend https://mckinley-backend.onrender.com, data in the development
@@ -120,7 +120,7 @@ Details per instruction and data input: [docs/workflows/traceability.md](docs/wo
 
 ```
 frontend/src/components/customer   customer chat (CustomerApp, ActionCard, StatusPill)
-frontend/src/components/staff      staff console; components/mckinley = comparison + evaluation tabs
+frontend/src/components/staff      staff queue (saved requests, live conversations)
 backend/app/chat_engine.py         one turn: receive → identity → SAFETY → privacy → context → gate → plan → generate
                                    → validate → handoff → persist (11 traced steps)
 backend/app/risk/                  safety: rules → optional semantic classifier → policy R1–R9e → approved text
@@ -130,7 +130,7 @@ backend/app/intake.py, templates.py, content/knowledge_base.json   detectors, wo
 backend/app/context.py, personas.py  workbook adapter, allowlisted context, demo identity
 backend/app/llm/                   Gemini | OpenRouter | Ollama | Anthropic (optional) | Mock, one gateway
 backend/migrations/, app/seed_synthetic.py   Alembic migrations (SQLite + Postgres) and the synthetic seed
-backend/app/evals.py, gate_evals.py, journey_evals.py, usability/, live_eval/   evaluation tooling
+backend/app/live_eval/, export_demo.py   dev-only: provider preflight + budgeted smoke, static demo snapshot
 ```
 
 More: [architecture overview](docs/architecture/overview.md) and [diagrams](docs/diagrams/).

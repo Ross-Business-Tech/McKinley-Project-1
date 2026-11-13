@@ -5,9 +5,9 @@ Short records of the major decisions. Each one gives its status, context, the de
 ---
 
 ## ADR-011: Live evaluation refuses to fall back to the mock
-**Status:** accepted (sprint 3). **Decision:** `app.live_eval.abc` refuses to start without a ready provider and
-writes `evals/live/status.json` = blocked; a mock dry run is explicitly flagged (`--allow-mock`), labelled MOCK,
-`comparable: false`, and writes its own status file. Template replies are never counted as live in any report.
+**Status:** accepted (sprint 3); the A/B/C runner was removed in the repository simplification (Git history
+`59c155c`), and the rule now applies to `app.live_eval.smoke`. **Decision:** a live check refuses to start without a
+ready provider (BLOCKED, exit 3) and never falls back to the mock. Template replies are never counted as live in any report.
 **Why:** mock or template output presented as model evidence was the main honesty risk in earlier sprints.
 
 ## ADR-010: Customer view and staff console are separate; staff routes are guarded
@@ -37,7 +37,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 **Consequences:**
 - Executives can click through the gate, workflow and handoff behaviour on a phone.
 - No live AI runs on the hosted site.
-- The snapshot holds minimized synthetic SAFE_CONTEXT values (first names, community, history subjects). That is the same class of data already committed in `evals/actual_results.json`, and never raw workbook rows.
+- The snapshot holds minimized synthetic SAFE_CONTEXT values (first names, community, history subjects). That is the same class of data already committed in `docs/archive/evaluation/five-case-live-run-2026-11-01.json`, and never raw workbook rows.
 - The snapshot must be regenerated after any change to the backend or workflows.
 
 ---

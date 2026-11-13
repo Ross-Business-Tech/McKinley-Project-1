@@ -2,7 +2,7 @@
 
 Code: `backend/app/workflow_state.py` (states, events, `TRANSITIONS`, `derive`, `apply`, `duplicate_of`), wired into
 `backend/app/actions.py` (`plan_turn` step 1c-understand and step 2; `confirm`). Tests:
-`backend/tests/test_sprint6_conversation_model.py` (state machine) and `test_sprint6_conversation.py` (API replays).
+`backend/tests/test_conversation_understanding.py` (state machine) and `test_conversation_understanding.py` (API replays).
 
 ## Principles
 - **The state is derived, never stored twice.** `derive(draft, records)` reads the open draft (its kind, missing
@@ -122,7 +122,7 @@ switch-topic and the duplicate check. Moving the remaining branches over is futu
   reference. This is never a second record of the same kind.
 - **Consent.** One vocabulary (`intake._SEND_COMMAND`) for every card kind: the whole message must be a send command.
   A typed send on a declined card restores and saves it; a bare yes or ok never saves.
-- **Property-based invariants** (`tests/test_sprint7_invariants.py`, `hypothesis`, derandomized), checked after every
+- **Property-based invariants** (`tests/test_authorization.py`, `hypothesis`, derandomized), checked after every
   step of generated act sequences:
   - consent;
   - no duplicate side effects;

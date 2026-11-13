@@ -56,7 +56,7 @@ Look-alike fixes, each with positive and negative tests:
 - Every failure (timeout, rate limit, provider error, no key, mock, bad output) gives `decision.degraded = true`.
   The rules alone then decide.
 - **Superseded in Sprint 7:** the R7 exception below was removed; the semantic layer can no longer remove any rules
-  alert or care line ([../evaluation/SPRINT7_GENERALIZATION.md](../evaluation/SPRINT7_GENERALIZATION.md)). Sprint 6 record kept below.
+  alert or care line (../evaluation/SPRINT7_GENERALIZATION.md (removed; in Git history at `59c155c`)). Sprint 6 record kept below.
 - **R7 exception, reviewed (Sprint 6).** The semantic layer may still remove the broad 911 care line (semantic `none`,
   confidence ≥ 0.8), but only when:
   - the line came from broad hazard vocabulary alone;
@@ -133,7 +133,7 @@ Effects (applied after the policy, so they can only add caution):
   is no schema change, so it works on SQLite and Postgres and keeps RLS. The row holds the kind, status, turn
   numbers, timestamps and kinds seen, **never message text** (tested). A storage failure never breaks or lowers a
   turn (tested). Baseline mode and eval runs keep no incident state.
-- **Staff log:** incident rows appear in `/api/gates/log` with `mode = safety_incident`.
+- **Stored log:** incident rows are in the `gate_decisions` table with `mode = safety_incident` (no message text).
 
 ## 3. Conservative strategy for uncertain, possibly dangerous messages
 Decision rule: when the message is neither clearly an emergency nor clearly benign, show the **calm 911 care
@@ -153,7 +153,7 @@ starts no alarm.
 
 ## 4. Development-set results (rules + policy + notice selection; semantic layer off)
 
-**Dev-A** is in `backend/tests/sprint6_safety_devset.py` and is used by `tests/test_sprint6_safety_devset.py`:
+**Dev-A** is in `backend/tests/safety_devset.py` and is used by `tests/test_safety_detection.py`:
 - 122 paraphrases across 11 categories (10 to 15 per category, with Spanish and indirect wording in each);
 - 55 look-alikes (5 per category);
 - written from category descriptions, not from any holdout or the sprint reports' examples.
@@ -217,7 +217,7 @@ free model, it **cannot be relied on for recall**. Before any use, measure the t
 on a paid or dedicated model. Raising the cap above 6 s trades latency for coverage.
 
 ## 6. Tests added
-- `tests/test_sprint6_safety.py` (83 tests):
+- `tests/test_safety_detection.py`:
   - concept positives and look-alikes;
   - emergency.py look-alike fixes (positive + negative);
   - notice selection, including EN + ES hot car and a semantic "trapped" alert;
@@ -226,8 +226,8 @@ on a paid or dedicated model. Raising the cap above 6 s trades latency for cover
   - the conservative tier;
   - classifier contract: contradiction rejected, timeout capped, no retry, failures never lower an alert, semantic
     `none` cannot remove a concept alert, semantic may add one.
-- `tests/test_sprint6_safety_devset.py` (16 tests): the Dev-A thresholds per category.
-- `tests/test_sprint6_safety_incident.py` (37 tests):
+- `tests/test_safety_detection.py`: the Dev-A thresholds per category.
+- `tests/test_safety_pipeline.py`:
   - classify() for each class;
   - end to end: medical follow-ups give R10 with the notice first, a resolution, then a normal repair;
   - an ES follow-up; threat follow-ups;
@@ -240,7 +240,7 @@ on a paid or dedicated model. Raising the cap above 6 s trades latency for cover
 
 ## 6b. Fix round (after the independent verifier and the resident simulator)
 
-What changed, each generalised by concept with positive and negative tests in `tests/test_sprint6_safety_fix.py`
+What changed, each generalised by concept with positive and negative tests in `tests/test_safety_detection.py`
 (143 tests):
 
 - **P0, question or past event plus a live report.** The Sprint 6 "asking about signs" and "past car break-in"
@@ -326,7 +326,7 @@ therefore **BLOCKED**.
 | Dispatch claims | 0 | 0 | 0 | — |
 
 No case got worse than the baseline. Per-category numbers are in
-[../evaluation/SPRINT6_RESULTS.md §4](../evaluation/SPRINT6_RESULTS.md).
+../evaluation/SPRINT6_RESULTS.md §4 (removed; in Git history at `59c155c`).
 
 **Release-blocking misses (no guidance at all, final), by holdout ID:**
 - medical: med-01, med-07, med-12, med-13, med-14
@@ -376,7 +376,7 @@ owner for McKinley risk review, and must not be used to tune rules.
 The persistent tap-to-call 911 control was removed from the customer UI (product-owner decision). Emergency contacts now
 appear only inside a contextual state that the backend computes once per turn (`app/risk/ui_state.py`) and returns as
 `safety_state` and `safety_contacts`. The customer view passes both through. Full report:
-[../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md](../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md).
+../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md (removed; in Git history at `59c155c`).
 
 ```mermaid
 stateDiagram-v2

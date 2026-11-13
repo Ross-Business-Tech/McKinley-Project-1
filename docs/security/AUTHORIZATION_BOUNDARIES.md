@@ -2,7 +2,7 @@
 
 Who can read which data, where identity comes from, and what stops one caller seeing another's data. This
 describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `chat_engine.py` step 2,
-`api/*.py`). Tests: `backend/tests/test_sprint6_auth.py`, `backend/tests/test_sprint6_auth_fix.py`.
+`api/*.py`). Tests: `backend/tests/test_authorization.py`, `backend/tests/test_authorization.py`.
 
 > **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list.
 > Anyone who can reach a demo-enabled backend can act as any synthetic persona. That is acceptable only because
@@ -73,10 +73,8 @@ Deny by default: a `ScopedStore` built without `principal_kind` is session-only.
 | `POST /api/chat` → drafts / action cards | session + principal key | Draft fields the person typed | `ScopedStore` |
 | `POST /api/chat` → `identity_note`, renewal, contact preference, entry window | Context fields above | Own persona's allowlisted fields only | `build_context` |
 | `POST /api/actions/confirm` / `cancel` | Server-derived principal + session binding | The saved record (own draft) | 403 on mismatch, scoped store |
-| `POST /api/context/preview` | Staff guard | Any persona's minimized context | `require_staff`; `staff` principal |
 | `GET /api/prototype/records`, `/api/staff/conversations[/{hash}]` | Staff guard | All prototype records, redacted turns, session hashes | `require_staff` (hosted: token required) |
-| `/api/evals/*`, `/api/gates/*` | Staff guard | Eval results, gate log (persona ids, no text) | `require_staff` |
-| Static snapshot `/demo/snapshot.json` (here.now preview) | Built offline by `app.export_demo` with `TOOLING` | Recorded responses for synthetic personas | Synthetic data only, by design |
+| Static snapshot `/demo/snapshot.json` (here.now preview) | Built offline by `app.export_demo` with `TOOLING` | Recorded customer journeys and saved requests for synthetic personas | Synthetic data only, by design |
 
 ## 4. Hosted vs local
 
@@ -111,23 +109,19 @@ Not protected (known gaps):
    conversation (the model sees its history). Session ids are random UUIDs generated in the browser and stored in
    `sessionStorage`. They are not signed or server-issued, except after a mismatch.
 3. **Staff protection is a shared token or loopback,** not staff accounts (existing deployment blocker).
-4. **Eval runs on a hosted backend** (`/api/evals/run`, staff only) call `run_turn` without a principal, so their
-   personas are dropped there (anonymous). Passing `principal=auth.TOOLING` from `app/evals.py` would restore
-   persona evals behind the staff guard if that is wanted.
-5. The staff console's persona picker also uses `/api/personas`, so it is empty on a hosted backend.
-6. The account-holder caution is wording-based and will miss phrasings. It now recognises structural forms (a
+4. The account-holder caution is wording-based and will miss phrasings. It now recognises structural forms (a
    relation's login/account, "on my mom's phone/place", "logged in as <someone>", "not the account owner/tenant",
    "<name>'s <relation> here"), but that is acceptable only because it is not the security mechanism.
-7. `ScopedStore` uses an allowlist. A new store method used by the chat turn (for example persistent incident or
+5. `ScopedStore` uses an allowlist. A new store method used by the chat turn (for example persistent incident or
    workflow state) must be added to `ScopedStore` with the same session + persona check, or it raises
    `AttributeError`.
-8. Owner-scoped records mean anyone who picks a demo persona on a demo-enabled (local) deployment sees that
+6. Owner-scoped records mean anyone who picks a demo persona on a demo-enabled (local) deployment sees that
    persona's prototype records from all sessions. Same reason as gap 1: personas are synthetic and anyone can pick
    any of them there; hosted has no personas.
 
 ## 6. Sprint 7 changes (authorization is a backend property)
 
-Tests: `backend/tests/test_sprint7_auth.py` (targeted), `backend/tests/test_sprint7_auth_properties.py` (generated
+Tests: `backend/tests/test_authorization.py` (targeted), `backend/tests/test_authorization.py` (generated
 principals x sessions x endpoints x references; Hypothesis variant when installed).
 
 - **Customer vs staff view of `/api/chat`** (`app/api/views.py`). Only a staff caller (`staff_allowed`: the token,
@@ -163,4 +157,4 @@ Endpoint x principal (as implemented):
 | `GET /api/health` | public subset | public subset (full if loopback = staff) | public subset | full |
 | `POST /api/chat` | customer view; own session records only; hosted/remote: server-issued session | customer view (full on loopback without token); own context, own records any session | 403 `DEMO_PERSONAS_DISABLED` | full diagnostics; overrides allowed |
 | `POST /api/actions/confirm`, `cancel` | own session draft; hosted/remote: issued id only | own draft; 403 on another binding | 403 `DEMO_PERSONAS_DISABLED` | as customer (no staff path) |
-| `/api/context/preview`, `/api/prototype/records`, `/api/staff/*`, `/api/evals/*`, `/api/gates/*` (not config) | 403 | 403 unless loopback on local without token | 403 | allowed |
+| `/api/prototype/records`, `/api/staff/*` | 403 | 403 unless loopback on local without token | 403 | allowed |

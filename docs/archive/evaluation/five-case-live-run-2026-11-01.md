@@ -1,6 +1,6 @@
 # Five-case evaluation — real OpenRouter run (2026-11-01)
 
-Raw outputs: `evals/actual_results.json` (run #2). Everything below refers to **actual model outputs**, not the reference examples in `five_cases.md` and not Mock output.
+Raw outputs: `docs/archive/evaluation/five-case-live-run-2026-11-01.json` (run #2). Everything below refers to **actual model outputs**, not the reference examples in `five_cases.md` and not Mock output.
 
 ## Setup (identical for both modes)
 | Setting | Value |

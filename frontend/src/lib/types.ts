@@ -309,8 +309,6 @@ export interface ApiErrorBody {
   retryable: boolean;
 }
 
-// ---- /api/gates ----
-
 // ---- static demo snapshot (frontend/public/demo/snapshot.json, built by backend/app/export_demo.py) ----
 
 export interface DemoSnapshot {

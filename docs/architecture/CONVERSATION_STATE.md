@@ -167,4 +167,4 @@ provider-independent gateway ([../deployment/gemini.md](../deployment/gemini.md)
 - One open card per conversation (a second card is parked inside a note, or queued and named on the card; not
   shown side by side).
 - No real external confirmation of anything.
-- The safety recall gaps are release-blocking ([../evaluation/SPRINT6_RESULTS.md](../evaluation/SPRINT6_RESULTS.md) §4).
+- The safety recall gaps are release-blocking (../evaluation/SPRINT6_RESULTS.md (removed; in Git history at `59c155c`) §4).

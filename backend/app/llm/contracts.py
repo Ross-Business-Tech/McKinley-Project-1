@@ -9,7 +9,7 @@ Every model call in the app goes through `LLMGateway.complete` with one of three
 This module is a thin, documented facade: it holds NO business logic (prompts, parsing, validation and policy stay
 with the callers above) and the existing callers do not use it. It exists so provider contract tests, the live
 smoke script and docs can refer to "the gate schema" without copying it, and so a drift between the facade and the
-real callers is caught by tests (tests/test_provider_contract.py).
+real callers is caught by tests (tests/test_llm_providers.py).
 """
 
 from dataclasses import dataclass

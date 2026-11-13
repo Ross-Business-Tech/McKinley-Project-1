@@ -1,19 +1,19 @@
 # Gemini acceptance checklist (run the moment a key exists)
 
 **Status: not run.** No Gemini (or OpenRouter) key has been available, so every step below is still open. Everything
-up to step 0 is tested offline only (`tests/test_provider_contract.py`, `tests/test_live_smoke*.py`,
-`tests/test_gemini_provider.py`).
+up to step 0 is tested offline only (`tests/test_llm_providers.py`,
+`tests/test_llm_providers.py`).
 
 Rules for every step: synthetic data only; never print or paste the key; one fixed `provider:model` per result;
 small `--max-calls`; Gemini always needs `--allow-paid` (billing depends on the key's Google project). Save every
-output file under `evals/live/` and commit only files you have read (they contain no key).
+output file under `evals/live/` (git-ignored, created on demand; never commit it).
 
 ## 0. Set up (once)
 ```bash
 cd backend
 # backend/.env (git-ignored):  LLM_PROVIDER=gemini   GEMINI_API_KEY=...   GEMINI_MODEL=gemini-3.6-flash
 # for evaluations also pin:    GEMINI_THINKING_LEVEL=low   LLM_MAX_RETRIES=0
-uv run pytest -q tests/test_provider_contract.py tests/test_gemini_provider.py   # offline contract still green
+uv run pytest -q tests/test_llm_providers.py   # offline contract still green
 ```
 
 ## 1. Preflight (no tokens spent)
@@ -42,34 +42,15 @@ the smoke JSON: `gate_decision.decision` has an in-vocabulary intent/urgency; `r
 classifier has 800 tokens / 6 s, the gate 2000 tokens / 8 s). Any truncation or timeout here → raise the limit or
 lower `GEMINI_THINKING_LEVEL` before step 5, and record which.
 
-## 4. Workflow regression (bounded conversations through the real API)
-The usability runner (`app.usability.run`) has no call budget; use the A/B/C runner's conversation mode instead,
-`aware` only, a small subset first:
-```bash
-uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --modes aware --cases none \
-  --scenarios r-ac-4th-time r-faucet-polite r-emerg-gas-understated p-tour-this-week a-injected-history \
-  --max-calls 40 --label gemini-workflow-1
-```
-Pass: no `false_claims`, no `safety_violations`, emergency scenario reaches the emergency card; outcomes no worse
-than the mock baseline in `docs/evaluation/usability-results.md`. Record the per-conversation table from the report.
-
-## 5. A/B/C small run (5 core cases × 3 modes = 15 calls)
-```bash
-uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --scenarios none \
-  --max-calls 15 --label gemini-abc-1
-```
-Pass (for "the run is valid", not "the model is good"): run status `completed`; 15 records, all `comparable: true`
-(any non-comparable record lists why); one served model. Then a person fills `human_review_status` on every record.
-Automated grades stay PROVISIONAL until that review.
-
-## 6. Separate safety-classifier evaluation
-```bash
-uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --with-safety-classifier \
-  --modes aware --cases none --scenarios r-emerg-gas-understated r-emerg-co-symptoms r-emerg-selfharm \
-  --max-calls 30 --label gemini-safety-1
-```
-Then run a **fresh holdout written by someone else** (not in the repo) per `docs/safety/safety-evaluation.md`.
-Record: classifier status counts (ok / timeout / bad_output / rate_limited), how often the classifier disagreed with the rules (recorded as a conflict; since Sprint 7 it can no longer remove a line).
+## 4. Workflow and safety checks beyond the smoke
+The larger live runners (workflow conversations, the five-case A/B/C run, the classifier batch) were removed in the
+repository simplification; they remain in Git history at `59c155c` (`backend/app/live_eval/abc.py`). Workflow and
+safety behaviour is pinned by the offline suites (`backend/tests/test_conversation_*.py`, `test_safety_*.py`).
+For Gemini, after steps 1–3 pass:
+- run a short supervised conversation per workflow (tour, repair, note, emergency) on a local backend with
+  `LLM_CALL_BUDGET` set, and record what you saw;
+- run a **fresh holdout written by someone else** (not in the repo) per `docs/safety/safety-evaluation.md` before
+  anyone claims the semantic layer works.
 
 ## Must NOT be claimed until the matching step passed
 - "Gemini works" / "deployed with Gemini": steps 1–2.
@@ -78,7 +59,7 @@ Record: classifier status counts (ok / timeout / bad_output / rate_limited), how
 - Any safety-classifier recall or "the semantic layer catches X": step 6 on a fresh independent holdout. One smoke
   sample proves plumbing only.
 
-## Provider differences (OpenRouter vs Gemini), pinned by `tests/test_provider_contract.py`
+## Provider differences (OpenRouter vs Gemini), pinned by `tests/test_llm_providers.py`
 | Topic | OpenRouter | Gemini |
 | --- | --- | --- |
 | System prompt | first `system` message | `system_instruction` |

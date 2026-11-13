@@ -108,17 +108,14 @@ Full step-by-step list with pass/fail criteria: [`GEMINI_ACCEPTANCE_CHECKLIST.md
 cd backend
 uv run python -m app.live_eval.preflight                     # model listed for this key? (no tokens spent)
 uv run python -m app.live_eval.smoke --provider gemini --allow-paid --max-calls 8   # 7 bounded calls, real app path
-uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --max-calls 30 --label gemini-v1
-uv run python -m app.live_eval.abc --target gemini:gemini-3.6-flash --allow-paid --with-safety-classifier \
-  --cases none --max-calls 30 --label gemini-safety-v1
 ```
-Then a person reviews the `pending` records (`evals/live/`), and a **fresh** independent safety holdout is run with
+Results go to `evals/live/` (git-ignored). Then a **fresh** independent safety holdout is run with
 `SAFETY_CLASSIFIER=auto` before anyone claims the semantic layer works (see `docs/safety/safety-evaluation.md`).
 
 ## Provider contract (OpenRouter and Gemini behave the same to the app)
-`tests/test_provider_contract.py` runs one parametrised suite against three adapters (OpenRouter over
+`tests/test_llm_providers.py` runs one parametrised suite against three adapters (OpenRouter over
 `httpx.MockTransport`, Gemini over a fake `google-genai` client, Gemini through the gateway over
-`httpx.MockTransport`, the Mock where meaningful); `tests/test_gemini_gateway.py` pins the gateway request shape: system prompt delivery,
+`httpx.MockTransport`, the Mock where meaningful); `tests/test_llm_providers.py` pins the gateway request shape: system prompt delivery,
 history order and roles, each app schema passed as structured output (`app.llm.contracts`: reply, gate, risk), the
 same text parsing to the same `ModelOutput`, normalised usage (thinking counted in output tokens), served model and
 `MODEL_SWITCHED`, identical error codes / retryable flags / HTTP statuses, and the real callers (`LLMGate`,
