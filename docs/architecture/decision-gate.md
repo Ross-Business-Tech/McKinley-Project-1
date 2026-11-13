@@ -2,7 +2,7 @@
 
 Status: rules gate **WORKING** (default). LLM gate **WORKING** through the provider abstraction, but exercised only with the mock provider in this repo, because no OpenRouter key was configured during development. Jev gate **EXPERIMENTAL**: the adapter is built from public docs and tested only against mocked HTTP.
 
-Code: `backend/app/gates/` · tests: `backend/tests/test_gates.py` · diagrams: [conversation routing](../diagrams/conversation-routing.md), [chat turn sequence](../diagrams/chat-turn-sequence.md)
+Code: `backend/app/gates/` · tests: `backend/tests/test_decision_gate.py` · diagrams: [conversation routing](../diagrams/conversation-routing.md), [chat turn sequence](../diagrams/chat-turn-sequence.md)
 
 ## Interface
 
@@ -59,7 +59,7 @@ Selection: `DECISION_GATE_PROVIDER=rules|llm|jev` (default `rules`). `DECISION_G
 
 ## Recorded outputs
 
-Every non-baseline chat turn writes routing metadata to the SQLite `gate_decisions` table: intent, urgency, flags, source, fallback, workflow and latency. The **message text is never logged**. `GET /api/gates/log` returns recent entries. `POST /api/gates/evaluate {providers}` and `uv run python -m app.run_gate_evals --providers rules,llm,jev --out ../evals/gate_results.json` compare providers on the 14 labelled scenarios.
+Every non-baseline chat turn writes routing metadata to the SQLite `gate_decisions` table: intent, urgency, flags, source, fallback, workflow and latency. The **message text is never logged**. These rows are read by the app itself (incident state, needs-action markers in Live conversations) and by tests; the gate log and gate-evaluation routes were removed in the repository simplification.
 
 ## Comparison results (2026-11-05, automated, not human-reviewed)
 
@@ -70,7 +70,8 @@ Every non-baseline chat turn writes routing metadata to the SQLite `gate_decisio
 | llm (OpenRouter) | n/a | n/a | n/a | n/a | n/a | **Not run:** no `OPENROUTER_API_KEY` in this environment. All 14 calls fell back to rules with `NEEDS_API_KEY`. |
 | jev | n/a | n/a | n/a | n/a | n/a | **Not run:** no `TYPESAFE_API_KEY`. All 14 calls fell back with `JEV_NOT_CONFIGURED`. |
 
-Raw output: `evals/gate_results.json`.
+These figures were produced by the gate scenario runner, removed in the repository simplification (Git history `59c155c`).
+The routing expectations are now pinned by `backend/tests/test_decision_gate.py`.
 
 ## Recommendation
 

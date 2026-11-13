@@ -135,8 +135,8 @@ Template / planner (not Gemini; also present with OpenRouter or the mock):
 - Safety follow-ups repeat the full block (911 twice) and do not answer the follow-up question directly.
 
 ## Acceptance criteria to switch Render
-1. Re-run `uv run python -m app.usability.run --suite journeys --live --base-url <local server> --max-calls 300`
-   with Gemini: 35/35 completed, 0 FAIL, 0 duplicate records.
+1. A bounded, supervised run of the customer workflows with Gemini (the 35-journey runner used for this report was
+   removed in the repository simplification; Git history `59c155c`): every workflow completed, 0 duplicate records.
 2. **0** Gemini-written replies that claim or imply delivery to staff, a booking, a call, or an action taken.
 3. Reply latency p90 under 6 s; reply errors under 2%.
 4. A person reads a sample of the Gemini replies.

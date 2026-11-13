@@ -98,5 +98,5 @@ its tables, so never use the real one):
 
 ```bash
 cd backend
-TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/scratch uv run pytest tests/test_store_backends.py tests/test_migrations.py
+TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/scratch uv run pytest tests/test_api_persistence.py
 ```

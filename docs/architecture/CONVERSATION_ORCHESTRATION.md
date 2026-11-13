@@ -129,10 +129,10 @@ applied in one place (`plan_turn` step 1c-edit):
 ## Measured
 - Journey suite (MOCK, 35): 27 PASS / 8 WARN / 0 FAIL before, 28 / 7 / 0 after. Fix round: 28 / 7 / 0 before,
   29 / 6 / 0 after (the one change is a safety journey; the safety engineer's concurrent work may account for it).
-  Fix-round tests: 248 in `tests/test_sprint6_conversation_fix.py`.
+  Fix-round tests: in `tests/test_conversation_understanding.py`.
 - Duplicates stayed at 0, and
   honesty and safety flags stayed at 0.
-- New tests: 258 in `tests/test_sprint6_conversation*.py` (208 paraphrase-family and API replays, 50 model-path and state-machine tests).
+- Tests: paraphrase families, API replays, model-path and state-machine tests in `tests/test_conversation_understanding.py`.
 - Live model check (5 calls, `openrouter:nvidia/nemotron-3.5-super-vl:free`):
   - 4 of 5 returned schema-valid JSON; 1 was rate-limited (429) and fell back to the rules.
   - The labels were noisy. It flagged a handoff on "forget it, what are the pool hours?" and possible emergencies on
@@ -149,7 +149,7 @@ applied in one place (`plan_turn` step 1c-edit):
 The Sprint 7 audit found that the Sprint 6 layer mostly wrapped keyword regexes in a schema. Independent detectors
 were checked first-match-wins, several object lexicons covered the same things, there was no shared field resolver,
 questions and statements were told apart late, and each message had one intent. What changed
-([../evaluation/SPRINT7_GENERALIZATION.md](../evaluation/SPRINT7_GENERALIZATION.md)):
+(../evaluation/SPRINT7_GENERALIZATION.md (removed; in Git history at `59c155c`)):
 
 ```mermaid
 flowchart LR
@@ -174,4 +174,4 @@ flowchart LR
   it is the caller's own record, and change notes target the original request.
 - A question never edits a card (`utterance.ends_as_question`).
 - No repair card is opened while a person may be in danger in this turn (`RiskDecision.person_danger`).
-- Invariant and metamorphic tests: `tests/test_sprint7_invariants.py`, `test_sprint7_workflow*.py`.
+- Invariant and metamorphic tests: `tests/test_authorization.py`, `test_conversation_understanding.py`.

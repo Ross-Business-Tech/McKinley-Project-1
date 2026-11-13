@@ -5,63 +5,33 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChatWorkbench } from "@/components/mckinley/ChatWorkbench";
-import { EvalDashboard } from "@/components/mckinley/EvalDashboard";
-import { Diagnostics } from "@/components/mckinley/ResponseDetails";
 import { ApiError, api, loadDemoSnapshot } from "@/lib/api";
-import { COVERAGE, type CoverageStatus } from "@/lib/coverage";
-import { type StoredTurn, loadConversation } from "@/lib/customer";
-import { formatCost, formatLatency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type {
-  ChatResponse,
   DemoSnapshot,
-  EvalCase,
-  GateConfig,
   Health,
-  ModelTarget,
-  Persona,
   PrototypeRecord,
   StaffConversation,
   StaffConversationDetail,
 } from "@/lib/types";
 import { StatusPill, statusTone } from "@/components/customer/StatusPill";
-import { UsabilityView } from "@/components/staff/UsabilityView";
 
 interface Boot {
   live: boolean;
   health: Health | null;
-  personas: Persona[];
-  targets: ModelTarget[];
-  cases: EvalCase[];
-  gateConfig: GateConfig | null;
   snapshot: DemoSnapshot | null;
 }
 
 async function boot(): Promise<Boot> {
   const snapshot = await loadDemoSnapshot().catch(() => null);
   try {
-    const [health, personas, targets] = await Promise.all([api.health(), api.personas(), api.models()]);
-    // staff-only route: refused (403) when this browser isn't local and has no staff token; fall back, don't fail
-    const cases = await api.evalCases().catch(() => snapshot?.cases ?? []);
-    const gateConfig = await api.gatesConfig().catch(() => null);
-    return { live: true, health, personas, targets, cases, gateConfig, snapshot };
+    const health = await api.health();
+    return { live: true, health, snapshot };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE" || !snapshot) throw e;
-    return { live: false, health: null, personas: snapshot.personas, targets: [], cases: snapshot.cases, gateConfig: null, snapshot };
+    return { live: false, health: null, snapshot };
   }
 }
-
-/** Visual vocabulary for states. Text always states the meaning; colour only reinforces it. */
-export type StateTone = "normal" | "pending" | "completed" | "unavailable" | "escalation" | "emergency";
-const TONE_CLASS: Record<StateTone, string> = {
-  normal: "border-mk-line bg-mk-surface text-mk-ink",
-  pending: "border-mk-line-strong bg-mk-draft-soft text-mk-draft",
-  completed: "border-mk-done/40 bg-mk-done-soft text-mk-done",
-  unavailable: "border-dashed border-mk-line-strong bg-mk-surface text-mk-muted",
-  escalation: "border-mk-attention/40 bg-mk-attention-soft text-mk-attention",
-  emergency: "border-mk-danger bg-mk-danger-soft text-mk-danger",
-};
 
 /** "Needs action" markers on live conversations (from the safety/gate log; never from message text). */
 const NEEDS_TEXT: Record<string, string> = {
@@ -77,10 +47,6 @@ const NEEDS_TONE: Record<string, string> = {
   safety_check_failed: "bg-mk-draft-soft text-mk-draft",
 };
 
-export function StateTag({ tone, children }: { tone: StateTone; children: React.ReactNode }) {
-  return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-sm font-medium", TONE_CLASS[tone])}>{children}</span>;
-}
-
 const TEAM: Record<string, string> = {
   emergency_maintenance: "Emergency maintenance",
   maintenance: "Maintenance",
@@ -93,22 +59,8 @@ function teamLabel(t: string): string {
   return TEAM[t] ?? t.replaceAll("_", " ");
 }
 
-function groupCounts(names: string[]): [string, number][] {
-  const m = new Map<string, number>();
-  for (const n of names) m.set(n, (m.get(n) ?? 0) + 1);
-  return [...m.entries()];
-}
-
-const COVERAGE_TONE: Record<CoverageStatus, { tone: StateTone; text: string }> = {
-  working: { tone: "completed", text: "Working (synthetic data)" },
-  partial: { tone: "pending", text: "Partly working" },
-  simulated: { tone: "pending", text: "Simulated" },
-  unavailable: { tone: "unavailable", text: "Not available" },
-};
-
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
-  const [view, setView] = useState<"queue" | "demo">("queue");
   // On a hosted backend the staff routes refuse browsers (no staff sign-in yet): use the recorded demo there.
   const staffTools = Boolean(state?.live && state.health?.app_env !== "hosted");
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +78,7 @@ export function StaffConsole() {
           <h1 className="flex min-w-0 flex-wrap items-center gap-x-3 leading-tight">
             <span className="font-heading text-[1.4rem] font-semibold tracking-[-0.01em]">McKinley</span>
             <span className="rounded-md bg-white px-2 py-0.5 font-heading text-sm font-semibold text-mk-brand-strong">Staff</span>
-            <span className="font-heading text-base font-medium">Demo console</span>
+            <span className="font-heading text-base font-medium">Staff queue</span>
           </h1>
           <Link href="/" prefetch={false} className="mk-focus inline-flex min-h-11 items-center rounded-md border border-white/80 px-4 font-medium text-white hover:bg-white/10">
             Open the customer view
@@ -134,7 +86,7 @@ export function StaffConsole() {
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 space-y-4 px-[max(1rem,env(safe-area-inset-left))] py-4 md:px-6">
-        <p className="text-mk-muted">What the assistant decided behind each reply, what it saved, and what is still simulated. Made-up data only.</p>
+        <p className="text-mk-muted">Requests customers sent from the assistant, and recent conversations. Made-up data only.</p>
         {error && (
           <p role="alert" className="rounded-md border border-mk-danger bg-mk-danger-soft p-3 text-mk-danger">
             Backend unavailable: {error}
@@ -145,71 +97,27 @@ export function StaffConsole() {
             <Info aria-hidden className="mt-1 size-4 shrink-0" />
             <span>
               Recorded demo: no backend runs behind this link. Everything here was recorded on{" "}
-              {state.snapshot.generated_at.slice(0, 10)} with a mock model (fixed templates, not an AI) and the rules
-              decision gate. Handoffs and saved requests stay in the prototype.
+              {state.snapshot.generated_at.slice(0, 10)} with a mock model (fixed templates, not an AI). Saved requests
+              stay in the prototype.
             </span>
           </p>
-        )}
-        {state && (
-          <div role="group" aria-label="Console view" className="inline-flex w-full rounded-lg border border-mk-line bg-mk-surface p-1 sm:w-auto">
-            {([["queue", "Staff queue"], ["demo", "Demo and evaluation"]] as const).map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={view === v}
-                onClick={() => setView(v)}
-                className={`mk-focus min-h-11 flex-1 rounded-md px-4 font-heading text-base font-medium sm:flex-none ${view === v ? "bg-mk-brand text-white" : "text-mk-muted hover:text-mk-ink"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        {view === "demo" && state?.live && state.health && (
-          <div role="note" data-testid="backend-status" className="rounded-lg border border-mk-line bg-mk-surface px-4 py-3">
-            <p className="sr-only">Backend status</p>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm lg:grid-cols-4">
-              {[
-                ["Replies", state.health.is_mock || state.health.provider === "mock"
-                  ? "mock responder (fixed templates, not an AI model)"
-                  : `${state.health.provider} · ${state.health.model} (live AI model${state.health.provider_ready ? "" : ", NOT configured: missing key"})`],
-                // Sprint 7: a non-staff caller gets the public health subset (database is "" then), so say the
-                // facts are hidden instead of showing misleading blanks
-                ["Database", state.health.database === "" ? "hidden (staff access needed)"
-                  : (state.health.database ?? "sqlite")],
-                ["Residents from", state.health.database === "" ? "hidden (staff access needed)"
-                  : (state.health.resident_source ?? "nowhere (none loaded)")],
-                ["Environment", state.health.app_env === "hosted" ? "hosted deployment" : "local"],
-              ].map(([k, v]) => (
-                <div key={k} className="min-w-0">
-                  <dt className="font-medium text-mk-muted">{k}</dt>
-                  <dd className="break-words text-mk-ink">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
         )}
         {state?.live && !staffTools && (
           <p role="note" data-testid="staff-locked" className="flex gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
             <Info aria-hidden className="mt-1 size-4 shrink-0" />
             <span>
-              Staff tools are locked on the shared site until real staff sign-in exists. Saved requests, live
-              conversations and evaluations below show the recorded demo, not this backend&apos;s data.
+              Staff tools are locked on the shared site until real staff sign-in exists. Saved requests and live
+              conversations below show the recorded demo, not this backend&apos;s data.
             </span>
           </p>
         )}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
-          <Tabs key={view} defaultValue={view === "queue" ? "records" : "inspector"}>
-            {/* One row on every width; on phones it scrolls sideways (the next tab peeks in). Selected = 3px blue bar. */}
-            <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] max-md:[mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:px-1">
+          <Tabs defaultValue="records">
+            {/* One row on every width; on phones it scrolls sideways. Selected = 3px blue bar. */}
+            <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] md:mx-0 md:px-1">
               <TabsList variant="line" className="h-auto! w-max flex-nowrap justify-start gap-0 p-0">
-                {/* Sprint 10 (review P1): what a McKinley employee would see, apart from the team's test tools */}
-                {(view === "queue"
-                  ? [["records", "Saved requests"], ["live", "Live conversations"]]
-                  : [["inspector", "Conversation inspector"], ["coverage", "Workflow coverage"], ["usability", "Usability"],
-                     ["compare", "Model comparison"], ["evals", "Evaluation"]]
-                ).map(([v, label]) => (
+                {[["records", "Saved requests"], ["live", "Live conversations"]].map(([v, label]) => (
                   <TabsTrigger
                     key={v}
                     value={v}
@@ -220,231 +128,16 @@ export function StaffConsole() {
                 ))}
               </TabsList>
             </div>
-            <TabsContent value="inspector">
-              <Inspector snapshot={state.snapshot} />
-            </TabsContent>
             <TabsContent value="records">
               <Records live={staffTools} snapshot={state.snapshot} />
             </TabsContent>
             <TabsContent value="live">
               <LiveConversations live={staffTools} />
             </TabsContent>
-            <TabsContent value="coverage">
-              <CoverageTable />
-            </TabsContent>
-            <TabsContent value="usability">
-              <UsabilityView />
-            </TabsContent>
-            <TabsContent value="compare">
-              <ChatWorkbench
-                personas={state.personas}
-                targets={state.targets}
-                cases={state.cases}
-                gateConfig={state.gateConfig}
-                demo={staffTools ? null : state.snapshot}
-              />
-            </TabsContent>
-            <TabsContent value="evals">
-              <EvalDashboard targets={state.targets} cases={state.cases} gateConfig={state.gateConfig} demo={staffTools ? null : state.snapshot} />
-            </TabsContent>
           </Tabs>
         )}
       </main>
     </div>
-  );
-}
-
-// ---- conversation inspector ------------------------------------------------------------------------------
-
-function Inspector({ snapshot }: { snapshot: DemoSnapshot | null }) {
-  const stored = useMemo(() => (typeof window === "undefined" ? null : loadConversation()), []);
-  const journeys = snapshot?.journeys ?? [];
-  const [pick, setPick] = useState<string>(stored ? "stored" : (journeys[0]?.id ?? ""));
-  const turns: StoredTurn[] =
-    pick === "stored" && stored
-      ? stored.turns
-      : (journeys.find((j) => j.id === pick)?.steps.map((s) =>
-          s.kind === "chat" ? { message: s.message, response: s.response } : { confirm: s.action_kind, result: s.result },
-        ) ?? []);
-
-  return (
-    <section aria-labelledby="inspector-h" className="space-y-4">
-      <div className="flex flex-col gap-1 sm:max-w-md">
-        <h2 id="inspector-h" className="text-lg font-semibold">
-          Conversation inspector
-        </h2>
-        <label htmlFor="inspect-pick" className="text-sm text-mk-muted">
-          Conversation to inspect
-        </label>
-        <select
-          id="inspect-pick"
-          value={pick}
-          onChange={(e) => setPick(e.target.value)}
-          className="mk-focus h-11 rounded-md border border-mk-line-strong bg-mk-surface px-3"
-        >
-          {stored && <option value="stored">Latest conversation in this browser ({stored.turns.length} steps)</option>}
-          {journeys.map((j) => (
-            <option key={j.id} value={j.id}>
-              Recorded: {j.title}
-            </option>
-          ))}
-        </select>
-      </div>
-      {turns.length === 0 && (
-        <p className="rounded-md border border-dashed border-mk-line-strong p-4 text-mk-muted">
-          Nothing to inspect yet. Have a conversation in the customer view, then come back to this tab.
-        </p>
-      )}
-      <ol className="space-y-4">
-        {turns.map((t, i) => (
-          <li key={i} className="rounded-lg border border-mk-line bg-mk-surface p-4" aria-label={`Step ${i + 1}`}>
-            {"message" in t ? (
-              <TurnView n={i + 1} message={t.message} r={t.response} />
-            ) : (
-              <div>
-                <h3 className="text-sm font-semibold text-mk-muted">Step {i + 1}: person pressed the send button</h3>
-                <p className="mt-1">{t.result.message}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {t.result.record ? (
-                    <StateTag tone={t.result.record.status === "urgent_queued" ? "emergency" : "completed"}>
-                      Saved {t.result.record.id} (prototype store)
-                    </StateTag>
-                  ) : (
-                    <StateTag tone="escalation">Not saved: {t.result.error_code}</StateTag>
-                  )}
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-sm text-mk-muted">{label}</dt>
-      <dd className="mt-0.5 break-words">{children}</dd>
-    </div>
-  );
-}
-
-export function TurnView({ n, message, r }: { n: number; message: string; r: ChatResponse }) {
-  const g = r.gate;
-  const failed = r.output_checks.filter((c) => !c.passed);
-  const emergency = g?.urgency === "emergency";
-  const actionTone: StateTone = !r.action
-    ? "normal"
-    : r.action.stage === "submitted"
-      ? r.action.record?.status === "urgent_queued"
-        ? "emergency"
-        : "completed"
-      : "pending";
-
-  return (
-    <article aria-labelledby={`step-${n}-h`}>
-      <h3 id={`step-${n}-h`} className="text-sm font-semibold text-mk-muted">Step {n}: the person wrote</h3>
-      <p className="font-medium">&ldquo;{message}&rdquo;</p>
-      <p className="mt-2 text-sm text-mk-muted">Assistant replied</p>
-      <p lang={r.language}>{r.reply}</p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {emergency && <StateTag tone="emergency">Emergency: safety first</StateTag>}
-        {r.recommended_handoff ? <StateTag tone="escalation">Person should help: {teamLabel(r.handoff?.team ?? r.handoff_category)}</StateTag> : <StateTag tone="normal">Assistant can handle</StateTag>}
-        {r.action && (
-          <StateTag tone={actionTone}>
-            {r.action.title}: {r.action.stage === "submitted" ? `saved ${r.action.record?.id}` : r.action.stage}
-          </StateTag>
-        )}
-        {(r.records_created ?? []).map((rec) => (
-          <StateTag key={rec.id} tone={rec.status === "urgent_queued" ? "emergency" : "completed"}>
-            Saved {rec.id}
-          </StateTag>
-        ))}
-        {r.reply_source && r.reply_source !== "model" && (
-          <StateTag tone={r.reply_source === "template" ? "normal" : "escalation"}>
-            {r.reply_source === "template"
-              ? "Fixed backend reply (no model call)"
-              : r.reply_source === "template_after_validation"
-                ? "Model reply blocked by checks; backend reply shown"
-                : "Model failed; backend reply shown"}
-          </StateTag>
-        )}
-        {r.is_mock && <StateTag tone="unavailable">Mock model, not AI</StateTag>}
-      </div>
-
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Fact label="Who (trusted app context)">
-          {r.audience}
-          {r.identity_note ? `, ${r.identity_note}` : ""}
-        </Fact>
-        <Fact label="Workflow">
-          {r.routed_workflow && r.routed_workflow.id !== r.workflow?.id ? `${r.routed_workflow.label}, then ${r.workflow?.label}` : (r.workflow?.label ?? "None (baseline)")}
-          {r.functions?.length ? <span className="block text-sm text-mk-muted">Modules {r.functions.join(", ")}</span> : null}
-        </Fact>
-        <Fact label="Decision gate">
-          {g ? (
-            <>
-              {g.intent}, urgency {g.urgency}, {g.decision_source}
-              {g.fallback_used ? " (fell back to rules)" : ""}
-              <span className="block text-sm text-mk-muted">
-                Confidence {g.confidence.toFixed(2)} (heuristic){g.risk_flags.length ? `; flags: ${g.risk_flags.join(", ")}` : ""}
-              </span>
-            </>
-          ) : (
-            "Skipped"
-          )}
-        </Fact>
-        <Fact label="Model">
-          {r.provider}:{r.model}
-          <span className="block text-sm text-mk-muted">
-            {formatLatency(r.latency_ms)}, {formatCost(r.usage.estimated_cost_usd)}
-          </span>
-        </Fact>
-        <Fact label="Account facts used (names only)">
-          {r.source_context_fields.length ? (
-            <ul className="text-sm">
-              {groupCounts(r.source_context_fields.map((f) => f.split(" ← ")[0])).map(([name, n]) => (
-                <li key={name}>
-                  {name.replaceAll("_", " ")}
-                  {n > 1 ? ` (${n})` : ""}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            "None"
-          )}
-        </Fact>
-        <Fact label="Handoff">
-          {r.handoff ? (
-            <>
-              {teamLabel(r.handoff.team)}, {r.handoff.priority} priority
-              <span className="block text-sm text-mk-muted">{r.handoff.delivery_note}</span>
-            </>
-          ) : (
-            "Not needed"
-          )}
-        </Fact>
-        <Fact label="Reply checks">
-          {failed.length ? (
-            <span className="text-mk-attention">Failed: {failed.map((c) => c.code).join(", ")}</span>
-          ) : (
-            `All ${r.output_checks.length} passed`
-          )}
-        </Fact>
-        <Fact label="Channel and language">
-          {r.channel ?? "web_chat"}, {r.language === "es" ? "Spanish" : "English"}
-        </Fact>
-      </dl>
-      <details className="mt-3">
-        <summary className="mk-focus inline-flex min-h-11 cursor-pointer items-center rounded text-mk-brand-hover underline underline-offset-2">Full pipeline trace</summary>
-        <div className="mt-2">
-          <Diagnostics r={r} />
-        </div>
-      </details>
-    </article>
   );
 }
 
@@ -796,35 +489,6 @@ function LiveConversations({ live }: { live: boolean }) {
           </div>
         </div>
       )}
-    </section>
-  );
-}
-
-// ---- coverage -------------------------------------------------------------------------------------------------
-
-function CoverageTable() {
-  return (
-    <section aria-labelledby="coverage-h" className="space-y-3">
-      <h2 id="coverage-h" className="text-lg font-semibold">
-        Workflow coverage (McKinley AI Agent Flow, F1 to F9)
-      </h2>
-      <p className="text-mk-muted">Simulated means it works end to end against the prototype store, not a real McKinley system.</p>
-      <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {COVERAGE.map((c) => (
-          <li key={c.id} className="rounded-lg border border-mk-line bg-mk-surface p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-semibold">
-                {c.id} {c.name}
-              </h3>
-              <StateTag tone={COVERAGE_TONE[c.status].tone}>{COVERAGE_TONE[c.status].text}</StateTag>
-            </div>
-            <p className="mt-2">{c.works}</p>
-            <p className="mt-2 text-sm text-mk-muted">
-              <span className="font-semibold text-mk-ink">Waiting on:</span> {c.blockedOn}
-            </p>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

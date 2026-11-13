@@ -9,10 +9,6 @@ to work here). The project is a **prototype, not production ready**.
 - [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) — can a phone open a public link and chat? (not yet)
 - [design/BRAND_SYSTEM.md](design/BRAND_SYSTEM.md) — McKinley colours, type, components, contrast
 - [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) — viewport matrix, findings, fixes, open issues
-- [design/TASTE_SKILL_REVIEW.md](design/TASTE_SKILL_REVIEW.md) — which design skills were used and how
-- [IMPLEMENTATION_CHANGELOG.md](IMPLEMENTATION_CHANGELOG.md) — what changed in each sprint and what was tested
-- [evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md](evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md) — Sprint 5.1: live OpenRouter journeys, simulators, judges, fixes, remaining failures
-- [evaluation/SPRINT5_LIVE_CONVERSATION.md](evaluation/SPRINT5_LIVE_CONVERSATION.md) — Sprint 5: what is verified with OpenRouter (nothing yet), with Mock, Gemini-ready
 - [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md) — conversation state, card lifecycle, tour states
 - [development/GEMINI_ACCEPTANCE_CHECKLIST.md](development/GEMINI_ACCEPTANCE_CHECKLIST.md) — what to run the moment a Gemini key exists
 - [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
@@ -32,12 +28,14 @@ to work here). The project is a **prototype, not production ready**.
 ## Safety
 - [safety/safety-evaluation.md](safety/safety-evaluation.md) — **authoritative** safety architecture, policy rules R1–R9e,
   independent holdout results, every remaining safety-critical failure for human review
+- [safety/SAFETY_STATE_AND_EVALUATION.md](safety/SAFETY_STATE_AND_EVALUATION.md) — UI safety state, incident state, evaluation method
+- [security/AUTHORIZATION_BOUNDARIES.md](security/AUTHORIZATION_BOUNDARIES.md) — who can see what, staff guard, hosted mode
 
 ## Evaluation
-- [evaluation/README.md](evaluation/README.md) — every suite: latest result, live vs mock, command, data
-- [evaluation/live-llm.md](evaluation/live-llm.md) — live A/B/C runner (blocked without a key)
-- [evaluation/ux-review.md](evaluation/ux-review.md), [evaluation/usability-results.md](evaluation/usability-results.md),
-  [evaluation/accessibility-review.md](evaluation/accessibility-review.md) — reviews (newest sprint first)
+- [evaluation/README.md](evaluation/README.md) — how to check the app, and every recorded result (live vs mock)
+- [evaluation/PROTOTYPE_REVIEW_REMEDIATION.md](evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) — independent review findings and their status
+- [evaluation/GEMINI_GATEWAY_ACCEPTANCE.md](evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) — Gemini via the U-M gateway: not accepted yet
+- [evaluation/accessibility-review.md](evaluation/accessibility-review.md) — WCAG 2.2 AA review
 
 ## Diagrams (Mermaid, validated against the code)
 - [diagrams/system-architecture.md](diagrams/system-architecture.md)
@@ -54,6 +52,7 @@ to work here). The project is a **prototype, not production ready**.
 - [development/codegraph.md](development/codegraph.md) — optional local code index
 
 ## Archive
-- [archive/README.md](archive/README.md) — sprint reports, changelog, baseline (historical; numbers as of their date)
+- [archive/README.md](archive/README.md) — the real-model evidence kept in the tree; sprint reports, changelogs and
+  generated outputs are in Git history (`git show 59c155c:<path>`)
 
 Team reference material (`docs/references/`) is kept locally and is not part of the public repository.

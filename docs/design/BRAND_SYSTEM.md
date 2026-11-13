@@ -2,7 +2,7 @@
 
 One small system shared by `/` (customer chat) and `/staff/` (staff and demo console). Tokens live in
 `frontend/src/app/globals.css` (`--color-mk-*`); components use only those tokens. Mobile UX evidence:
-[MOBILE_UX_AUDIT.md](MOBILE_UX_AUDIT.md). How the design skills were used: [TASTE_SKILL_REVIEW.md](TASTE_SKILL_REVIEW.md).
+[MOBILE_UX_AUDIT.md](MOBILE_UX_AUDIT.md). How the design skills were used: TASTE_SKILL_REVIEW.md (removed; in Git history at `59c155c`).
 
 ## Where the colours come from
 Checked on 2026-11-10 against McKinley's own site, mckinley.com. The values come from its stylesheet

@@ -13,7 +13,7 @@ work-order system; "submitted" means saved to the labelled prototype store in SQ
 | Part | Where | What it does |
 | --- | --- | --- |
 | Customer chat | `frontend/src/components/customer/` (`/`) | One conversation, read-back cards (confirm before save), status list, safety notices and care lines |
-| Staff / demo console | `frontend/src/components/staff/`, `frontend/src/components/mckinley/` (`/staff/`) | Saved requests, Live conversations, Conversation inspector, Workflow coverage, Usability, Model comparison (A/B/C), Evaluation |
+| Staff queue | `frontend/src/components/staff/` (`/staff/`) | Saved requests, Live conversations |
 | Static replay | `frontend/public/demo/snapshot.json` (built by `backend/app/export_demo.py`) | Lets the here.now build work without a backend: recorded journeys, MOCK model |
 | API | `backend/app/main.py`, `backend/app/api/` | FastAPI routes; one error envelope `{"error": {code, message, retryable}}` |
 | Chat pipeline | `backend/app/chat_engine.py` (`run_turn`) | 11 traced steps: 1 receive · 2 identity · **2b safety** · 3 privacy · 4 context · 5 gate · 6 workflow + plan · 7 generate · 8 validate · 9 handoff · 10 persist |
@@ -23,20 +23,18 @@ work-order system; "submitted" means saved to the labelled prototype store in SQ
 | Detectors and text | `intake.py`, `templates.py`, `content/knowledge_base.json`, `workflows.py`, `handoff.py` | Message detectors, approved/draft wording, FAQ content, workflow selection, handoff recommendations |
 | Context | `context.py`, `personas.py` | Workbook adapter, allowlisted SAFE_CONTEXT, demo identity; "not the account holder" rule |
 | Providers | `backend/app/llm/` | Gemini (intended for deployments), OpenRouter, Ollama, Anthropic (optional), Mock behind one gateway |
-| Persistence | `db.py`, `migrations/` (Alembic), `seed_synthetic.py` | SQLite locally or Postgres/Supabase (`DATABASE_URL`); chat turns, gate log (no message text), drafts, prototype records, eval runs, synthetic residents/communities/interactions; RLS on in Postgres |
+| Persistence | `db.py`, `migrations/` (Alembic), `seed_synthetic.py` | SQLite locally or Postgres/Supabase (`DATABASE_URL`); chat turns, gate log (no message text), drafts, prototype records, synthetic residents/communities/interactions; RLS on in Postgres |
 | Deployment | `render.yaml`, `frontend/vercel.json` | Render backend (`APP_ENV=hosted` refuses unsafe settings), Vercel static site; [DEPLOYMENT_READINESS](../DEPLOYMENT_READINESS.md) |
-| Evaluation | `evals.py`, `gate_evals.py`, `journey_evals.py`, `usability/`, `live_eval/` | Five cases, gate scenarios, journeys, persona suite, live A/B/C runner ([evaluation](../evaluation/README.md)) |
+| Dev tools (never imported by the app) | `live_eval/` (preflight, smoke), `export_demo.py` | Manual budgeted provider checks; the static demo snapshot ([evaluation](../evaluation/README.md)) |
 
 ## Endpoints
 
 Customer (open; identity is the demo `persona_id`, not authentication): `POST /api/chat`,
-`POST /api/actions/confirm`, `POST /api/actions/cancel`, `GET /api/personas`, `GET /api/health`, `GET /api/models`,
-`GET /api/gates/config`.
+`POST /api/actions/confirm`, `POST /api/actions/cancel`, `GET /api/personas`, `GET /api/health`, `GET /api/models`.
 
 Staff / demo (loopback only, or `X-Staff-Token` when `STAFF_API_TOKEN` is set; any proxy-forwarding header or a
 non-local `Host` is refused): `GET /api/prototype/records`, `GET /api/staff/conversations[/{session_hash}]`,
-`POST /api/context/preview`, `/api/evals/*` (cases, run, runs, results, summary), `/api/gates/*` (scenarios, evaluate,
-log). Note: `POST /api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`, `source_context_fields`) to every
+Note: `POST /api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`, `source_context_fields`) to every
 caller, including the customer browser; decide before any deployment whether to strip them for non-staff callers.
 The browser never sends `X-Staff-Token`, so with a token set the console's staff tabs only work from tools
 that send the header.

@@ -26,7 +26,7 @@ How detect() uses it (monotone-safe by construction):
     "my mom fell and if she can't get up what do I do" stays an alert;
   - a live marker (now, right now, still, again, ahora, todavia, otra vez) inside a conditional keeps it live;
   - a decoration added to a real report never removes the report itself, because spans are bounded (a fiction span
-    stops at "and my / but now / y mi ..."), so the metamorphic invariants (tests/test_sprint7_safety_invariants.py)
+    stops at "and my / but now / y mi ..."), so the metamorphic invariants (tests/test_safety_pipeline.py)
     still hold.
 
 A conditional about a SPECIFIC person with a serious stative sign ("if my dad can't breathe, what should I do?") is

@@ -54,7 +54,7 @@ The response model never writes safety text, and emergency turns make no model c
 | Final (150 items) | A different, fresh verifier agent, black box, against a frozen build (`db21519`, port 8200) | **No** before the run; verbatim failures only after | The headline result. Not tuned on afterwards |
 | Experimental stand-in | A third agent given only the unlabelled final utterances and the classifier's exact prompt | n/a | Estimates what the layered design does with a capable semantic model (§5) |
 
-Development tests (`backend/tests/test_sprint3_safety.py`) use the implementer's own wording only.
+Development tests (`backend/tests/test_safety_pipeline.py`) use the implementer's own wording only.
 
 ## 4. Results
 
@@ -107,7 +107,7 @@ full alert / 69% any guidance, so the comparison is indicative only (different i
 
 ### 4c. Model timeout / failure behaviour
 
-Tested in `test_sprint3_safety.py` with a fake provider: timeout → `semantic.status = timeout`, rules still alert,
+Tested in `test_safety_pipeline.py` with a fake provider: timeout → `semantic.status = timeout`, rules still alert,
 trace says `semantic=timeout`; non-JSON → `bad_output`; out-of-vocabulary `risk_level` → rejected; a provider that
 serves a different model → `error` (MODEL_SWITCHED is never accepted); no key → `unavailable`; mock → `mock`.
 Live rate-limit behaviour against OpenRouter was **not** observed (no key).
@@ -229,7 +229,7 @@ Sprint 5 changed only conversation logic (`actions.py` / `intake.py`). One chang
 - **What:** after a self-harm, personal-safety or medical alert, short follow-ups now get a privacy and status
   reply instead of the maintenance-emergency follow-up. The policy's approved care line is still shown.
 - **Review:** the two new templates are marked for McKinley review. The independent verifier re-ran this holdout
-  on the final code ([SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md)).
+  on the final code (SPRINT5_LIVE_CONVERSATION.md (removed; in Git history at `59c155c`)).
 - **Next step:** fixing the misses needs a separate safety sprint, with development cases written from category
   descriptions and **another new holdout** written by someone else.
 
@@ -237,7 +237,7 @@ Sprint 5 changed only conversation logic (`actions.py` / `intake.py`). One chang
 ## 9. Sprint 5.1 (2026-11-10): detector extensions, measured on the §8 holdout
 - **Who changed what:** a safety engineer who never saw the §8 holdout extended the detectors in `emergency.py`
   and `safety.py`, and the account-holder rule in `personas.py`. Every new pattern has positive and negative tests
-  (`tests/test_sprint51_safety.py`). No policy rule or approved wording changed.
+  (`tests/test_safety_detection.py`). No policy rule or approved wording changed.
 - **What was added:**
   - CO described indirectly or abbreviated, including symptoms and a heat source;
   - child or household-product poisoning;

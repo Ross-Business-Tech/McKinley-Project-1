@@ -12,7 +12,6 @@ from app.risk.models import RiskAssessment
 Mode = Literal["baseline", "prompt_only", "aware"]
 Audience = Literal["prospect", "resident", "unknown"]
 PersonaKind = Literal["prospect", "resident", "unmatched_resident"]
-Verdict = Literal["GOOD", "BAD"]
 # Inbound channel. Phone/voice (F1) has no telephony integration and is not accepted.
 Channel = Literal["web_chat", "sms", "email"]
 # The nine function modules of "McKinley AI Agent Flow.md" (docs/workflows/traceability.md).
@@ -60,12 +59,6 @@ class SafeContext(BaseModel):
     withheld_fields: list[str] = Field(default_factory=list)
     dropped_items: list[str] = Field(default_factory=list)  # e.g. note dropped by injection screen
     notes: list[str] = Field(default_factory=list)
-
-
-class ContextPreviewRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    persona_id: str | None = Field(default=None, max_length=40)
-    message: str = Field(default="", max_length=4000)
 
 
 class ChatRequest(BaseModel):
@@ -375,117 +368,6 @@ class HealthResponse(BaseModel):
     database: str = "sqlite"
     resident_source: str | None = None
     is_mock: bool = False  # the default responder is the deterministic mock, not a language model
-
-
-# ---- evals -----------------------------------------------------------------
-
-
-class EvalCase(BaseModel):
-    id: str
-    title: str
-    persona_id: str
-    message: str
-    expected_audience: Audience
-    expect_handoff: bool | None  # None = either acceptable
-    reference_note: str
-    suite: Literal["core", "extended"] = "core"
-    expected_intent: Intent | None = None
-    expected_workflow: WorkflowId | None = None
-    expected_urgency: Urgency | None = None
-
-
-class CriterionResult(BaseModel):
-    criterion: str
-    passed: bool | None  # None = requires human judgment
-    detail: str
-
-
-class EvalResult(BaseModel):
-    id: int
-    run_id: int
-    case_id: str
-    mode: Mode
-    created_at: datetime
-    status: Literal["ok", "error"]
-    error_code: str | None = None
-    error_message: str | None = None
-    reply: str | None = None
-    audience: str | None = None
-    gate_intent: str | None = None
-    gate_urgency: str | None = None
-    gate_source: str | None = None
-    workflow_id: str | None = None
-    recommended_handoff: bool | None = None
-    handoff_category: str | None = None
-    handoff_reason: str | None = None
-    provider: str
-    requested_model: str
-    model: str
-    is_mock: bool = False
-    parse_mode: str | None = None
-    temperature: float | None = None
-    prompt_version: str
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    estimated_cost_usd: float | None = None
-    latency_ms: int | None = None
-    criteria: list[CriterionResult] = Field(default_factory=list)
-    provisional_verdict: Verdict | None = None
-    provisional_rationale: str | None = None
-    human_verdict: Verdict | None = None
-    human_notes: str | None = None
-
-
-class EvalRunRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    case_ids: list[str] | None = None
-    modes: list[Mode] = Field(default_factory=lambda: ["baseline", "prompt_only", "aware"])
-    # provider:model keys; the default target is used when omitted
-    targets: list[str] | None = Field(default=None, max_length=6)
-
-
-class EvalRunResponse(BaseModel):
-    run_id: int
-    results: list[EvalResult]
-
-
-class EvalReviewPatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    human_verdict: Verdict | None = None
-    human_notes: str | None = Field(default=None, max_length=2000)
-
-
-class EvalRun(BaseModel):
-    id: int
-    created_at: datetime
-    targets: list[str]
-    aware_prompt_version: str
-    baseline_prompt_version: str
-    temperature: float | None
-
-
-class TargetModeSummary(BaseModel):
-    target: str
-    mode: str
-    is_mock: int
-    runs: int
-    errors: int
-    good: int
-    bad: int
-    human_reviewed: int
-    handoffs_recommended: int
-    json_contract_failures: int
-    avg_latency_ms: int | None
-    input_tokens: int | None
-    output_tokens: int | None
-    estimated_cost_usd: float | None
-
-
-class EvalSummary(BaseModel):
-    run_id: int | None
-    total: int
-    by_target_mode: dict[str, TargetModeSummary]
-    failure_categories: dict[str, int]
 
 
 GateDecision.model_rebuild()

@@ -48,8 +48,8 @@ Checked in every run, all **VERIFIED (MOCK ONLY)**:
 - refresh restores the conversation (3 assistant messages);
 - tap-to-call 911 is visible.
 
-Screenshots: [screenshots/](screenshots/). Each `before-*` has a matching `after-*`: phone open, phone with the
-keyboard stand-in, landscape, desktop, and the staff console on phone and desktop.
+The before/after screenshots of this audit were removed from the repository; they are in Git history at `59c155c`
+(`docs/design/screenshots/`). Run `npm run smoke` for current ones.
 
 ## The 16 questions from the brief
 
@@ -106,7 +106,7 @@ keyboard stand-in, landscape, desktop, and the staff console on phone and deskto
 
 ## Open: conversation logic (backend planner, not this UI sprint)
 > **Update (Sprint 5):** D-8 to D-22 were fixed except D-18. A regression verifier replayed them on the Sprint 5
-> branch; status per item is in [../evaluation/SPRINT5_LIVE_CONVERSATION.md](../evaluation/SPRINT5_LIVE_CONVERSATION.md).
+> branch; status per item is in ../evaluation/SPRINT5_LIVE_CONVERSATION.md (removed; in Git history at `59c155c`).
 > The list below is the Sprint 4 record, kept as it was.
 
 Agent D found these while using the mock responder. They are real and **not fixed**. Planner changes need their own

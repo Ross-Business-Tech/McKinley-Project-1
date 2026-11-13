@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.errors import customer_llm_error_response, llm_error_response
 from app.api.protection import SESSION_LOCKS, rate_limited
-from app.api.staff_guard import request_is_local, require_staff, staff_allowed
+from app.api.staff_guard import request_is_local, staff_allowed
 from app.api.views import customer_view
 from app.auth import (
     AuthError,
@@ -10,13 +10,12 @@ from app.auth import (
     demo_personas_enabled,
     derive_principal,
     new_session_id,
-    staff_principal,
     with_session_state,
 )
 from app.chat_engine import resolve_target, run_turn
 from app.llm import LLMError
-from app.models import ChatRequest, ChatResponse, ContextPreviewRequest, ErrorBody, Persona, SafeContext
-from app.personas import build_context, list_personas
+from app.models import ChatRequest, ChatResponse, ErrorBody, Persona
+from app.personas import list_personas
 from app.state import AppState, get_state
 
 router = APIRouter(prefix="/api")
@@ -30,15 +29,6 @@ def personas(request: Request, state: AppState = Depends(get_state)) -> list[Per
     if not demo_personas_enabled(state.deps.settings, request_is_local(request)):
         return []
     return list_personas(state.deps.workbook)
-
-
-@router.post("/context/preview", response_model=SafeContext, dependencies=[Depends(require_staff)])
-def context_preview(req: ContextPreviewRequest, state: AppState = Depends(get_state)) -> SafeContext:
-    """Exactly the minimized context the aware mode would send for this persona + message."""
-    from app.chat_engine import clean_message
-
-    return build_context(req.persona_id, clean_message(req.message), state.deps.workbook,
-                         principal=staff_principal(persona_id=req.persona_id))
 
 
 @router.post("/chat", response_model=ChatResponse, responses={502: {"model": ErrorBody}, 503: {"model": ErrorBody}})

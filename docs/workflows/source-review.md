@@ -347,7 +347,7 @@ No module is rejected as a whole. These **specific steps should be rejected** in
 
 ## 4. Evaluation scenarios mapped to modules
 
-The five existing cases are in `evals/five_cases.md`. Scenarios 6-17 are new and are proposed for the eval harness. "Expected behavior" describes the MVP (web chat, recommendation-only handoffs).
+The five existing cases are in `docs/workflows/five_cases.md`. Scenarios 6-17 are new and are proposed for the eval harness. "Expected behavior" describes the MVP (web chat, recommendation-only handoffs).
 
 | # | Scenario | Existing? | Modules exercised | Expected MVP behavior | What it tests |
 |---|---|---|---|---|---|

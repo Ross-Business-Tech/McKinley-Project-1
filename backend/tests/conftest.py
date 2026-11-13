@@ -114,7 +114,6 @@ def settings(tmp_path: Path) -> Settings:
         openrouter_api_key=None,
         anthropic_api_key=None,
         db_path=tmp_path / "test.sqlite3",
-        eval_results_path=tmp_path / "actual_results.json",
         eval_targets="mock:mock-deterministic-v1,openrouter:google/gemma-4-31b-it:free,ollama:llama3.2",
         gate_override_enabled=True,  # tests exercise the per-turn override; production default is False
     )

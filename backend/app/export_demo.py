@@ -14,14 +14,11 @@ from app.auth import TOOLING
 from app.chat_engine import run_turn
 from app.config import REPO_DIR, Settings
 from app.db import Store
-from app.evals import CASES
-from app.gate_evals import evaluate_gates
 from app.llm import LLMGateway
 from app.personas import build_context, list_personas
 from app.state import build_state
 
 OUT = REPO_DIR / "frontend" / "public" / "demo" / "snapshot.json"
-MODES = ("baseline", "prompt_only", "aware")
 
 # Customer journeys replayed by the static preview. "!confirm:<kind>" = the person presses the confirm button.
 # Each is recorded turn by turn through the real pipeline (aware mode, rules gate, MOCK response model).
@@ -70,7 +67,6 @@ JOURNEYS: list[dict] = [
 
 def record_journeys(deps) -> list[dict]:
     from app.actions import confirm
-    from app.personas import build_context
 
     out = []
     for j in JOURNEYS:
@@ -100,14 +96,7 @@ def build_snapshot(tmp_db: Path) -> dict:
                  data_path=base.data_path, db_path=tmp_db, eval_targets="mock:mock-deterministic-v1")
     state = build_state(settings=s, gateway=LLMGateway(s), store=Store(tmp_db))
     deps = state.deps
-    used = {c.persona_id for c in CASES} | {j["persona"] for j in JOURNEYS}
-    responses, contexts = {}, {}
-    for c in CASES:
-        pid = c.persona_id or None
-        responses[c.id] = {m: run_turn(deps, c.message, m, pid, None, use_history=False).model_dump(mode="json")
-                           for m in MODES}
-        contexts[c.id] = build_context(pid, c.message, deps.workbook, principal=TOOLING).model_dump(mode="json")
-    gate_eval = evaluate_gates(deps, ["rules", "llm"])
+    used = {j["persona"] for j in JOURNEYS}
     journeys = record_journeys(deps)
     records = deps.store.records(limit=200)
     return {
@@ -117,13 +106,8 @@ def build_snapshot(tmp_db: Path) -> dict:
                   "and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
         "workbook_loaded": deps.workbook is not None,
         "personas": [p.model_dump() for p in list_personas(deps.workbook) if p.id in used],
-        "cases": [c.model_dump() for c in CASES],
-        "responses": responses,
-        "contexts": contexts,
         "journeys": journeys,
         "prototype_records": records,
-        "gate_eval": {"note": gate_eval["note"] + " In this snapshot 'llm' is the MOCK keyword gate.",
-                      "summary": gate_eval["summary"], "rows": gate_eval["rows"]},
     }
 
 
@@ -136,7 +120,7 @@ def main() -> None:
         raise SystemExit("Workbook not found: resident scenarios would be empty. Place the XLSX first (README).")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(snap, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"wrote {OUT.relative_to(REPO_DIR)} ({OUT.stat().st_size // 1024} KB, {len(snap['cases'])} scenarios)")
+    print(f"wrote {OUT.relative_to(REPO_DIR)} ({OUT.stat().st_size // 1024} KB, {len(snap['journeys'])} journeys)")
 
 
 if __name__ == "__main__":
