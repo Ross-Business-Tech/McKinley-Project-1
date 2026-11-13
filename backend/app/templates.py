@@ -21,12 +21,11 @@ T: dict[str, dict[Lang, str]] = {
         "en": "Happy to help. Are you a current McKinley resident, or are you looking for a new home?",
         "es": "Con gusto le ayudo. ¿Ya vive en una comunidad de McKinley o está buscando un nuevo hogar?",
     },
-    "guest_resident": {
-        "en": "Thanks! Repairs and request status need a resident sign-in, which this public demo doesn't have. I "
-              "can still answer general questions, or tap \"Talk to a person\" to leave a note for the office.",
-        "es": "¡Gracias! Las reparaciones y el estado de solicitudes requieren iniciar sesión como residente, algo "
-              "que esta demostración pública no tiene. Igual puedo responder preguntas generales, o toque \"Hablar "
-              "con una persona\" para dejar una nota a la oficina.",
+    "guest_resident": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Thanks for letting me know. What can I help with? If something needs fixing, tell me what's going on "
+              "and I'll put together a note for the maintenance team.",
+        "es": "Gracias por avisarme. ¿En qué le ayudo? Si algo necesita reparación, cuénteme qué pasa y preparo una "
+              "nota para el equipo de mantenimiento.",
     },
     "unclear": {
         "en": "I want to make sure I get this right. Could you tell me a little more about what you need?",
@@ -70,20 +69,17 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Lamento que vuelva a pasar. Veo solicitudes relacionadas en su historial, así que la marcaré como "
               "problema repetido para que la revise un gerente.",
     },
-    "maint_unverified": {
-        "en": "I can't match you to a resident account here, so I can't file a repair request for a unit. "
-              "The office can take it from you directly. If water, gas, smoke or sparks are involved, call 911 or "
-              "your community's emergency maintenance line now.",
-        "es": "No puedo vincularle con una cuenta de residente aquí, así que no puedo registrar una solicitud. "
-              "La oficina puede tomarla directamente. Si hay agua, gas, humo o chispas, llame al 911 o a la línea "
-              "de emergencias de mantenimiento ahora.",
+    "maint_unverified": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "I can't match you to a resident account here, so I can't file a repair request for a unit. The office "
+              "can take it from you directly.",
+        "es": "No puedo vincularle con una cuenta de residente aquí, así que no puedo registrar una solicitud. La "
+              "oficina puede tomarla directamente.",
     },
-    "maint_guest": {
-        "en": "Repair requests need a resident sign-in, which this public demo doesn't have. To leave a note for the "
-              "office instead, tap \"Talk to a person\". For anything dangerous, call 911 now.",
-        "es": "Las solicitudes de reparación requieren iniciar sesión como residente, algo que esta demostración "
-              "pública no tiene. Para dejar una nota a la oficina, toque \"Hablar con una persona\". Si hay peligro, "
-              "llame al 911 ahora.",
+    "maint_guest": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "I can help you put a repair note together for the maintenance team. What's going on, and where in your "
+              "home?",
+        "es": "Le ayudo a preparar una nota de reparación para el equipo de mantenimiento. ¿Qué pasa y en qué parte de"
+              " su casa?",
     },
     "maint_change": {
         "en": "Your {ref} is already saved, so I can't change it here. I've prepared a note for the office about the "
@@ -1445,13 +1441,11 @@ T: dict[str, dict[Lang, str]] = {
         "es": "Gracias por decírmelo. No puedo ver ni cambiar su saldo, pero la oficina puede revisar opciones con "
               "usted, así que empecé una nota para ellos.",
     },
-    "maint_guest_note": {  # Sprint 10, NEEDS McKINLEY REVIEW: a visitor's repair (no sign-in in this demo)
-        "en": "Repairs usually need a resident sign-in, which this demo doesn't have, so I've started a note for the "
-              "office with what you told me. Add your community and unit if you like, then send it. If anything is "
-              "dangerous, call 911 now.",
-        "es": "Las reparaciones normalmente requieren iniciar sesión, algo que esta demostración no tiene, así que "
-              "empecé una nota para la oficina con lo que me dijo. Agregue su comunidad y unidad si quiere, y "
-              "envíela. Si hay peligro, llame al 911 ahora.",
+    "maint_guest_note": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Sorry you're dealing with that. Since this chat isn't signed in, I'll put it together as a note for the"
+              " maintenance team.",
+        "es": "Lamento el problema. Como este chat no tiene sesión iniciada, lo preparo como una nota para el equipo "
+              "de mantenimiento.",
     },
     "resident_tour_aside": {  # Sprint 10, NEEDS McKINLEY REVIEW
         "en": "Tours of other communities go through the leasing team, and I can start a note for them once this "
@@ -1488,6 +1482,42 @@ T: dict[str, dict[Lang, str]] = {
     "guest_note_set_aside": {  # Sprint 10, NEEDS McKINLEY REVIEW
         "en": "No problem, I've set the repair note aside.",
         "es": "Sin problema, dejé a un lado la nota de reparación.",
+    },
+    "guest_repair_recurring": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "I'm sorry it keeps happening. Since this chat isn't signed in, I'll put it together as a note for the "
+              "maintenance team and mark it as a repeat.",
+        "es": "Lamento que siga pasando. Como este chat no tiene sesión iniciada, lo preparo como una nota para el "
+              "equipo de mantenimiento y la marco como repetida.",
+    },
+    "guest_ask_community": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Which McKinley community do you live in?",
+        "es": "¿En qué comunidad de McKinley vive?",
+    },
+    "guest_ask_unit": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "And what's your unit number?",
+        "es": "¿Y cuál es su número de unidad?",
+    },
+    "guest_place_thanks": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Thanks.",
+        "es": "Gracias.",
+    },
+    "guest_resident_help": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Happy to help. If something in your home needs fixing, tell me what's going on and I'll put together a "
+              "note for the maintenance team.",
+        "es": "Con gusto. Si algo en su casa necesita reparación, cuénteme qué pasa y preparo una nota para el equipo "
+              "de mantenimiento.",
+    },
+    "who_claimed": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Says they live here (not verified)",
+        "es": "Dice que vive aquí (sin verificar)",
+    },
+    "who_guest": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Not signed in",
+        "es": "Sin sesión iniciada",
+    },
+    "recurring_value": {  # guest repair intake (2026-11-13), NEEDS McKINLEY REVIEW
+        "en": "Yes, as you said",
+        "es": "Sí, según nos dijo",
     },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",

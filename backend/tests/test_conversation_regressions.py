@@ -2073,7 +2073,8 @@ def test_a_different_maintenance_problem_is_its_own_request(client):
 
 def test_guest_repair_becomes_a_note_for_the_office(client):
     r = chat_s10rr(client, "the heat in my apartment isn't working", "gr1")
-    assert r["action"]["kind"] == "staff_handoff" and "community and unit" in r["reply"]
+    assert r["action"]["kind"] == "staff_handoff" and "Which McKinley community" in r["reply"]
+    assert r["action"]["stage"] == "collecting" and r["action"]["missing"] == ["Community", "Unit"]
 
 
 def test_bare_complaint_gets_an_apology_not_a_tour(client):

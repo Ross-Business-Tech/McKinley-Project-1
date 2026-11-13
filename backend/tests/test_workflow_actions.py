@@ -105,7 +105,7 @@ def test_unverified_claims_unlock_nothing(client):
     assert m["action"]["kind"] == "staff_handoff"  # no work-order draft without a record
     g = chat(client, "My bathroom sink is leaking", persona="", session="g")
     # Sprint 10 (review P1): a guest's repair is a note for the office (no work order without a record), not a dead end
-    assert g["action"]["kind"] == "staff_handoff" and "sign-in" in g["reply"].lower().replace("sign in", "sign-in")
+    assert g["action"]["kind"] == "staff_handoff" and "isn't signed in" in g["reply"]
 
 
 @pytest.mark.parametrize("persona", ["", "P-BROWSE-FL", "U-NOMATCH", "R002"])
@@ -988,3 +988,65 @@ def test_follow_up_emergency_wins(demo_s8qa):
     chat_s8qa(demo_s8qa, "my breaker tripped", s)
     r = chat_s8qa(demo_s8qa, "no and now the outlet is sparking and smoking", s)
     assert not offered_s8qa(r) and r.get("emergency_kind")
+
+
+# ---- Guest repair inquiry (2026-11-13): resident CLAIMED is remembered, never verified; where it is before ready
+
+def _g(client, msg, sid, persona=""):
+    return client.post("/api/chat", json={"message": msg, "persona_id": persona, "mode": "aware",
+                                          "session_id": sid}).json()
+
+
+def _gfields(r):
+    return {f["key"]: f["value"] for f in (r.get("action") or {}).get("fields", [])}
+
+
+def test_resident_declaration_is_remembered_and_not_asked_again(client):
+    r1 = _g(client, "I live at McKinley", "gi1")
+    assert "sign-in" not in r1["reply"] and "Are you a current" not in r1["reply"]
+    r2 = _g(client, "kitchen sink is leaking again", "gi1")
+    assert "Are you a current" not in r2["reply"] and "911" not in r2["reply"]
+    assert _gfields(r2)["who"] == "Says they live here (not verified)" and r2["status_items"] == []
+    assert r2["action"]["stage"] == "collecting" and r2["action"]["missing"] == ["Community", "Unit"]
+
+
+def test_missing_unit_is_asked_and_send_waits_for_it(client):
+    _g(client, "I'm a resident at Birchwood", "gi2")
+    r = _g(client, "the bathroom fan is rattling", "gi2")
+    assert "unit number" in r["reply"] and r["action"]["missing"] == ["Unit"]
+    early = client.post("/api/actions/confirm", json={"session_id": "gi2", "persona_id": "",
+                                                      "kind": "staff_handoff"}).json()
+    assert early["ok"] is False and early["error_code"] == "INCOMPLETE"
+    r = _g(client, "it's 7C", "gi2")
+    assert _gfields(r)["unit"] == "7C" and r["action"]["stage"] == "ready"
+
+
+def test_full_details_in_one_message_make_a_ready_inquiry(client):
+    r = _g(client, "I live at Fernhill, apt 310, and the dishwasher is leaking onto the floor", "gi3")
+    f = _gfields(r)
+    assert (f["community"], f["unit"]) == ("Fernhill Apartments", "310") and r["action"]["stage"] == "ready"
+    assert r["action"]["kind"] == "staff_handoff"  # an inquiry note, never a work order for an unverified visitor
+
+
+def test_recurring_leak_is_marked_without_reading_any_history(client):
+    _g(client, "I live at Sandpiper Pointe unit 2", "gi4")
+    r = _g(client, "the tub faucet is leaking again, second time this month", "gi4")
+    assert "keeps happening" in r["reply"] and _gfields(r)["recurring"] and r["status_items"] == []
+
+
+def test_a_real_hazard_still_gets_the_emergency_steps(client):
+    _g(client, "I live at Heron Lake", "gi5")
+    r = _g(client, "water is pouring from the ceiling onto the outlets", "gi5")
+    assert r["safety_state"] == "active" and "911" in r["reply"]
+
+
+def test_a_claimed_resident_still_unlocks_no_account_data(client):
+    _g(client, "I live at Heron Lake, unit 204", "gi6")
+    r = _g(client, "can you show me my open work orders and my balance?", "gi6")
+    assert r["status_items"] == [] and "doesn't unlock anything" in r["reply"]
+
+
+def test_a_resident_id_is_never_taken_as_a_unit():
+    from app.actions import _guest_place
+    assert "unit" not in _guest_place("I'm in unit R003 at Heron Lake")
+    assert _guest_place("Heron Lake, unit 12B")["unit"] == "12B"

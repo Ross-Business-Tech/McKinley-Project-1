@@ -153,6 +153,27 @@ REQUIRED: dict[ActionKind, list[str]] = {
     "tour_request": ["area", "days", "time"],  # I-15 DRAFT minimum
     "staff_handoff": [],
 }
+# An unverified visitor's repair inquiry (a note for the office, not a work order): where it is, before it's ready.
+# Name, contact method and entry permission are NOT asked (no approved consent/retention design for them yet).
+GUEST_REPAIR_REQUIRED = ["community", "unit"]
+_UNIT = re.compile(r"\b(?:unit|apt\.?|apartment|suite|#)\s*#?\s*(?!R\d{3}\b)([A-Za-z]?\d{1,4}[A-Za-z]?)\b", re.I)
+_BARE_UNIT = re.compile(r"^\W*(?:it'?s |in |unit |apt |#)?(?!R\d{3}\b)([A-Za-z]?\d{1,4}[A-Za-z]?)\W*$", re.I)
+_RECURRING = re.compile(r"\b(?:again|keeps? (?:happening|leaking|breaking)|(?:second|third|fourth|2nd|3rd|4th|"
+                        r"\d+(?:st|nd|rd|th)) time|(?:same|this) (?:problem|issue|leak) (?:as )?(?:before|last time)|"
+                        r"otra vez|de nuevo)\b", re.I)
+
+
+def _guest_place(text: str, asked_unit: bool = False) -> dict[str, str]:
+    """Community and unit a visitor typed (synthetic demo communities; a resident ID like R003 is never a unit)."""
+    out: dict[str, str] = {}
+    if c := community_in(text):
+        out["community"] = c
+    m = _UNIT.search(text) or (_BARE_UNIT.match(text) if asked_unit else None)
+    if m:
+        out["unit"] = m.group(1).upper()
+    return out
+
+
 LABEL: dict[str, dict[Lang, str]] = {
     "issue": {"en": "What's wrong", "es": "Problema"},
     "location": {"en": "Where", "es": "Dónde"},
@@ -161,6 +182,9 @@ LABEL: dict[str, dict[Lang, str]] = {
     "entry_window": {"en": "Best time for visits", "es": "Mejor horario"},
     "priority_note": {"en": "Review", "es": "Revisión"},
     "area": {"en": "Community or city", "es": "Comunidad o ciudad"},
+    "community": {"en": "Community", "es": "Comunidad"},
+    "unit": {"en": "Unit", "es": "Unidad"},
+    "recurring": {"en": "Happened before", "es": "Ya pasó antes"},
     "days": {"en": "Preferred days", "es": "Días preferidos"},
     "time": {"en": "Time of day", "es": "Hora del día"},
     "beds": {"en": "Beds", "es": "Recámaras"},
@@ -277,7 +301,9 @@ def _draft_fields(draft: dict[str, Any], lang: Lang) -> list[ActionField]:
 
 
 def _missing(kind: ActionKind, draft: dict[str, Any]) -> list[str]:
-    missing = [k for k in REQUIRED[kind] if not draft.get("fields", {}).get(k, {}).get("value")]
+    guest_repair = kind == "staff_handoff" and draft.get("guest_repair")
+    required = REQUIRED[kind] + (GUEST_REPAIR_REQUIRED if guest_repair else [])
+    missing = [k for k in required if not draft.get("fields", {}).get(k, {}).get("value")]
     if kind == "maintenance_request" and draft.get("vague_issue") and "issue" not in missing:
         missing.insert(0, "issue")  # "it's not working": ask what, once, before where
     return missing
@@ -682,7 +708,8 @@ def _slot_only(message: str) -> bool:
 # ---- sprint 5.1 helpers ---------------------------------------------------------------------------------------
 
 _ASK_KEY = {"issue": "ask_plain_issue", "location": "ask_plain_location", "entry": "maint_ask_entry_plain",
-            "area": "ask_plain_area", "days": "tour_ask_days", "time": "tour_ask_time"}
+            "area": "ask_plain_area", "days": "tour_ask_days", "time": "tour_ask_time",
+            "community": "guest_ask_community", "unit": "guest_ask_unit"}
 
 
 def _next_step(card: dict[str, Any], lang: Lang) -> tuple[str, list[str]]:
@@ -1528,6 +1555,19 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         if mem.get("questions"):  # P-4: every question the assistant couldn't answer in this chat goes on the note
             _set(hd, "questions", _questions_text(mem["questions"], lang), "you_said")
         template = t(template_key, lang, **kw) + extra
+        if template_key == "maint_guest_note":
+            hd["guest_repair"] = True
+            said = [*(recent or []), msg]
+            place = {**(mem.get("claimed_place") or {}), **_guest_place(" ".join(said))}
+            for k_p, v_p in place.items():
+                if not hd["fields"].get(k_p, {}).get("value"):
+                    _set(hd, k_p, v_p, "you_said")
+            if any(_RECURRING.search(x) for x in said):
+                _set(hd, "recurring", t("recurring_value", lang), "you_said")
+            _set(hd, "who", t("who_claimed" if mem.get("resident_claimed") else "who_guest", lang), "assistant")
+            step_g, chips_g = _next_step({**hd, "kind": "staff_handoff"}, lang)
+            lead_g = t("guest_repair_recurring" if hd["fields"].get("recurring") else "maint_guest_note", lang)
+            template = f"{lead_g} {step_g}" + extra
         if template_key == "followup_existing" and _UPSET.search(msg):
             # Sprint 9 (judge: "This is ridiculous, I've reported it three times" got a ticket number first)
             template = t("upset_followup_lead", lang) + " " + template
@@ -1827,6 +1867,12 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if not is_resident and gate.urgency != "emergency" and (says_resident(msg) or (
             gate.intent == "maintenance" and (is_issue_description(msg) or _things_in(msg)))):
         mem["guest_repair"] = True  # flag only: a visitor who says they live here / reports a repair
+    if not is_resident and says_resident(msg):
+        # resident_CLAIMED (said in chat) is remembered for the conversation; it never makes anyone resident_VERIFIED
+        # and never unlocks a record. Community/unit they typed are kept only to fill their own repair inquiry.
+        mem["resident_claimed"] = True
+        if place0 := _guest_place(msg):
+            mem["claimed_place"] = {**(mem.get("claimed_place") or {}), **place0}
     if not verified and gate.urgency != "emergency" and claims_account_access(msg):
         # j-safe-impersonation: a name typed in chat unlocks nothing; never a tour card from it
         if draft and not draft.get("declined") and draft["kind"] == "tour_request" and store and not draft.get(
@@ -2031,6 +2077,14 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              action=_proposed(card["kind"], card, lang), chips=chips if chips is not None
                              else step_chips, skip_model=True, consumed_by_draft=True,
                              workflow=_sel(KIND_WF[card["kind"]], reason)))
+
+    guest_card = draft if (draft and not draft.get("declined") and draft["kind"] == "staff_handoff"
+                           and draft.get("guest_repair")) else None
+    if guest_card and gate.urgency != "emergency" and (miss_g := _missing("staff_handoff", guest_card)):
+        if place_g := _guest_place(msg, asked_unit=miss_g[0] == "unit"):
+            for k_p, v_p in place_g.items():
+                _set(guest_card, k_p, v_p, "you_said")
+            return card_reply(guest_card, t("guest_place_thanks", lang), "Guest repair inquiry: where it is.")
 
     def history_text(card: dict[str, Any] | None) -> str:
         """Earlier repairs about the same thing: the verified resident's own history and this chat's saved requests.
@@ -4088,6 +4142,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if says_resident(msg):
         return done(TurnPlan(template=t("guest_resident", lang), functions=[], workflow=workflow,
                              chips=["Ask a general question"] if lang == "en" else []))
+    if mem.get("resident_claimed"):
+        return unproductive(TurnPlan(template=t("guest_resident_help", lang), functions=[], workflow=workflow),
+                            "Fallback for a visitor who said they live here (not verified).")
     key = "unclear" if "low_confidence" in flags and gate.audience != "unknown" else "who_are_you"
     return unproductive(TurnPlan(template=t(key, lang), functions=[], workflow=workflow,
                                  chips=CHIPS["who"][lang] if key == "who_are_you" else []), f"Fallback ({key}).")
