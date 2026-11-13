@@ -1,4 +1,3 @@
-import json
 
 from tests.test_context import AC_MSG, RENEWAL_MSG
 
@@ -15,13 +14,9 @@ def test_health_and_models_hide_secrets(client):
     assert by_key["openrouter:google/gemma-4-31b-it:free"]["status"] == "NEEDS_API_KEY"
 
 
-def test_personas_and_context_preview(client):
+def test_personas(client):
     ps = client.get("/api/personas").json()
     assert {"P-RELOCATE-AA", "P-BROWSE-FL", "U-NOMATCH", "R001"} <= {p["id"] for p in ps}
-    ctx = client.post("/api/context/preview", json={"persona_id": "R001", "message": AC_MSG}).json()
-    blob = json.dumps(ctx)
-    assert "example.com" not in blob and "555-0101" not in blob and "1585" not in blob
-    assert "email" in ctx["withheld_fields"] and ctx["audience"] == "resident"
 
 
 def test_chat_aware_vs_baseline(client):
@@ -53,33 +48,6 @@ def test_chat_validation_and_errors(client):
     assert r.status_code == 503 and r.json()["error"]["code"] == "NEEDS_API_KEY"
 
 
-def test_eval_run_review_summary(client, settings):
-    cases = client.get("/api/evals/cases").json()
-    assert len([c for c in cases if c["suite"] == "core"]) == 5  # original five preserved
-    run = client.post("/api/evals/run", json={"targets": ["mock:mock-deterministic-v1"]}).json()
-    assert len(run["results"]) == 15  # 5 core cases x {baseline, prompt_only, aware}
-    r0 = run["results"][0]
-    assert r0["is_mock"] and r0["provisional_verdict"] in ("GOOD", "BAD") and r0["criteria"]
-    patched = client.patch(f"/api/evals/results/{r0['id']}", json={"human_verdict": "BAD", "human_notes": "n"})
-    assert patched.json()["human_verdict"] == "BAD"
-    s = client.get("/api/evals/summary").json()
-    group = s["by_target_mode"][f"mock:mock-deterministic-v1|{r0['mode']}"]
-    assert group["human_reviewed"] == 1 and group["is_mock"] == 1
-    exported = json.loads(settings.eval_results_path.read_text())
-    assert exported["run_id"] == run["run_id"] and len(exported["results"]) == 15
-    assert client.get("/api/evals/runs").json()[0]["targets"] == ["mock:mock-deterministic-v1"]
-
-
-def test_eval_run_records_errors_per_target(client):
-    run = client.post("/api/evals/run", json={"targets": ["mock:mock-deterministic-v1",
-                                                          "openrouter:google/gemma-4-31b-it:free"],
-                                              "case_ids": ["case3_repeat_ac_R001"]}).json()
-    errs = [r for r in run["results"] if r["status"] == "error"]
-    assert len(errs) == 1 and errs[0]["error_code"] == "NEEDS_API_KEY"
-    assert errs[0]["provider"] == "openrouter"  # failing target is recorded, not substituted
-    assert client.post("/api/evals/run", json={"case_ids": ["nope"]}).status_code == 400
-
-
 def test_session_separation(client, settings):
     from app.db import Store
     store = Store(settings.db_path)
@@ -103,7 +71,7 @@ def test_configured_key_never_returned(settings, workbook):
     set_state(build_state(settings=settings, gateway=LLMGateway(settings), workbook=workbook,
                           store=Store(settings.db_path)))
     with TestClient(app) as c:
-        for path in ("/api/health", "/api/models", "/api/personas", "/api/evals/cases"):
+        for path in ("/api/health", "/api/models", "/api/personas"):
             assert "SUPERSECRET" not in c.get(path).text
         assert {m["key"]: m for m in c.get("/api/models").json()}[
             "openrouter:google/gemma-4-31b-it:free"]["ready"]

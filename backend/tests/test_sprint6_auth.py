@@ -307,8 +307,6 @@ def test_hosted_guest_is_public_information_only(hosted):
 
 @pytest.mark.parametrize("method,path,body", [
     ("get", "/api/prototype/records", None), ("get", "/api/staff/conversations", None),
-    ("post", "/api/context/preview", {"persona_id": "R001", "message": "AC"}), ("get", "/api/evals/cases", None),
-    ("get", "/api/gates/log", None),
 ])
 def test_hosted_staff_routes_need_the_token(hosted, method, path, body):
     kw = {"json": body} if body else {}

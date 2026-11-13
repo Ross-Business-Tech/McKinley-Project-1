@@ -330,38 +330,93 @@ def test_sensitive_numbers_never_reach_model_or_reply(client):
     assert r["recommended_handoff"] and r["pipeline"][2]["status"] == "warn"
 
 
+# Routing expectations of the original evaluation cases (formerly app/evals.py; specification in
+# docs/workflows/five_cases.md): (persona, message, intent, workflow, urgency, handoff).
+ROUTING_CASES = [('P-RELOCATE-AA',
+  "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
+  'leasing',
+  'leasing',
+  None,
+  None),
+ ('P-BROWSE-FL',
+  'What is the cheapest 1-bedroom apartment you have in Florida right now?',
+  'leasing',
+  'leasing',
+  'low',
+  None),
+ ('R001',
+  "My AC stopped cooling again. This has happened multiple times and I'm really upset.",
+  'maintenance',
+  'maintenance',
+  'high',
+  True),
+ ('U-NOMATCH',
+  'My kitchen faucet has a little drip. Should I fix it myself?',
+  'maintenance',
+  'maintenance',
+  None,
+  None),
+ ('R003',
+  "I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. Can someone "
+  'explain my choices?',
+  'renewal',
+  'renewal',
+  None,
+  True),
+ ('R002',
+  "I smell gas in my kitchen and it's getting stronger. What do I do?",
+  'maintenance',
+  'maintenance',
+  'emergency',
+  True),
+ ('R008',
+  'The kitchen sink is leaking again. This is the fourth time this year.',
+  'maintenance',
+  'maintenance',
+  'high',
+  True),
+ ('U-NOMATCH',
+  "What's my current balance and the status of my work order?",
+  'maintenance',
+  'human_handoff',
+  None,
+  True),
+ ('R007',
+  'Can I pay my bill with card 4111 1111 1111 1111? My SSN is 123-45-6789.',
+  'general',
+  'human_handoff',
+  None,
+  True),
+ (None, 'hi, quick question about the thing from before', 'general', 'general_inquiry', None, False),
+ ('R020', 'I want to talk to a real person about my renewal, not a bot.', 'renewal', 'human_handoff', None, True),
+ ('F-INJECT', 'My bathroom sink is leaking again.', 'maintenance', 'maintenance', None, True),
+ ('R011',
+  "My renewal offer came in and honestly I'm not sure I can afford it. Is there anything you can do?",
+  'renewal',
+  'renewal',
+  None,
+  True),
+ ('R012', 'Hola, el horno no calienta otra vez. ¿Qué puedo hacer?', 'maintenance', 'maintenance', None, None)]
+
+
 @pytest.mark.skipif(not REAL_WORKBOOK.exists(), reason="synthetic workbook not present")
-def test_extended_cases_route_correctly_on_real_workbook(tmp_path):
-    """Routing expectations of every eval case hold with the rules gate (deterministic, no model)."""
+def test_original_cases_route_correctly_on_real_workbook(tmp_path):
+    """Deterministic rules gate, no model."""
     from app.chat_engine import run_turn
     from app.db import Store
-    from app.evals import CASES
     from app.state import build_state
 
     s = gate_settings()
     st = build_state(settings=s, gateway=LLMGateway(s), workbook=load_workbook(REAL_WORKBOOK),
                      store=Store(tmp_path / "ext.sqlite3"))
-    for c in CASES:
-        if not c.expected_intent:
-            continue
-        r = run_turn(st.deps, c.message, "aware", c.persona_id or None, None, use_history=False)
-        assert r.gate and r.gate.intent == c.expected_intent, c.id
-        assert r.routed_workflow and r.routed_workflow.id == c.expected_workflow, c.id
-        if c.expected_urgency:
-            assert r.gate.urgency == c.expected_urgency, c.id
-        if c.expect_handoff is not None:
-            assert r.recommended_handoff == c.expect_handoff, c.id
-
-
-def test_gate_api_config_scenarios_and_evaluate(client):
-    cfg = client.get("/api/gates/config").json()
-    assert cfg["configured_provider"] == "rules" and "jev" in cfg["availability"]
-    assert len(client.get("/api/gates/scenarios").json()) == 14
-    res = client.post("/api/gates/evaluate", json={"providers": ["rules", "llm", "jev"]}).json()
-    assert set(res["summary"]) == {"rules", "llm", "jev"}
-    assert res["summary"]["jev"]["fallbacks"] == res["summary"]["jev"]["scenarios"]  # no key -> all fallback
-    assert "mock" in res["summary"]["llm"]["sources"]
-    assert client.post("/api/gates/evaluate", json={"providers": ["evil"]}).status_code == 422
+    for persona, message, intent, workflow, urgency, handoff in ROUTING_CASES:
+        r = run_turn(st.deps, message, "aware", persona, None, use_history=False)
+        assert r.gate and r.gate.intent == intent, message
+        assert r.routed_workflow and r.routed_workflow.id == workflow, message
+        if urgency:
+            assert r.gate.urgency == urgency, message
+        if handoff is not None:
+            assert r.recommended_handoff == handoff, message
 
 
 # ---- regressions from the independent QA review (2026-11-05) ---------------------------------
@@ -441,13 +496,6 @@ def test_qa_jev_out_of_range_values_never_crash():
     assert d.confidence == 1.0 and d.requires_human is False
 
 
-def test_qa_gate_log_hides_session_ids(client):
-    client.post("/api/chat", json={"message": "my faucet drips", "persona_id": "R001", "mode": "aware",
-                                   "session_id": "victim-session-123"})
-    log = client.get("/api/gates/log").json()
-    assert log and "victim-session-123" not in str(log) and "session_id" not in log[0]
-
-
 def test_qa_whitespace_message_rejected(client):
     assert client.post("/api/chat", json={"message": "   \n ", "mode": "aware"}).status_code == 422
 
@@ -473,5 +521,4 @@ def test_qa_gate_override_can_be_disabled(settings, workbook):
         r = c.post("/api/chat", json={"message": "simulate gate failure", "mode": "aware",
                                       "persona_id": "R001", "gate_provider": "llm"}).json()
         assert r["gate"]["requested_provider"] == "rules" and not r["gate"]["fallback_used"]
-        assert set(c.post("/api/gates/evaluate", json={"providers": ["llm"]}).json()["summary"]) == {"rules"}
     set_state(None)  # type: ignore[arg-type]

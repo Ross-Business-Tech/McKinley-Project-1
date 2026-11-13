@@ -87,21 +87,6 @@ def test_records_and_once_keys(store):
     assert store.records(limit=1)[0]["id"] == other["id"]  # newest first
 
 
-def test_eval_runs_and_results(store):
-    assert store.latest_run_id() is None
-    run = store.create_run(["mock:m"], "aware-v1", "base-v1", 0.2)
-    run2 = store.create_run(["mock:m"], "aware-v2", "base-v2", None)
-    assert run2 == run + 1 and store.latest_run_id() == run2
-    assert store.runs()[0]["targets"] == ["mock:m"] and store.runs()[0]["id"] == run2
-    rid = store.add_result(run, "case1", "aware", {"created_at": "2026-01-01", "score": 3})
-    assert store.results(run)[0]["score"] == 3
-    store.update_result_data(rid, {"created_at": "2026-01-01", "score": 4})
-    store.review(rid, "GOOD", "ok")
-    got = store.get_result(rid)
-    assert got["score"] == 4 and got["human_verdict"] == "GOOD" and got["human_notes"] == "ok"
-    assert store.get_result(rid + 99) is None
-
-
 def test_literal_percent_and_odd_text_survive(store):
     text = "100% sure it's \"leaking\"; DROP TABLE chat_turns; --"
     store.append_turns("s1", "aware|x", "p1", text, "ok")

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import actions, chat, evals, gates
+from app.api import actions, chat
 from app.api.errors import http_error_response
 from app.api.protection import BodyLimitMiddleware, CatchAllMiddleware
 from app.api.staff_guard import request_is_local, staff_allowed
@@ -77,8 +77,6 @@ async def _http_error(_: Request, exc: StarletteHTTPException):  # noqa: ANN202 
 
 
 app.include_router(chat.router)
-app.include_router(evals.router)
-app.include_router(gates.router)
 app.include_router(actions.router)
 
 

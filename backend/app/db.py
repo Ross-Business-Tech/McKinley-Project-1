@@ -1,4 +1,4 @@
-"""Store for demo session turns and eval outcomes.
+"""Store for demo session turns, drafts and prototype records.
 
 Local development and tests use a SQLite file (gitignored). A shared deployment can set DATABASE_URL to a Postgres
 database (for example Supabase) and the same queries run there. Queries are written once with `?` placeholders and
@@ -542,62 +542,7 @@ class Store:
                                    "session_hash": r["session_hash"], "persona_id": r["persona_id"],
                                    "created_at": r["created_at"]}) for r in rows]
 
-    # ---- evals ----
-    def create_run(self, targets: list[str], aware_v: str, baseline_v: str, temperature: float | None) -> int:
-        with self._lock, self._tx():
-            cur = self._q(
-                "INSERT INTO eval_runs(created_at, targets, aware_prompt_version, baseline_prompt_version, "
-                "temperature) VALUES (?,?,?,?,?) RETURNING id",
-                (now_iso(), json.dumps(targets), aware_v, baseline_v, temperature),
-            )
-            return int(cur.fetchone()["id"])
 
-    def runs(self, limit: int = 20) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._q("SELECT * FROM eval_runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-        return [{**dict(r), "targets": json.loads(r["targets"])} for r in rows]
-
-    def add_result(self, run_id: int, case_id: str, mode: str, data: dict[str, Any]) -> int:
-        with self._lock, self._tx():
-            cur = self._q(
-                "INSERT INTO eval_results(run_id, case_id, mode, created_at, data) VALUES (?,?,?,?,?) RETURNING id",
-                (run_id, case_id, mode, data["created_at"], json.dumps(data)),
-            )
-            return int(cur.fetchone()["id"])
-
-    def latest_run_id(self) -> int | None:
-        with self._lock:
-            row = self._q("SELECT MAX(id) AS id FROM eval_runs").fetchone()
-        return row["id"] if row and row["id"] is not None else None
-
-    def results(self, run_id: int) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._q(
-                "SELECT * FROM eval_results WHERE run_id=? ORDER BY id", (run_id,)
-            ).fetchall()
-        return [self._row(r) for r in rows]
-
-    def get_result(self, result_id: int) -> dict[str, Any] | None:
-        with self._lock:
-            r = self._q("SELECT * FROM eval_results WHERE id=?", (result_id,)).fetchone()
-        return self._row(r) if r else None
-
-    def update_result_data(self, result_id: int, data: dict[str, Any]) -> None:
-        with self._lock, self._tx():
-            self._q("UPDATE eval_results SET data=? WHERE id=?", (json.dumps(data), result_id))
-
-    def review(self, result_id: int, verdict: str | None, notes: str | None) -> None:
-        with self._lock, self._tx():
-            self._q(
-                "UPDATE eval_results SET human_verdict=?, human_notes=? WHERE id=?", (verdict, notes, result_id)
-            )
-
-    @staticmethod
-    def _row(r: Any) -> dict[str, Any]:
-        data = json.loads(r["data"])
-        data.update(id=r["id"], run_id=r["run_id"], case_id=r["case_id"], mode=r["mode"],
-                    human_verdict=r["human_verdict"], human_notes=r["human_notes"])
-        return data
 
 
 # Principal kinds whose own records may be read across sessions: an authorised persona owns its prototype records,

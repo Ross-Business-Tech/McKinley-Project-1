@@ -62,3 +62,6 @@ next-env.d.ts
 
 # Team reference material (local only; not authorised for the public repo)
 docs/references/
+
+# Evaluation and live-smoke output: generated locally on demand, never committed
+/evals/

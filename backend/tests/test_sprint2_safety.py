@@ -243,10 +243,9 @@ def test_staff_routes_need_token_when_configured(client, monkeypatch):
 
     assert client.get("/api/prototype/records").status_code == 200  # local demo: loopback allowed
     monkeypatch.setattr(get_state().deps.settings, "staff_api_token", SecretStr("t0ken"))
-    for path in ("/api/prototype/records", "/api/gates/log", "/api/evals/runs"):
+    for path in ("/api/prototype/records", "/api/staff/conversations"):
         assert client.get(path).status_code == 403, path
         assert client.get(path, headers={"X-Staff-Token": "t0ken"}).status_code == 200, path
-    assert client.post("/api/context/preview", json={"persona_id": "R001", "message": "hi"}).status_code == 403
     r = client.post("/api/chat", json={"message": "hi", "persona_id": "R001", "mode": "aware", "session_id": "s",
                                        "target": "mock:mock-deterministic-v1"})
     assert r.status_code == 403

@@ -130,7 +130,6 @@ class Settings(BaseSettings):
     # loaded by `python -m app.seed_synthetic` (a hosted backend has no git-ignored XLSX); file; database.
     resident_data_source: Literal["auto", "file", "database"] = "auto"
     prompt_path: Path = REPO_DIR / "prompts" / "mckinley_system_prompt.md"
-    eval_results_path: Path = REPO_DIR / "evals" / "actual_results.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     @model_validator(mode="after")

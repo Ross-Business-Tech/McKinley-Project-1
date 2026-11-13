@@ -162,17 +162,6 @@ def test_preflight_checks_gemini_model_without_generating(tmp_path):
     assert any("GEMINI_API_KEY" in b for b in r2["blocked_reasons"])
 
 
-def test_live_abc_requires_allow_paid_for_gemini(tmp_path):
-    from app.live_eval.abc import run_live_eval
-
-    s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="test-not-a-real-key",
-                 db_path=tmp_path / "abc.sqlite3")
-    p, models = provider(response())
-    code, doc = run_live_eval(s, "gemini:gemini-3.6-flash", out_dir=tmp_path / "out", providers={"gemini": p},
-                              log=lambda m: None)
-    assert doc["status"] == "blocked" and doc["reason_code"] == "MAY_BE_BILLED" and not models.calls
-
-
 def test_thinking_level_is_pinned_when_configured():
     models = FakeModels(response())
     p = GeminiProvider(api_key=None, client=SimpleNamespace(models=models), thinking_level="low")

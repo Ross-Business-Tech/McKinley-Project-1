@@ -192,14 +192,6 @@ def test_chat_booking_claim_never_reaches_a_prospect(client, monkeypatch):
     assert r["records_created"] == []
 
 
-def test_journey_evaluator_treats_an_echoed_budget_as_the_users_number():
-    from app.usability.journey_evaluator import _echoes_user_amount
-
-    assert _echoes_user_amount("I can't confirm rates for 1 beds under $1,300 right now.", "i need under 1300. yes?")
-    assert not _echoes_user_amount("A one-bed is $1,150 a month.", "i need under 1300")
-    assert not _echoes_user_amount("No amounts here.", "1300")
-
-
 @pytest.mark.parametrize("clause", [
     "You can now press Send on your request below to save it.",
     "Your request is ready below, so press Send when it looks right.",

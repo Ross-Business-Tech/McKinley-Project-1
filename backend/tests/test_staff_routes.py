@@ -3,8 +3,7 @@
 import pytest
 from fastapi.routing import APIRoute
 
-STAFF_PATHS = {"/api/prototype/records", "/api/staff/conversations", "/api/staff/conversations/{session_hash}",
-               "/api/context/preview"}
+STAFF_PATHS = {"/api/prototype/records", "/api/staff/conversations", "/api/staff/conversations/{session_hash}"}
 
 
 def chat(client, msg, session, persona="R001"):
@@ -13,23 +12,22 @@ def chat(client, msg, session, persona="R001"):
 
 
 def test_every_staff_route_depends_on_the_guard():
-    from app.api import actions, chat, evals, gates
+    from app.api import actions, chat
     from app.api.staff_guard import require_staff
 
     def is_guard(deps):
         return any(getattr(d, "dependency", None) is require_staff for d in deps)
 
     guarded = set()
-    for module in (actions, chat, evals, gates):
+    for module in (actions, chat):
         router = module.router
         for r in router.routes:
             if isinstance(r, APIRoute) and (is_guard(r.dependencies) or is_guard(router.dependencies)):
                 guarded.add(r.path)
     assert STAFF_PATHS <= guarded
-    for module in (evals, gates):  # evaluation and gate tools are staff-only too (gate config is public)
-        for r in module.router.routes:
-            if isinstance(r, APIRoute) and r.path != "/api/gates/config":
-                assert r.path in guarded, r.path
+    from app.main import app
+    paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
+    assert not any(p.startswith(("/api/evals", "/api/gates", "/api/context")) for p in paths)  # removed dev tools
 
 
 @pytest.mark.parametrize("headers", [

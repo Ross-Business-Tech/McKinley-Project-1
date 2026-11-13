@@ -189,7 +189,7 @@ def test_hosted_loopback_without_token_is_not_staff(workbook, tmp_path):
                  db_path=tmp_path / "n.sqlite3", eval_results_path=tmp_path / "r.json",
                  eval_targets="mock:mock-deterministic-v1")
     with _client(s, workbook, tmp_path, "notoken") as c:
-        for path in ("/api/prototype/records", "/api/staff/conversations", "/api/gates/log", "/api/evals/cases"):
+        for path in ("/api/prototype/records", "/api/staff/conversations"):
             assert c.get(path).status_code == 403
         r = chat(c, "I smell gas", "", "z")
         assert not r["pipeline"] and r["risk"] is None
