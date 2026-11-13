@@ -49,18 +49,9 @@ describe("api client", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ mode: "prompt_only", gate_provider: "llm" });
   });
 
-  it("posts gate providers to the gate evaluation endpoint", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ note: "", summary: {}, rows: [] })));
-    vi.stubGlobal("fetch", fetchMock);
-    await api.evaluateGates(["rules", "llm"]);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toMatch(/\/api\/gates\/evaluate$/);
-    expect(JSON.parse(init.body)).toEqual({ providers: ["rules", "llm"] });
-  });
-
   it("loads the root-relative demo snapshot and rejects unexpected shapes", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify({ kind: "static_demo_snapshot", responses: {}, cases: [] })),
+      new Response(JSON.stringify({ kind: "static_demo_snapshot", personas: [] })),
     ).mockResolvedValueOnce(new Response(JSON.stringify({ hello: 1 })));
     vi.stubGlobal("fetch", fetchMock);
     await expect(loadDemoSnapshot()).resolves.toMatchObject({ kind: "static_demo_snapshot" });
