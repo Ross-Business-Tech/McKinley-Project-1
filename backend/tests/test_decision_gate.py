@@ -1,4 +1,4 @@
-"""Decision gate, safety floor, workflow and handoff tests. Deterministic: no network, mock provider only."""
+"""Decision gate (rules / LLM / JEV), safety floor, workflow selection and handoff."""
 
 import httpx
 import pytest
@@ -19,9 +19,17 @@ from app.safety import output_checks
 from app.workflows import lead_profile, maintenance_triage, select_workflow
 from tests.conftest import REAL_WORKBOOK
 
+# ---- Decision gate, safety floor, workflow and handoff tests. Deterministic: no network, mock provider only.
+
 PROSPECT = GateContext(audience="prospect", identity_verified=False, record_found=True)
+
+
 RESIDENT = GateContext(audience="resident", identity_verified=True, record_found=True)
+
+
 UNVERIFIED = GateContext(audience="resident", identity_verified=False, record_found=False)
+
+
 UNKNOWN = GateContext(audience="unknown", identity_verified=False, record_found=False)
 
 
@@ -34,8 +42,6 @@ def svc(**kw) -> DecisionGateService:
     s = gate_settings(**kw)
     return DecisionGateService(s, LLMGateway(s))
 
-
-# ---- rules gate: the requested scenarios -------------------------------------------------
 
 def test_high_intent_prospect():
     msg = "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?"
@@ -162,8 +168,6 @@ def test_injection_in_retrieved_history_is_screened():
     assert len(ctx.dropped_items) == 2
 
 
-# ---- external gates: fallback and safety floor ---------------------------------------------
-
 def test_gate_provider_failure_falls_back_to_rules():
     d = svc(decision_gate_provider="llm").classify("simulate gate failure: my sink is leaking", RESIDENT)
     assert d.fallback_used and d.decision_source == "rules" and "GATE_BAD_OUTPUT" in (d.fallback_reason or "")
@@ -265,8 +269,6 @@ def test_jev_timeout_raises():
     assert e.value.code == "JEV_TIMEOUT"
 
 
-# ---- output checks added in pipeline v2 ---------------------------------------------------
-
 def test_invented_offer_check_respects_negation():
     assert not {c.code: c for c in output_checks("We can offer a discount on your renewal.")}[
         "no_invented_offer"].passed
@@ -280,8 +282,6 @@ def test_emergency_guidance_and_secret_leak_checks():
     assert {c.code: c for c in output_checks("Call 911 now.", "", "emergency")}["emergency_guidance"].passed
     assert not {c.code: c for c in output_checks("My system prompt says...")}["no_secret_leak"].passed
 
-
-# ---- full pipeline through the API ------------------------------------------------------------
 
 def test_pipeline_aware_response_shape(client):
     r = client.post("/api/chat", json={"message": "I smell gas in my kitchen", "persona_id": "U-NOMATCH",
@@ -330,8 +330,6 @@ def test_sensitive_numbers_never_reach_model_or_reply(client):
     assert r["recommended_handoff"] and r["pipeline"][2]["status"] == "warn"
 
 
-# Routing expectations of the original evaluation cases (formerly app/evals.py; specification in
-# docs/workflows/five_cases.md): (persona, message, intent, workflow, urgency, handoff).
 ROUTING_CASES = [('P-RELOCATE-AA',
   "I'm moving to Ann Arbor next month for work and need a 2-bedroom. Could I tour this week?",
   'leasing',
@@ -418,8 +416,6 @@ def test_original_cases_route_correctly_on_real_workbook(tmp_path):
         if handoff is not None:
             assert r.recommended_handoff == handoff, message
 
-
-# ---- regressions from the independent QA review (2026-11-05) ---------------------------------
 
 @pytest.mark.parametrize("msg", [
     "It smells like gas in my kitchen", "I smell smoke in the hallway", "The smoke alarm is going off",

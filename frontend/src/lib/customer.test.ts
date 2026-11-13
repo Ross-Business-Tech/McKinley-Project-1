@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+
 import { ApiError } from "./api";
-import { UI, sendErrorText } from "./customer";
+import { GUEST, UI, greeting, sendErrorText } from "./customer";
+import { newSessionId } from "./format";
+
+// Customer-facing text and small helpers (greeting, labels, send errors, session ids).
 
 describe("sendErrorText", () => {
   const t = UI.en;
@@ -15,5 +19,26 @@ describe("sendErrorText", () => {
     const leaky = new ApiError("NEEDS_API_KEY", "OPENROUTER_API_KEY is not configured in backend/.env", false, 503);
     expect(sendErrorText(leaky, t)).not.toMatch(/OPENROUTER|\.env/);
     expect(sendErrorText(leaky, UI.es)).toContain("oficina");
+  });
+});
+
+describe("greeting and labels", () => {
+  it("keeps the greeting to one short line with the AI disclosure", () => {
+    const g = greeting(GUEST);
+    expect(g.split(/\s+/).length).toBeLessThanOrEqual(25);
+    expect(g).toMatch(/automated assistant, not a person/);
+  });
+
+  it("labels the build in both languages", () => {
+    expect(UI.en.buildLabel).toBe("Version");
+    expect(UI.es.buildLabel).toBe("Versión");
+  });
+});
+
+describe("session ids", () => {
+  it("creates backend-compatible session ids", () => {
+    const id = newSessionId();
+    expect(id).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    expect(newSessionId()).not.toBe(id);
   });
 });
