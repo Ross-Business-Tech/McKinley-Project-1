@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BACKEND_DIR.parent
 
-ProviderName = Literal["gemini", "openrouter", "ollama", "mock", "anthropic"]
+ProviderName = Literal["gemini", "openrouter", "ollama", "mock", "anthropic", "um_toolkit"]
 
 
 class Settings(BaseSettings):
@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     # Gemini Developer API (Google AI Studio key). The intended provider for deployed environments.
     # gemini-3.6-flash: stable model listed in Google's model docs (checked 2026-11-10); verify with
     # `uv run python -m app.live_eval.preflight` once a key exists. Change it deliberately, never silently.
+    # U-M GPT Toolkit (optional, OpenAI-compatible). gpt-6.1-sol is the newest model the gateway lists (2026-11-12;
+    # gpt-6.1-terra is not offered). Refused on a hosted backend until permitted use is confirmed (hosted_problems).
+    um_toolkit_api_key: SecretStr | None = None
+    um_toolkit_base_url: str = "https://api.toolkit.umgpt.umich.edu/v1"
+    um_toolkit_model: str = "gpt-6.1-sol"
+    um_toolkit_hosted_approved: bool = False
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
     # Optional OpenAI-compatible gateway in front of Gemini (e.g. the U-M GPT Toolkit). Empty = Google's Gemini
@@ -132,6 +138,9 @@ class Settings(BaseSettings):
         """LLM_PROVIDER=gemini without an explicit LLM_MODEL uses GEMINI_MODEL (one model per run, chosen up front)."""
         if self.llm_provider == "gemini" and ("llm_model" not in self.model_fields_set or not self.llm_model.strip()):
             self.llm_model = self.gemini_model
+        if self.llm_provider == "um_toolkit" and ("llm_model" not in self.model_fields_set or
+                                                  not self.llm_model.strip()):
+            self.llm_model = self.um_toolkit_model
         if self.llm_provider == "gemini" and not self.llm_model.startswith("gemini"):
             raise ValueError(f"LLM_PROVIDER=gemini but LLM_MODEL={self.llm_model!r} is not a Gemini model; leave "
                              "LLM_MODEL empty to use GEMINI_MODEL")
@@ -178,6 +187,13 @@ class Settings(BaseSettings):
         if "llm_provider" not in self.model_fields_set:
             out.append("LLM_PROVIDER must be set explicitly on a hosted backend (the built-in default can change "
                        "between releases; a shared deployment must never switch provider silently)")
+        if (self.llm_provider == "um_toolkit" or "um_toolkit:" in self.eval_targets) and \
+                not self.um_toolkit_hosted_approved:
+            out.append("LLM_PROVIDER=um_toolkit is not allowed on a hosted backend until the university confirms the "
+                       "U-M GPT Toolkit key may serve a public service (then set UM_TOOLKIT_HOSTED_APPROVED=true)")
+        um_base = self.base_url_for("um_toolkit")
+        if um_base and not um_base.startswith("https://"):
+            out.append("UM_TOOLKIT_BASE_URL must use https:// on a hosted backend (the key is sent to it)")
         gem_base = self.base_url_for("gemini")
         if gem_base and not gem_base.startswith("https://"):
             out.append("GEMINI_BASE_URL must use https:// on a hosted backend (the key is sent to it)")
@@ -192,7 +208,7 @@ class Settings(BaseSettings):
 
     def api_key_for(self, provider: str) -> str | None:
         specific = {"openrouter": self.openrouter_api_key, "anthropic": self.anthropic_api_key,
-                    "gemini": self.gemini_api_key}.get(provider)
+                    "gemini": self.gemini_api_key, "um_toolkit": self.um_toolkit_api_key}.get(provider)
         key = specific or (self.llm_api_key if provider == self.llm_provider else None)
         value = key.get_secret_value().strip() if key else ""
         return value or None
@@ -202,6 +218,8 @@ class Settings(BaseSettings):
             return self.llm_base_url.rstrip("/")
         if provider == "gemini":
             return (self.gemini_base_url or "").strip().rstrip("/") or None
+        if provider == "um_toolkit":
+            return (self.um_toolkit_base_url or "").strip().rstrip("/") or None
         return {"openrouter": self.openrouter_base_url, "ollama": self.ollama_base_url}.get(provider)
 
 
