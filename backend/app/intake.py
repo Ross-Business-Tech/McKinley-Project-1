@@ -1897,5 +1897,54 @@ _ACCOUNT_ASK = re.compile(
     r"\bmi saldo\b|\bcu[aá]nto debo\b", re.I)
 
 
+# Denied data requests (privacy review, 2026-11-13). One classifier, three reasons, checked before any status lookup:
+# someone else's records, a claimed identity that isn't the signed-in person, or a claimed staff/admin role. The parts
+# are composed (WHO owns the data x WHAT data) instead of listing whole sentences, so "my neighbour's maintenance
+# requests" and "their open work orders" are caught by the same rule.
+_DATA = (r"(?:(?:open |old |current |past |previous )?(?:maintenance |repair |service )?(?:requests?|work orders?|"
+         r"tickets?|repairs?|histor(?:y|ies)|records?)|apartment details|unit details|account(?: details)?|"
+         r"contact (?:info|information|details)|phone numbers?|emails?|names?|balances?|leases?|details|"
+         r"info(?:rmation)?|apartments?|units?|addresses)")
+_OTHER_OWNER = (r"(?:my (?:neighbou?r|roommate|room-mate|flatmate|friend|partner|boyfriend|girlfriend|landlord|"
+                r"upstairs|downstairs|next[- ]door)(?:'?s|s')?|(?:his|her|their)|"
+                r"(?!(?:What|That|It|There|Here|Where|Who|How|He|She|Let|This|Today|Tomorrow|Everyone|Nobody|"
+                r"Somebody|Someone|Mckinley|McKinley)'s)(?-i:[A-Z][a-z]+)'s|other residents'?|"
+                r"other (?:people|tenants)'?s?|every(?:one|body)'?s|all (?:the )?(?:residents|tenants)'?|"
+                r"(?:each|every) resident'?s?|resident(?:s'|'s)?)")
+_OTHER_DATA = re.compile(rf"\b{_OTHER_OWNER}\s+(?:\w+\s+){{0,2}}{_DATA}\b", re.I)
+_LIST_ALL = re.compile(r"\b(?:list|show|give|tell|send|export|dump|print|read)\b(?:\s+\w+){0,2}?\s+(?:all|every|each)\b"
+                       r"(?:\s+the)?\s+(?:residents?|tenants?|people|names|accounts?)\b|"
+                       r"\ball (?:the )?(?:resident|tenant) (?:names|records|accounts|histories)\b", re.I)
+_ROLE = (r"(?:admin(?:istrator)?|super ?user|root|staff(?: member)?|employee|property manager|community manager|"
+         r"leasing (?:agent|manager)|maintenance (?:manager|supervisor)|developer|moderator)")
+_ESCALATION = re.compile(rf"\byou(?:'re| are) now\b(?:\s+\w+){{0,3}}?\s+{_ROLE}\b|"
+                         rf"\b(?:act|behave|respond|operate|pretend)\s+(?:as|like)\s+(?:an?|the|my)?\s*(?:mckinley\s+)?{_ROLE}\b|"
+                         rf"\b(?:i'?m|i am)\s+(?:an?|the)\s+(?:mckinley\s+)?{_ROLE}\b|"
+                         rf"\b(?:with|grant me|give me|switch to|enable)\s+(?:\w+\s+)?(?:admin|staff|developer|root)\s+"
+                         rf"(?:access|mode|rights|privileges|permissions)\b|\b(?:admin|developer|god) mode\b", re.I)
+_SELF_NAME = re.compile(r"\b(?:i'?m|i am|this is|it'?s|my name is|call me)\s+(?-i:([A-Z][a-z]{1,20}))\b(?!['’]s)", re.I)
+_RESIDENT_ID = re.compile(r"\b(?:resident|tenant|account|unit|apartment|id)?\s*#?\s*\b(R\d{3})\b", re.I)
+_NOT_NAMES = {"Sorry", "Not", "Just", "Here", "Back", "Fine", "Good", "Okay", "Ok", "Still", "Locked", "New", "Moving",
+              "Looking", "Trying", "Calling", "Writing", "Interested", "Ready", "Done", "Sure", "So", "Really", "Very",
+              "The", "A", "An", "Also", "Actually", "Currently", "Already", "Going", "Having", "Getting", "In", "At",
+              "On", "From", "With", "Your", "Their", "Mckinley", "McKinley", "Resident", "Tenant", "Me", "Him", "Her"}
+
+
+def denied_data_request(message: str, own_first_name: str | None = None, own_id: str | None = None) -> str | None:
+    """"role_escalation" | "impersonation" | "other_resident" | None. Never grants anything: a None only means the
+    message is not one of these refusals; the store and principal still decide what any lookup may return."""
+    if _ESCALATION.search(message):
+        return "role_escalation"
+    ids = {m.group(1).upper() for m in _RESIDENT_ID.finditer(message)}
+    if ids and (own_id or "").upper() not in ids:
+        return "impersonation"
+    m = _SELF_NAME.search(message)
+    if m and m.group(1) not in _NOT_NAMES and own_first_name and m.group(1).lower() != own_first_name.lower():
+        return "impersonation"
+    if _LIST_ALL.search(message) or _OTHER_DATA.search(message):
+        return "other_resident"
+    return None
+
+
 def claims_account_access(message: str) -> bool:
     return bool(_ACCOUNT_ASK.search(message))
