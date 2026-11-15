@@ -1,10 +1,21 @@
-# Project handoff (2026-11-10)
+# Project handoff (updated 2026-11-15)
 
 For the next developer or Claude Code session. Read with [`../README.md`](../README.md) and
 [`development/CLAUDE_PROJECT_GUIDE.md`](development/CLAUDE_PROJECT_GUIDE.md); old chat history is not needed.
 
+> **MVP reset (2026-11-15, `mvp-reset` → `development`):** the conversation layer is now five small parts:
+> A identity (`auth.py`, `ScopedStore`) → B safety (`risk/`, every message) → C one structured model call
+> (`assistant.py`; privacy refusals and explicit sends decided first in `guardrails.py`) → D task controller
+> (`tasks.py`: one active card + waiting list; only Send or "send it" saves) → E tools (own requests and history,
+> authorized context, approved facts). Read [`architecture/overview.md`](architecture/overview.md) first. Removed:
+> the planner (`actions.py`), decision gates (`gates/`), understanding layer, dialogue/intake/templates/workflow
+> modules and quick-fix tips; their docs are in [`archive/pre-mvp/`](archive/pre-mvp/README.md). The Sprint 5–10
+> notes below describe the pre-MVP pipeline (history). New since the reset: an emergency incident closes on a
+> responder-grounded resolution (rule R10r) and the paused card comes back unchanged; one urgent note per incident;
+> handoff notes carry the resident's related history from their own record.
+
 > **Sprint 10 (2026-11-12):** independent prototype review remediated on `feat/review-remediation`; read
-> [`evaluation/PROTOTYPE_REVIEW_REMEDIATION.md`](evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) first. New behaviour to
+> [`archive/pre-mvp/evaluation/PROTOTYPE_REVIEW_REMEDIATION.md`](archive/pre-mvp/evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) first. New behaviour to
 > know: hosted rate limits (30/min per visitor, 15/min per conversation; `RATE_LIMIT_PER_MINUTE`,
 > `RATE_LIMIT_PER_SESSION_MINUTE`), 64 KB body cap (`MAX_REQUEST_BYTES`), a retried confirm returns
 > `ALREADY_SAVED` with the same reference, `/api/health` reports `version` and `commit`, and
@@ -42,7 +53,7 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
   database, `APP_ENV=hosted` safety checks, Render Blueprint, Vercel config, live/mock labels in both views.
 - Dev tools kept: `app.live_eval.preflight` and `app.live_eval.smoke` (budgeted manual provider checks) and
   `app.export_demo` (the static demo snapshot). Regression coverage lives in the domain test modules in
-  `backend/tests/` (conversation, workflow, safety, authorization, API/persistence, LLM providers, decision gate).
+  `backend/tests/` (MVP acceptance A–G, safety, authorization, API/persistence, LLM providers, input normalization).
 - Sprint 6 (`feat/robust-workflow-safety-auth`): structured understanding layer, workflow state machine, server-side
   principal with deny-by-default data access, concept-based safety with persistent incident state
   (`docs/evaluation/SPRINT6_RESULTS.md` (Git history `59c155c`)).
@@ -55,7 +66,7 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
   conditional questions with a confirmation escalation (R5f); repeat-issue history with community-manager review
   metadata; draft quick-fix tips behind `QUICKFIX_CONTENT_MODE` (default approved_only = none shown; hosted never
   drafts) (`docs/evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md` (Git history `59c155c`),
-  `docs/design/EMERGENCY_UX_REVIEW.md` (Git history `59c155c`), [workflows/QUICKFIX_DRAFT_KB.md](workflows/QUICKFIX_DRAFT_KB.md)).
+  `docs/design/EMERGENCY_UX_REVIEW.md` (Git history `59c155c`), [archive/pre-mvp/workflows/QUICKFIX_DRAFT_KB.md](archive/pre-mvp/workflows/QUICKFIX_DRAFT_KB.md); quick-fix tips were removed in the MVP reset).
 - Sprint 7 (`feat/s7-safety-regression-fixes`, on top of `development` / PR #4): compositional risk frame with a
   monotone "decorations never lower" invariant, structural utterance analysis and a shared field resolver, a
   customer view without diagnostics, server-issued sessions, and property-based invariant tests
@@ -81,13 +92,12 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 | P1 | Live OpenRouter verified on one fixed model (46 real calls, Sprint 5.1); Gemini still never called; no A/B/C real-model comparison yet | `docs/evaluation/SPRINT5_1_CUSTOMER_JOURNEYS.md` (Git history `59c155c`) |
 | P0 | Emergency recall: Sprint 8 independent holdout 89.5% full alert, 91.7% any guidance (rules only); critical cases with no full alert remain (release-blocking); a few cases worse than before Sprint 7; crisis wording, contact labels and the R7 draft policy need McKinley review | `docs/evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md` (Git history `59c155c`) |
 | P0 | No persistent 911 control (product-owner decision): a missed emergency now gets only the plain-text footer line; keep or remove that line is a product decision | `docs/design/EMERGENCY_UX_REVIEW.md` (Git history `59c155c`) |
-| P1 | Quick-fix tips and the legacy checks are drafts: nothing is shown in real modes until McKinley approves entries | [workflows/QUICKFIX_DRAFT_KB.md](workflows/QUICKFIX_DRAFT_KB.md) |
 | P1 | `development` (PR #4) has the first Sprint 7 candidate with known safety regressions until `feat/s7-safety-regression-fixes` is merged | `docs/evaluation/SPRINT7_GENERALIZATION.md` (Git history `59c155c`) |
 | P0 | Semantic safety layer and model understanding not evaluated live in Sprint 6 (OpenRouter free tier rate-limited, HTTP 429) | `docs/evaluation/SPRINT6_RESULTS.md` (Git history `59c155c`) §6 |
 | P1 | Policy decision: the semantic layer may still remove the broad R7 care line; the Sprint 6 brief says it may never suppress | `docs/evaluation/SPRINT6_RESULTS.md` (Git history `59c155c`) §8 |
 | P1 | Open Sprint 6 conversation items (prospect callback replaced by a tour card, "weird noise" routing, "is someone coming?" after Send, some paraphrases and dates) | `docs/evaluation/SPRINT6_RESULTS.md` (Git history `59c155c`) §8 |
 | P2 | Remaining conversation backlog after Sprint 5 (stitched wording, Spanish card values, a few partial fixes) | `docs/evaluation/SPRINT5_LIVE_CONVERSATION.md` (Git history `59c155c`) |
-| P1 | `/api/chat` returns staff diagnostics (`risk`, `gate`, `pipeline`) to the browser; decide whether to strip them for non-staff callers | [architecture/overview.md](architecture/overview.md) |
+| P1 | MVP conversation quality depends on the live model and has only small live runs (U-M Toolkit `gpt-6.1-sol`, local); the hosted provider for the demo is not yet verified end to end with the MVP | [architecture/overview.md](architecture/overview.md) |
 
 ## Recommended next priorities
 1. Follow [`DEPLOYMENT_READINESS.md`](DEPLOYMENT_READINESS.md): provider key → preflight → budgeted smoke
@@ -96,11 +106,8 @@ For the next developer or Claude Code session. Read with [`../README.md`](../REA
 2. Have a separate person write a **fresh** safety holdout and measure the semantic classifier on the real target;
    McKinley risk/legal reviews every failure and the safety scripts.
 3. Decide production identity (server-side session binding) and whether diagnostics leave the API for customers.
-4. Lower-risk refactors still open (from the consolidation audit, not done to avoid behaviour risk):
-   split `actions.plan_turn` (~780 lines) into its three largest leaf blocks without reordering, with a
-   characterization snapshot first; split `CustomerApp.tsx` / `StaffConsole.tsx` (add StaffConsole tab tests
-   first); unify status-colour maps; move inline `lang == "en"` strings in `actions.py` into `templates.py`.
-   (Test files are now organized by behaviour area.)
+4. Lower-risk refactors still open: split `CustomerApp.tsx` / `StaffConsole.tsx` (add StaffConsole tab tests
+   first); unify status-colour maps. (The planner split is moot: the planner was removed in the MVP reset.)
 
 ## How to verify quickly
 ```bash

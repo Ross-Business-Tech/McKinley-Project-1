@@ -1,6 +1,6 @@
 # First 5 evaluation cases — illustration and test specification
 
-**Important:** The responses below are *reference examples written for the harness*, **not executed model outputs**. The one real-model run of these cases is archived in `docs/archive/evaluation/five-case-live-run-2026-11-01.md` (+ `.json`); the runner and dashboard were removed (Git history `59c155c`), and the expected routing of each case is pinned in `backend/tests/test_decision_gate.py`. Do not report these illustrations, or Mock-provider output, as empirical findings.
+**Important:** The responses below are *reference examples written for the harness*, **not executed model outputs**. The one real-model run of these cases is archived in `docs/archive/evaluation/five-case-live-run-2026-11-01.md` (+ `.json`); the runner and dashboard were removed (Git history `59c155c`). The expected routing of each case was pinned in the pre-MVP `backend/tests/test_decision_gate.py` (removed in the MVP reset, Git history); the current offline checks of the deterministic parts are in `backend/tests/test_acceptance.py`, and conversation quality is only judged live. Do not report these illustrations, or Mock-provider output, as empirical findings.
 
 ## Case 1 — High-intent prospective renter
 **Persona:** fictional prospect (not from XLSX), has a requested move-in timeframe and wants a two-bed floor plan.

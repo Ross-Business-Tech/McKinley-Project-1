@@ -4,6 +4,30 @@ Short records of the major decisions. Each one gives its status, context, the de
 
 ---
 
+## ADR-012: MVP reset: one model call + task controller + deterministic safety and guardrails
+**Status:** accepted (2026-11, the `mvp-reset` integration). Supersedes ADR-002 and the planner parts of ADR-003.
+
+**Context:** the planner, decision gate (rules / LLM / Jev), understanding layer, intake templates and workflow state
+machine had grown too large to reason about: one conversational behaviour could depend on several overlapping
+modules, and fixes in one place broke another.
+
+**Decision:** a turn is five parts, always in this order (`chat_engine.run_turn`, details in [overview.md](overview.md)):
+A identity (`app/auth.py`, `ScopedStore`); B safety (`app/risk/` + `app/emergency.py`, every message; an emergency
+gets fixed approved text, one urgent prototype note per incident, pauses the open task, no model call); C
+conversation (`app/assistant.py`: **one** structured model call returning a reply and at most one task operation;
+`app/guardrails.py` decides privacy refusals and explicit typed sends first and checks replies for unsupported
+claims); D tasks (`app/tasks.py`: active card + waiting list, save only through confirm: the Send button or an
+explicit "send it"); E tools (own requests and history, authorized context, approved knowledge base).
+
+**Consequences:**
+- Conversation quality now depends on the live model and is only evaluated live; the MOCK model is never evidence of it.
+- The deterministic guarantees (safety floor, privacy refusals, consent before save, task state) are tested offline
+  (`backend/tests/`, e.g. `test_acceptance.py`, the safety suites).
+- The old design is archived in [../archive/pre-mvp/](../archive/pre-mvp/); evaluation numbers recorded on it
+  stay historical facts about the pre-MVP pipeline.
+
+---
+
 ## ADR-011: Live evaluation refuses to fall back to the mock
 **Status:** accepted (sprint 3); the A/B/C runner was removed in the repository simplification (Git history
 `59c155c`), and the rule now applies to `app.live_eval.smoke`. **Decision:** a live check refuses to start without a
@@ -18,7 +42,8 @@ unless `STAFF_API_TOKEN` is set. **Limit:** a demo boundary, not authentication;
 ## ADR-009: Confirm before save, into a labelled prototype store
 **Status:** accepted (sprint 2). **Decision:** every action (repair, tour, office note) is a read-back card that the
 person must confirm; only then is a `DEMO-WO/TOUR/TASK` record written to SQLite. Urgent safety notes are the one
-exception (saved immediately, once per hazard). **Why:** no false completion claims, no real integration exists.
+exception (saved immediately; once per hazard before the MVP reset, now once per incident via `tasks.save_urgent_note`).
+Since the MVP reset the save goes through `tasks.confirm` (the Send button or an explicit typed "send it"). **Why:** no false completion claims, no real integration exists.
 
 ## ADR-008: Layered safety, rules first; the semantic classifier never removes a rules alert
 **Status:** accepted (sprint 3). **Decision:** `app/risk/` separates detection, semantic classification, policy,
@@ -32,10 +57,10 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 
 **Context:** here.now hosts static files only. The browser-hosted app cannot reach the local FastAPI backend, so the published preview used to show only a connection error.
 
-**Decision:** `uv run python -m app.export_demo` writes `frontend/public/demo/snapshot.json`. It holds 17 recorded customer journeys (replayed by the customer view) plus 14 scenarios × 3 modes for the console, pre-computed with the **MOCK** provider and the rules gate. The UI loads it only when the backend is unreachable, labels every response as pre-computed MOCK output, and disables free-text chat.
+**Decision:** `uv run python -m app.export_demo` writes `frontend/public/demo/snapshot.json`. It holds 17 recorded customer journeys (replayed by the customer view) plus 14 scenarios × 3 modes for the console, pre-computed with the **MOCK** provider (and, before the MVP reset, the rules gate; the console scenarios were later removed with the staff 'Demo and evaluation' section). The UI loads it only when the backend is unreachable, labels every response as pre-computed MOCK output, and disables free-text chat.
 
 **Consequences:**
-- Executives can click through the gate, workflow and handoff behaviour on a phone.
+- Executives can click through the task, safety and handoff behaviour on a phone.
 - No live AI runs on the hosted site.
 - The snapshot holds minimized synthetic SAFE_CONTEXT values (first names, community, history subjects). That is the same class of data already committed in `docs/archive/evaluation/five-case-live-run-2026-11-01.json`, and never raw workbook rows.
 - The snapshot must be regenerated after any change to the backend or workflows.
@@ -68,7 +93,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 **Status:** Accepted
 
 **Decision:**
-- Jev uses plain `httpx`, with no `typesafe-sdk`.
+- Jev used plain `httpx`, with no `typesafe-sdk` (the Jev gate was removed in the MVP reset, 2026-11).
 - Anthropic remains an optional extra.
 - Mermaid diagrams are plain Markdown. They were validated with a throwaway parser in a scratch directory, not a project dependency.
 - CodeGraph is a developer tool. Its index is git-ignored, and it is not a runtime component.
@@ -78,7 +103,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 ---
 
 ## ADR-003: Single-agent deterministic pipeline, not a multi-agent runtime
-**Status:** Accepted
+**Status:** Accepted; the step list below is Superseded by the MVP reset (2026-11), see ADR-012 (still one conversational model call per turn, no agent framework)
 
 **Context:** Five business workflows could each get their own LLM "agent", and frameworks such as LangChain, LangGraph and CrewAI exist for that.
 
@@ -95,7 +120,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 ---
 
 ## ADR-002: Rules gate as default and permanent safety floor; LLM and Jev optional
-**Status:** Accepted. Details in [GATE_DESIGN.md](decision-gate.md).
+**Status:** Superseded by the MVP reset (2026-11), see ADR-012. The decision gate was removed; the deterministic safety floor now lives in `app/risk/` (part B) and privacy in `app/guardrails.py`. Historical details: [decision-gate.md](../archive/pre-mvp/architecture/decision-gate.md).
 
 **Decision:** `DECISION_GATE_PROVIDER=rules` by default. LLM and Jev gates are opt-in and can only *add* risk. Emergencies, identity, privacy and Fair Housing never depend on model confidence. Any external failure falls back to rules, and the fallback is recorded.
 
@@ -108,7 +133,7 @@ misses); the semantic layer has never run on a live model. See `docs/safety/safe
 ---
 
 ## ADR-001: Three comparison modes (A/B/C)
-**Status:** Accepted
+**Status:** Superseded by the MVP reset (2026-11), see ADR-012: one prompt is used in every mode (`chat_engine.prompt_for`) and the A/B/C runner was removed
 
 **Decision:**
 - **A. `baseline`:** generic prompt, with no McKinley layers.

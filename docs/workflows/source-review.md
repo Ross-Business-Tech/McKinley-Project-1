@@ -27,6 +27,12 @@ For each module this review gives: a short summary of the original, a 10-point e
 - **Defer until integrations exist**: needs real phone/SMS, Yardi, calendars or staff systems.
 - **Reject due to safety, privacy, or poor user experience**.
 
+> **Note (MVP reset, 2026-11).** The "What the prototype is today" baseline and every **Implementation status** line
+> below are dated 2026-11-05 and describe the pre-MVP branch. The modules they name (`app/gates/`, `app/workflows.py`,
+> `app/handoff.py`, the regex pre-model gates and the decision gate) were removed in the MVP reset; their design is
+> archived in [../archive/pre-mvp/](../archive/pre-mvp/). For what the code does now, see
+> [traceability.md](traceability.md) and [../architecture/overview.md](../architecture/overview.md).
+
 **What the prototype is today (baseline for every judgment below):** web chat only; a synthetic workbook of 20 residents and 101 interactions; two fictional prospects; no live pricing, availability, tour calendar, work-order system, CRM, staff queue, office hours or on-call data. "Identity" is a persona chosen from a demo dropdown and is trusted as-is. There is no real verification. Pre-model regex gates catch emergencies, human requests, sensitive data, fair housing/legal, financial/lease, vouchers and repeat language. Handoffs are **recommendations only**. Output checks catch false action claims, invented prices and clock times, PII, risky DIY advice and wrong terminology ("beds"/"floor plans", never "bedrooms"/"unit types").
 
 **What the tech lead is building next:** a typed decision gate (audience, intent, urgency, requires_human, risk_flags) that selects one of five workflows (leasing, resident_support, maintenance, renewal, human_handoff). It adds deterministic emergency escalation, a structured handoff recommendation (team, minimal-context summary, urgency, status "recommended, not completed") and maintenance triage (emergency / repeat / routine, with only approved low-risk troubleshooting). It has no real side effects.
@@ -393,7 +399,7 @@ Scenarios 13-17 were not in the requested list; they cover gaps found in this re
 | I-10 | Resident verification rules | **Needs McKinley + legal** | Name plus unit is not enough (finding 9). MVP: demo persona marked unverified. |
 | I-11 | Permission matrix by caller type | **Needs McKinley** (team can draft) | MVP draft: prospects and unverified get public info only; demo residents get only SAFE_CONTEXT. |
 | I-12 | FAQ topic list | Mock now | Can start from `TOPIC_KEYWORDS` in the context adapter. |
-| I-13 | Fair-housing topics and approved response | **Needs McKinley legal** | Split into steering vs. accommodation/voucher (finding 15). Current regex gate is a stopgap. |
+| I-13 | Fair-housing topics and approved response | **Needs McKinley legal** | Split into steering vs. accommodation/voucher (finding 15). The pre-MVP regex gate was a stopgap and was removed in the MVP reset; this is now model-led (`assistant.RULES`). |
 | I-14 | Answer rules: approved info only, no price promises | Mock now (draft), McKinley approves | Already largely in the system prompt. |
 | I-15 | Required tour questions and tour types | **Needs McKinley leasing** | MVP: minimal draft (community, days, beds). |
 | I-16 | Tour confirmation and reminder templates | Mock now (draft) | Sending requires consent; deferred. |
@@ -405,7 +411,7 @@ Scenarios 13-17 were not in the requested list; they cover gaps found in this re
 | I-22 | Work-order notification templates | Mock now (draft) | Deferred until Modules 7 and 8. |
 | I-23 | Target timing by priority, overdue threshold | **Needs McKinley maintenance** | Never invent; overdue flag could come from synthetic dates for demo only. |
 | I-24 | What residents may change or cancel by status | **Needs McKinley maintenance** | Deferred. |
-| I-25 | Handoff trigger list | Mock now; McKinley approves | Largely exists as the regex gates plus the decision gate; add precise definitions (findings 18, 19). |
+| I-25 | Handoff trigger list | Mock now; McKinley approves | Existed pre-MVP as the regex gates plus the decision gate (removed in the MVP reset); now emergency and privacy triggers are deterministic and the rest are model-led. Add precise definitions (findings 18, 19). |
 | I-26 | Routing table, issue to team | Mock now (draft); **McKinley must confirm** | Decide renewal, accommodation and vendor routes. |
 | I-27 | Handoff summary format | Mock now | This is the tech lead's structured handoff; staff should review it. |
 

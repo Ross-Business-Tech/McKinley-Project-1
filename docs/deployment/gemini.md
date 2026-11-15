@@ -4,17 +4,17 @@
 tested live through an OpenAI-compatible university gateway (the U-M GPT Toolkit), on synthetic data only. The
 deployed Render backend still runs OpenRouter; switch it only after the acceptance criteria below pass.** Google's
 own Gemini Developer API path (no `GEMINI_BASE_URL`) is unchanged and still tested offline only.
-Results: [evaluation/GEMINI_GATEWAY_ACCEPTANCE.md](../evaluation/GEMINI_GATEWAY_ACCEPTANCE.md).
+Results (measured on the pre-MVP pipeline, archived): [GEMINI_GATEWAY_ACCEPTANCE.md](../archive/pre-mvp/evaluation/GEMINI_GATEWAY_ACCEPTANCE.md).
 
 ## What it is
 `backend/app/llm/gemini_provider.py` uses Google's official `google-genai` SDK (3.0.0, Gemini Developer API — a key
-from Google AI Studio). It plugs into the same gateway as OpenRouter, Ollama, Anthropic and the Mock, so the chat
-pipeline, the decision gate (`DECISION_GATE_PROVIDER=llm`) and the semantic safety classifier can all use it.
+from Google AI Studio). It plugs into the same gateway as OpenRouter, Ollama, Anthropic and the Mock, so the one
+conversation call (`app/assistant.py`) and the semantic safety classifier can both use it.
 
 | Feature | How |
 | --- | --- |
 | System prompt + history | `system_instruction` + user/model turns; resident context arrives only as the allowlisted SAFE_CONTEXT block |
-| Structured output | `response_mime_type="application/json"` + `response_json_schema` (reply schema, gate schema, safety schema) |
+| Structured output | `response_mime_type="application/json"` + `response_json_schema` (conversation schema `mckinley_assistant`, reply schema, safety schema) |
 | Limits | `LLM_MAX_TOKENS` → `max_output_tokens` (thinking tokens count against it); `LLM_TIMEOUT_SECONDS` → request timeout |
 | Temperature | **not sent** to Gemini: Google's "What's new in Gemini 3.6" says temperature/top_p/top_k are ignored and future models return 400; recorded as `null` |
 | Thinking | `GEMINI_THINKING_LEVEL` = minimal / low / medium / high pins the level (empty = model default, recorded as such) so a server default change can't alter an evaluation |
@@ -53,7 +53,7 @@ checked with real calls on 2026-11-11, not assumed:
 
 `python -m app.live_eval.preflight` lists the gateway's models (no tokens) when `GEMINI_BASE_URL` is set.
 
-**Thinking (measured on the real app prompts, 2026-11-11).** The model default spends ~750 hidden thinking tokens per
+**Thinking (measured on the pre-MVP app prompts, 2026-11-11).** The model default spends ~750 hidden thinking tokens per
 reply (median 4.9 s). `low`: 0-380 thinking tokens, reply median 1.3-2.8 s, natural wording. `minimal`: never thinks,
 fastest, but sometimes robotic ("Preferred days: Friday.", a duplicated sentence). The safety classifier gave the same
 results at all three levels on a small synthetic set. **Use `GEMINI_THINKING_LEVEL=low`.**
@@ -66,8 +66,8 @@ The live service (`mckinley-backend`, branch `development`, auto-deploy on commi
 **Dashboard → Environment**, not from `render.yaml`. Since 2026-11-11 a hosted backend **refuses to start** unless
 `LLM_PROVIDER` is set explicitly, so a release can never switch provider silently (a refused start leaves the
 previous deploy serving).
-0. Preconditions: the claim-grounding PR and `feat/warm-conversational-ux` are merged into `development`, the blockers
-   in [GEMINI_GATEWAY_ACCEPTANCE.md §F](../evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) are closed, and ITS has reset the
+0. Preconditions: the acceptance run is repeated on the MVP pipeline (the recorded one was pre-MVP), the blockers
+   in [GEMINI_GATEWAY_ACCEPTANCE.md §F](../archive/pre-mvp/evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) are closed, and ITS has reset the
    gateway key's usage limit and agreed a budget for a public site.
 1. Before merging the Gemini code into `development`: confirm the Dashboard has `LLM_PROVIDER=openrouter` (it is the
    documented live value). If it is missing, add it first, or the next deploy will refuse to start.
@@ -79,7 +79,7 @@ previous deploy serving).
 4. Save and deploy. Check `GET /api/health`: `provider: gemini`, `model: gemini-3.6-flash`, `provider_ready: true`.
 5. Send 3-5 synthetic messages on the public site (a tour, a repair as a guest, "talk to a person") and read the
    replies. Roll back by setting `LLM_PROVIDER=openrouter` and `LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`.
-Cost: each chat turn makes up to two Gemini calls (reply + safety classifier, ~2,000 + ~700 input tokens); the
+Cost: each chat turn makes up to two Gemini calls (conversation + safety classifier; ~2,000 + ~700 input tokens measured on the pre-MVP prompts); the
 gateway key has a monthly budget set by ITS, and a public site spends it on every visitor.
 
 **Model choice.** `gemini-3.6-flash` is listed as a stable model in Google's model documentation (checked
@@ -116,9 +116,9 @@ Results go to `evals/live/` (git-ignored). Then a **fresh** independent safety h
 `tests/test_llm_providers.py` runs one parametrised suite against three adapters (OpenRouter over
 `httpx.MockTransport`, Gemini over a fake `google-genai` client, Gemini through the gateway over
 `httpx.MockTransport`, the Mock where meaningful); `tests/test_llm_providers.py` pins the gateway request shape: system prompt delivery,
-history order and roles, each app schema passed as structured output (`app.llm.contracts`: reply, gate, risk), the
+history order and roles, each app schema passed as structured output (`app.llm.contracts`: converse, reply, risk), the
 same text parsing to the same `ModelOutput`, normalised usage (thinking counted in output tokens), served model and
-`MODEL_SWITCHED`, identical error codes / retryable flags / HTTP statuses, and the real callers (`LLMGate`,
+`MODEL_SWITCHED`, identical error codes / retryable flags / HTTP statuses, and the real callers (`assistant.ask`,
 `SemanticRiskClassifier`, `run_turn`) on each adapter. Genuine differences are asserted explicitly, not skipped:
 temperature (OpenRouter only), schema name (OpenRouter only), cost (OpenRouter only; Gemini `None`), who retries
 (app vs SDK), provider-only errors (402 and errors inside a 200 body on OpenRouter; `API_KEY_INVALID` and prompt

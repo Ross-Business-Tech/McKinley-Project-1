@@ -8,7 +8,7 @@ quality. "Saved" means saved to the prototype store, not to Yardi or any McKinle
 ## How to check the app today
 | What | How (from `backend/` unless noted) | Model |
 | --- | --- | --- |
-| Deterministic regressions: conversation, workflows, safety, authorization, API/persistence, providers, gate | `uv run pytest` (domain modules in `backend/tests/`) | mock / offline |
+| Deterministic regressions: tasks and consent, guardrails, safety, authorization, API/persistence, providers | `uv run pytest` (domain modules in `backend/tests/`) | mock / offline |
 | Focused safety verification | `uv run pytest tests/test_safety_detection.py tests/test_safety_pipeline.py tests/test_risk_policy_table.py`, then a **fresh holdout written by someone else** ([safety-evaluation.md](../safety/safety-evaluation.md)) | rules (+ classifier if live) |
 | Manual provider check (no spend) | `uv run python -m app.live_eval.preflight` | none |
 | Manual provider smoke (≤ 8 calls) | `uv run python -m app.live_eval.smoke --provider <p> [--allow-paid] --max-calls 8` | **live** |
@@ -20,8 +20,8 @@ is committed.
 ## Recorded results (newest first; full reports are in Git history at `59c155c`)
 | Result | Model | Where |
 | --- | --- | --- |
-| Sprint 10 review remediation: independent holdout 61 conversations + 38 injection singles — false alerts 4 → 2, real alerts 22/24 (unchanged), benign injection flags 11/22 → 0/22; customer simulator 326 → 339/420 | MOCK | [PROTOTYPE_REVIEW_REMEDIATION.md](PROTOTYPE_REVIEW_REMEDIATION.md) |
-| Gemini through the U-M gateway: not accepted for the deployed site yet | **live** | [GEMINI_GATEWAY_ACCEPTANCE.md](GEMINI_GATEWAY_ACCEPTANCE.md) |
+| (pre-MVP) Sprint 10 review remediation: independent holdout 61 conversations + 38 injection singles — false alerts 4 → 2, real alerts 22/24 (unchanged), benign injection flags 11/22 → 0/22; customer simulator 326 → 339/420 | MOCK | [PROTOTYPE_REVIEW_REMEDIATION.md](../archive/pre-mvp/evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) |
+| (pre-MVP) Gemini through the U-M gateway: not accepted for the deployed site yet | **live** | [GEMINI_GATEWAY_ACCEPTANCE.md](../archive/pre-mvp/evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) |
 | Sprint 9 matched journeys: words per reply 41.9 → 30.0 (MOCK), 48.8 → 31.9 (LIVE) | mock + live (nemotron) | `SPRINT9_WARM_VOICE.md` (history) |
 | Sprint 8 red-team suite (288 frozen cases): full alert 67/86, no guidance 8 → 6, unsafe tips 2 → 0 of 40 | rules only | `SPRINT8_EMERGENCY_UX_MAINTENANCE.md` (history) |
 | **Sprint 7 safety holdout** (216 danger turns, 79 look-alikes): 88.1% full alert, 90.7% any guidance; **20 turns with no guidance (release-blocking)** | rules only | `SPRINT7_GENERALIZATION.md` §4 (history) |
