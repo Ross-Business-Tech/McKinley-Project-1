@@ -1444,3 +1444,16 @@ def test_a_guest_claiming_a_resident_id_gets_the_account_boundary(client):
     r = _say(client, JORDAN, "dn-guest", persona="")
     assert "doesn't unlock any account details" in r["reply"] and r["status_items"] == [] and not r["action"]
 
+
+
+def test_cors_preflight_allows_the_staff_token_header_for_an_allowed_origin_only(hosted):
+    """The hosted staff console sends X-Staff-Token cross-origin: the browser's preflight must allow that header for the
+    configured website origin (CORS_ORIGINS), and still refuse other origins."""
+    from app.main import _settings
+    origin = _settings.cors_origin_list[0]
+    pre = {"Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "x-staff-token"}
+    ok = hosted.options("/api/prototype/records", headers={"Origin": origin, **pre})
+    assert ok.status_code == 200 and ok.headers["access-control-allow-origin"] == origin
+    assert "x-staff-token" in ok.headers["access-control-allow-headers"].lower()
+    bad = hosted.options("/api/prototype/records", headers={"Origin": "https://evil.example.com", **pre})
+    assert bad.status_code == 400 and "access-control-allow-origin" not in bad.headers
