@@ -1,14 +1,41 @@
 {
-  "_help": "Edit the 'say' lines to change what the narrator says (each line is also one caption; add 'caption' if the caption should be spelled differently from how it is spoken). 'do' is what happens on screen while that line is spoken. Lines in scenes with \"short\": true go into the 60-second clip, unless the line itself says \"short\": false. Then run: bash demo-video/make-video.sh",
+  "_help": "See demo-video/README.md. 'say' = what the narrator says (also the caption; 'caption' overrides the written form). 'do' = what happens on screen during that line. 'chapter' = the label shown in the corner during that scene. Write AI, not A.I. (the dots make the voice pause).",
   "voice": "af_heart",
-  "speed": 1.0,
+  "speed": 1.1,
+  "cover": {
+    "kicker": "Workflow walkthrough",
+    "title": "McKinley Resident Assistant",
+    "subtitle": "Report a repair by chat: one message in, a checked request out.",
+    "chapters": [
+      "Who it's for",
+      "The input",
+      "The output",
+      "The human check",
+      "One limitation"
+    ],
+    "footer": "Prototype · Sample data only, no real residents"
+  },
   "scenes": [
     {
-      "id": "intro",
-      "short": true,
+      "id": "cover",
+      "cover": true,
       "steps": [
         {
-          "say": "Meet the McKinley assistant, a prototype that helps residents and future residents get answers at any hour.",
+          "say": "Here's a two-minute walkthrough of the McKinley Resident Assistant, an AI chat assistant for apartment residents.",
+          "do": [
+            {
+              "wait": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "who",
+      "chapter": "1 / 5 · Who it's for",
+      "steps": [
+        {
+          "say": "It's built for people who live in a McKinley community, or are thinking about moving into one.",
           "do": [
             {
               "goto": "/"
@@ -19,309 +46,187 @@
           ]
         },
         {
-          "say": "It runs on made-up data, and it tells people up front that they're talking to an A.I.",
-          "caption": "It runs on made-up data, and it tells people up front that they're talking to an AI.",
+          "say": "Today, reporting a broken air conditioner means calling the office, waiting on hold, or leaving a voicemail and hoping someone writes it all down.",
           "do": [
             {
-              "hover": "I'm an AI"
-            }
-          ],
-          "short": false
-        }
-      ]
-    },
-    {
-      "id": "prospect-tour",
-      "short": false,
-      "steps": [
-        {
-          "say": "First, someone looking for an apartment taps: I need a place soon.",
-          "do": [
-            {
-              "click": "I need a place soon"
+              "hover": "I live at McKinley"
             }
           ]
         },
         {
-          "say": "The assistant asks only what it needs. Which community?",
+          "say": "The assistant replaces that phone call. It's open around the clock, and it turns a quick message into a complete repair request.",
           "do": [
             {
-              "click": "Ypsilanti"
+              "hover": "Message the assistant"
             }
           ]
         },
         {
-          "say": "Which days?",
+          "say": "People looking for a new home can use it too, to ask about communities or request a tour.",
           "do": [
             {
-              "click": "Weekdays"
+              "hover": "Request a tour"
             }
           ]
         },
         {
-          "say": "And what time of day?",
+          "say": "We'll follow Marisol, a sample resident with made-up details, as she signs in.",
           "do": [
-            {
-              "click": "Afternoon"
-            }
-          ]
-        },
-        {
-          "say": "Then it shows a summary to check. Nothing is sent until they say so.",
-          "do": [
-            {
-              "hover": "Send tour request"
-            }
-          ]
-        },
-        {
-          "say": "One tap, and the tour request is saved for the leasing team.",
-          "do": [
-            {
-              "click": "Send tour request"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "resident-repair",
-      "short": true,
-      "steps": [
-        {
-          "say": "Now let's sign in as Marisol, a resident at Heron Lake Apartments.",
-          "do": [
-            {
-              "click": "Start another conversation"
-            },
             {
               "select": "R001"
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "input",
+      "chapter": "2 / 5 · The input",
+      "steps": [
         {
-          "say": "Her air conditioning has stopped cooling again, and she's upset.",
+          "say": "The input is just a message, written the way she would say it out loud.",
           "do": [
             {
-              "click": "My AC is out again"
+              "type": "My AC stopped cooling again, in the living room. It's the third time this year. You can come in if I'm not home."
             }
           ]
         },
         {
-          "say": "The assistant can see her earlier repair visits, so it doesn't make her troubleshoot again. It flags a repeat issue for a manager.",
+          "say": "No forms and no special words. One sentence says what's wrong, which room, and whether maintenance may come in.",
           "do": [
             {
-              "hover": "repeat issue"
+              "press": "Enter"
             }
           ]
         },
         {
-          "say": "It asks one question: may maintenance come in if she's not home?",
+          "say": "If she leaves something out, like the room, the assistant simply asks a short follow-up question.",
           "do": [
             {
-              "click": "Yes, you can enter"
+              "wait": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "output",
+      "chapter": "3 / 5 · The output",
+      "steps": [
+        {
+          "say": "The output is a repair request card, filled in from her message. The label Ready to send means nothing is missing.",
+          "do": [
+            {
+              "hover": "Ready to send"
             }
           ]
         },
         {
-          "say": "Everything else comes from her account, and each line shows where it came from.",
+          "say": "Each row is one part of the request: what's wrong, where it is, and her entry permission.",
           "do": [
             {
-              "hover": "On your account"
+              "hover": "What's wrong"
+            },
+            {
+              "hover": "Living room"
+            },
+            {
+              "hover": "Yes, maintenance may enter"
             }
-          ],
-          "short": false
+          ]
         },
         {
-          "say": "She sends it, and gets a reference number right away.",
+          "say": "It also checks her account history. An earlier AC request is still open, so the team can see this is a repeat problem, not a brand-new one.",
+          "do": [
+            {
+              "hover": "Earlier requests"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "human-check",
+      "chapter": "4 / 5 · The human check",
+      "steps": [
+        {
+          "say": "Nothing is sent on its own. Marisol reviews the card first. If something's wrong, she can tap Don't send, or just type a correction.",
+          "do": [
+            {
+              "hover": "Don't send"
+            }
+          ]
+        },
+        {
+          "say": "And if she'd rather talk to someone, Talk to a person is always on screen.",
+          "do": [
+            {
+              "hover": "Talk to a person"
+            }
+          ]
+        },
+        {
+          "say": "When it looks right, she taps Send, and gets a reference number.",
           "do": [
             {
               "click": "Send repair request"
+            },
+            {
+              "hover": "Reference DEMO-WO"
             }
           ]
         },
         {
-          "say": "She can check on all her requests at any time.",
+          "say": "She can tap Check its status at any time to see where it stands.",
           "do": [
             {
-              "click": "status of my requests"
-            }
-          ],
-          "short": false
-        }
-      ]
-    },
-    {
-      "id": "gas-safety",
-      "short": true,
-      "steps": [
-        {
-          "say": "Safety comes first.",
-          "do": [
-            {
-              "click": "Start another conversation"
-            },
-            {
-              "select": "R002"
-            }
-          ],
-          "short": false
-        },
-        {
-          "say": "When Theo writes that he smells gas, the assistant skips everything else.",
-          "do": [
-            {
-              "click": "I smell gas"
+              "click": "Check its status"
             }
           ]
         },
         {
-          "say": "It tells him to get outside and call nine one one, and puts an urgent note at the top of the staff queue.",
-          "caption": "It tells him to get outside and call 911, and puts an urgent note at the top of the staff queue.",
+          "say": "Then a McKinley staff member reviews it in the staff queue, with the room, the entry permission and the priority, before anything is scheduled.",
           "do": [
             {
-              "hover": "Get outside, then call 911"
+              "goto": "/staff/"
             },
             {
-              "wait": 1.2
+              "hover": "DEMO-WO-1001"
             },
             {
-              "hover": "Urgent note for staff"
+              "hover": "normal priority"
             }
           ]
         }
       ]
     },
     {
-      "id": "spanish",
-      "short": false,
+      "id": "limitation",
+      "chapter": "5 / 5 · One limitation",
       "steps": [
         {
-          "say": "Residents can also write in Spanish.",
+          "say": "One limitation: the assistant isn't connected to McKinley's maintenance system yet.",
           "do": [
             {
-              "click": "Start another conversation"
-            },
-            {
-              "select": "R012"
-            },
-            {
-              "click": "El horno no calienta"
+              "hover": "Nothing here reaches a real system"
             }
           ]
         },
         {
-          "say": "Valeria gets the same careful help, in her own language.",
+          "say": "Requests are saved in this prototype only, so staff still enter the work order and schedule the visit themselves.",
           "do": [
             {
-              "click": "Sí, pueden entrar"
-            },
-            {
-              "wait": 0.8
-            },
-            {
-              "click": "Enviar solicitud"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "privacy",
-      "short": false,
-      "steps": [
-        {
-          "say": "And it protects residents' information.",
-          "do": [
-            {
-              "click": "Comenzar otra conversación|Start another conversation"
-            },
-            {
-              "select": {
-                "label": "Not signed in"
-              }
+              "hover": "Saved in demo"
             }
           ]
         },
         {
-          "say": "When someone claiming to be a contractor asks for a gate code, it politely declines and passes a note to the office instead.",
-          "do": [
-            {
-              "click": "contractor needing a gate code"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "staff-console",
-      "short": true,
-      "steps": [
-        {
-          "say": "Behind the scenes, staff have their own console.",
-          "do": [
-            {
-              "click": "Staff and demo console"
-            }
-          ]
-        },
-        {
-          "say": "Saved requests lists everything the assistant prepared, with urgent items first.",
-          "do": [
-            {
-              "click": "Saved requests"
-            },
-            {
-              "hover": "Urgent; in the office queue"
-            },
-            {
-              "scroll": 250
-            }
-          ]
-        },
-        {
-          "say": "The conversation inspector shows each step: what the person wrote, what the assistant decided, and why.",
-          "do": [
-            {
-              "scroll": -400
-            },
-            {
-              "click": "Conversation inspector"
-            },
-            {
-              "hover": "Decision gate"
-            },
-            {
-              "scroll": 200
-            }
-          ],
-          "short": false
-        }
-      ]
-    },
-    {
-      "id": "close",
-      "short": true,
-      "steps": [
-        {
-          "say": "The McKinley assistant: quicker answers for residents, clearer handoffs for staff, and safety first.",
-          "do": [
-            {
-              "click": "Open the customer view"
-            },
-            {
-              "hover": "McKinley assistant"
-            }
-          ]
-        },
-        {
-          "say": "Next, we would connect it to McKinley's real systems and keep testing its safety rules. Thanks for watching.",
+          "say": "So that's the workflow: one message in, a checked request out, and a person in the loop at every step. Thanks for watching.",
           "do": [
             {
               "wait": 0.5
             }
-          ],
-          "short": false
+          ]
         }
       ]
     }

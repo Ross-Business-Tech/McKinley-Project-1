@@ -9,8 +9,8 @@ const work = process.argv[2];
 const site = (process.argv[3] || "http://localhost:4173").replace(/\/$/, "");
 const script = JSON.parse(fs.readFileSync(path.join(__dirname, "script.json"), "utf8"));
 const voice = JSON.parse(fs.readFileSync(path.join(work, "voice.json"), "utf8"));
-const GAP = 0.45; // pause after each spoken line (seconds)
-const LEAD = 0.35; // on-screen action starts this long after the line starts
+const GAP = 0.28; // pause after each spoken line (seconds)
+const LEAD = 0.2; // on-screen action starts this long after the line starts
 
 const sleep = (s) => new Promise((r) => setTimeout(r, s * 1000));
 const now = () => Date.now() / 1000;
@@ -32,10 +32,38 @@ const CURSOR = () => {
       @keyframes __demo_ring{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.4)}}`;
     document.documentElement.appendChild(st);
     document.documentElement.appendChild(c);
+    const b = document.createElement("div");
+    b.id = "__demo_badge";
+    b.style.cssText = "position:fixed;left:24px;bottom:22px;z-index:2147483646;pointer-events:none;background:#2c4a6b;color:#fff;font:600 15px/1 Inter,system-ui,sans-serif;letter-spacing:.01em;padding:11px 16px;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18);display:none";
+    const label = sessionStorage.getItem("__demo_badge");
+    if (label) { b.textContent = label; b.style.display = "block"; }
+    document.documentElement.appendChild(b);
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add);
   else add();
 };
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+const coverHtml = (c) => `<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;font-family:Inter,system-ui,sans-serif}
+  body{background:linear-gradient(135deg,#2c4a6b 0%,#4e6f92 62%,#6f8fb0 100%);color:#fff;display:flex;align-items:center}
+  .wrap{padding:0 96px;width:100%;box-sizing:border-box}
+  .brand{font-weight:700;font-size:30px;letter-spacing:-.01em;opacity:.95}
+  .kicker{margin-top:70px;display:inline-block;font-weight:600;font-size:16px;letter-spacing:.14em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:9px 14px;border-radius:6px}
+  h1{margin:22px 0 0;font-size:68px;line-height:1.04;letter-spacing:-.02em;font-weight:700}
+  .sub{margin-top:20px;font-size:26px;line-height:1.35;max-width:820px;opacity:.92}
+  ol{margin:48px 0 0;padding:0;list-style:none;display:flex;gap:12px;flex-wrap:wrap}
+  li{font-size:17px;font-weight:500;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);padding:9px 14px;border-radius:999px}
+  li b{opacity:.7;margin-right:6px}
+  .foot{margin-top:40px;font-size:16px;opacity:.8}
+</style></head><body><div class="wrap">
+  <div class="brand">McKinley</div>
+  <div class="kicker">${esc(c.kicker || "")}</div>
+  <h1>${esc(c.title || "")}</h1>
+  <div class="sub">${esc(c.subtitle || "")}</div>
+  <ol>${(c.chapters || []).map((t, i) => `<li><b>${i + 1}</b>${esc(t)}</li>`).join("")}</ol>
+  <div class="foot">${esc(c.footer || "")}</div>
+</div></body></html>`;
 
 (async () => {
   const exe = fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined;
@@ -45,6 +73,11 @@ const CURSOR = () => {
   const page = await ctx.newPage();
   await page.goto(site + "/");
   await page.waitForLoadState("networkidle");
+  if (script.scenes[0]?.cover) {
+    await page.setContent(coverHtml(script.cover || {}));
+    await page.evaluate(() => { const c = document.getElementById("__demo_cursor"); if (c) c.style.display = "none"; });
+    if (process.env.COVER_PNG) await page.screenshot({ path: process.env.COVER_PNG });
+  }
   await sleep(1);
 
   // Capture frames with the browser's screencast (sharper than the built-in video recorder).
@@ -94,9 +127,31 @@ const CURSOR = () => {
     throw new Error(`Could not find "${text}" on screen`);
   };
 
+  let onCover = !!script.scenes[0]?.cover, chapter = "";
+  const setBadge = (label) => page.evaluate((label) => {
+    sessionStorage.setItem("__demo_badge", label || "");
+    const b = document.getElementById("__demo_badge");
+    if (b) { b.textContent = label || ""; b.style.display = label ? "block" : "none"; }
+  }, label).catch(() => {});
   const run = async (a) => {
-    if (a.goto !== undefined) {
-      if (new URL(page.url()).pathname !== a.goto) { await page.goto(site + a.goto); await sleep(1); }
+    if (a.type) {
+      const box = page.locator("textarea:visible").first();
+      await moveTo(box);
+      await ring();
+      await box.click();
+      await page.keyboard.type(a.type, { delay: 24 });
+      await sleep(0.3);
+    } else if (a.press) {
+      await page.keyboard.press(a.press);
+      await sleep(1.2);
+    } else if (a.goto !== undefined) {
+      if (onCover || new URL(page.url()).pathname !== a.goto) {
+        await page.goto(site + a.goto);
+        await page.waitForLoadState("networkidle").catch(() => {});
+        onCover = false;
+        await setBadge(chapter);
+        await sleep(0.6);
+      }
     } else if (a.click) {
       const el = await find(a.click);
       await moveTo(el);
@@ -125,6 +180,8 @@ const CURSOR = () => {
   let vi = 0;
   for (const [si, scene] of script.scenes.entries()) {
     const sceneStart = now();
+    chapter = scene.cover ? "" : scene.chapter || "";
+    if (!scene.cover && !onCover) await setBadge(chapter);
     for (const step of scene.steps) {
       const v = voice[vi++];
       const t0 = now();
@@ -136,6 +193,7 @@ const CURSOR = () => {
       const left = t0 + v.duration + GAP - now();
       if (left > 0) await sleep(left);
     }
+    if (si < script.scenes.length - 1) await sleep(0.6); // a short breath between chapters
     timeline.scenes.push({ id: scene.id, short: !!scene.short, start: sceneStart, end: now() });
     console.log(`  recorded scene ${scene.id} (${(now() - sceneStart).toFixed(1)}s)`);
   }

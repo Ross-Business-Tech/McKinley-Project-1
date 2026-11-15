@@ -21,8 +21,8 @@ import soundfile as sf
 FPS = 30
 RATE = 24000
 STYLE = (
-    "FontName=Inter,FontSize=12,PrimaryColour=&H00FFFFFF,OutlineColour=&H28000000,BackColour=&H28000000,"
-    "BorderStyle=3,Outline=5,Shadow=0,MarginV=12,MarginL=40,MarginR=40,Alignment=2"
+    "FontName=Inter,FontSize=11,PrimaryColour=&H00FFFFFF,OutlineColour=&H28000000,BackColour=&H28000000,"
+    "BorderStyle=3,Outline=5,Shadow=0,MarginV=4,MarginL=40,MarginR=40,Alignment=2"
 )
 
 
@@ -100,7 +100,7 @@ def main() -> None:
         f.write(f"file '{Path(frames[-1]['file']).resolve()}'\n")
     raw = work / "raw.mp4"
     run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat), "-vf",
-         f"fps={FPS},scale=1920:1080:flags=lanczos,format=yuv420p", "-c:v", "libx264", "-crf", "16", "-preset", "medium",
+         f"fps={FPS},scale=1664:936:flags=lanczos,pad=1920:1080:128:22:color=0x1b2836,format=yuv420p", "-c:v", "libx264", "-crf", "16", "-preset", "medium",
          "-t", f"{end:.3f}", str(raw)])
 
     # 2. Narration track: every line placed where it was spoken during the recording.
@@ -152,6 +152,8 @@ def main() -> None:
         parts.append(part)
         short_caps += [(s - a + offset, e - a + offset, t) for s, e, t in caps if a - 0.01 <= s < b]
         offset += d
+    if not parts:
+        return
     lst = work / "short.txt"
     lst.write_text("".join(f"file '{p}'\n" for p in parts))
     joined = work / "short_joined.mp4"
