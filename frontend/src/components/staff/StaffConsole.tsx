@@ -61,11 +61,21 @@ function teamLabel(t: string): string {
 
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
-  // A hosted backend's staff routes need the staff token (X-Staff-Token); until it is entered, show the recorded demo.
-  const hosted = state?.health?.app_env === "hosted";
+  // Whether the staff routes need the staff token is decided by the backend's own answer to a staff request
+  // (200 = open, e.g. local development; 403 = token needed), never by APP_ENV: a shared backend may run in any mode.
+  const [access, setAccess] = useState<"checking" | "open" | "locked">("checking");
   const [unlocked, setUnlocked] = useState(false);
-  const staffTools = Boolean(state?.live && (!hosted || unlocked));
+  const staffTools = Boolean(state?.live && (access === "open" || unlocked));
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!state?.live) return;
+    api
+      .prototypeRecords(1)
+      .then(() => setAccess("open"))
+      // only a refusal asks for the token; any other failure is shown by the tabs as before
+      .catch((e: unknown) => setAccess(e instanceof ApiError && e.status === 403 ? "locked" : "open"));
+  }, [state?.live]);
 
   useEffect(() => {
     boot()
@@ -104,9 +114,9 @@ export function StaffConsole() {
             </span>
           </p>
         )}
-        {state?.live && !staffTools && <StaffUnlock onUnlocked={() => setUnlocked(true)} />}
-        {!state && !error && <p role="status">Loading…</p>}
-        {state && (
+        {state?.live && access === "locked" && !unlocked && <StaffUnlock onUnlocked={() => setUnlocked(true)} />}
+        {(!state || (state.live && access === "checking")) && !error && <p role="status">Loading…</p>}
+        {state && (!state.live || access !== "checking") && (
           <Tabs defaultValue="records">
             {/* One row on every width; on phones it scrolls sideways. Selected = 3px blue bar. */}
             <div className="-mx-4 overflow-x-auto overscroll-x-contain border-b border-mk-line px-4 [scrollbar-width:thin] md:mx-0 md:px-1">
