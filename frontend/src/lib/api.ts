@@ -77,6 +77,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Staff token for the hosted staff console: held in this module's memory only (lost on reload or tab close). Never
+// written to storage, URLs, logs or the build. Sent only on the staff routes below.
+let staffToken: string | null = null;
+export function setStaffToken(token: string | null): void {
+  staffToken = token?.trim() || null;
+}
+const staffInit = (): RequestInit | undefined => (staffToken ? { headers: { "X-Staff-Token": staffToken } } : undefined);
+
 export const api = {
   health: () => request<Health>("/api/health"),
   personas: () => request<Persona[]>("/api/personas"),
@@ -86,9 +94,11 @@ export const api = {
     request<ActionResult>("/api/actions/confirm", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
   cancelAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
     request<ActionResult>("/api/actions/cancel", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
-  prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`),
-  staffConversations: (limit = 30) => request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`),
-  staffConversation: (hash: string) => request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`),
+  prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`, staffInit()),
+  staffConversations: (limit = 30) =>
+    request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`, staffInit()),
+  staffConversation: (hash: string) =>
+    request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`, staffInit()),
 };
 
 /** Whether the customer page may offer the demo sign-in picker. The backend decides (app/auth.py): a hosted backend

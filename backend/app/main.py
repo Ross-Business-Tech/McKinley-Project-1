@@ -57,7 +57,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.cors_origin_list,
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Staff-Token"],  # the hosted staff console sends the staff token
 )
 
 

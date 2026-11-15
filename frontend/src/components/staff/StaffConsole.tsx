@@ -2,10 +2,10 @@
 
 import { Info } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ApiError, api, loadDemoSnapshot } from "@/lib/api";
+import { ApiError, api, loadDemoSnapshot, setStaffToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
   DemoSnapshot,
@@ -61,8 +61,10 @@ function teamLabel(t: string): string {
 
 export function StaffConsole() {
   const [state, setState] = useState<Boot | null>(null);
-  // On a hosted backend the staff routes refuse browsers (no staff sign-in yet): use the recorded demo there.
-  const staffTools = Boolean(state?.live && state.health?.app_env !== "hosted");
+  // A hosted backend's staff routes need the staff token (X-Staff-Token); until it is entered, show the recorded demo.
+  const hosted = state?.health?.app_env === "hosted";
+  const [unlocked, setUnlocked] = useState(false);
+  const staffTools = Boolean(state?.live && (!hosted || unlocked));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,15 +104,7 @@ export function StaffConsole() {
             </span>
           </p>
         )}
-        {state?.live && !staffTools && (
-          <p role="note" data-testid="staff-locked" className="flex gap-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3 text-mk-muted">
-            <Info aria-hidden className="mt-1 size-4 shrink-0" />
-            <span>
-              Staff tools are locked on the shared site until real staff sign-in exists. Saved requests and live
-              conversations below show the recorded demo, not this backend&apos;s data.
-            </span>
-          </p>
-        )}
+        {state?.live && !staffTools && <StaffUnlock onUnlocked={() => setUnlocked(true)} />}
         {!state && !error && <p role="status">Loading…</p>}
         {state && (
           <Tabs defaultValue="records">
@@ -138,6 +132,80 @@ export function StaffConsole() {
         )}
       </main>
     </div>
+  );
+}
+
+// ---- hosted: the staff token, kept in memory for this page only (app/api/staff_guard.py checks it) ---------
+
+function StaffUnlock({ onUnlocked }: { onUnlocked: () => void }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    setBusy(true);
+    setErr(null);
+    setStaffToken(value);
+    try {
+      await api.prototypeRecords(1); // any staff route: 403 STAFF_ONLY means the token is wrong
+      setValue("");
+      onUnlocked();
+    } catch (e: unknown) {
+      setStaffToken(null);
+      setErr(
+        e instanceof ApiError && e.status === 403
+          ? "That staff token isn't valid. Check it and try again."
+          : e instanceof ApiError
+            ? e.message
+            : "Could not check the token.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form
+      onSubmit={submit}
+      data-testid="staff-locked"
+      className="space-y-2 rounded-md border border-mk-line bg-mk-surface px-4 py-3"
+    >
+      <p className="flex gap-2 text-mk-muted">
+        <Info aria-hidden className="mt-1 size-4 shrink-0" />
+        <span>
+          Enter the staff token to see this backend&apos;s saved requests and conversations. Until then, the tabs below
+          show the recorded demo. The token is kept only while this page is open.
+        </span>
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="staff-token" className="text-sm text-mk-muted">Staff token</label>
+          <input
+            id="staff-token"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-invalid={err ? true : undefined}
+            aria-describedby={err ? "staff-token-error" : undefined}
+            className="mk-focus h-11 w-72 max-w-full rounded-md border border-mk-line-strong bg-white px-3"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy || !value.trim()}
+          className="mk-focus inline-flex min-h-11 items-center rounded-md bg-mk-brand px-4 font-medium text-white disabled:opacity-60"
+        >
+          {busy ? "Checking…" : "Unlock staff tools"}
+        </button>
+      </div>
+      {err && (
+        <p id="staff-token-error" role="alert" className="text-mk-danger">
+          {err}
+        </p>
+      )}
+    </form>
   );
 }
 
