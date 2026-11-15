@@ -127,7 +127,7 @@
     @apply font-sans;
   }
 }
-/* ---- McKinley design system (docs/design/BRAND_SYSTEM.md) ----
+/* ---- McKinley design system (docs/HANDOFF.md, UI standards) ----
    Brand blue #4e6f92 is McKinley's own (mckinley.com stylesheet: "bg-style-blue", "font-color-blue", and the app
    icon). Status colours are independent of the brand: green = saved, amber = a person should help, red = emergency.
    Every status is also carried by text and an icon; colour only reinforces it. Contrast (WCAG 2.2 AA) for each pair

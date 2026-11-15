@@ -6,7 +6,7 @@ authentication: anyone who can reach a demo-enabled backend can act as any synth
 because every persona is synthetic. On a hosted backend demo personas are off (config.hosted_problems refuses to
 start otherwise), so every customer request is anonymous and no resident data is reachable.
 
-Rules (see docs/security/AUTHORIZATION_BOUNDARIES.md):
+Rules (see docs/SECURITY.md):
 - anonymous by default; never derived from conversation text, the model, or audience classification.
 - demo_persona only for a KNOWN demo persona id, only when the deployment allows demo personas.
 - authenticated_resident is defined for the future and never produced (no real auth exists).

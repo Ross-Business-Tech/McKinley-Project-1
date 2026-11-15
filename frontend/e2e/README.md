@@ -32,4 +32,4 @@ node e2e/mobile-acceptance.mjs out /tmp/mk-shots            # or: an https:// UR
 
 Screenshots and `results.json` go to the output folder. The test cannot open a real on-screen keyboard. Before
 calling the public requirement met, also try a real iPhone (Safari) and Android phone (Chrome)
-([docs/INTERACTIVE_DEMO_READINESS.md](../../docs/INTERACTIVE_DEMO_READINESS.md)).
+([docs/TESTING.md](../../docs/TESTING.md)).

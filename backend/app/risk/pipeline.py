@@ -2,7 +2,7 @@
 -> recommend (human escalation). Sprint 6: concept slots in layer 1 (risk/concepts.py), incident-specific notice
 selection (risk/category.py) and persistent incident state (risk/incident.py, applied by chat_engine step 2b).
 Runs before workflow routing and before any response generation.
-See docs/safety/safety-evaluation.md and docs/diagrams/safety-architecture.md."""
+See docs/ARCHITECTURE.md (safety pipeline)."""
 
 from app.risk.category import refine
 from app.risk.classifier import SemanticRiskClassifier
