@@ -1,19 +1,19 @@
-# Demo video: workflow walkthrough
+# Demo video: how to use the McKinley Resident Assistant
 
 Finished files are in [`output/`](output/):
 
 | File | What it is |
 | --- | --- |
-| `mckinley-demo-full.mp4` | About 2 min 5 s, 1920×1080, narrated, captions burned in, starts with the cover |
+| `mckinley-demo-full.mp4` | About 2 min 57 s, 1920×1080, narrated, captions burned in, starts with the cover |
 | `mckinley-demo-full.srt` | The same captions as a separate file (YouTube, Canvas, video editors) |
 | `cover.png` | The cover on its own (1920×1080), for a thumbnail or a slide |
 
-The video follows the required structure, with a label for each part in the corner:
-1. Who it's for and what it replaces
-2. The input
-3. The output and what it means
-4. The human check
-5. One limitation
+Told from a resident's point of view, with a label in the corner for each part:
+- **Why it helps:** the phone-call problem it replaces, and who it is for.
+- **Step 1 · Sign in**, **Step 2 · Describe the problem** (including a follow-up question),
+  **Step 3 · Check your request**, **Step 4 · Send and follow up** (reference number, status, Talk to a person),
+  **Step 5 · Stay safe** (gas-leak alert).
+- **What happens next:** the staff queue, and one thing to know (no booking yet: a team member takes it from there).
 
 Rules followed: sample data only (a made-up resident, "Marisol", with fictional details). The recording shows only
 the app page: no browser tabs, bookmarks or notifications are captured.

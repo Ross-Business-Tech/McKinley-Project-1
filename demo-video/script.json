@@ -3,17 +3,17 @@
   "voice": "af_heart",
   "speed": 1.1,
   "cover": {
-    "kicker": "Workflow walkthrough",
+    "kicker": "How it works",
     "title": "McKinley Resident Assistant",
-    "subtitle": "Report a repair by chat: one message in, a checked request out.",
+    "subtitle": "Report a repair in a short chat, any time of day.",
     "chapters": [
-      "Who it's for",
-      "The input",
-      "The output",
-      "The human check",
-      "One limitation"
+      "Sign in",
+      "Describe the problem",
+      "Check your request",
+      "Send and follow up",
+      "Stay safe"
     ],
-    "footer": "Prototype · Sample data only, no real residents"
+    "footer": "Demo · Sample data"
   },
   "scenes": [
     {
@@ -21,7 +21,7 @@
       "cover": true,
       "steps": [
         {
-          "say": "Here's a two-minute walkthrough of the McKinley Resident Assistant, an AI chat assistant for apartment residents.",
+          "say": "Meet the McKinley Resident Assistant, an AI chat assistant that helps you take care of your apartment, any time of day.",
           "do": [
             {
               "wait": 0.5
@@ -31,11 +31,11 @@
       ]
     },
     {
-      "id": "who",
-      "chapter": "1 / 5 · Who it's for",
+      "id": "problem",
+      "chapter": "Why it helps",
       "steps": [
         {
-          "say": "It's built for people who live in a McKinley community, or are thinking about moving into one.",
+          "say": "When something breaks at home, getting it fixed usually starts with a phone call.",
           "do": [
             {
               "goto": "/"
@@ -46,7 +46,7 @@
           ]
         },
         {
-          "say": "Today, reporting a broken air conditioner means calling the office, waiting on hold, or leaving a voicemail and hoping someone writes it all down.",
+          "say": "You call the office, wait on hold, or leave a voicemail, and hope every detail gets written down. After hours, it's even harder.",
           "do": [
             {
               "hover": "I live at McKinley"
@@ -54,7 +54,7 @@
           ]
         },
         {
-          "say": "The assistant replaces that phone call. It's open around the clock, and it turns a quick message into a complete repair request.",
+          "say": "The McKinley assistant replaces that call with a short chat. You describe the problem in your own words, and it builds a complete repair request for you.",
           "do": [
             {
               "hover": "Message the assistant"
@@ -62,37 +62,60 @@
           ]
         },
         {
-          "say": "People looking for a new home can use it too, to ask about communities or request a tour.",
+          "say": "It also helps people looking for a new home, with questions about our communities and tour requests.",
           "do": [
             {
               "hover": "Request a tour"
-            }
-          ]
-        },
-        {
-          "say": "We'll follow Marisol, a sample resident with made-up details, as she signs in.",
-          "do": [
-            {
-              "select": "R001"
             }
           ]
         }
       ]
     },
     {
-      "id": "input",
-      "chapter": "2 / 5 · The input",
+      "id": "sign-in",
+      "chapter": "Step 1 · Sign in",
       "steps": [
         {
-          "say": "The input is just a message, written the way she would say it out loud.",
+          "say": "To start, open the assistant on your phone or computer, and sign in to your account.",
           "do": [
             {
-              "type": "My AC stopped cooling again, in the living room. It's the third time this year. You can come in if I'm not home."
+              "select": "R001"
             }
           ]
         },
         {
-          "say": "No forms and no special words. One sentence says what's wrong, which room, and whether maintenance may come in.",
+          "say": "It greets you by name and offers shortcuts for the most common tasks: report a repair, check your requests, ask about your renewal, or talk to the office.",
+          "do": [
+            {
+              "hover": "Report a repair"
+            },
+            {
+              "hover": "Check my requests"
+            },
+            {
+              "hover": "Ask about my renewal"
+            },
+            {
+              "hover": "Talk to the office"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "describe",
+      "chapter": "Step 2 · Describe the problem",
+      "steps": [
+        {
+          "say": "You can tap a shortcut, or just type what's going on, the way you'd explain it to a neighbor.",
+          "do": [
+            {
+              "type": "My AC stopped cooling again. This is the third time this year."
+            }
+          ]
+        },
+        {
+          "say": "Then press Send.",
           "do": [
             {
               "press": "Enter"
@@ -100,21 +123,40 @@
           ]
         },
         {
-          "say": "If she leaves something out, like the room, the assistant simply asks a short follow-up question.",
+          "say": "If anything is missing, the assistant asks a short follow-up question. Here, it needs to know which room the problem is in.",
           "do": [
             {
-              "wait": 0.3
+              "hover": "Which room is it in"
+            }
+          ]
+        },
+        {
+          "say": "Under the reply, a progress note shows what's still needed to finish the request.",
+          "do": [
+            {
+              "hover": "Still to add"
+            }
+          ]
+        },
+        {
+          "say": "Marisol answers in one line, and adds that maintenance may come in while she's out.",
+          "do": [
+            {
+              "type": "The living room. You can come in if I'm not home."
+            },
+            {
+              "press": "Enter"
             }
           ]
         }
       ]
     },
     {
-      "id": "output",
-      "chapter": "3 / 5 · The output",
+      "id": "check",
+      "chapter": "Step 3 · Check your request",
       "steps": [
         {
-          "say": "The output is a repair request card, filled in from her message. The label Ready to send means nothing is missing.",
+          "say": "Now the assistant shows a repair request card, filled in from the conversation. Ready to send means nothing is missing.",
           "do": [
             {
               "hover": "Ready to send"
@@ -122,7 +164,7 @@
           ]
         },
         {
-          "say": "Each row is one part of the request: what's wrong, where it is, and her entry permission.",
+          "say": "Read it row by row: what's wrong, where it is, and whether maintenance may enter.",
           "do": [
             {
               "hover": "What's wrong"
@@ -136,48 +178,45 @@
           ]
         },
         {
-          "say": "It also checks her account history. An earlier AC request is still open, so the team can see this is a repeat problem, not a brand-new one.",
+          "say": "It also adds useful history from your account. Here, an earlier AC request is still open, so the team can see this is a repeat problem.",
           "do": [
             {
               "hover": "Earlier requests"
+            }
+          ]
+        },
+        {
+          "say": "Nothing is sent until you say so. If a detail is wrong, just type the correction, or tap Don't send.",
+          "do": [
+            {
+              "hover": "Don't send"
             }
           ]
         }
       ]
     },
     {
-      "id": "human-check",
-      "chapter": "4 / 5 · The human check",
+      "id": "send",
+      "chapter": "Step 4 · Send and follow up",
       "steps": [
         {
-          "say": "Nothing is sent on its own. Marisol reviews the card first. If something's wrong, she can tap Don't send, or just type a correction.",
-          "do": [
-            {
-              "hover": "Don't send"
-            }
-          ]
-        },
-        {
-          "say": "And if she'd rather talk to someone, Talk to a person is always on screen.",
-          "do": [
-            {
-              "hover": "Talk to a person"
-            }
-          ]
-        },
-        {
-          "say": "When it looks right, she taps Send, and gets a reference number.",
+          "say": "When everything looks right, tap Send repair request.",
           "do": [
             {
               "click": "Send repair request"
-            },
+            }
+          ]
+        },
+        {
+          "say": "You get a reference number right away, so you can mention it later.",
+          "do": [
             {
               "hover": "Reference DEMO-WO"
             }
           ]
         },
         {
-          "say": "She can tap Check its status at any time to see where it stands.",
+          "say": "To see where it stands, tap Check its status, or come back any time and ask.",
           "do": [
             {
               "click": "Check its status"
@@ -185,27 +224,104 @@
           ]
         },
         {
-          "say": "Then a McKinley staff member reviews it in the staff queue, with the room, the entry permission and the priority, before anything is scheduled.",
+          "say": "The reply lists every request on your account, each with a clear status, like Follow-up owed, or Saved.",
           "do": [
             {
-              "goto": "/staff/"
+              "hover": "Follow-up owed"
+            }
+          ]
+        },
+        {
+          "say": "If you'd rather speak with someone, tap Talk to a person. The assistant prepares a note for the office with what you've already said, so you don't have to repeat yourself.",
+          "do": [
+            {
+              "click": "Talk to a person"
             },
             {
-              "hover": "DEMO-WO-1001"
-            },
+              "hover": "Note for the office"
+            }
+          ]
+        },
+        {
+          "say": "Tap Send note, and it's on its way to the team.",
+          "do": [
             {
-              "hover": "normal priority"
+              "click": "Send note"
             }
           ]
         }
       ]
     },
     {
-      "id": "limitation",
-      "chapter": "5 / 5 · One limitation",
+      "id": "safety",
+      "chapter": "Step 5 · Stay safe",
       "steps": [
         {
-          "say": "One limitation: the assistant isn't connected to McKinley's maintenance system yet.",
+          "say": "Some problems can't wait. If something is dangerous, like a gas smell, just say so.",
+          "do": [
+            {
+              "type": "I smell gas in my kitchen"
+            },
+            {
+              "press": "Enter"
+            }
+          ]
+        },
+        {
+          "say": "The assistant puts safety first. It tells you to leave right away, and to call 911 once you're outside, before anything else.",
+          "do": [
+            {
+              "hover": "Leave now, then call 911 from outside"
+            },
+            {
+              "wait": 1
+            },
+            {
+              "hover": "Call 911 once you're outside"
+            }
+          ]
+        },
+        {
+          "say": "It also saves an urgent note for the team, but calling 911 yourself always comes first.",
+          "do": [
+            {
+              "hover": "An urgent note is saved"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "next",
+      "chapter": "What happens next",
+      "steps": [
+        {
+          "say": "On the McKinley side, requests land in the staff queue, with urgent issues at the top.",
+          "do": [
+            {
+              "goto": "/staff/"
+            },
+            {
+              "hover": "Urgent"
+            }
+          ]
+        },
+        {
+          "say": "Each one shows the problem, the room, the entry permission and the priority, so a team member can review it and plan the visit.",
+          "do": [
+            {
+              "hover": "DEMO-WO-1001"
+            },
+            {
+              "hover": "Entry permission"
+            },
+            {
+              "hover": "normal priority"
+            }
+          ]
+        },
+        {
+          "say": "Good to know: the assistant isn't linked to McKinley's maintenance system yet, so it can't book a visit time for you. A team member takes it from there.",
           "do": [
             {
               "hover": "Nothing here reaches a real system"
@@ -213,18 +329,13 @@
           ]
         },
         {
-          "say": "Requests are saved in this prototype only, so staff still enter the work order and schedule the visit themselves.",
+          "say": "So whenever something needs fixing, open the chat, describe the problem, check your request, and send. Thanks for watching.",
           "do": [
             {
-              "hover": "Saved in demo"
-            }
-          ]
-        },
-        {
-          "say": "So that's the workflow: one message in, a checked request out, and a person in the loop at every step. Thanks for watching.",
-          "do": [
+              "goto": "/"
+            },
             {
-              "wait": 0.5
+              "hover": "McKinley assistant"
             }
           ]
         }
