@@ -63,7 +63,38 @@ _LIVE_REST = re.compile(r"\b(?:now|right now|still|currently|again|just did|just
                         re.I)
 
 
+# PR #18 review: words that, together with a provider content-filter refusal (and only then), justify the calm 988 line
+_NOT_DEATH = (r"(?!\W+(?:my|the|your|her|his|easter|eggs?|tie|shirts?|hair|fabric|yarn|clothes|in|at home|is|was|for|"
+              r"of|if|when|before|waiting|laughing|tired|early|late|on time|in time|with|feeling)\b)")
+_NOT_A_CHORE = (r"(?!\W+(?:way\W+)?(?:to\W+)?(?:break|move|remov\w*|get|pay|cancel|fix|clean|do|switch|transfer|renew|"
+                r"end (?:the|a|my lease)|tell|ask|deal|handle|paint|install|unclog)\b)")
+_SELF_HARM_WORDS = re.compile(
+    rf"\b(?:(?:i want to|i wanna|i'?m going to|i'?m gonna|i just want to|i should just|let me) die{_NOT_DEATH}|"
+    rf"i(?:'d| would) rather be dead|(?:wish|want) (?:i was|i were|to be) dead|(?:way|ways|how) to die{_NOT_DEATH}|"
+    rf"kill(?:ing)? myself|suicid\w*|overdos(?:e|ing)\b(?! of the| on coffee)|"
+    rf"od on (?:my |all |the |\d+ )?(?:pills|meds|tylenol|insulin|sleeping pills)|(?:not|never) wake up{_NOT_DEATH}|"
+    rf"wake up again|painless(?:ly)? (?:way|death|method|exit){_NOT_A_CHORE}|least painful(?: way)?{_NOT_A_CHORE}|"
+    rf"end (?:it all|my life|my suffering)(?!\W+(?:and|by|with)\b)|hang myself|slit (?:my )?wrists?|"
+    rf"(?:take|took|swallow\w*|down) (?:all|enough|a whole bottle of|the whole bottle of) (?:of )?(?:my |the )?"
+    rf"(?:pills|tylenol|meds|sleeping pills)|lethal dose|fatal dose|"
+    rf"how many (?:pills|tylenol|tablets|meds|sleeping pills|\w+ pills) (?:would|does|will) it take|"
+    rf"(?:point|reason) (?:in|to) (?:living|live|go on|keep going)(?!\W+(?:here|in|at|there|with)\b)|"
+    rf"morir(?:me)?\b(?!\W+de)|matarme)\b", re.I)
+_MADE_UP = re.compile(r"\b(?:game|gaming|fortnite|minecraft|roblox|gta|call of duty|video ?games?|story|stories|novel|"
+                      r"fiction|character|movie|film|show|episode|series|book|screenplay|script|plot|song|lyrics|"
+                      r"d&d|dnd|campaign|zombies?|halloween)\b", re.I)
+
+
+def self_harm_words(message: str) -> bool:
+    return bool(_SELF_HARM_WORDS.search(message or "")) and not _MADE_UP.search(message or "")
+
+
 def detect(message: str, recent: list[str] | None = None) -> DeterministicRisk:
+    out = _detect_spans(message, recent)
+    return out.model_copy(update={"self_harm_words": self_harm_words(message)}) if self_harm_words(message) else out
+
+
+def _detect_spans(message: str, recent: list[str] | None = None) -> DeterministicRisk:
     """`recent` = earlier user messages in this conversation (oldest first, current message excluded).
 
     Sprint 8: the rules run on the message and on what is left after removing benign spans (app/risk/neutralize.py:

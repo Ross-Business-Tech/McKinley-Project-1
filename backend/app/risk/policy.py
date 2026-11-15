@@ -16,7 +16,8 @@ Rules are applied in order; the first that fires decides. Each has an id recorde
      model can only ADD guidance, never remove deterministic guidance. A semantic "none" is recorded as a conflict.
   R9e after a person-danger alert, new danger words             -> full alert again (same kind)
   R4b the provider's content filter blocked the check, and the rules or conversation show a sign of danger
-     -> calm line (988 for distress / self-harm, else 911); R4n the same block with no sign -> no safety text.
+     -> calm line (988 for distress / self-harm, else 911); R4c the same block with only a weak self-directed death /
+     pain / overdose word -> the calm 988 line; R4n the same block with nothing -> no safety text.
   R9 earlier in this conversation: a person-danger alert       -> keep a calm line (988 for self-harm, else 911)
      on every later turn, even if the person says "I'm fine, stop" (applies wherever R7/R8 would show nothing).
   R8 nothing                                                    -> no safety text.
@@ -100,6 +101,11 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
             "self_harm" in (prior_hazards or []))
         evidence = bool(det.care or det.mentioned_kind or det.self_harm_intent or det.concern or
                         det.conditional_danger or det.happened or prior)  # prior: an earlier person-danger alert
+        if not evidence and det.self_harm_words:  # R4c: a weak self-directed word + the block: the calm 988 line
+            return RiskDecision(response="care_line", care="distress", also_988=True, needs_human=True,
+                                escalation_priority="high", rule="R4c", sources=["deterministic", "provider_block"],
+                                conflict="provider content filter blocked the semantic check; a self-directed death "
+                                         "or pain word: calm 988 line, no alert", degraded=True)
         if not evidence:  # R4n: no warning without a sign of danger; recorded so staff can see the block
             return RiskDecision(response="none", rule="R4n", sources=["deterministic", "provider_block"],
                                 conflict="provider content filter blocked the semantic check; no danger sign in the "

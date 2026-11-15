@@ -121,7 +121,8 @@ sequenceDiagram
    R5c hypothetical, past, or conditional hazard → calm safety info; R6 distress / unwell → that care line; R9e new
    danger words after a person-danger alert → full alert again; R4b the provider's content filter refused the
    message **and** the rules or an earlier person-danger alert show a sign of danger → calm line (988 for distress or
-   self-harm, else 911) plus a staff check; R4n the same refusal with no sign → no safety text (a filter alone is not
+   self-harm, else 911) plus a staff check; R4c the same refusal with only a weak self-directed death / pain /
+   overdose phrase → the calm 988 line; R4n the same refusal with no sign → no safety text (a filter alone is not
    evidence of danger); R7 danger vocabulary → 911 care line; R9 a person-danger alert earlier in the chat → keep a
    calm line; R8 nothing.
 4. **Incident state** (`risk/incident.py`, stored as `gate_decisions` rows with mode `safety_incident`, no message

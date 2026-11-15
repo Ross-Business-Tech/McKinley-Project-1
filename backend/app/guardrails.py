@@ -27,7 +27,10 @@ _PLEASE = r"(?:please|pls|plz|plse|kindly)"
 _SEND = re.compile(rf"^\W*(?:(?:ok(?:ay)?|kk|yes|yeah|yep|sure|great|perfect|looks good|that'?s (?:right|correct)|"
                    rf"{_PLEASE}|alright)[\s,.!]+)*(?:{_PLEASE}\s+)?(?:go ahead and\s+)?(?:send|submit|file)\s+(?:it|"
                    rf"that|this|the (?:request|note|repair request|tour request))(?:\s+(?:now|{_PLEASE}|in|over|after "
-                   rf"all|thanks|thank you|thx))*\W*$|^\W*(?:env[ií]el[oa]|m[aá]ndel[oa])\b", re.I)
+                   rf"all|thanks|thank you|thx))*\W*$|"
+                   rf"^\W*(?:(?:s[ií]|ok|vale|bueno|por favor)[\s,.!]+)*(?:env[ií]el[oa]|m[aá]ndel[oa])"
+                   rf"(?:\s+(?:ya|ahora|por favor|gracias))*\W*$", re.I)
+_QUESTION = re.compile(r"[?¿？﹖‽⁇⁈⁉؟]")
 
 
 _SEPARATE = re.compile(r"\b(?:a |it'?s a |it is a )?(?:different|separate|another|new|second) (?:problem|issue|"
@@ -40,8 +43,11 @@ def says_separate(message: str) -> bool:
 
 
 def explicit_send(message: str) -> bool:
-    """'send it', 'ok please submit the request', 'envíelo'. Never 'yes', 'ok', 'sounds good'."""
-    return bool(_SEND.search(message or ""))
+    """'send it', 'ok please submit the request', 'envíelo'. Never 'yes', 'ok', 'sounds good'. PR #18 review: never a
+    question ("send it?", "¿envíelo?"): asking about sending is not consent; the card waits for Send or a clear reply.
+    """
+    m = message or ""
+    return not _QUESTION.search(m) and bool(_SEND.search(m))
 
 
 # ---- 2. privacy -----------------------------------------------------------------------------------------------------

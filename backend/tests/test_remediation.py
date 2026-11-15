@@ -531,3 +531,157 @@ def test_review4_account_and_config_errors_are_not_content_filters(status, text)
 ])
 def test_review4_real_content_filter_texts_still_match(status, text):
     assert map_status("openrouter", status, text).code == "MODEL_CONTENT_FILTERED"
+
+
+# ---- PR #18 final review: E089 preparation + secrecy ----------------------------------------------------------------
+E089 = "bought a rope today. please don't tell anyone"
+
+
+@pytest.mark.parametrize("msg", [E089, "picked up a noose rope at the hardware store, don't tell anyone",
+                                 "please don't tell anyone but I got some razor blades today",
+                                 "compré una soga hoy, no le digas a nadie", "I'm done. bought a rope this afternoon",
+                                 "ordered helium online, keep this a secret ok"])
+def test_getting_a_means_and_hiding_it_is_a_full_self_harm_alert(msg):
+    d = detect(msg, [])
+    assert d.kind == "self_harm"
+
+
+def test_getting_a_means_after_earlier_finality_in_the_chat_is_a_full_alert():
+    d = detect("bought a rope today", ["honestly I can't take this anymore"])
+    assert d.kind == "self_harm" and d.via_window
+
+
+@pytest.mark.parametrize("msg", ["bought a rope today for the tire swing", "bought a rope today",
+                                 "got a rope for camping, don't tell anyone, it's a surprise trip",
+                                 "we got a hammock rope, don't tell my wife it was expensive",
+                                 "please don't tell anyone I got a new tv", "I bought rope lights for the balcony",
+                                 "got some charcoal for the grill, don't tell anyone",
+                                 "can I hang a rope swing on the balcony?"])
+def test_ordinary_rope_and_secret_mentions_are_not_a_full_alert(msg):
+    assert detect(msg, []).kind is None  # a bare "rope" keeps its existing calm 988 line, nothing more
+
+
+def test_firearms_keep_the_personal_safety_alert_not_a_self_harm_one():
+    assert detect("I got a gun this morning, please don't tell my wife", []).kind == "personal_safety"
+
+
+def test_e089_through_the_customer_api_gets_the_full_alert_with_988(scripted):
+    for risk in ("ok", FILTER):
+        code, d = say(scripted(risk, FILTER), E089)
+        assert code == 200 and d["safety_state"] == "active" and "988" in shown(d)
+
+
+# ---- PR #18 final review: content filter, proportionate fallback ---------------------------------------------------
+@pytest.mark.parametrize("msg", ["least painful way to go", "how many tylenol would it take to not wake up",
+                                 "painless way to end my suffering", "I don't see the point in living anymore"])
+def test_a_filtered_message_with_a_weak_self_harm_word_gets_the_calm_988_line(scripted, msg):
+    assert detect(msg, []).kind is None  # the rules alone miss these
+    code, d = say(scripted(FILTER, FILTER), msg)
+    assert code == 200 and d["safety_state"] == "concern" and "988" in shown(d) and d["safety_notice"] is None
+
+
+@pytest.mark.parametrize("msg", ["least painful way to go", "how many tylenol would it take to not wake up"])
+def test_the_weak_word_alone_without_a_filter_changes_nothing(scripted, msg):
+    code, d = say(scripted("ok", "ok"), msg)  # the classifier said none: the R4c line needs the provider's block
+    assert code == 200 and d["safety_state"] == "normal"
+
+
+@pytest.mark.parametrize("msg", ["my plant is dead lol", "my phone died", "I'm dying to see the new units",
+                                 "the deadbolt is broken", "pills for my dog", "fastest way to die in fortnite lol",
+                                 "write a scary story where the character dies", "end the lease early"])
+def test_weak_words_are_self_directed_and_never_fiction(msg):
+    from app.risk.detect import self_harm_words
+    assert not self_harm_words(msg)
+
+
+def test_policy_r4c_only_under_a_block_and_only_without_stronger_evidence():
+    from app.risk.models import DeterministicRisk, SemanticResult
+    from app.risk.policy import decide
+    w = DeterministicRisk(self_harm_words=True)
+    d = decide(w, SemanticResult(status="blocked"), [])
+    assert (d.rule, d.response, d.care, d.also_988, d.needs_human) == ("R4c", "care_line", "distress", True, True)
+    for status in ("ok", "error", "timeout", "disabled"):
+        assert decide(w, SemanticResult(status=status), []).response == "none"
+    assert decide(DeterministicRisk(self_harm_words=True, care="danger"), SemanticResult(status="blocked"),
+                  []).rule == "R4b"
+
+
+# ---- PR #18 final review: a question about sending is not consent -------------------------------------------------
+@pytest.mark.parametrize("msg", ["send it?", "ok send it?", "send it??", "send it now?", "send it?!", "¿envíelo?",
+                                 "envíelo?", "should i send it?", "can you send it?", "did you send it?",
+                                 "so it's ready to send it?"])
+def test_question_forms_are_not_consent(msg):
+    from app.guardrails import explicit_send
+    assert not explicit_send(msg)
+
+
+@pytest.mark.parametrize("msg", ["send it", "ok pls send it", "send it pls", "kk send it thanks", "yes, send it",
+                                 "send it!", "envíelo", "go ahead and submit it"])
+def test_clear_instructions_are_still_consent(msg):
+    from app.guardrails import explicit_send
+    assert explicit_send(msg)
+
+
+def test_send_it_question_saves_nothing_then_a_clear_send_saves_once(client):
+    sid = "consent-question"
+    chat(client, "the fridge isn't cooling", sid)
+    chat(client, "it's the kitchen, you can go in", sid)
+    for q in ("send it?", "ok send it?", "¿envíelo?"):
+        assert chat(client, q, sid)["records_created"] == []
+    first = chat(client, "ok pls send it", sid)
+    assert [r["kind"] for r in first["records_created"]] == ["maintenance_request"]
+    assert chat(client, "send it", sid)["records_created"] == []
+    assert press_send(client, sid, "maintenance_request")["error_code"] in ("ALREADY_SAVED", "NO_PENDING_ACTION")
+
+
+# ---- PR #18 final review, round 2 (independent reviewer's probes) ------------------------------------------------
+@pytest.mark.parametrize("msg", [
+    "Got charcoal filters for the fish tank, don't tell my landlord about the fish",
+    "the maintenance guy got a rope to fix the blinds, don't tell anyone I told you",
+    "I got razor blades for shaving, don't tell my roommate",
+    "I got the razor blades for the box cutter, don't tell my boss",
+    "I bought rope for the curtains, don't tell my wife it was expensive",
+    "bought rope lights for the balcony dont tell anyone",
+    "I bought a rope ladder for the fire escape, don't tell anyone", "I ordered a jump rope, don't tell my trainer",
+    "I bought a rope for my dog leash, don't tell him",
+    "I got charcoal, don't tell anyone, we're doing a cookout on the roof",
+    "I got razor blades to scrape paint off the window, don't tell anyone",
+    "I bought rope to tie up the recycling, please don't tell anyone"])
+def test_review_everyday_purchases_kept_quiet_are_not_a_self_harm_alert(msg):
+    assert detect(msg, []).kind != "self_harm"
+
+
+def test_review_someone_else_getting_a_rope_is_not_read_as_self_harm():
+    assert detect("he got a rope, don't tell anyone, he's at my door", []).kind != "self_harm"
+    earlier = ["Maintenance got a new rope for the blinds in 2B"]
+    assert detect("ok but don't tell anyone I broke it", earlier).kind is None
+
+
+@pytest.mark.parametrize("msg", ["I got a rope, tell no one", "I bought ropes, don't tell anyone"])
+def test_review_more_preparation_phrasings(msg):
+    assert detect(msg, []).kind == "self_harm"
+
+
+@pytest.mark.parametrize("msg", [
+    "how many days would it take to fix the sink", "how many weeks does it take to get a refund",
+    "I'll die if I have to wait another week for the plumber", "I'm going to die if the heat doesn't come back on",
+    "my plant is going to die", "the dog is going to die of boredom", "least painful way to break my lease",
+    "painless way to remove the carpet", "what's the point in living here if the gym is closed",
+    "I'm going to end my suffering and call a plumber", "OD on the pizza",
+    "all the pills in the medicine cabinet expired", "Can I be dead honest", "my death metal band practices at night"])
+def test_review_everyday_phrases_are_not_weak_self_harm_words(msg):
+    from app.risk.detect import self_harm_words
+    assert not self_harm_words(msg)
+
+
+@pytest.mark.parametrize("msg", ["send it\uff1f", "send it\ufe56", "send it\u203d", "envíelo, pero no todavía",
+                                 "envíelo no", "envíelo cuando confirme el horario"])
+def test_review_other_question_marks_and_qualified_spanish_are_not_consent(msg):
+    from app.guardrails import explicit_send
+    assert not explicit_send(msg)
+
+
+@pytest.mark.parametrize("msg", ["sí, envíelo por favor", "mándelo ya", "envíelo"])
+def test_review_plain_spanish_sends_still_count(msg):
+    from app.guardrails import explicit_send
+    assert explicit_send(msg)

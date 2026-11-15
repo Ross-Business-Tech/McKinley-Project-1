@@ -458,8 +458,33 @@ _METHOD_SEEK = (
     rf"{_END_ACT}\b(?=[\s\S]*{_FINALITY_CUE})|{_FINALITY_CUE}[\s\S]{{0,60}}\b(?:way|ways|how)\b(?:\W+\w+){{0,3}}?\W+"
     rf"(?:to )?{_END_ACT}\b")
 
+# PR #18 review (E089): getting a means of self-harm AND hiding it ("bought a rope today. please don't tell anyone"),
+# or getting it next to self-directed finality, is preparation: a full self-harm alert. Neither half alone is (a rope
+# alone keeps the calm 988 line). A stated ordinary purpose (camping, a gift, a surprise, protection) never raises it.
+_MEANS = (r"(?<!jump )(?:ropes?|nooses?|razor ?blades?|charcoal|helium|rat poison|cuerda|soga)\b"  # firearms: own rules
+          r"(?!\W*(?:lights?|ladders?|swings?|filters?|toys?|leash\w*|course|bridge|burners?|grill|briquettes?|tank|"
+          r"balloons?|for|to fix)\b)")
+# the speaker got it ("I bought", "compré"), not maintenance or a neighbour
+_GET_VERB = r"(?:bought|got|picked up|ordered|purchased|tied|hid|stashed)"
+_GET_MEANS = (rf"(?:\b(?:i|i'?ve|i just|i finally|just)\W+(?:\w+\W+){{0,1}}?{_GET_VERB}|(?:^|[.!;,]\s*|\bbut\s+)"
+              rf"{_GET_VERB}|\b(?:compr[eé]|consegu[ií]))\W+(?:\w+\W+){{0,3}}?{_MEANS}")
+# secrecy from everyone, not from one person ("don't tell my wife it was expensive" is about money)
+_SECRECY = (r"\b(?:don'?t|do not|dont) tell (?:anyone|anybody|no ?one)\b|\btell no ?one\b|\bkeep (?:this|it) "
+            r"(?:a )?secret\b|\bbetween (?:us|you and me)\b|\b(?:no ?one|nobody) (?:can|must|should) know\b|"
+            r"\bpromise (?:you )?(?:won'?t|wont|not to) tell\b|\bno (?:le |se lo )?digas a nadie\b")
+_ORDINARY_USE = (r"\b(?:surprise|gift|present|birthday|party|proposal|camping|camp|climb\w*|swing|hammock|tent|"
+                 r"boat|kayak|hik\w*|tow\w*|clothes ?line|gym|class|craft\w*|project|halloween|costume|props?|"
+                 r"hunt\w*|range|protection|self[- ]defen[cs]e|safety|grill\w*|bbq|balloons?|garden\w*|moving|"
+                 r"shav\w*|curtains?|blinds?|filters?|fish|aquarium|tank|leash|ladder|lights?|box ?cutter|dogs?|"
+                 r"cats?|pets?|decorat\w*|fix\w*|repair\w*|tie[- ]?downs?|boxing|work|job|cookout|picnic|paint\w*|"
+                 r"scrap\w*|recycl\w*|trash|garbage|pack\w*|boxes)\b")
+_PREPARATION = (rf"^(?![\s\S]*{_ORDINARY_USE})[\s\S]*?(?:{_GET_MEANS}\W+(?:\w+\W+){{0,10}}?(?:{_SECRECY})|"
+                rf"(?:{_SECRECY})\W+(?:\w+\W+){{0,10}}?{_GET_MEANS})|"
+                rf"{_GET_MEANS}[\s\S]{{0,80}}{_FINALITY_CUE}|{_FINALITY_CUE}[\s\S]{{0,80}}{_GET_MEANS}")
+
 CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("self_harm", re.compile(_METHOD_SEEK, re.I)),
+    ("self_harm", re.compile(_PREPARATION, re.I)),
     ("self_harm", re.compile(_SELF_HARM2, re.I)),
     ("self_harm", _near(_BURDEN, _FINAL, 20)),
     ("self_harm", re.compile(_HEIGHT_ALONE + "|" + _METHOD + "|" + _INTENT, re.I)),
