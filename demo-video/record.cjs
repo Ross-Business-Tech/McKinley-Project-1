@@ -50,7 +50,7 @@ const coverHtml = (c) => `<!doctype html><html><head><meta charset="utf-8"><styl
   .wrap{padding:0 96px;width:100%;box-sizing:border-box}
   .brand{font-weight:700;font-size:30px;letter-spacing:-.01em;opacity:.95}
   .kicker{margin-top:70px;display:inline-block;font-weight:600;font-size:16px;letter-spacing:.14em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:9px 14px;border-radius:6px}
-  h1{margin:22px 0 0;font-size:68px;line-height:1.04;letter-spacing:-.02em;font-weight:700}
+  h1{margin:48px 0 0;font-size:84px;line-height:1.04;letter-spacing:-.02em;font-weight:700}
   .sub{margin-top:20px;font-size:26px;line-height:1.35;max-width:820px;opacity:.92}
   ol{margin:48px 0 0;padding:0;list-style:none;display:flex;gap:12px;flex-wrap:wrap}
   li{font-size:17px;font-weight:500;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);padding:9px 14px;border-radius:999px}
@@ -58,10 +58,10 @@ const coverHtml = (c) => `<!doctype html><html><head><meta charset="utf-8"><styl
   .foot{margin-top:40px;font-size:16px;opacity:.8}
 </style></head><body><div class="wrap">
   <div class="brand">McKinley</div>
-  <div class="kicker">${esc(c.kicker || "")}</div>
+  ${c.kicker ? `<div class="kicker">${esc(c.kicker)}</div>` : ""}
   <h1>${esc(c.title || "")}</h1>
   <div class="sub">${esc(c.subtitle || "")}</div>
-  <ol>${(c.chapters || []).map((t, i) => `<li><b>${i + 1}</b>${esc(t)}</li>`).join("")}</ol>
+  ${(c.chapters || []).length ? `<ol>${c.chapters.map((t, i) => `<li><b>${i + 1}</b>${esc(t)}</li>`).join("")}</ol>` : ""}
   <div class="foot">${esc(c.footer || "")}</div>
 </div></body></html>`;
 

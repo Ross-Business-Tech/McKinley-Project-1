@@ -3,16 +3,8 @@
   "voice": "af_heart",
   "speed": 1.1,
   "cover": {
-    "kicker": "How it works",
-    "title": "McKinley Resident Assistant",
+    "title": "McKinley Help",
     "subtitle": "Report a repair in a short chat, any time of day.",
-    "chapters": [
-      "Sign in",
-      "Describe the problem",
-      "Check your request",
-      "Send and follow up",
-      "Stay safe"
-    ],
     "footer": "Demo · Sample data"
   },
   "scenes": [
@@ -21,7 +13,7 @@
       "cover": true,
       "steps": [
         {
-          "say": "Meet the McKinley Resident Assistant, an AI chat assistant that helps you take care of your apartment, any time of day.",
+          "say": "Meet McKinley Help, an AI chat assistant that helps you take care of your apartment, any time of day.",
           "do": [
             {
               "wait": 0.5
@@ -54,7 +46,7 @@
           ]
         },
         {
-          "say": "The McKinley assistant replaces that call with a short chat. You describe the problem in your own words, and it builds a complete repair request for you.",
+          "say": "McKinley Help replaces that call with a short chat. You describe the problem in your own words, and it builds a complete repair request for you.",
           "do": [
             {
               "hover": "Message the assistant"
@@ -268,7 +260,7 @@
           ]
         },
         {
-          "say": "The assistant puts safety first. It tells you to leave right away, and to call 911 once you're outside, before anything else.",
+          "say": "The assistant puts safety first. It tells you to leave right away, and to call nine one one once you're outside, before anything else.",
           "do": [
             {
               "hover": "Leave now, then call 911 from outside"
@@ -279,15 +271,17 @@
             {
               "hover": "Call 911 once you're outside"
             }
-          ]
+          ],
+          "caption": "The assistant puts safety first. It tells you to leave right away, and to call 911 once you're outside, before anything else."
         },
         {
-          "say": "It also saves an urgent note for the team, but calling 911 yourself always comes first.",
+          "say": "It also saves an urgent note for the team, but calling nine one one yourself always comes first.",
           "do": [
             {
               "hover": "An urgent note is saved"
             }
-          ]
+          ],
+          "caption": "It also saves an urgent note for the team, but calling 911 yourself always comes first."
         }
       ]
     },

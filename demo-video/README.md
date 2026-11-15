@@ -4,7 +4,7 @@ Finished files are in [`output/`](output/):
 
 | File | What it is |
 | --- | --- |
-| `mckinley-demo-full.mp4` | About 2 min 57 s, 1920×1080, narrated, captions burned in, starts with the cover |
+| `mckinley-demo-full.mp4` | About 2 min 54 s, 1920×1080, narrated, captions burned in, starts with the cover |
 | `mckinley-demo-full.srt` | The same captions as a separate file (YouTube, Canvas, video editors) |
 | `cover.png` | The cover on its own (1920×1080), for a thumbnail or a slide |
 
