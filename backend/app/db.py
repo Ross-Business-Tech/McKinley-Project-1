@@ -344,7 +344,7 @@ class Store:
                         got.append("wellbeing")
                     if d.get("workflow") == "human_handoff" or "human_requested" in d.get("risk_flags", []):
                         got.append("asked_for_person")
-                    if d.get("safety_semantic") in ("timeout", "error", "bad_output", "rate_limited"):
+                    if d.get("safety_semantic") in ("timeout", "error", "bad_output", "rate_limited", "blocked"):
                         got.append("safety_check_failed")
                 flags[r["session_id"]] = list(dict.fromkeys(got))
         order = {"urgent": 0, "wellbeing": 1, "asked_for_person": 2, "safety_check_failed": 3}

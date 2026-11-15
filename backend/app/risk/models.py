@@ -12,7 +12,9 @@ Framing = Literal["report", "hypothetical", "past", "joking", "quoted", "figurat
 Ongoing = Literal["now", "past", "hypothetical", "negated", "unknown"]
 Subject = Literal["self", "adult", "child", "infant", "elder", "pet", "unknown", "none"]
 CareKind = Literal["distress", "unwell", "danger", "info"]
-ClassifierStatus = Literal["ok", "disabled", "unavailable", "timeout", "rate_limited", "error", "bad_output", "mock"]
+# "blocked" (remediation P0): the provider's content filter refused the message itself, a signal about the content
+ClassifierStatus = Literal["ok", "disabled", "unavailable", "timeout", "rate_limited", "error", "bad_output", "mock",
+                           "blocked"]
 
 
 class DeterministicRisk(BaseModel):

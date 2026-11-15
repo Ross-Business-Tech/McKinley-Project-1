@@ -21,10 +21,13 @@ from typing import Any
 KB_PATH = Path(__file__).resolve().parent / "content" / "knowledge_base.json"
 
 # ---- 1. consent ---------------------------------------------------------------------------------------------------
-_SEND = re.compile(r"^\W*(?:(?:ok(?:ay)?|yes|yeah|sure|great|perfect|looks good|that'?s (?:right|correct)|"
-                   r"please|alright)[\s,.!]+)*(?:please\s+)?(?:go ahead and\s+)?(?:send|submit|file)\s+(?:it|that|"
-                   r"this|the (?:request|note|repair request|tour request))(?:\s+(?:now|please|in|over|after all))*"
-                   r"\W*$|^\W*(?:env[ií]el[oa]|m[aá]ndel[oa])\b", re.I)
+# Remediation P2: "pls" / "plz" are the same politeness as "please" ("ok pls send it"). Still only an explicit send
+# instruction for the card: a bare "ok", "pls" or "sounds good" never matches.
+_PLEASE = r"(?:please|pls|plz|plse|kindly)"
+_SEND = re.compile(rf"^\W*(?:(?:ok(?:ay)?|kk|yes|yeah|yep|sure|great|perfect|looks good|that'?s (?:right|correct)|"
+                   rf"{_PLEASE}|alright)[\s,.!]+)*(?:{_PLEASE}\s+)?(?:go ahead and\s+)?(?:send|submit|file)\s+(?:it|"
+                   rf"that|this|the (?:request|note|repair request|tour request))(?:\s+(?:now|{_PLEASE}|in|over|after "
+                   rf"all|thanks|thank you|thx))*\W*$|^\W*(?:env[ií]el[oa]|m[aá]ndel[oa])\b", re.I)
 
 
 _SEPARATE = re.compile(r"\b(?:a |it'?s a |it is a )?(?:different|separate|another|new|second) (?:problem|issue|"

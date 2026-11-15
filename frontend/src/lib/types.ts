@@ -345,7 +345,8 @@ export type RiskCategory =
   | "personal_safety" | "self_harm";
 export type Framing = "report" | "hypothetical" | "past" | "joking" | "quoted" | "figurative" | "none";
 export type ClassifierStatus =
-  | "ok" | "disabled" | "unavailable" | "timeout" | "rate_limited" | "error" | "bad_output" | "mock";
+  | "ok" | "disabled" | "unavailable" | "timeout" | "rate_limited" | "error" | "bad_output" | "mock"
+  | "blocked";
 
 export interface DeterministicRisk {
   kind: string | null;

@@ -15,6 +15,8 @@ Rules are applied in order; the first that fires decides. Each has an id recorde
      layer can no longer remove it (the old R7-suppressed exception, semantic none at confidence >= 0.8, is gone): a
      model can only ADD guidance, never remove deterministic guidance. A semantic "none" is recorded as a conflict.
   R9e after a person-danger alert, new danger words             -> full alert again (same kind)
+  R4b the provider's content filter blocked the check, and the rules or conversation show a sign of danger
+     -> calm line (988 for distress / self-harm, else 911); R4n the same block with no sign -> no safety text.
   R9 earlier in this conversation: a person-danger alert       -> keep a calm line (988 for self-harm, else 911)
      on every later turn, even if the person says "I'm fine, stop" (applies wherever R7/R8 would show nothing).
   R8 nothing                                                    -> no safety text.
@@ -89,6 +91,24 @@ def decide(det: DeterministicRisk, sem: SemanticResult, prior_hazards: list[str]
         return RiskDecision(response="full_alert", kind=prior[-1], needs_human=True, escalation_priority="urgent",
                             rule="R9e", sources=["session", "deterministic"], degraded=degraded,
                             conflict=f"danger words after an earlier {prior[-1]} alert: alert shown again")
+    if sem.status == "blocked":  # R4b / R4n (remediation P0): the provider's content filter refused the message
+        # Placed after every rule that already shows guidance (R1-R6, R9e), so it can only ADD a line where R7 / R9 /
+        # R8 would show less. A filter is not evidence of danger by itself (it also fires on games, fiction, sexual or
+        # hateful text), so a line is added only when the rules or the conversation show a sign: 988 for distress or
+        # self-harm, otherwise the calm 911 line; never a full alert from the block alone, and a person should look.
+        self_harm_seen = det.self_harm_intent or det.mentioned_kind == "self_harm" or (
+            "self_harm" in (prior_hazards or []))
+        evidence = bool(det.care or det.mentioned_kind or det.self_harm_intent or det.concern or
+                        det.conditional_danger or det.happened or prior)  # prior: an earlier person-danger alert
+        if not evidence:  # R4n: no warning without a sign of danger; recorded so staff can see the block
+            return RiskDecision(response="none", rule="R4n", sources=["deterministic", "provider_block"],
+                                conflict="provider content filter blocked the semantic check; no danger sign in the "
+                                         "rules or the conversation: no safety text", degraded=True)
+        care = "distress" if (det.care == "distress" or self_harm_seen) else (det.care or "danger")
+        return RiskDecision(response="care_line", care=care, also_988=care == "distress", needs_human=True,
+                            escalation_priority="high", rule="R4b", sources=["deterministic", "provider_block"],
+                            conflict="provider content filter blocked the semantic check: rules decide, calm line kept",
+                            degraded=True)
     if det.care == "danger":  # R7: never removed by the semantic layer (sprint 7)
         return RiskDecision(response="care_line", care="distress" if "self_harm" in prior else "danger",
                             rule="R7", sources=["deterministic"] + (["semantic"] if s else []), degraded=degraded,

@@ -33,7 +33,11 @@ SCHEMA: dict[str, Any] = {
                               "enum": ["none", "maintenance_request", "tour_request", "staff_handoff"]},
                      "fields": {"type": "object", "additionalProperties": False, "required": TASK_FIELDS,
                                 "properties": {f: {"type": "string"} for f in TASK_FIELDS}}}},
-        "other_needs": {"type": "array", "items": {"type": "string"}},
+        # remediation P2: each further need says what it is, so a second repair waits as a repair, not as a note
+        "other_needs": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["kind", "text"],
+            "properties": {"kind": {"type": "string", "enum": ["maintenance_request", "tour_request", "staff_handoff"]},
+                           "text": {"type": "string"}}}},
         "show_my_requests": {"type": "boolean"},
         "include_history": {"type": "string", "enum": ["none", "related", "all"]},
         "handoff": {"type": "object", "additionalProperties": False, "required": ["team", "reason"],
@@ -52,6 +56,7 @@ class Proposal(BaseModel):
     kind: str = "none"
     fields: dict[str, str] = Field(default_factory=dict)
     other_needs: list[str] = Field(default_factory=list)
+    other_kinds: list[str] = Field(default_factory=list)  # same order as other_needs
     show_my_requests: bool = False
     include_history: str = "none"
     team: str = "none"
@@ -99,7 +104,8 @@ Choose task.op:
 - If the task state says a card is back after an emergency, tell them gently, once. Never say YOU checked or
   confirmed that a place is safe: only repeat who told them (for example "since the gas company says it's fixed").
 - Put only values the person actually said in task.fields; use "" for the rest.
-- If the message asks for two different things, handle the first and put each other need in other_needs.
+- If the message asks for two different things, handle the first and put each other need in other_needs with its
+  kind: maintenance_request for another repair, tour_request for a tour, staff_handoff for anything else.
 - handoff.team: the team that should see it when a person is needed, else "none".
 - show_my_requests: true when they ask about the status or history of THEIR OWN requests (the list below is theirs;
   nothing else exists for you). Never describe anyone else's requests.
@@ -122,6 +128,18 @@ def system_prompt(ctx: SafeContext, verified: bool, task_state: str, facts: str,
             f"## Approved property information\n{facts}\n\n## Task state\n{task_state}{extra}")
 
 
+def _needs(raw: Any) -> list[tuple[str, str]]:
+    """(text, kind) for each further need; a plain string (older output) is a note for the office."""
+    out = []
+    for x in raw or []:
+        text, kind = (str(x.get("text") or ""), str(x.get("kind") or "staff_handoff")) if isinstance(x, dict) else (
+            str(x), "staff_handoff")
+        if text.strip():
+            known = kind in ("maintenance_request", "tour_request")
+            out.append((text.strip()[:200], kind if known else "staff_handoff"))
+    return out[:3]
+
+
 def ask(gateway: LLMGateway, target: Target, system: str, history: list[dict[str, str]], msg: str) -> Turn:
     """The single model call of an ordinary turn. Any failure returns Turn(proposal=None) and the caller answers
     with a fixed message; the task state is never changed by a failed call."""
@@ -137,7 +155,8 @@ def ask(gateway: LLMGateway, target: Target, system: str, history: list[dict[str
         p = Proposal(reply=str(data.get("reply") or "").strip(), op=str(task.get("op") or "none"),
                      kind=str(task.get("kind") or "none"),
                      fields={k: str(v) for k, v in (task.get("fields") or {}).items() if v},
-                     other_needs=[str(x)[:200] for x in data.get("other_needs") or [] if str(x).strip()][:3],
+                     other_needs=[n for n, _ in _needs(data.get("other_needs"))],
+                     other_kinds=[k for _, k in _needs(data.get("other_needs"))],
                      show_my_requests=bool(data.get("show_my_requests")),
                      include_history=str(data.get("include_history") or "none"),
                      team=str(hand.get("team") or "none"), reason=str(hand.get("reason") or "")[:200],

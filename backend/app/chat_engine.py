@@ -55,7 +55,9 @@ from app.risk.classifier import SemanticRiskClassifier
 from app.risk.incident import active as incident_active
 from app.risk.incident import prior_hazards as incident_prior_hazards
 from app.risk.incident import step as incident_step
+from app.risk.models import SemanticResult
 from app.risk.pipeline import assess
+from app.risk.policy import decide as risk_decide
 from app.risk.policy import is_people_hazard
 from app.risk.ui_state import safety_ui
 from app.safety import CRITICAL_CHECKS, normalize_for_matching, output_checks, redact
@@ -140,7 +142,13 @@ def _no_model(target: Target, reason: str) -> LLMResult:
 # errors so staff notice them.
 FALLBACK_CODES = {"MODEL_API_ERROR", "MODEL_CONNECTION_ERROR", "MODEL_TIMEOUT", "MODEL_RATE_LIMITED",
                   "MODEL_EMPTY_RESPONSE", "MODEL_BAD_RESPONSE", "MODEL_TRUNCATED", "MODEL_REFUSAL",
-                  "LLM_BUDGET_EXHAUSTED", "BAD_OUTPUT"}
+                  "MODEL_CONTENT_FILTERED", "LLM_BUDGET_EXHAUSTED", "BAD_OUTPUT"}
+# Remediation P0: when the turn already shows approved safety text (an alert, a care line, an active incident) and the
+# conversation model fails for ANY reason, the safety text stays and this fixed line replaces the model's reply; the
+# turn is never turned into an error. No new capability is claimed. Wording NEEDS McKINLEY REVIEW.
+SAFETY_FALLBACK = ("I can't answer the rest of that right now. The safety information above is there for you any time.",
+                   "No puedo responder el resto en este momento. La información de seguridad de arriba está disponible "
+                   "en todo momento.")
 FALLBACK_REPLY = ("Sorry, I couldn't work that out just now. Could you say it another way?",
                   "Perdón, no pude procesarlo ahora. ¿Puede decirlo de otra forma?")
 KEPT = (" Your {what} is still here, unchanged.", " Su {what} sigue aquí, sin cambios.")
@@ -256,9 +264,19 @@ def run_turn(
         if turn.result is not None:
             result = turn.result
         if turn.proposal is None:
-            reply, reply_source = tasks._l(FALLBACK_REPLY, lang), "template_after_model_error"
-            if turn.exc is not None and (turn.error not in FALLBACK_CODES or not fallback_on_model_error):
-                raise turn.exc
+            if turn.error == "MODEL_CONTENT_FILTERED" and rd.response == "none" and not safety_notice:
+                # the CONVERSATION model's content filter refused the message (the classifier was off, unfiltered or
+                # said none): treated exactly like a blocked classifier (policy R4b / R4n): a calm line when the rules
+                # or the conversation show a sign of danger, otherwise the usual "say it another way" line (no warning)
+                rd = risk_decide(risk.deterministic, SemanticResult(status="blocked", detail="conversation"), prior)
+                risk = risk.model_copy(update={"decision": rd})
+                st = risk_responses.select(rd, lang)
+            safety_shown = rd.response != "none" or bool(safety_notice) or inc is not None
+            reply = tasks._l(SAFETY_FALLBACK if safety_shown else FALLBACK_REPLY, lang)
+            reply_source = "template_after_model_error"
+            if turn.exc is not None and not safety_shown and (
+                    turn.error not in FALLBACK_CODES or not fallback_on_model_error):
+                raise turn.exc  # an ordinary turn with no safety text: the API's usual error (never a 988 line)
         else:
             p = turn.proposal
             active, waiting, op_done = _apply_proposal(p, active, waiting, ctx, verified, lang, msg)
@@ -379,7 +397,21 @@ def _apply_proposal(p: assistant.Proposal, active, waiting, ctx: SafeContext, ve
         values.setdefault("message", values["issue"])
     active, waiting, done = tasks.apply(op if op in ("start", "update", "suspend", "resume", "cancel") else "none",
                                         active, waiting, kind=kind, values=values, new=new)
-    for need in p.other_needs:  # a second need in the same message waits as its own note; nothing is dropped
+    for i, need in enumerate(p.other_needs):  # a second need in the same message waits; nothing is dropped
+        need_kind = p.other_kinds[i] if i < len(p.other_kinds) else "staff_handoff"
+        if need_kind == "maintenance_request" and verified and ctx.persona_kind == "resident":
+            # remediation P2: a signed-in resident's second repair waits as its own repair card (never as a note);
+            # a need that repeats the open card or a waiting repair is not added twice
+            def norm(x: str) -> str:
+                return " ".join(re.findall(r"\w+", x.casefold()))
+            known = {norm(str((t.get("fields", {}).get("issue") or {}).get("value", "")))
+                     for t in [*([active] if active else []), *waiting] if t.get("kind") == "maintenance_request"}
+            if norm(need) in known:  # only the same repair again is skipped; when in doubt the card is kept
+                continue
+            repair = tasks.new_task("maintenance_request", lang)
+            tasks.set_fields(repair, {"issue": need})
+            waiting = [*waiting, repair]
+            continue
         note = tasks.new_task("staff_handoff", lang, topic="Also asked about", team="leasing" if re.search(
             r"leas|renew|rent|contrat|renov", need, re.I) else "management")
         tasks.set_fields(note, {"topic": "Also asked about", "message": need})
