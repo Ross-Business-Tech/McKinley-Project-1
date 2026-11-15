@@ -37,8 +37,8 @@ Postgres was available). SQLite paths are tested.
 - `backend/migrations/versions/0001_baseline.py` — the six application tables (idempotent: adopts a database the
   app already created). `0002_reference_data.py` — reference tables + views.
 - New schema change: `uv run alembic revision -m "describe it"`, write raw SQL for both dialects (see 0002), test with
-  `uv run pytest tests/test_migrations.py`, and with Postgres:
-  `TEST_DATABASE_URL=postgresql://…/throwaway uv run pytest tests/test_migrations.py tests/test_store_backends.py`
+  `uv run pytest tests/test_api_persistence.py`, and with Postgres:
+  `TEST_DATABASE_URL=postgresql://…/throwaway uv run pytest tests/test_api_persistence.py`
   (**throwaway database only** — those tests drop tables; they refuse a URL that equals `DATABASE_URL` or points at a
   Supabase host unless `ALLOW_DESTRUCTIVE_DB_TESTS=1` is set for a throwaway Supabase project).
 - `alembic downgrade` deletes data; never run it on a shared database.

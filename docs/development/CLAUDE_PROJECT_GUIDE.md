@@ -13,8 +13,10 @@ Keep this file short; link to the authoritative documents instead of copying the
 
 ## Architecture in one breath
 Next.js static export (customer `/`, staff `/staff/`) → FastAPI (`backend/app`). A chat turn is
-`chat_engine.run_turn`: receive → identity → **2b safety (`app/risk`)** → privacy → context → gate → plan
-(`actions.plan_turn`) → generate (one model call, often skipped) → validate → handoff → persist. Details:
+`chat_engine.run_turn`: **A identity** (`auth.py`, `ScopedStore`) → **B safety** (`app/risk`, every message; an
+emergency gets fixed text and no model call) → **C conversation** (`guardrails.py` decides privacy refusals and
+explicit sends; otherwise ONE structured call in `assistant.py`) → **D tasks** (`tasks.py` validates and applies the
+proposed operation; only Send or "send it" saves) → reply checks → persist. Details:
 [`architecture/overview.md`](../architecture/overview.md), [`diagrams/`](../diagrams/).
 
 ## Deployment stack (prepared, not deployed)
@@ -29,19 +31,22 @@ Status and checklist: [`docs/DEPLOYMENT_READINESS.md`](../DEPLOYMENT_READINESS.m
   ruff line length 120.
 - **TypeScript:** strict; types in `frontend/src/lib/types.ts` mirror the backend Pydantic models (keep literals in
   sync); colours through the `mk-*` tokens; customer text in `src/lib/customer.ts` (EN + draft ES).
-- **Planner:** `plan_turn` is an ordered list of checks — the order is the specification. Add a branch at the right
-  place, never reorder silently; add a test that pins the new behaviour.
-- **Detectors and safety regexes** (`emergency.py`, `intake.py`): extend, don't merge similar-looking patterns; each
+- **Conversation:** the model proposes, the backend decides. Don't add natural-language regexes to steer the
+  conversation; change the instructions in `assistant.py` (`RULES`) or the task rules in `tasks.py`. Deterministic
+  code is for safety, privacy, consent and task state only; every change there gets a test in
+  `tests/test_acceptance.py` (multi-turn, two phrasings).
+- **Detectors and safety regexes** (`emergency.py`, `app/risk/`): extend, don't merge similar-looking patterns; each
   change needs positive and negative tests.
 - **Database:** schema changes only through a new Alembic migration in `backend/migrations/versions/` with raw SQL
-  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_migrations.py` (and
+  for both SQLite and Postgres; keep RLS on for every new Postgres table; test with `tests/test_api_persistence.py` (and
   `TEST_DATABASE_URL` on a throwaway Postgres). Only the synthetic workbook may be seeded (`app.seed_synthetic`).
-- **Wording:** customer-facing text lives in `templates.py` / `customer.ts`; never split template strings to reuse
-  part of them — add a key.
+- **Wording:** fixed backend text (safety, refusals, fallbacks, card labels) lives as constants in `chat_engine.py`,
+  `tasks.py`, `guardrails.py` and `app/risk/responses.py`; website text in `customer.ts`. Never split a fixed string
+  to reuse part of it — add a new one.
 
 ## LLM providers and secrets
-- Provider-agnostic gateway (`app/llm/`): Gemini (deployments), OpenRouter, Ollama, Anthropic, Mock; configure with
-  `LLM_PROVIDER`, `LLM_MODEL` / `GEMINI_MODEL` and the provider key in `backend/.env` (git-ignored) or Render
+- Provider-agnostic gateway (`app/llm/`): Gemini, OpenRouter, U-M GPT Toolkit (`um_toolkit`; refused when hosted
+  until approved), Ollama, Anthropic, Mock; configure with `LLM_PROVIDER`, `LLM_MODEL` / `GEMINI_MODEL` and the provider key in `backend/.env` (git-ignored) or Render
   secrets. Never print, log, commit or copy keys or `DATABASE_URL`; check presence as booleans only. Never put any
   key, database URL or Supabase service-role key in the website (`NEXT_PUBLIC_*` values are public).
 - Do not change the model ID silently: one fixed `provider:model` per evaluation; verify with
@@ -77,7 +82,9 @@ real screenshots at 375, 390, 768 and 1440 px for visible changes.
   icon and words. See [`docs/design/BRAND_SYSTEM.md`](../design/BRAND_SYSTEM.md).
 - **Phones first:**
   - The composer stays pinned on every phone height, keyboard open or not (it scrolls with the page only at extreme zoom, 280px tall or less).
-  - The tap-to-call 911 link and "Talk to a person" are always visible.
+  - "Talk to a person" is always visible. Since Sprint 8 (product-owner decision) there is **no persistent tap-to-call
+    911 control**: emergency contacts appear only inside a contextual safety state (concern / active, driven by the
+    backend `safety_state` + `safety_contacts`), plus one muted, non-tappable footer line about 911.
   - Run `frontend/e2e/mobile-acceptance.mjs` (Chromium and WebKit, 7 sizes, keyboard stand-in) before a UI PR; see
     [`docs/design/MOBILE_UX_AUDIT.md`](../design/MOBILE_UX_AUDIT.md).
 - **Honesty:** never claim the public phone requirement is met until a deployed URL passes on a real phone

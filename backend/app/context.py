@@ -197,9 +197,11 @@ def build_workbook(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], s
 # ---- topic relevance -----------------------------------------------------------------
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "hvac": ["ac", "a/c", "air condition", "cooling", "cool", "heat", "heater", "hvac", "thermostat",
+    # Sprint 9: not a bare "cool" ("ok cool. mornings please" is an interjection, not an AC problem)
+    "hvac": ["ac", "a/c", "air condition", "cooling", "won't cool", "wont cool", "doesn't cool", "doesnt cool",
+             "not cool down", "heat", "heater", "hvac", "thermostat",
              "furnace", "compressor", "air handler",
-             # Spanish (minimal; R012 prefers Spanish). Other languages: docs/architecture/decision-gate.md.
+             # Spanish (minimal; R012 prefers Spanish). Other languages are not supported yet.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
                  "shower", "tub", "water", "toliet", "clogd", "overflow", "fuga", "gotea", "grifo", "llave",
@@ -249,9 +251,29 @@ def detect_topics(text: str) -> list[str]:
                               r"tapad[oa]|lavabo|lights? (?:\w+ ){0,5}(?:is|are) out|bulbs? (?:is |are )?(?:out|burnt?"
                               r")|"
                               r"burn(?:ed|t) out", t)
+    if not (set(topics) & MAINTENANCE_TOPICS):
+        # Sprint 8 C fix round: a fixture named with the shared object lexicon (EN + ES, app/utterance.py) is a repair
+        # topic even when this keyword list misses the word ("my bathtub is clogged", "la ducha no drena"), so a direct
+        # repair request gets the on-file fields (entry window). Other objects need a symptom ("the blinds are bent").
+        from app.utterance import has_symptom, things
+
+        objs = things(re.sub(r"\bbath ?tubs?\b", "tub", text or "", flags=re.I))
+        fam = next((topic for topic, members in _OBJECT_TOPIC.items() if objs & members), None)
+        if fam and fam not in topics:
+            topics.append(fam)
+        elif objs and (generic_maint or has_symptom(text)) and "amenity" not in topics:
+            generic_maint = True  # type: ignore[assignment]
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics
+
+
+_OBJECT_TOPIC: dict[str, set[str]] = {  # shared-lexicon object names -> repair topic
+    "plumbing": {"sink", "faucet", "toilet", "shower", "water heater", "hot water", "pipe", "drain"},
+    "appliance": {"dishwasher", "fridge", "oven", "microwave", "disposal", "washer", "dryer", "ice maker"},
+    "hvac": {"ac", "heat", "thermostat", "vent"},
+    "pest": {"pests"},
+}
 
 
 def interaction_topics(i: Interaction) -> set[str]:
@@ -390,17 +412,3 @@ def _shares_word(a: str, b: str) -> bool:
     def words(x: str) -> set[str]:
         return {w[:5] for w in re.findall(r"[a-záéíóúñ]{4,}", x.lower()) if w not in _STOP}
     return bool(words(a) & words(b))
-
-
-def render_context_block(ctx: SafeContext) -> str:
-    """Text block placed inside <safe_context> in the aware-mode user turn."""
-    lines = [
-        f"audience: {ctx.audience}",
-        f"record_found: {'yes' if ctx.record_found else 'no'}",
-        f"message_topics: {', '.join(ctx.topics) or 'none detected'}",
-    ]
-    for f in ctx.fields:
-        lines.append(f"{f.name}: {f.value}")
-    for n in ctx.notes:
-        lines.append(f"note: {n}")
-    return "\n".join(lines)

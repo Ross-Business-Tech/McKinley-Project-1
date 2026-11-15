@@ -14,21 +14,19 @@ from app.auth import TOOLING
 from app.chat_engine import run_turn
 from app.config import REPO_DIR, Settings
 from app.db import Store
-from app.evals import CASES
-from app.gate_evals import evaluate_gates
 from app.llm import LLMGateway
 from app.personas import build_context, list_personas
 from app.state import build_state
 
 OUT = REPO_DIR / "frontend" / "public" / "demo" / "snapshot.json"
-MODES = ("baseline", "prompt_only", "aware")
 
 # Customer journeys replayed by the static preview. "!confirm:<kind>" = the person presses the confirm button.
-# Each is recorded turn by turn through the real pipeline (aware mode, rules gate, MOCK response model).
+# Each is recorded turn by turn through the real pipeline with the MOCK model (a keyword stand-in, not an AI).
 JOURNEYS: list[dict] = [
     {"id": "res-repeat-ac", "persona": "R001", "title": "My AC is out again",
      "steps": ["My AC stopped cooling again. This has happened multiple times and I'm really upset.",
-               "Yes, you can enter", "!confirm:maintenance_request", "What's the status of my requests?"]},
+               "It's the living room unit", "Yes, you can enter", "!confirm:maintenance_request",
+               "What's the status of my requests?"]},
     {"id": "res-renewal", "persona": "R003", "title": "I'm worried about my renewal",
      "steps": ["I got a renewal offer and I'm worried about the cost. Please don't call me while I'm sleeping. "
                "Can someone explain my choices?", "!confirm:staff_handoff"]},
@@ -39,7 +37,7 @@ JOURNEYS: list[dict] = [
     {"id": "res-text-pref", "persona": "R003", "title": "My smoke detector is chirping",
      "steps": ["My smoke detector keeps chirping", "Bedroom", "Contact me first", "!confirm:maintenance_request"]},
     {"id": "res-spanish", "persona": "R012", "title": "El horno no calienta",
-     "steps": ["Hola, el horno no calienta", "Sí, pueden entrar", "!confirm:maintenance_request"]},
+     "steps": ["Hola, el horno no funciona", "Está en la cocina", "Sí, pueden entrar", "!confirm:maintenance_request"]},
     {"id": "res-status", "persona": "R008", "title": "Any update on my repair?",
      "steps": ["Any update on my repair? The ceiling still isn't fixed and I'm fed up.", "!confirm:staff_handoff"]},
     {"id": "unverified-status", "persona": "U-NOMATCH", "title": "When is maintenance coming?",
@@ -69,8 +67,7 @@ JOURNEYS: list[dict] = [
 
 
 def record_journeys(deps) -> list[dict]:
-    from app.actions import confirm
-    from app.personas import build_context
+    from app.tasks import confirm
 
     out = []
     for j in JOURNEYS:
@@ -80,11 +77,10 @@ def record_journeys(deps) -> list[dict]:
         for step in j["steps"]:
             if step.startswith("!confirm:"):
                 kind = step.split(":", 1)[1]
-                draft = deps.store.get_draft(sid, pid or "none")
-                res = confirm(deps.store, sid, pid, kind, build_context(pid, "", deps.workbook, principal=TOOLING),
-                              (draft or {}).get("lang", "en"))
-                if not res.ok:
-                    raise SystemExit(f"journey {j['id']}: confirm {kind} failed: {res.error_code}")
+                ctx = build_context(pid, "", deps.workbook, principal=TOOLING)
+                res = confirm(deps.store, sid, pid, kind, ctx.persona_kind == "resident" and ctx.record_found)
+                if not res.ok:  # recorded as it happened (the replay shows the honest "not sent" result)
+                    print(f"note: journey {j['id']}: confirm {kind} -> {res.error_code}")
                 steps.append({"kind": "confirm", "action_kind": kind, "result": res.model_dump(mode="json")})
             else:
                 r = run_turn(deps, step, "aware", pid, sid)
@@ -96,34 +92,21 @@ def record_journeys(deps) -> list[dict]:
 def build_snapshot(tmp_db: Path) -> dict:
     base = Settings()  # only for the workbook path
     s = Settings(_env_file=None, llm_provider="mock", llm_model="mock-deterministic-v1",
-                 decision_gate_provider="rules", decision_gate_llm_target="mock:mock-deterministic-v1",
                  data_path=base.data_path, db_path=tmp_db, eval_targets="mock:mock-deterministic-v1")
     state = build_state(settings=s, gateway=LLMGateway(s), store=Store(tmp_db))
     deps = state.deps
-    used = {c.persona_id for c in CASES} | {j["persona"] for j in JOURNEYS}
-    responses, contexts = {}, {}
-    for c in CASES:
-        pid = c.persona_id or None
-        responses[c.id] = {m: run_turn(deps, c.message, m, pid, None, use_history=False).model_dump(mode="json")
-                           for m in MODES}
-        contexts[c.id] = build_context(pid, c.message, deps.workbook, principal=TOOLING).model_dump(mode="json")
-    gate_eval = evaluate_gates(deps, ["rules", "llm"])
+    used = {j["persona"] for j in JOURNEYS}
     journeys = record_journeys(deps)
     records = deps.store.records(limit=200)
     return {
         "kind": "static_demo_snapshot",
         "generated_at": datetime.now(UTC).isoformat(),
         "notice": "Static demonstration: pre-computed with the deterministic MOCK provider (not a language model) "
-                  "and the rules decision gate. No live AI is running. Handoffs are recommendations only.",
+                  "and the fixed safety and task rules. No live AI is running. Handoffs are recommendations only.",
         "workbook_loaded": deps.workbook is not None,
         "personas": [p.model_dump() for p in list_personas(deps.workbook) if p.id in used],
-        "cases": [c.model_dump() for c in CASES],
-        "responses": responses,
-        "contexts": contexts,
         "journeys": journeys,
         "prototype_records": records,
-        "gate_eval": {"note": gate_eval["note"] + " In this snapshot 'llm' is the MOCK keyword gate.",
-                      "summary": gate_eval["summary"], "rows": gate_eval["rows"]},
     }
 
 
@@ -136,7 +119,7 @@ def main() -> None:
         raise SystemExit("Workbook not found: resident scenarios would be empty. Place the XLSX first (README).")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(snap, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"wrote {OUT.relative_to(REPO_DIR)} ({OUT.stat().st_size // 1024} KB, {len(snap['cases'])} scenarios)")
+    print(f"wrote {OUT.relative_to(REPO_DIR)} ({OUT.stat().st_size // 1024} KB, {len(snap['journeys'])} journeys)")
 
 
 if __name__ == "__main__":

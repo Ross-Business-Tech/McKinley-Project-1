@@ -1,9 +1,11 @@
 """Human escalation recommendation for safety decisions. A recommendation only: nothing is paged, called or sent."""
 
-from app.handoff import NOT_SENT
 from app.models import HandoffRecommendation
 from app.risk.models import RiskDecision
 from app.risk.policy import is_people_hazard
+
+NOT_SENT = ("Not sent. This prototype has no staff queue, call transfer or on-call integration; a staff member "
+            "must act on this recommendation.")
 
 
 def recommend(decision: RiskDecision, included_fields: list[str]) -> HandoffRecommendation | None:

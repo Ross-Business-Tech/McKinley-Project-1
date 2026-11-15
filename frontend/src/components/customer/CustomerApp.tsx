@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import { ApiError, LIVE_BACKEND_CONFIGURED, api, demoSignInAvailable, loadDemoSnapshot } from "@/lib/api";
 import {
+  sendErrorText,
   GUEST,
   type Identity,
   type Lang,
@@ -18,6 +19,8 @@ import {
   journeyPersonaIds,
   providerLabel,
   loadSession,
+  safetyContactsOf,
+  safetyStateOf,
   saveConversation,
   saveSession,
   starters,
@@ -25,14 +28,14 @@ import {
 } from "@/lib/customer";
 import { newSessionId } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { ActionKind, ActionResult, ChatResponse, Journey, ProposedAction, StatusItem } from "@/lib/types";
+import type { ActionKind, ActionResult, ChatResponse, Journey, ProposedAction, SafetyContact, StatusItem } from "@/lib/types";
 
 import { ActionCard, type CardState, ProgressHint } from "./ActionCard";
 import { StatusPill, statusTone } from "./StatusPill";
 
 type Boot =
   | { mode: "loading" }
-  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean }
+  | { mode: "live"; identities: Identity[]; mock: boolean | null; demoSignIn: boolean; build?: string | null }
   | { mode: "preview"; identities: Identity[]; journeys: Journey[] }
   | { mode: "error"; message: string };
 
@@ -62,9 +65,26 @@ interface SavedSession {
 let counter = 0;
 const mid = () => `m${++counter}`;
 
+/** Sprint 10 (review P2): a sleeping free backend can take about a minute to wake. Keep trying for up to two minutes
+ * before falling back to the recorded replay, instead of switching on the first failure. */
+const WAKE_MS = 120_000;
+
+async function personasWhenAwake() {
+  const started = Date.now();
+  for (;;) {
+    try {
+      return await api.personas();
+    } catch (e) {
+      const unreachable = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE";
+      if (!unreachable || !LIVE_BACKEND_CONFIGURED || Date.now() - started > WAKE_MS) throw e;
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
+}
+
 async function boot(): Promise<Boot> {
   try {
-    const personas = await api.personas();
+    const personas = await personasWhenAwake();
     const health = await api.health().catch(() => null); // "About this demo" line + whether demo sign-in exists
     const demoSignIn = demoSignInAvailable(personas, health);
     return {
@@ -72,6 +92,7 @@ async function boot(): Promise<Boot> {
       identities: demoSignIn ? toIdentities(personas) : [GUEST],
       mock: health ? health.is_mock ?? health.provider === "mock" : null,
       demoSignIn,
+      build: health?.commit ? `${health.version ?? ""} · ${health.commit.slice(0, 7)}`.replace(/^ · /, "") : null,
     };
   } catch (e) {
     if (!(e instanceof ApiError) || e.code !== "BACKEND_UNREACHABLE") {
@@ -99,7 +120,9 @@ export function CustomerApp() {
   }, [state.mode]);
   const [attempt, setAttempt] = useState(0);
   const [identity, setIdentity] = useState<Identity>(GUEST);
-  const [sessionId, setSessionId] = useState(() => newSessionId());
+  // Sprint 10 (review P1): created in the browser only, never during the static prerender (a fresh-clone `next build`
+  // failed on crypto.randomUUID() there); the id is not rendered, so the empty server value can't mismatch
+  const [sessionId, setSessionId] = useState(() => (typeof window === "undefined" ? "" : newSessionId()));
   const [messages, setMessages] = useState<Msg[]>([]);
   const [turns, setTurns] = useState<StoredTurn[]>([]);
   const [draft, setDraft] = useState("");
@@ -174,6 +197,7 @@ export function CustomerApp() {
       const nodes = document.querySelectorAll<HTMLElement>("[data-msg]");
       const last = nodes[nodes.length - 1];
       const room = (window.visualViewport?.height ?? window.innerHeight) - (composerRef.current?.offsetHeight ?? 0) - 24;
+      // (An active safety alert sits at the top of its message, links first, so "from its first line" keeps them in view.)
       if (!busy && grew && last?.dataset.msg === "assistant" && last.offsetHeight > room && last.scrollIntoView) {
         last.scrollIntoView({ block: "start" });
       } else {
@@ -329,8 +353,7 @@ export function CustomerApp() {
       announce(response);
       readyCard = response.action?.stage === "ready";
     } catch (e) {
-      const why = e instanceof ApiError && e.code === "BACKEND_UNREACHABLE" ? t.unreachable : t.serverError;
-      const text = `${why} ${t.tryAgain}`;
+      const text = sendErrorText(e, t);
       setMessages((m) => [
         ...m.map((x) => (x.id === userId ? { ...x, failed: true } : x)),
         { id: mid(), role: "assistant", text, lang, error: { retry: message } },
@@ -344,11 +367,15 @@ export function CustomerApp() {
   }
 
   function announce(r: ChatResponse) {
-    if (r.safety_notice) return setAnnouncement(""); // the role=alert block announces itself, once
+    // active: the role=alert block announces itself (assertive), once, when it appears; nothing polite on top of it.
+    const safety = safetyStateOf(r);
+    if (safety === "active") return setAnnouncement("");
     const s = UI[r.language ?? "en"];
     const a = r.action;
-    const card = a ? ` ${a.title}: ${a.stage === "submitted" ? (a.record?.status_label ?? "") : s.stage[a.stage]}.` : "";
-    setAnnouncement(`${s.assistantSaid} ${r.care_note ? `${r.care_note} ` : ""}${r.reply}${card}`);
+    const card = a ? ` ${a.title}: ${a.stage === "submitted" ? s.statusText(a.record?.status_label ?? "") : s.stage[a.stage]}.` : "";
+    // concern: the calm note is read first, politely, once, as part of this reply's single announcement
+    const note = safety === "concern" ? (r.care_note ?? r.safety_notice) : null;
+    setAnnouncement(`${s.assistantSaid} ${note ? `${note} ` : ""}${r.reply}${card}`);
   }
 
   /** The button the person pressed, shown as their own turn, so the outcome reads as a reply to it. */
@@ -377,7 +404,11 @@ export function CustomerApp() {
     setBusy(true);
     try {
       const result = await api.confirmAction(sessionId, identity.id || null, kind);
-      setMessages((m) => [...m, { id: mid(), role: "assistant", text: result.message, result, lang }]);
+      // Sprint 7: once a retry goes through, the earlier "Not sent" box for this card goes (no stale "Send again")
+      // Sprint 10 (review P2): and the dashed "Send … / Not sent" press goes too, so only the successful one stays
+      setMessages((m) => [...m.filter((x) => !(x.error && x.retryKind === kind) &&
+        !(x.choice && x.failed && x.text === confirmLabel(kind))),
+        { id: mid(), role: "assistant", text: result.message, result, lang }]);
       // The outcome and its reference, said once (focus also moves to the new message).
       const ref = result.action?.record?.id;
       setAnnouncement(`${t.assistantSaid} ${result.message}${ref && !result.message.includes(ref) ? ` ${t.reference} ${ref}.` : ""}`);
@@ -499,7 +530,7 @@ export function CustomerApp() {
               </>
             ) : (
               <p data-testid="guest-only" className="min-h-11 py-2.5 text-sm font-medium text-mk-muted">
-                {t.guestOnly}
+                {t.prototype}
               </p>
             )}
             <button
@@ -534,8 +565,12 @@ export function CustomerApp() {
               <div className="rounded-lg bg-mk-paper p-4">
                 <p className="font-heading text-base font-semibold">{t.demoTitle}</p>
                 <p className="mt-1 text-sm text-mk-muted">
-                  {t.prototype} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
+                  {t.demoAbout} {replySource} {state.mode === "preview" || state.demoSignIn ? t.signInHint : ""}
+                  {state.mode === "live" && state.build ? <span className="block pt-1 text-xs" data-testid="build-id">{t.buildLabel} {state.build}</span> : null}
                 </p>
+                {state.mode === "live" && !state.demoSignIn && (
+                  <p className="mt-2 text-sm text-mk-muted" data-testid="guest-only-about">{t.guestOnlyAbout}</p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-4">
                   <Link href="/staff" prefetch={false} className="mk-focus inline-flex min-h-11 items-center font-medium text-mk-brand-hover underline underline-offset-2">
                     {t.staffLink}
@@ -603,7 +638,7 @@ export function CustomerApp() {
             </div>
           ))}
           {tasks.length > 0 && (
-            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-10 sm:max-w-md">
+            <nav aria-label={t.howCanIHelp} lang={lang} className="pl-10 max-[374px]:pl-0 sm:max-w-md">
               <ul className="overflow-hidden rounded-xl border border-mk-line bg-mk-surface shadow-[0_1px_2px_rgb(28_37_48/0.06)]">
                 {tasks.map((c) => (
                   <li key={c.label} className="border-b border-mk-line last:border-b-0">
@@ -651,7 +686,7 @@ export function CustomerApp() {
               role="group"
               aria-label={t.suggestions}
               lang={lang}
-              className="mb-2 flex flex-wrap gap-2 py-1 sm:px-1 [@media(max-height:480px)]:group-data-typing/composer:hidden [html[data-mk-short]_&]:group-data-typing/composer:hidden [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
+              className="mb-2 flex flex-wrap gap-2 py-1 max-[374px]:flex-nowrap max-[374px]:overflow-x-auto sm:px-1 [@media(max-height:480px)]:group-data-typing/composer:hidden [html[data-mk-short]_&]:group-data-typing/composer:hidden [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [html[data-mk-short]_&]:flex-nowrap [html[data-mk-short]_&]:overflow-x-auto"
             >
               {chips.map((c) => (
                 <button
@@ -708,7 +743,8 @@ export function CustomerApp() {
               </span>
             </button>
           </form>
-          {/* One row, always visible: a person, start over, and a tap-to-call emergency number. */}
+          {/* One row, always visible: a person and start over. Sprint 8 (product owner): no persistent tap-to-call 911
+              here; call links appear only inside an active safety alert. The plain-text line below still mentions 911. */}
           <div className="mt-2 flex items-center gap-x-1">
             {!preview && (
               <button
@@ -735,17 +771,11 @@ export function CustomerApp() {
                 <span className="max-[374px]:sr-only">{t.newChat}</span>
               </button>
             )}
-            <a
-              href="tel:911"
-              aria-label={t.emergencyCall}
-              className="mk-focus ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2 font-semibold text-mk-danger hover:bg-mk-danger-soft"
-              lang={lang}
-            >
-              <Phone aria-hidden className="size-4" /> 911
-            </a>
           </div>
           <p id={statusId} className="pb-0.5 text-sm text-mk-muted [@media(max-height:480px)]:sr-only [html[data-mk-short]_&]:sr-only" lang={lang}>
-            {t.prototype} {t.emergencyLead} {t.call911}.
+            {/* Sprint 9: the demo identity is in the strip on the public site; here only when the strip is a sign-in */}
+            {state.mode === "preview" || state.demoSignIn ? <>{t.prototype}. </> : <span className="sm:hidden">{t.prototypeShort}. </span>}
+            <span data-testid="emergency-footer">{t.emergencyFooter}</span>
           </p>
         </div>
       </div>
@@ -862,7 +892,9 @@ function Message({
   }
   const r = msg.response;
   const action: ProposedAction | null = msg.result?.action ?? r?.action ?? null;
-  const emergency = !!r?.safety_notice;
+  const safety = safetyStateOf(r);
+  const emergency = safety === "active";
+  const contacts = safetyContactsOf(r, t);
   const kind = r?.emergency_kind ?? null;
   const templateCoversNotice = emergency && /\b(911|988)\b/.test(msg.text);
 
@@ -885,45 +917,34 @@ function Message({
   }
 
   return (
-    <div ref={focusRef} tabIndex={-1} lang={msg.lang} role="article" aria-label={t.assistantMessage} className="mk-focus max-w-[95%] rounded-md outline-none">
+    <div ref={focusRef} tabIndex={-1} lang={msg.lang} role="article" aria-label={t.assistantMessage} className="max-w-[95%] rounded-md outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-mk-brand/50">
       {speaker && <Speaker t={t} />}
-      <div className="pl-10">
+      <div className="pl-10 max-[374px]:pl-0">
         <span className="sr-only">{t.assistantSaid} </span>
+        {/* Sprint 8: the alert comes first in the turn, above the reply, status list and any card, so nothing covers it.
+            No animation. Links are explicit tel:/sms: links: nothing dials or opens on render. */}
         {emergency && (
-          <div role={msg.restored ? undefined : "alert"} className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
+          <div role={msg.restored ? undefined : "alert"} data-testid="safety-alert" className="mb-2 rounded-lg border-2 border-mk-danger bg-mk-danger-soft p-4">
             <p className="flex items-start gap-2 text-lg leading-snug font-bold text-mk-danger">
               <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
-              <span>{r?.safety_heading ?? t.call911}</span>
+              <span>{r?.safety_heading ?? t.safetyHeading}</span>
             </p>
-            <p className="mt-2 text-base text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              {kind === "self_harm" ? (
-                <>
-                  <a href="tel:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
-                    <Phone aria-hidden className="size-5" /> {t.call988}
-                  </a>
-                  <a href="sms:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-mk-danger bg-mk-surface px-5 text-lg font-bold text-mk-danger">
-                    <MessageSquareText aria-hidden className="size-5" /> {t.text988}
-                  </a>
-                </>
-              ) : (
-                <>
-                  <a href="tel:911" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-lg font-bold text-white">
-                    <Phone aria-hidden className="size-5" /> {kind === "gas" || kind === "co" ? t.gasCall : t.call911}
-                  </a>
-                  {/988/.test(r?.safety_notice ?? "") && (
-                    <a href="tel:988" className="mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-mk-danger bg-mk-surface px-5 text-lg font-bold text-mk-danger">
-                      <Phone aria-hidden className="size-5" /> {t.call988}
-                    </a>
-                  )}
-                </>
-              )}
-            </div>
-            {kind && !CALL_KINDS_WITHOUT_MAINTENANCE.has(kind) && <p className="mt-2 text-sm text-mk-muted">{t.noEmergencyLine}</p>}
+            {/* Links directly under the heading, before the (sometimes long) guidance, so the first one is on screen
+                above the sticky composer even at 320x568 and in landscape. Focus is NOT moved onto a link (it stays in
+                the message box): a stray Enter must never start a call. */}
+            <SafetyContacts contacts={contacts} strong />
+            {(templateCoversNotice || r?.safety_notice) && (
+              <p className="mt-3 text-base break-words text-mk-ink">{templateCoversNotice ? msg.text : r?.safety_notice}</p>
+            )}
+            {kind && !CALL_KINDS_WITHOUT_MAINTENANCE.has(kind) && !contacts.some((c) => c.kind === "info") && (
+              <p className="mt-2 text-sm text-mk-muted">{t.noEmergencyLine}</p>
+            )}
           </div>
         )}
-        {!emergency && r?.care_note && <CareNote kind={r.care_kind ?? "unwell"} note={r.care_note} t={t} />}
-        {!templateCoversNotice && <p className="text-base leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>}
+        {safety === "concern" && (
+          <CareNote kind={r?.care_kind ?? "unwell"} note={r?.care_note ?? r?.safety_notice ?? null} contacts={contacts} t={t} />
+        )}
+        {!templateCoversNotice && <p className="max-w-prose text-base leading-relaxed break-words whitespace-pre-wrap"><NoBreakRefs text={msg.text} /></p>}
         {r?.status_items && r.status_items.length > 0 && <StatusList items={r.status_items} t={t} />}
         {action && cardState && (action.stage === "collecting" ? (
           cardState === "current" && <ProgressHint action={action} t={t} />
@@ -945,43 +966,80 @@ function Message({
   );
 }
 
-/** Calm, non-alarming line for possible distress or feeling unwell. Never the red emergency alert. */
-function CareNote({ kind, note, t }: { kind: "distress" | "unwell" | "danger" | "info"; note: string; t: UIStrings }) {
+/** Contact links for one turn, each labelled with what it does ("Call 911", "Text 988"); "info" entries are plain text. */
+function SafetyContacts({ contacts, strong }: { contacts: SafetyContact[]; strong?: boolean }) {
+  if (!contacts.length) return null;
+  const first = "mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-mk-danger px-5 text-center text-lg font-bold text-white";
+  const other = "mk-focus inline-flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-mk-danger bg-mk-surface px-5 text-center text-lg font-bold text-mk-danger";
+  const calm = "mk-focus inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-sent/40 bg-mk-surface px-3 text-left font-semibold text-mk-sent";
+  const links = contacts.filter((c) => c.href);
+  const info = contacts.filter((c) => !c.href);
+  return (
+    <>
+      {links.length > 0 && (
+        <div className={strong ? "mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap" : "mt-2 flex flex-wrap gap-2 pl-6"}>
+          {links.map((c, i) => {
+            const Icon = c.kind === "text" ? MessageSquareText : Phone;
+            return (
+              <a key={`${c.href}-${c.label}`} href={c.href!} data-testid="safety-contact" className={strong ? (i === 0 ? first : other) : calm}>
+                <Icon aria-hidden className={strong ? "size-5 shrink-0" : "size-4 shrink-0"} /> <ContactLabel label={c.label} />
+              </a>
+            );
+          })}
+        </div>
+      )}
+      {info.map((c) => (
+        <p key={c.label} className={cn("mt-2 text-sm text-mk-muted", !strong && "pl-6")}>{c.label}</p>
+      ))}
+    </>
+  );
+}
+
+/** A request reference never breaks across lines ("DEMO-TOUR-" / "1052"). */
+function NoBreakRefs({ text }: { text: string }) {
+  const parts = text.split(/(\bDEMO-[A-Z]+-\d+\b)/);
+  return <>{parts.map((p, i) => (i % 2 ? <span key={i} className="whitespace-nowrap">{p}</span> : p))}</>;
+}
+
+/** A phone number in a label never breaks across lines ("1-" / "800-222-1222"). */
+function ContactLabel({ label }: { label: string }) {
+  const parts = label.split(/(\d[\d\s().-]{5,}\d)/);
+  return (
+    <span>
+      {parts.map((p, i) => (i % 2 ? <span key={i} data-testid="phone-number" className="whitespace-nowrap">{p}</span> : p))}
+    </span>
+  );
+}
+
+/** Calm, non-alarming note for a "concern" turn. Never the red alert; call links only when this turn has contacts. */
+function CareNote({ kind, note, contacts, t }: {
+  kind: "distress" | "unwell" | "danger" | "info"; note: string | null; contacts: SafetyContact[]; t: UIStrings;
+}) {
+  if (!note && !contacts.length) return null;
   if (kind === "info") {
-    // A hazard asked about hypothetically or in the past: the approved steps, calmly, no call buttons.
+    // A hazard asked about hypothetically or in the past: the approved steps, calmly.
     return (
       <div className="mb-2 rounded-lg border border-mk-line-strong bg-mk-surface p-3" data-testid="care-note">
         <p className="text-sm font-semibold text-mk-muted">{t.safetyInfo}</p>
-        <p className="mt-1 flex items-start gap-2 text-base text-mk-ink">
-          <Info aria-hidden className="mt-1 size-4 shrink-0 text-mk-muted" />
-          <span>{note.replace(/^(If that happens|Si eso pasa): /, "")}</span>
-        </p>
+        {note && (
+          <p className="mt-1 flex items-start gap-2 text-base text-mk-ink">
+            <Info aria-hidden className="mt-1 size-4 shrink-0 text-mk-muted" />
+            <span>{note.replace(/^(If that happens|Si eso pasa): /, "")}</span>
+          </p>
+        )}
+        <SafetyContacts contacts={contacts} />
       </div>
     );
   }
-  const link = "mk-focus inline-flex min-h-11 items-center gap-2 rounded-md border border-mk-sent/40 bg-mk-surface px-3 font-semibold text-mk-sent";
   return (
     <div className="mb-2 rounded-lg border border-mk-sent/30 bg-mk-sent-soft p-3" data-testid="care-note">
-      <p className="flex items-start gap-2 text-base text-mk-ink">
-        <Info aria-hidden className="mt-1 size-4 shrink-0 text-mk-sent" />
-        <span>{note}</span>
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2 pl-6">
-        {kind === "distress" ? (
-          <>
-            <a href="tel:988" className={link}>
-              <Phone aria-hidden className="size-4" /> {t.call988}
-            </a>
-            <a href="sms:988" className={link}>
-              <MessageSquareText aria-hidden className="size-4" /> {t.text988}
-            </a>
-          </>
-        ) : (
-          <a href="tel:911" className={link}>
-            <Phone aria-hidden className="size-4" /> {t.call911}
-          </a>
-        )}
-      </div>
+      {note && (
+        <p className="flex items-start gap-2 text-base text-mk-ink">
+          <Info aria-hidden className="mt-1 size-4 shrink-0 text-mk-sent" />
+          <span>{note}</span>
+        </p>
+      )}
+      <SafetyContacts contacts={contacts} />
     </div>
   );
 }

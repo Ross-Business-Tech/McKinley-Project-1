@@ -19,7 +19,7 @@ Query: `chat run_turn DecisionGateService.classify apply_safety_floor select_wor
 CodeGraph returned in one call:
 - the path `api/chat.py:chat → chat_engine.run_turn → workflows.select_workflow`;
 - the verbatim source of each symbol;
-- a blast-radius summary: `run_turn` has 7 callers (API, evals, demo export, tests), `select_workflow` is used by `gate_evals.py`, and `apply_safety_floor` by `service.py`.
+- a blast-radius summary: `run_turn` has several callers (API, demo export, tests), and `apply_safety_floor` by `service.py`.
 
 What it missed:
 - The hop `run_turn → DecisionGateService.classify`. This is called as `deps.gates.classify(...)` through a dataclass attribute, so CodeGraph listed `classify` as a related symbol but not on the path.

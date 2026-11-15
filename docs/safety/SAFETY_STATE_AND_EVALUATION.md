@@ -17,8 +17,8 @@ elevator text). Sprint 6 replaces one-off phrases with **concepts**, adds **inci
 | 2 | Semantic risk interpretation (existing classifier, OpenRouter) | `risk/classifier.py` | May only **add** risk. A failure is `degraded`, never "safe" |
 | 3 | Policy resolution (R1–R9e, R7 narrowed) | `risk/policy.py` | First matching rule decides |
 | 4 | Incident-specific notice selection | `risk/category.py`, `risk/responses.py` | Picks an **existing** approved notice; writes no new wording |
-| 5 | Persistent incident state (R10 / R10q) | `risk/incident.py`, called in `chat_engine` step 2b | Only re-issues an alert or keeps a calm line; never lowers |
-| 6 | Escalation recommendation (unchanged) | `risk/escalation.py`, `actions.plan_turn` step 1 | Urgent prototype note; nobody notified |
+| 5 | Persistent incident state (R10 / R10q) | `risk/incident.py`, called in `chat_engine` part B (safety) | Only re-issues an alert or keeps a calm line; never lowers (R10r: a responder-grounded resolution of the active incident closes it with a calm line, see §2) |
+| 6 | Escalation recommendation (unchanged) | `risk/escalation.py`; since the MVP reset the note is written by `tasks.save_urgent_note` and the open task is paused by `tasks.pause_for_emergency` (both called from `chat_engine.run_turn`) | One urgent prototype note per incident; nobody notified |
 
 ### Layer 1: concept slots
 Each rule combines small, generic vocabularies by proximity. No rule copies a test sentence:
@@ -56,7 +56,7 @@ Look-alike fixes, each with positive and negative tests:
 - Every failure (timeout, rate limit, provider error, no key, mock, bad output) gives `decision.degraded = true`.
   The rules alone then decide.
 - **Superseded in Sprint 7:** the R7 exception below was removed; the semantic layer can no longer remove any rules
-  alert or care line ([../evaluation/SPRINT7_GENERALIZATION.md](../evaluation/SPRINT7_GENERALIZATION.md)). Sprint 6 record kept below.
+  alert or care line (../evaluation/SPRINT7_GENERALIZATION.md (removed; in Git history at `59c155c`)). Sprint 6 record kept below.
 - **R7 exception, reviewed (Sprint 6).** The semantic layer may still remove the broad 911 care line (semantic `none`,
   confidence ≥ 0.8), but only when:
   - the line came from broad hazard vocabulary alone;
@@ -93,6 +93,7 @@ stateDiagram-v2
   Active --> Active: new full alert, kind updated, quiet count reset
   Active --> Active: quiet turn (ack / topic), quiet count up by one, R10q keeps the calm line if policy shows nothing
   Active --> Resolved: explicit resolution, (responders arrived AND handled it)
+  Active --> Resolved: R10r, responder-grounded resolution that names the hazard again, (no still-danger words)
   Active --> Resolved: 3 quiet turns in a row (QUIET_TURNS_TO_RESOLVE)
   Active --> Resolved: explicit retraction, (false alarm / I meant / you misunderstood, no danger still described)
   Resolved --> Active: a new full alert
@@ -119,21 +120,28 @@ How each turn is classified while an incident is active (`incident.classify`, fi
    **ack**.
 
 Effects (applied after the policy, so they can only add caution):
-- **follow:** rule R10, the full alert for the incident's kind again. The planner's emergency step shows the
-  approved notice **first**, then the existing honest follow line with the note reference (`emergency_follow`, or
-  `crisis_follow` for a person). It never shows a repair form and never writes a second note. A refusal ("she
+- **follow:** rule R10, the full alert for the incident's kind again. The emergency branch of `chat_engine.run_turn`
+  shows the approved notice **first**, then the existing honest follow line with the note reference
+  (`emergency.FOLLOW_UP`, or `PEOPLE_FOLLOW_UP` for a person; pre-MVP: `emergency_follow` / `crisis_follow`). It never shows a repair form and never writes a second note. A refusal ("she
   won't leave") keeps the approved refusal lead.
+- **resolved while the detector re-fires (R10r, MVP reset):** a grounded resolution of the active incident often
+  names the hazard again ("the gas company fixed the leak"), so the rules would alert. When the alert is of a kind
+  already in the incident, `classify()` says **resolved**, and no still-danger words are present (`_STILL_DANGER`),
+  the incident closes and the turn gets the calm 911 line instead of a new alert and note. A vague "it's fine", a
+  hazard still described, or a different hazard still alerts (tested in `test_acceptance.py` `test_b_*` and
+  `test_safety_pipeline.py`).
 - **ack or topic:** a quiet turn. The normal flow runs, so a repair can still be filed (an existing, reviewed
   behaviour). If the policy would show nothing, R10q keeps the calm line (911, or 988 after self-harm). Three quiet
   turns in a row resolve the incident.
 - **Self-harm incidents** keep their reviewed flow unchanged: R9 shows the 988 line on every later turn, even after
-  "I'm fine, stop", and the planner (J-1) answers "what do I do" and privacy questions with the approved notice.
+  "I'm fine, stop", (pre-MVP, the planner (J-1) also answered "what do I do" and privacy questions with the approved notice; since
+  the MVP reset a non-alert turn goes to the guardrails and the conversation call, with the care line kept).
   The incident only records the turn.
 - **Storage:** one JSON row per change in the existing `gate_decisions` table, with mode `safety_incident`. There
   is no schema change, so it works on SQLite and Postgres and keeps RLS. The row holds the kind, status, turn
   numbers, timestamps and kinds seen, **never message text** (tested). A storage failure never breaks or lowers a
-  turn (tested). Baseline mode and eval runs keep no incident state.
-- **Staff log:** incident rows appear in `/api/gates/log` with `mode = safety_incident`.
+  turn (tested). A turn run without history (`use_history=False`) keeps no incident state.
+- **Stored log:** incident rows are in the `gate_decisions` table with `mode = safety_incident` (no message text).
 
 ## 3. Conservative strategy for uncertain, possibly dangerous messages
 Decision rule: when the message is neither clearly an emergency nor clearly benign, show the **calm 911 care
@@ -153,7 +161,7 @@ starts no alarm.
 
 ## 4. Development-set results (rules + policy + notice selection; semantic layer off)
 
-**Dev-A** is in `backend/tests/sprint6_safety_devset.py` and is used by `tests/test_sprint6_safety_devset.py`:
+**Dev-A** is in `backend/tests/safety_devset.py` and is used by `tests/test_safety_detection.py`:
 - 122 paraphrases across 11 categories (10 to 15 per category, with Spanish and indirect wording in each);
 - 55 look-alikes (5 per category);
 - written from category descriptions, not from any holdout or the sprint reports' examples.
@@ -217,7 +225,7 @@ free model, it **cannot be relied on for recall**. Before any use, measure the t
 on a paid or dedicated model. Raising the cap above 6 s trades latency for coverage.
 
 ## 6. Tests added
-- `tests/test_sprint6_safety.py` (83 tests):
+- `tests/test_safety_detection.py`:
   - concept positives and look-alikes;
   - emergency.py look-alike fixes (positive + negative);
   - notice selection, including EN + ES hot car and a semantic "trapped" alert;
@@ -226,8 +234,8 @@ on a paid or dedicated model. Raising the cap above 6 s trades latency for cover
   - the conservative tier;
   - classifier contract: contradiction rejected, timeout capped, no retry, failures never lower an alert, semantic
     `none` cannot remove a concept alert, semantic may add one.
-- `tests/test_sprint6_safety_devset.py` (16 tests): the Dev-A thresholds per category.
-- `tests/test_sprint6_safety_incident.py` (37 tests):
+- `tests/test_safety_detection.py`: the Dev-A thresholds per category.
+- `tests/test_safety_pipeline.py`:
   - classify() for each class;
   - end to end: medical follow-ups give R10 with the notice first, a resolution, then a normal repair;
   - an ES follow-up; threat follow-ups;
@@ -240,7 +248,7 @@ on a paid or dedicated model. Raising the cap above 6 s trades latency for cover
 
 ## 6b. Fix round (after the independent verifier and the resident simulator)
 
-What changed, each generalised by concept with positive and negative tests in `tests/test_sprint6_safety_fix.py`
+What changed, each generalised by concept with positive and negative tests in `tests/test_safety_detection.py`
 (143 tests):
 
 - **P0, question or past event plus a live report.** The Sprint 6 "asking about signs" and "past car break-in"
@@ -280,16 +288,17 @@ What changed, each generalised by concept with positive and negative tests in `t
   - It closes an incident opened in the same turn or the one before (`RETRACT_WINDOW = 1`). It never closes one
     when the rest of the message still describes danger, a body state, or (for a hazard incident) the hazard.
   - A retracted incident reopens with R10 if danger returns within `REOPEN_WINDOW = 3` turns.
-  - The retracted kind is dropped from the remembered alerts (`incident.prior_hazards`, called in chat_engine step
-    2b), so R9 no longer sticks.
+  - The retracted kind is dropped from the remembered alerts (`incident.prior_hazards`, called in chat_engine part
+    B), so R9 no longer sticks.
   - It never applies to self-harm. For personal safety it is only a quiet turn, because a "never mind" may be
     coerced. **This is the one place the incident layer lowers the policy (R9 only). Review point.**
 - **Hazard controlled** ("water stopped, I shut the valve", "the smell is gone, gas is off at the stove"):
   - For flood, gas, electrical and structural incidents, this closes the incident. The calm 911 line stays on that
     turn.
   - Fire, smoke and CO stay open until responders clear them, as the approved notice says.
-  - Once an incident is closed, the planner's step 1b stops treating short messages as emergency follow-ups, so a
-    request like "now get me a manager" gets a handoff. Privacy questions are still answered.
+  - Once an incident is closed, short messages are no longer treated as emergency follow-ups (no active incident),
+    so a request like "now get me a manager" goes to the normal conversation step and a task paused by the emergency
+    comes back. Privacy questions are still answered (`guardrails.denied`).
 - **"I don't have the emergency number"** during an incident: the approved notice, then
   `emergency.NO_LINE` (**NEEDS McKINLEY REVIEW**, EN + ES draft). It says honestly that this prototype has no
   community emergency number and can't connect anyone. It ends with the approved "call 911" sentence.
@@ -326,7 +335,7 @@ therefore **BLOCKED**.
 | Dispatch claims | 0 | 0 | 0 | — |
 
 No case got worse than the baseline. Per-category numbers are in
-[../evaluation/SPRINT6_RESULTS.md §4](../evaluation/SPRINT6_RESULTS.md).
+../evaluation/SPRINT6_RESULTS.md §4 (removed; in Git history at `59c155c`).
 
 **Release-blocking misses (no guidance at all, final), by holdout ID:**
 - medical: med-01, med-07, med-12, med-13, med-14
@@ -357,7 +366,8 @@ owner for McKinley risk review, and must not be used to tune rules.
 - The rules alone miss about 20% of untuned paraphrases (Dev-B). The semantic layer timed out on 3 of 6 live calls.
 - Incident classification is itself rule-based. A follow-up with no person, hazard or "what now" words counts as a
   quiet turn: the calm line is shown, not the full notice.
-- The reply language of an emergency comes from the planner's language rule. Some Spanish emergency messages
+- The reply language of an emergency comes from the conversation layer's language rule (`assistant.language` since
+  the MVP reset; observed on the pre-MVP planner, not re-measured). Some Spanish emergency messages
   ("mi esposo se desmayó y no responde") are answered in English, even for guests. This existing behaviour is
   owned by the conversation layer; the notice always matches the reply language.
 - Clause splitting is regex-based: a live report phrased as a conditional ("if my dad can't breathe, what do I do")
@@ -371,3 +381,39 @@ owner for McKinley risk review, and must not be used to tune rules.
 - A person described only by a pronoun ("she's lying on the floor, not responding") is still missed: the
   person-plus-body-state rule needs a person noun.
 - A self-harm incident never auto-resolves. R9 keeps the 988 line for the rest of the session by design.
+
+## 9. Sprint 8: customer-facing safety states and contacts
+The persistent tap-to-call 911 control was removed from the customer UI (product-owner decision). Emergency contacts now
+appear only inside a contextual state that the backend computes once per turn (`app/risk/ui_state.py`) and returns as
+`safety_state` and `safety_contacts`. The customer view passes both through. Full report:
+../evaluation/SPRINT8_EMERGENCY_UX_MAINTENANCE.md (removed; in Git history at `59c155c`).
+
+```mermaid
+stateDiagram-v2
+  [*] --> normal
+  normal --> active: full alert (R1 / R2 / R9e / R10, R5f confirmation)
+  normal --> concern: care line, safety info (R5 / R5c), remembered line (R9), quiet incident turn (R10q)
+  concern --> active: the person confirms or describes the sign within 2 turns (R5f), or a new full alert
+  concern --> normal: nothing shown on the next turn (benign, resolved, "no, just asking")
+  active --> active: follow-up during the incident (R10)
+  active --> concern: quiet incident turn (R10q) / hazard reported controlled
+  active --> normal: explicit resolution or retraction (incident closed)
+```
+
+| State | Shown to the resident | Contacts |
+| --- | --- | --- |
+| `normal` | nothing safety-related (no banner, no call link) | none |
+| `concern` | a calm in-conversation note (`care_note`) | always matching the line: distress → 988 call + text; unwell / danger from a person sign → 911; R5 / R5c info → that category's contacts; R10q → the incident's contacts |
+| `active` | a clearly visible alert first in the turn (`safety_heading`, `safety_notice`), links straight under the heading | medical, fire, CO, personal safety, trapped → 911; gas → "Call 911 once you're outside" + gas company (info); poison → Poison Help 1-800-222-1222 + 911 if hard to wake; self-harm → 988 call + text + 911 if in immediate danger; flood / electrical without a person → maintenance line (info) + 911 if anyone is in danger; deliberate poisoning adds 988 |
+
+Rules:
+- Only `tel:911`, `tel:988`, `sms:988` and `tel:18002221222` become links. Nothing dials on render, and focus never moves
+  onto a call link.
+- Labels follow the reply language and are marked NEEDS McKINLEY REVIEW.
+- **R5c** (new): a conditional question about a serious emergency ("if my dad can't breathe, what do I do?") gets
+  the approved steps and the category's links as a *concern*, without opening an incident. A 2-turn pending marker
+  holds only the kind and the turn; a confirmation ("yes", "it is happening", "sí") or a described sign escalates to
+  the full alert (**R5f**). Live markers keep the original message active: "right now", recent-time phrases ("10 min
+  ago", "hace unos minutos"), a completed event about a specific person, or a separate present-tense symptom.
+- The footer keeps one muted, non-tappable line about 911 as a mitigation for missed emergencies (lead decision,
+  awaiting product-owner confirmation).

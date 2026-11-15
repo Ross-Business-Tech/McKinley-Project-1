@@ -118,8 +118,13 @@ def recommend(targets: list[dict[str, Any]]) -> tuple[str | None, str]:
     return None, "no configured OpenRouter model is listed and free"
 
 
-def gemini_model_names(api_key: str) -> list[str]:
-    """Model names visible to this Gemini key (a list call: no generation, no tokens spent)."""
+def gemini_model_names(api_key: str, base_url: str | None = None) -> list[str]:
+    """Model names visible to this Gemini key (a list call: no generation, no tokens spent). With GEMINI_BASE_URL
+    the OpenAI-compatible gateway's own `GET {base}/models` list is used, not Google's."""
+    if base_url:
+        r = httpx.get(f"{base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=15)
+        r.raise_for_status()
+        return [str(m.get("id")) for m in (r.json().get("data") or []) if isinstance(m, dict) and m.get("id")]
     from google import genai
     from google.genai import types
 
@@ -131,7 +136,7 @@ def gemini_info(model_id: str, names: list[str] | None, error: str | None) -> di
     if names is None:
         return {"model": model_id, "listed": None,
                 "note": error or "GEMINI_API_KEY not set: the model list needs a key, so this model is unverified"}
-    return {"model": model_id, "listed": model_id in names, "note": "checked against models.list for this key"}
+    return {"model": model_id, "listed": model_id in names, "note": "checked against the model list for this key"}
 
 
 def run_preflight(settings: Settings, client: httpx.Client | None = None, timeout: float = 10.0,
@@ -145,7 +150,10 @@ def run_preflight(settings: Settings, client: httpx.Client | None = None, timeou
     gem_error: str | None = None
     if keys["gemini"] and any(t.provider == "gemini" for t in targets):
         try:
-            gem_names = (gemini_lister or gemini_model_names)(settings.api_key_for("gemini"))
+            gem_base = settings.base_url_for("gemini")
+            lister = gemini_lister or gemini_model_names
+            key = settings.api_key_for("gemini")
+            gem_names = lister(key, gem_base) if gem_base else lister(key)
         except Exception as e:  # never print the key or the raw error body
             gem_error = f"model list failed: {type(e).__name__}"
     ollama_ok = (_ollama_reachable(settings.base_url_for("ollama") or "http://localhost:11434", client)

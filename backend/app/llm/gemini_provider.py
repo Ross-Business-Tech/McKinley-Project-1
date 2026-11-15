@@ -1,15 +1,27 @@
-"""Google Gemini provider through the official `google-genai` SDK (Gemini Developer API, key from AI Studio).
+"""Google Gemini provider. Two transports, chosen by configuration (never mixed within one provider):
+
+* No base URL: the official `google-genai` SDK (Gemini Developer API, key from AI Studio). Structured output uses
+  `response_mime_type="application/json"` + `response_json_schema`; thinking uses `ThinkingConfig(thinking_level)`.
+* `GEMINI_BASE_URL` set: an OpenAI-compatible gateway in front of Gemini (for example a university AI gateway). Its
+  contract was checked with real calls (2026-11-11), not assumed: `POST {base}/chat/completions` with a `system`
+  message, `response_format: json_schema` (strict), `max_tokens`, and `reasoning_effort` (the gateway forwards it
+  to Gemini's `thinking_level`: minimal/low/medium/high; `none`, a `thinking: {type: disabled}` object and Google's
+  native `thinking_config` were all ignored there). Usage follows OpenAI: `completion_tokens` includes
+  `completion_tokens_details.reasoning_tokens`. The base URL is configuration, never hard-coded, and never put into
+  error messages.
 
 Same contract as every provider: it receives only the system prompt and chat messages (never workbook rows) and
-returns an `LLMResult`. Structured output uses `response_mime_type="application/json"` + `response_json_schema`.
-Retries (429 / 5xx) are done by the SDK on the SAME model; the served `model_version` is returned so the gateway's
+returns an `LLMResult`. Retries (429 / 5xx) stay on the SAME model; the served model is returned so the gateway's
 strict check can raise MODEL_SWITCHED. No prices are hard-coded: cost is left unknown (None) rather than guessed.
 """
 
 import time
 from typing import Any
 
+import httpx
+
 from app.llm.base import OUTPUT_SCHEMA, GenerationConfig, LLMError, LLMResult, Target, parse_output
+from app.llm.http import map_status, post_json
 
 _REFUSAL_REASONS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "IMAGE_SAFETY"}
 _RETRY_STATUS = [429, 500, 502, 503, 504]
@@ -50,10 +62,17 @@ def _enum_name(v: Any) -> str | None:
 class GeminiProvider:
     name = "gemini"
 
-    def __init__(self, api_key: str | None, client: Any = None, thinking_level: str | None = None):
+    def __init__(self, api_key: str | None, client: Any = None, thinking_level: str | None = None,
+                 base_url: str | None = None, http_client: httpx.Client | None = None):
         self._api_key = api_key
         self._client = client  # injected in tests; real client created lazily
         self._thinking_level = thinking_level
+        self._base_url = (base_url or "").strip().rstrip("/") or None
+        self._http = http_client  # gateway transport; injected in tests (httpx.MockTransport)
+
+    @property
+    def transport(self) -> str:
+        return "gateway" if self._base_url else "google-genai"
 
     def _get_client(self) -> Any:
         if self._client is not None:
@@ -70,6 +89,8 @@ class GeminiProvider:
                  cfg: GenerationConfig, schema: dict[str, Any] | None = None,
                  schema_name: str = "mckinley_reply") -> LLMResult:
         schema = schema or OUTPUT_SCHEMA
+        if self._base_url:
+            return self._complete_gateway(system, messages, target, cfg, schema, schema_name)
         client = self._get_client()
         from google.genai import errors, types
 
@@ -146,5 +167,71 @@ class GeminiProvider:
             output_tokens=output_tokens,
             latency_ms=latency_ms, parse_mode=mode, estimated_cost_usd=None,
             extra={"content": text, "thinking_tokens": thoughts, "answer_tokens": visible,
-                   "thinking_level": self._thinking_level or "model default", "schema_name": schema_name},
+                   "thinking_level": self._thinking_level or "model default", "schema_name": schema_name,
+                   "transport": "google-genai"},
+        )
+
+    def _complete_gateway(self, system: str, messages: list[dict[str, str]], target: Target,
+                          cfg: GenerationConfig, schema: dict[str, Any], schema_name: str) -> LLMResult:
+        """OpenAI-compatible gateway call (see module docstring for the verified contract)."""
+        if not self._api_key:
+            raise LLMError("NEEDS_API_KEY", "GEMINI_API_KEY is not configured on the backend. Add the gateway key "
+                           "to backend/.env (or the host's secret settings) or set LLM_PROVIDER=mock.",
+                           http_status=503)
+        payload: dict[str, Any] = {
+            "model": target.model,
+            "messages": [{"role": "system", "content": system},
+                         *({"role": m.get("role"), "content": m.get("content", "")}
+                           for m in messages if m.get("role") in ("user", "assistant"))],
+            "max_tokens": cfg.max_tokens,
+            "response_format": {"type": "json_schema",
+                                "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
+        }
+        if cfg.temperature is not None:
+            payload["temperature"] = cfg.temperature
+        if self._thinking_level:
+            payload["reasoning_effort"] = self._thinking_level
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        try:
+            data, latency_ms = post_json(self.name, f"{self._base_url}/chat/completions", payload, headers,
+                                         cfg.timeout_seconds, cfg.max_retries, self._http)
+        except LLMError as e:
+            if e.code == "MODEL_CONNECTION_ERROR":  # post_json names the host; keep the gateway address private
+                raise LLMError(e.code, "Could not reach the Gemini gateway.", retryable=True,
+                               http_status=503) from e
+            raise
+        if "error" in data:
+            err = data["error"]
+            msg = err.get("message", "unknown error") if isinstance(err, dict) else str(err)
+            code = err.get("code") if isinstance(err, dict) else None
+            if isinstance(code, int) and 400 <= code < 600:
+                raise map_status(self.name, code, str(msg)[:200])
+            raise LLMError("MODEL_API_ERROR", f"gemini gateway error: {str(msg)[:200]}")
+        choices = data.get("choices") or []
+        if not choices:
+            raise LLMError("MODEL_EMPTY_RESPONSE", "Gemini gateway returned no choices.")
+        choice = choices[0]
+        finish = choice.get("finish_reason")
+        if finish == "length":
+            raise LLMError("MODEL_TRUNCATED", "Model output hit max_tokens before completing.")
+        message = choice.get("message") or {}
+        if finish in ("content_filter", "safety") or message.get("refusal"):
+            raise LLMError("MODEL_REFUSAL", f"Gemini stopped the response ({finish}).")
+        content = message.get("content") or ""
+        if not content.strip():
+            raise LLMError("MODEL_EMPTY_RESPONSE", "Gemini returned no text.")
+        output, mode = parse_output(content)
+        usage = data.get("usage") or {}
+        details = usage.get("completion_tokens_details") or {}
+        thinking = details.get("reasoning_tokens") if isinstance(details, dict) else None
+        completion = usage.get("completion_tokens")
+        answer = completion - thinking if isinstance(completion, int) and isinstance(thinking, int) else completion
+        return LLMResult(
+            output=output, provider=self.name, requested_model=target.model,
+            model=data.get("model") or target.model, stop_reason=finish,
+            input_tokens=usage.get("prompt_tokens"), output_tokens=completion,
+            latency_ms=latency_ms, parse_mode=mode, estimated_cost_usd=None,
+            extra={"content": content, "thinking_tokens": thinking, "answer_tokens": answer,
+                   "thinking_level": self._thinking_level or "model default", "schema_name": schema_name,
+                   "transport": "gateway"},
         )

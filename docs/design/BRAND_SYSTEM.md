@@ -2,7 +2,7 @@
 
 One small system shared by `/` (customer chat) and `/staff/` (staff and demo console). Tokens live in
 `frontend/src/app/globals.css` (`--color-mk-*`); components use only those tokens. Mobile UX evidence:
-[MOBILE_UX_AUDIT.md](MOBILE_UX_AUDIT.md). How the design skills were used: [TASTE_SKILL_REVIEW.md](TASTE_SKILL_REVIEW.md).
+[MOBILE_UX_AUDIT.md](MOBILE_UX_AUDIT.md). How the design skills were used: TASTE_SKILL_REVIEW.md (removed; in Git history at `59c155c`).
 
 ## Where the colours come from
 Checked on 2026-11-10 against McKinley's own site, mckinley.com. The values come from its stylesheet
@@ -78,12 +78,14 @@ Green appears **only after the backend actually saved something**. Brand blue ne
   - A 48px input and a 48px send button. Send is blue when there is text and grey with an outline when empty, so
     the two states never look alike.
   - Under it: **Talk to a person** (always) and **Start over** (once you have talked).
-  - Then one line: "Prototype with made-up data. Emergency? **Call 911**" (a tap-to-call link). That line is hidden
+  - Then one line: "Prototype with made-up data. In an emergency, call 911." (Sprint 8: plain muted text, **not** a
+    link; tap-to-call links appear only inside a contextual emergency alert). That line is hidden
     visually on screens under 480px tall but stays available to screen readers.
 - **Action card:**
   - A white card with a 12px radius: Barlow title, status pill, field list with sources.
   - The buttons are **Send** (48px, blue) and **Don't send** (outline).
-  - After a save it gets a green border, a green "Submitted, waiting for staff review" pill and the reference number.
+  - After a save it gets a green border, a green "Saved in demo" pill, a one-line summary of the details and, on the
+    demo line, the reference number (Sprint 9).
   - A progress hint ("Tour request. Still needed: community or city") uses a static checklist icon, not a spinner.
 - **Emergency block:** unchanged on purpose. It has a 2px red border, a role=alert heading and a 48px red
   **Call 911 / 988** button. It is never restyled to match the brand.

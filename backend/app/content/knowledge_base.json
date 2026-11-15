@@ -1,5 +1,5 @@
 {
-  "_about": "D-07 approved knowledge base + I-12 FAQ topic list (TEAM DRAFT). Only entries with status 'approved' may be stated to customers. Every other entry is a placeholder that McKinley must fill in and approve; until then the assistant says it does not have approved details and offers the leasing team. Never add facts here that McKinley has not supplied.",
+  "_about": "D-07 approved knowledge base + I-12 FAQ topic list (TEAM DRAFT). Only entries with status 'approved' may be stated to customers. Every other entry is a placeholder that McKinley must fill in and approve; until then the assistant says it does not have approved details and offers the leasing team. Never add facts here that McKinley has not supplied. Sprint 10: 'sample_answer' fields are MADE-UP example content for a supervised local demo (KNOWLEDGE_CONTENT_MODE=demo_samples, refused on a hosted deployment). They are not McKinley policy, are always shown labelled as a sample, and must be replaced by approved text before any real use.",
   "version": "kb-draft-1",
   "topics": [
     {
@@ -77,7 +77,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: this demo community has 1-bed and 2-bed floor plans; the leasing team shares current layouts.",
+      "sample_answer_es": "Ejemplo: esta comunidad de demostración tiene planos de 1 y 2 recámaras; el equipo comparte los planos actuales."
     },
     {
       "id": "pets",
@@ -91,7 +93,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: up to two cats or dogs per home are welcome, with a one-time pet fee; some breed limits apply.",
+      "sample_answer_es": "Ejemplo: se aceptan hasta dos gatos o perros por hogar, con una tarifa única por mascota; hay algunas restricciones de raza."
     },
     {
       "id": "parking",
@@ -104,7 +108,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: each home has one assigned spot, and guest parking is first come, first served.",
+      "sample_answer_es": "Ejemplo: cada hogar tiene un lugar asignado y el estacionamiento de visitas es por orden de llegada."
     },
     {
       "id": "amenities",
@@ -120,7 +126,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: the community has a fitness room, a seasonal pool and a resident clubhouse.",
+      "sample_answer_es": "Ejemplo: la comunidad tiene gimnasio, alberca de temporada y una casa club para residentes."
     },
     {
       "id": "laundry",
@@ -133,7 +141,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: 2-bed homes have washer and dryer hookups, and every building has a shared laundry room.",
+      "sample_answer_es": "Ejemplo: los hogares de 2 recámaras tienen conexiones para lavadora y secadora, y cada edificio tiene lavandería común."
     },
     {
       "id": "utilities",
@@ -148,7 +158,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 per-property documents not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: water and trash are billed monthly; residents set up electricity and internet themselves.",
+      "sample_answer_es": "Ejemplo: el agua y la basura se cobran cada mes; los residentes contratan la luz y el internet."
     },
     {
       "id": "application",
@@ -159,11 +171,16 @@
         "credit check",
         "background check",
         "income requirement",
-        "qualify"
+        "qualify",
+        "credit score",
+        "credit requirement",
+        "minimum credit"
       ],
       "status": "pending_approval",
       "source": "D-07 / I-14 application rules not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: you apply online, then the leasing team reviews income, rental history and a background check.",
+      "sample_answer_es": "Ejemplo: se aplica en línea y el equipo revisa ingresos, historial de renta y antecedentes."
     },
     {
       "id": "office_hours",
@@ -176,7 +193,9 @@
       ],
       "status": "pending_approval",
       "source": "D-01 office hours not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: the leasing office is open Monday to Friday 9 to 6 and Saturday 10 to 4.",
+      "sample_answer_es": "Ejemplo: la oficina abre de lunes a viernes de 9 a 6 y los sábados de 10 a 4."
     },
     {
       "id": "neighborhood",
@@ -207,7 +226,9 @@
       ],
       "status": "pending_approval",
       "source": "D-07 / I-14 not supplied",
-      "handoff": true
+      "handoff": true,
+      "sample_answer": "Sample: there is an application fee and a refundable security deposit; the leasing team confirms amounts.",
+      "sample_answer_es": "Ejemplo: hay una tarifa de solicitud y un depósito reembolsable; el equipo confirma los montos."
     },
     {
       "id": "waitlist",
@@ -220,6 +241,69 @@
       "status": "pending_approval",
       "source": "D-07 / D-08 not supplied",
       "handoff": true
+    },
+    {
+      "id": "office_contact",
+      "label": "the office address and phone number",
+      "keywords": [
+        "address",
+        "where are you located",
+        "where is the office",
+        "office located",
+        "directions to",
+        "phone number for the office",
+        "office phone"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 per-property contact details not supplied",
+      "handoff": true,
+      "pending_reply": "I don't have the office's real address or phone number in this demo, so I won't guess. Your community's office or McKinley's website will have them, and I can pass your question to the leasing team.",
+      "pending_reply_es": "En esta demostración no tengo la dirección ni el teléfono reales de la oficina, así que no voy a adivinar. La oficina de su comunidad o el sitio web de McKinley los tienen, y puedo pasar su pregunta al equipo de arrendamiento.",
+      "sample_answer": "Sample: the leasing office is at 100 Example Lane, and the demo phone number is 555-0100.",
+      "sample_answer_es": "Ejemplo: la oficina está en 100 Example Lane y el teléfono de demostración es 555-0100."
+    },
+    {
+      "id": "account_access",
+      "label": "resident portal sign-in",
+      "keywords": [
+        "portal password",
+        "forgot my password",
+        "reset my password",
+        "reset password",
+        "can't log in",
+        "cant log in",
+        "can't sign in",
+        "cant sign in",
+        "log into the portal",
+        "login to the portal",
+        "locked out of the portal",
+        "portal login",
+        "how do i sign in",
+        "how do i log in"
+      ],
+      "status": "pending_approval",
+      "source": "System capability (this chat has no access to resident portal accounts)",
+      "handoff": true,
+      "pending_reply": "I can't see or reset resident portal accounts from this chat, and this demo has no sign-in. The office can help you get back into the portal, and I can start a note for them.",
+      "pending_reply_es": "Desde este chat no puedo ver ni restablecer cuentas del portal de residentes, y esta demostración no tiene inicio de sesión. La oficina puede ayudarle a entrar al portal, y puedo empezar una nota para ellos."
+    },
+    {
+      "id": "cosigner",
+      "label": "cosigners and guarantors",
+      "keywords": [
+        "cosigner",
+        "co-signer",
+        "cosign",
+        "co-sign",
+        "guarantor"
+      ],
+      "status": "pending_approval",
+      "source": "D-07 leasing criteria not supplied",
+      "handoff": true,
+      "pending_reply": "Whether someone can be a cosigner depends on McKinley's leasing criteria, which I don't have approved details on. The leasing team can tell you what a cosigner needs, and I can pass your question to them.",
+      "pending_reply_es": "Si alguien puede ser aval depende de los criterios de arrendamiento de McKinley, sobre los que no tengo información aprobada. El equipo de arrendamiento puede decirle qué necesita un aval, y puedo pasarle su pregunta.",
+      "sample_answer": "Sample: a cosigner can be added to a lease if they meet the same income and background criteria.",
+      "sample_answer_es": "Ejemplo: se puede agregar un aval si cumple los mismos criterios de ingresos y antecedentes."
     }
   ]
 }

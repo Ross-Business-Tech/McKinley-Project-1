@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.api.errors import llm_error_response
-from app.api.staff_guard import request_is_local, require_staff, staff_allowed
+from app.api.errors import customer_llm_error_response, llm_error_response
+from app.api.protection import SESSION_LOCKS, rate_limited
+from app.api.staff_guard import request_is_local, staff_allowed
 from app.api.views import customer_view
 from app.auth import (
     AuthError,
@@ -9,13 +10,12 @@ from app.auth import (
     demo_personas_enabled,
     derive_principal,
     new_session_id,
-    staff_principal,
     with_session_state,
 )
 from app.chat_engine import resolve_target, run_turn
 from app.llm import LLMError
-from app.models import ChatRequest, ChatResponse, ContextPreviewRequest, ErrorBody, Persona, SafeContext
-from app.personas import build_context, list_personas
+from app.models import ChatRequest, ChatResponse, ErrorBody, Persona
+from app.personas import list_personas
 from app.state import AppState, get_state
 
 router = APIRouter(prefix="/api")
@@ -31,15 +31,6 @@ def personas(request: Request, state: AppState = Depends(get_state)) -> list[Per
     return list_personas(state.deps.workbook)
 
 
-@router.post("/context/preview", response_model=SafeContext, dependencies=[Depends(require_staff)])
-def context_preview(req: ContextPreviewRequest, state: AppState = Depends(get_state)) -> SafeContext:
-    """Exactly the minimized context the aware mode would send for this persona + message."""
-    from app.chat_engine import clean_message
-
-    return build_context(req.persona_id, clean_message(req.message), state.deps.workbook,
-                         principal=staff_principal(persona_id=req.persona_id))
-
-
 @router.post("/chat", response_model=ChatResponse, responses={502: {"model": ErrorBody}, 503: {"model": ErrorBody}})
 def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state)):
     staff = staff_allowed(request, state)
@@ -48,6 +39,10 @@ def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state
     if (req.target or req.gate_provider or req.mode != "aware") and not staff:
         raise HTTPException(status_code=403, detail={"code": "STAFF_ONLY", "message": "Model, gate and mode "
                                                      "overrides are staff-only.", "retryable": False})
+    if not staff and rate_limited(request, state.deps.settings, "chat", req.session_id):
+        raise HTTPException(status_code=429, detail={"code": "RATE_LIMITED", "message": "That's a lot of messages "
+                            "in a short time. Please wait a minute and try again. In an emergency, call 911.",
+                            "retryable": True})
     local = request_is_local(request)
     session_id = req.session_id
     if not session_id or not continues_session(state.store, state.deps.settings, local, session_id):
@@ -61,12 +56,14 @@ def chat(req: ChatRequest, request: Request, state: AppState = Depends(get_state
         principal = with_session_state(state.store, principal)  # sticky "not the account holder"
         target = resolve_target(state.deps, req.target)
         # Interactive chat: a provider-reported model mismatch is surfaced as an error, never hidden.
-        resp = run_turn(state.deps, req.message, req.mode, principal.persona_id, session_id, target=target,
-                        gate_provider=req.gate_provider, channel=req.channel, fallback_on_model_error=True,
-                        principal=principal)
+        with SESSION_LOCKS.get(session_id):  # Sprint 10: one turn at a time per conversation (no lost draft update)
+            resp = run_turn(state.deps, req.message, req.mode, principal.persona_id, session_id, target=target,
+                            gate_provider=req.gate_provider, channel=req.channel, fallback_on_model_error=True,
+                            principal=principal, local_request=local)
     except AuthError as e:
         raise HTTPException(status_code=e.status, detail=e.detail()) from None
     except LLMError as e:
-        return llm_error_response(e)
+        # staff see the provider's code and message (diagnostics); customers a fixed, safe one (app/api/errors.py)
+        return llm_error_response(e) if staff else customer_llm_error_response(e)
     # Staff diagnostics (risk, gate, pipeline, context provenance, rule ids) only for staff callers (app/api/views).
     return resp if staff else customer_view(resp)

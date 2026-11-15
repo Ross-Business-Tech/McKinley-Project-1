@@ -1,4 +1,4 @@
-"""Store for demo session turns and eval outcomes.
+"""Store for demo session turns, drafts and prototype records.
 
 Local development and tests use a SQLite file (gitignored). A shared deployment can set DATABASE_URL to a Postgres
 database (for example Supabase) and the same queries run there. Queries are written once with `?` placeholders and
@@ -14,6 +14,8 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from app.models import with_status_label
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS chat_turns (
@@ -129,6 +131,19 @@ def _postgres_schema() -> str:
     return ddl + rls
 
 
+_LOCAL_PG_HOSTS = {"localhost", "127.0.0.1", "::1", "", None}
+
+
+def pg_tls_args(url: str) -> dict[str, str]:
+    """Connection options that require TLS for any non-local Postgres (Supabase, a Render-hosted DB) unless the URL
+    already states an sslmode. psycopg's default `prefer` would silently fall back to plaintext."""
+    from urllib.parse import parse_qs, urlsplit
+    parts = urlsplit(url)
+    if "sslmode" in parse_qs(parts.query) or parts.hostname in _LOCAL_PG_HOSTS:
+        return {}
+    return {"sslmode": "require"}
+
+
 class Store:
     def __init__(self, path: Path | None = None, database_url: str | None = None):
         self._lock = threading.Lock()
@@ -169,7 +184,7 @@ class Store:
         try:
             return psycopg.connect(self._pg_url, autocommit=True, row_factory=dict_row, prepare_threshold=None,
                                    connect_timeout=10, keepalives=1, keepalives_idle=30, keepalives_interval=10,
-                                   keepalives_count=3)
+                                   keepalives_count=3, **pg_tls_args(self._pg_url))
         except Exception as e:  # psycopg messages can echo the connection string (password included): scrub
             from urllib.parse import urlsplit
             host = urlsplit(self._pg_url).hostname or "unknown host"
@@ -481,8 +496,8 @@ class Store:
             self._q(
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
                 "data) VALUES (?,?,?,?,?,?,?,?)", (seq, rid, kind, shash, skey, persona_id, created, json.dumps(data)))
-        return {**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
-                "created_at": created}
+        return with_status_label({**data, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
+                                  "created_at": created})
 
     def add_record_once(self, prefix: str, kind: str, session_id: str, persona_id: str | None,
                         data: dict[str, Any], once_key: str) -> dict[str, Any]:
@@ -494,8 +509,9 @@ class Store:
                                         f"persona_id {self._same} ?", (skey, kind, persona_id)).fetchall():
                 d = json.loads(r["data"])
                 if d.get("once_key") == once_key:
-                    return {**d, "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
-                            "persona_id": r["persona_id"], "created_at": r["created_at"], "_existing": True}
+                    return with_status_label({**d, "id": r["id"], "kind": r["kind"],
+                                              "session_hash": r["session_hash"], "persona_id": r["persona_id"],
+                                              "created_at": r["created_at"], "_existing": True})
             seq = self._q("SELECT COALESCE(MAX(seq), 0) AS m FROM prototype_records").fetchone()["m"] + 1
             rid, created = f"{prefix}-{1000 + seq}", now_iso()
             payload = {**data, "once_key": once_key}
@@ -503,8 +519,8 @@ class Store:
                 "INSERT INTO prototype_records(seq, id, kind, session_hash, session_key, persona_id, created_at, "
                 "data) VALUES (?,?,?,?,?,?,?,?)",
                 (seq, rid, kind, shash, skey, persona_id, created, json.dumps(payload)))
-        return {**payload, "id": rid, "kind": kind, "session_hash": shash, "persona_id": persona_id,
-                "created_at": created}
+        return with_status_label({**payload, "id": rid, "kind": kind, "session_hash": shash,
+                                  "persona_id": persona_id, "created_at": created})
 
     def records(self, persona_id: str | None = None, kind: str | None = None,
                 session_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
@@ -522,65 +538,11 @@ class Store:
         args.append(limit)
         with self._lock:
             rows = self._q(sql, args).fetchall()
-        return [{**json.loads(r["data"]), "id": r["id"], "kind": r["kind"], "session_hash": r["session_hash"],
-                 "persona_id": r["persona_id"], "created_at": r["created_at"]} for r in rows]
+        return [with_status_label({**json.loads(r["data"]), "id": r["id"], "kind": r["kind"],
+                                   "session_hash": r["session_hash"], "persona_id": r["persona_id"],
+                                   "created_at": r["created_at"]}) for r in rows]
 
-    # ---- evals ----
-    def create_run(self, targets: list[str], aware_v: str, baseline_v: str, temperature: float | None) -> int:
-        with self._lock, self._tx():
-            cur = self._q(
-                "INSERT INTO eval_runs(created_at, targets, aware_prompt_version, baseline_prompt_version, "
-                "temperature) VALUES (?,?,?,?,?) RETURNING id",
-                (now_iso(), json.dumps(targets), aware_v, baseline_v, temperature),
-            )
-            return int(cur.fetchone()["id"])
 
-    def runs(self, limit: int = 20) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._q("SELECT * FROM eval_runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-        return [{**dict(r), "targets": json.loads(r["targets"])} for r in rows]
-
-    def add_result(self, run_id: int, case_id: str, mode: str, data: dict[str, Any]) -> int:
-        with self._lock, self._tx():
-            cur = self._q(
-                "INSERT INTO eval_results(run_id, case_id, mode, created_at, data) VALUES (?,?,?,?,?) RETURNING id",
-                (run_id, case_id, mode, data["created_at"], json.dumps(data)),
-            )
-            return int(cur.fetchone()["id"])
-
-    def latest_run_id(self) -> int | None:
-        with self._lock:
-            row = self._q("SELECT MAX(id) AS id FROM eval_runs").fetchone()
-        return row["id"] if row and row["id"] is not None else None
-
-    def results(self, run_id: int) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._q(
-                "SELECT * FROM eval_results WHERE run_id=? ORDER BY id", (run_id,)
-            ).fetchall()
-        return [self._row(r) for r in rows]
-
-    def get_result(self, result_id: int) -> dict[str, Any] | None:
-        with self._lock:
-            r = self._q("SELECT * FROM eval_results WHERE id=?", (result_id,)).fetchone()
-        return self._row(r) if r else None
-
-    def update_result_data(self, result_id: int, data: dict[str, Any]) -> None:
-        with self._lock, self._tx():
-            self._q("UPDATE eval_results SET data=? WHERE id=?", (json.dumps(data), result_id))
-
-    def review(self, result_id: int, verdict: str | None, notes: str | None) -> None:
-        with self._lock, self._tx():
-            self._q(
-                "UPDATE eval_results SET human_verdict=?, human_notes=? WHERE id=?", (verdict, notes, result_id)
-            )
-
-    @staticmethod
-    def _row(r: Any) -> dict[str, Any]:
-        data = json.loads(r["data"])
-        data.update(id=r["id"], run_id=r["run_id"], case_id=r["case_id"], mode=r["mode"],
-                    human_verdict=r["human_verdict"], human_notes=r["human_notes"])
-        return data
 
 
 # Principal kinds whose own records may be read across sessions: an authorised persona owns its prototype records,

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.models import ChatResponse
+from app.models import ChatResponse, PrototypeRecord
 
 # Exactly what frontend/src/components/customer (CustomerApp, ActionCard, StatusPill) and lib/customer.ts read,
 # plus the caller's own data (records it created, its own status items) and plain response metadata.
@@ -27,6 +27,8 @@ CUSTOMER_FIELDS: frozenset[str] = frozenset({
     "provider", "requested_model", "model", "is_mock",
     # coarse outcome only (not the reason text, not which rule fired)
     "recommended_handoff", "handoff_category", "handoff_is_recommendation_only", "audience",
+    # sprint 8 UI safety state and its fixed, category-specific contact links (app/risk/ui_state.py)
+    "safety_state", "safety_contacts",
 })
 
 # Required ChatResponse fields that customers do not get: neutral values of the right type.
@@ -48,7 +50,19 @@ _NEUTRAL: dict[str, Any] = {
 STAFF_ONLY_FIELDS: frozenset[str] = frozenset(set(ChatResponse.model_fields) - CUSTOMER_FIELDS)
 
 
+# Staff-only metadata on a saved prototype record (sprint 8): routing and repeat-history internals.
+RECORD_STAFF_FIELDS: frozenset[str] = frozenset({"repeat_history", "manager_review", "review_queue"})
+
+
+def customer_record(rec: PrototypeRecord | None) -> PrototypeRecord | None:
+    """A saved record as a non-staff caller may see it: the staff-only metadata reset to its default (None)."""
+    if rec is None:
+        return None
+    return rec.model_copy(update={k: None for k in RECORD_STAFF_FIELDS})
+
+
 def customer_view(resp: ChatResponse) -> ChatResponse:
     """The response with every staff diagnostic removed (deny by default, see the module docstring)."""
     data = {k: getattr(resp, k) for k in CUSTOMER_FIELDS}
+    data["records_created"] = [customer_record(r) for r in resp.records_created]
     return ChatResponse.model_validate({**_NEUTRAL, **data})

@@ -28,7 +28,7 @@ Phone/SMS/email integrations; Yardi writebacks; Databricks live data; work order
 - Fair housing: do not steer or discriminate based on protected characteristics; language rules alone do not guarantee compliance.
 
 ## Five-case demo
-See `evals/five_cases.md`: high-intent prospect, generic prospect, repeated AC repair, first-time leaky faucet, renewal / preferred communication. Ensure at least one human-handoff case and one unknown-data case.
+See `docs/workflows/five_cases.md`: high-intent prospect, generic prospect, repeated AC repair, first-time leaky faucet, renewal / preferred communication. Ensure at least one human-handoff case and one unknown-data case.
 
 ## Acceptance checklist
 - [ ] Full stack runs with documented commands.

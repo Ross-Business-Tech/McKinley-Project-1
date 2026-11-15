@@ -4,7 +4,6 @@
 // aware = McKinley prompt + gate/workflow + authorized minimized resident context.
 export type Mode = "baseline" | "prompt_only" | "aware";
 export type Audience = "prospect" | "resident" | "unknown";
-export type Verdict = "GOOD" | "BAD";
 
 export interface Persona {
   language?: "en" | "es";
@@ -13,24 +12,6 @@ export interface Persona {
   kind: "prospect" | "resident" | "unmatched_resident";
   description: string;
   synthetic: boolean;
-}
-
-export interface ContextField {
-  name: string;
-  value: string;
-  source: string;
-}
-
-export interface SafeContext {
-  persona_id: string | null;
-  persona_kind: Persona["kind"] | null;
-  audience: Audience;
-  record_found: boolean;
-  topics: string[];
-  fields: ContextField[];
-  withheld_fields: string[];
-  dropped_items: string[];
-  notes: string[];
 }
 
 /** Mirrors backend/app/models.py HandoffCategory. */
@@ -83,7 +64,6 @@ export type WorkflowId =
   | "general_inquiry"
   | "sms_opt_out";
 export type HandoffTeam = "emergency_maintenance" | "maintenance" | "leasing" | "accounting" | "management";
-export type Suite = "core" | "extended";
 
 export interface GateDecision {
   /** Always the trusted (application-established) audience. */
@@ -205,6 +185,22 @@ export interface ChatResponse {
   care_kind?: "distress" | "unwell" | "danger" | "info" | null;
   risk?: RiskAssessment | null;
   care_note?: string | null;
+  /** Sprint 8: how the customer screen shows safety this turn. Missing on older backends / the replay snapshot. */
+  safety_state?: SafetyState | null;
+  /** Sprint 8: category-specific contacts for this turn (empty for "normal"). Never auto-dialled. */
+  safety_contacts?: SafetyContact[] | null;
+}
+
+/** normal = nothing shown; concern = calm inline note; active = in-conversation alert with labelled contact links. */
+export type SafetyState = "normal" | "concern" | "active";
+
+/** The only numbers the customer screen will ever turn into a link (anything else is shown as plain text). */
+export type SafetyHref = "tel:911" | "tel:988" | "sms:988" | "tel:18002221222";
+
+export interface SafetyContact {
+  label: string;
+  href: SafetyHref | null;
+  kind: "call" | "text" | "info";
 }
 
 export type Channel = "web_chat" | "sms" | "email";
@@ -284,16 +280,6 @@ export interface ChatRequest {
   channel?: Channel;
 }
 
-export interface ModelTarget {
-  key: string;
-  provider: string;
-  model: string;
-  is_default: boolean;
-  ready: boolean;
-  status: string;
-  is_mock: boolean;
-}
-
 export interface Health {
   status: "ok";
   provider: string;
@@ -307,96 +293,14 @@ export interface Health {
   interaction_count: number;
   // deployment facts (optional: older backends and the static snapshot don't send them)
   app_env?: "local" | "hosted";
-  database?: "sqlite" | "postgres";
+  database?: "sqlite" | "postgres" | ""; // "" = public health subset (not staff)
   resident_source?: string | null;
   is_mock?: boolean;
+  /** Sprint 10: API version and the short git commit of the deployment (when the host provides it). */
+  version?: string;
+  commit?: string | null;
   // false = this backend has no demo personas (APP_ENV=hosted): hide the demo sign-in, guest only
   demo_personas_enabled?: boolean;
-}
-
-export interface EvalCase {
-  id: string;
-  title: string;
-  persona_id: string;
-  message: string;
-  expected_audience: Audience;
-  expect_handoff: boolean | null;
-  reference_note: string;
-  suite: Suite;
-  expected_intent: Intent | null;
-  expected_workflow: WorkflowId | null;
-  expected_urgency: Urgency | null;
-}
-
-export interface CriterionResult {
-  criterion: string;
-  passed: boolean | null;
-  detail: string;
-}
-
-export interface EvalResult {
-  id: number;
-  run_id: number;
-  case_id: string;
-  mode: Mode;
-  created_at: string;
-  status: "ok" | "error";
-  error_code: string | null;
-  error_message: string | null;
-  reply: string | null;
-  audience: string | null;
-  gate_intent: string | null;
-  gate_urgency: string | null;
-  gate_source: string | null;
-  workflow_id: string | null;
-  recommended_handoff: boolean | null;
-  handoff_category: string | null;
-  handoff_reason: string | null;
-  provider: string;
-  requested_model: string;
-  model: string;
-  is_mock: boolean;
-  parse_mode: string | null;
-  temperature: number | null;
-  prompt_version: string;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  estimated_cost_usd: number | null;
-  latency_ms: number | null;
-  criteria: CriterionResult[];
-  provisional_verdict: Verdict | null;
-  provisional_rationale: string | null;
-  human_verdict: Verdict | null;
-  human_notes: string | null;
-}
-
-export interface EvalRunResponse {
-  run_id: number;
-  results: EvalResult[];
-}
-
-export interface TargetModeSummary {
-  target: string;
-  mode: string;
-  is_mock: number;
-  runs: number;
-  errors: number;
-  good: number;
-  bad: number;
-  human_reviewed: number;
-  handoffs_recommended: number;
-  json_contract_failures: number;
-  avg_latency_ms: number | null;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  estimated_cost_usd: number | null;
-}
-
-export interface EvalSummary {
-  run_id: number | null;
-  total: number;
-  by_target_mode: Record<string, TargetModeSummary>;
-  failure_categories: Record<string, number>;
 }
 
 export interface ApiErrorBody {
@@ -404,60 +308,6 @@ export interface ApiErrorBody {
   message: string;
   retryable: boolean;
 }
-
-// ---- /api/gates ----
-
-export interface GateConfig {
-  configured_provider: string;
-  availability: Record<string, string>;
-  low_confidence_threshold: number;
-}
-
-export interface GateEvalRow {
-  scenario: string;
-  provider: string;
-  decision_source: string;
-  fallback_used: boolean;
-  fallback_reason: string | null;
-  intent: string;
-  intent_ok: boolean;
-  workflow: string;
-  workflow_ok: boolean;
-  urgency: string;
-  urgency_ok: boolean | null;
-  requires_human: boolean;
-  handoff_ok: boolean | null;
-  critical_miss: boolean;
-  confidence: number;
-  risk_flags: string[];
-  overrides: string[];
-  latency_ms: number;
-  input_tokens: number | null;
-  output_tokens: number | null;
-  estimated_cost_usd: number | null;
-}
-
-export interface GateEvalProviderSummary {
-  scenarios: number;
-  intent_correct: string;
-  workflow_correct: string;
-  urgency_correct: string;
-  handoff_correct: string;
-  critical_misses: number;
-  fallbacks: number;
-  sources: string[];
-  avg_latency_ms: number | null;
-  input_tokens: number;
-  output_tokens: number;
-}
-
-export interface GateEvalResponse {
-  note: string;
-  availability?: Record<string, string>;
-  summary: Record<string, GateEvalProviderSummary>;
-  rows: GateEvalRow[];
-}
-
 
 // ---- static demo snapshot (frontend/public/demo/snapshot.json, built by backend/app/export_demo.py) ----
 
@@ -467,10 +317,6 @@ export interface DemoSnapshot {
   notice: string;
   workbook_loaded: boolean;
   personas: Persona[];
-  cases: EvalCase[];
-  responses: Record<string, Partial<Record<Mode, ChatResponse>>>;
-  contexts: Record<string, SafeContext>;
-  gate_eval: Pick<GateEvalResponse, "note" | "summary" | "rows">;
   journeys?: Journey[];
   prototype_records?: PrototypeRecord[];
 }

@@ -38,7 +38,13 @@ def _mock(s: Settings) -> LLMProvider:
 
 def _gemini(s: Settings) -> LLMProvider:
     from app.llm.gemini_provider import GeminiProvider
-    return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None)
+    return GeminiProvider(s.api_key_for("gemini"), thinking_level=s.gemini_thinking_level or None,
+                          base_url=s.base_url_for("gemini"))
+
+
+def _um_toolkit(s: Settings) -> LLMProvider:
+    from app.llm.um_toolkit import UMToolkitProvider
+    return UMToolkitProvider(s.api_key_for("um_toolkit"), s.base_url_for("um_toolkit") or "")
 
 
 def _anthropic(s: Settings) -> LLMProvider:
@@ -53,6 +59,7 @@ FACTORIES: dict[str, Callable[[Settings], LLMProvider]] = {
     "ollama": _ollama,
     "mock": _mock,
     "anthropic": _anthropic,
+    "um_toolkit": _um_toolkit,
 }
 SUPPORTED_PROVIDERS = list(FACTORIES)
 
@@ -97,7 +104,7 @@ class LLMGateway:
         return targets
 
     def provider_ready(self, provider: str) -> tuple[bool, str]:
-        if provider in ("openrouter", "anthropic", "gemini"):
+        if provider in ("openrouter", "anthropic", "gemini", "um_toolkit"):
             ok = bool(self.settings.api_key_for(provider))
             return ok, "API key configured" if ok else "NEEDS_API_KEY"
         if provider == "ollama":
@@ -112,7 +119,8 @@ class LLMGateway:
             max_tokens=s.llm_max_tokens,
             # Current Claude models reject temperature; Gemini 3.6 ignores it (Google: deprecated, future models 400).
             # None = not sent, and recorded as not set.
-            temperature=None if target.provider in ("anthropic", "gemini") else s.llm_temperature,
+            # U-M Toolkit GPT models are reasoning models: like OpenAI's, they accept only the default temperature.
+            temperature=None if target.provider in ("anthropic", "gemini", "um_toolkit") else s.llm_temperature,
             timeout_seconds=s.llm_timeout_seconds,
             max_retries=s.llm_max_retries,
         )

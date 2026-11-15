@@ -1,7 +1,7 @@
-# Safety architecture (sprint 3, updated sprint 6)
+# Safety architecture (sprint 3, updated sprints 6 and 7 and the MVP reset)
 
-Reflects `backend/app/risk/` and its use in `backend/app/chat_engine.py` on `feat/workflow-customer-experience`.
-Safety is decided **before** routing and before any response generation, and no later step (the response model,
+Reflects `backend/app/risk/` and its use in `backend/app/chat_engine.py` (part B of every turn) on the simplified MVP.
+Safety is decided **before** the conversation step and before any response generation, and no later step (the response model,
 the customer's instructions or retrieved records) can lower it. The safety text is fixed team-draft wording
 (I-17/I-18, not McKinley-approved); no model writes it.
 
@@ -13,7 +13,11 @@ flowchart TB
   HIST[("Earlier user turns<br/>(this session, last 3)")] --> DET
   HIST --> SEM
   subgraph L1["Layer 1: risk/detect.py (deterministic)"]
-    DET["scan(): keyword KINDS + concept CONCEPTS<br/>+ sprint 6 concept slots (risk/concepts.py)<br/>framing: report / hypothetical / past / joking<br/>narrow negation, idioms, contractions<br/>+ conversation window, 'it's happening now'<br/>+ person-in-danger 'concern' flag"]
+    DET["scan(): keyword KINDS + concept CONCEPTS<br/>+ sprint 6 concept slots (risk/concepts.py)<br/>framing: report / hypothetical / past<br/>narrow negation, idioms, contractions<br/>+ conversation window, 'it's happening now'<br/>+ person-in-danger 'concern' flag"]
+    FRM["Sprint 7 risk/frame.py: WHO x STATE x HAZARD x IMMEDIACY<br/>(bilingual lexicon, severity tiers)<br/>-> category, urgency, ongoing, template"]
+    CMB["detect._combine: frame may ADD;<br/>lowering only if no person state, no hazard<br/>without the look-alike phrase, and not<br/>self-harm / personal safety / poison;<br/>laughter never lowers (monotone invariant)"]
+    DET --> CMB
+    FRM --> CMB
   end
   MSG --> SEM
   subgraph L2["Layer 2: risk/classifier.py (semantic, optional)"]
@@ -21,7 +25,8 @@ flowchart TB
     ST{"provider ready<br/>and not mock?"}
     SEM --- ST
   end
-  DET --> POL
+  MSG --> FRM
+  CMB --> POL
   SEM -->|"ok / timeout / error /<br/>bad_output / unavailable / mock"| POL
   PRIOR[("Urgent notes already saved<br/>in this session")] --> POL
   subgraph L3["Layer 3: risk/policy.py (explicit rules R1-R9, R9e)"]
@@ -30,14 +35,16 @@ flowchart TB
   POL --> CAT["risk/category.py: approved notice that fits<br/>(hot car / child shut in -> medical, device smoke -><br/>electrical, fuel source + symptoms -> co)"]
   CAT --> INC
   INCDB[("Incident row (gate_decisions,<br/>mode safety_incident; no text)")] <--> INC
-  INC["risk/incident.py (chat_engine 2b'):<br/>open on full alert; follow-up -> R10 alert again;<br/>quiet -> R10q calm line; resolution rules"]
+  INC["risk/incident.py (chat_engine part B):<br/>open on full alert; follow-up -> R10 alert again;<br/>quiet -> R10q calm line; R10r responder-grounded<br/>resolution closes it; resolution rules"]
   INC --> RESP["risk/responses.py<br/>approved text per category<br/>911 / 988 / Poison Help / maintenance line"]
   INC --> ESC["risk/escalation.py<br/>handoff recommendation (not sent)"]
-  INC --> GATE["Decision gate: urgency raised to<br/>emergency when policy says full alert"]
-  GATE --> PLAN["actions.plan_turn: urgent prototype note,<br/>care-line replies, no forms"]
+  INC --> EMG["chat_engine.run_turn on a full alert:<br/>fixed approved text, no model call"]
+  EMG --> NOTE["tasks.save_urgent_note: one urgent<br/>prototype note per incident (not paged)"]
+  EMG --> PAUSE["tasks.pause_for_emergency:<br/>open task waits unsent"]
   RESP --> OUT["ChatResponse: safety_notice / care_note / risk"]
   ESC --> OUT
-  PLAN --> OUT
+  NOTE --> OUT
+  PAUSE --> OUT
 ```
 
 ## 2. Conflict resolution (policy rules, first match wins)
@@ -68,10 +75,11 @@ flowchart TD
   NONE8 --> X
   X -->|"follow-up, not self-harm"| R10["R10: full alert again (incident kind)"]
   X -->|"quiet turn, policy showed nothing"| R10Q["R10q: calm line kept"]
+  X -->|"responder-grounded resolution<br/>of this incident, no still-danger words"| R10R["R10r: incident closed,<br/>calm line instead of a new alert"]
   X -->|"no incident / resolved"| KEEP["policy result unchanged"]
 ```
 
-The normal-versus-emergency sequence is part of [chat-turn-sequence.md](chat-turn-sequence.md) (step 2b).
+The normal-versus-emergency sequence is part of [chat-turn-sequence.md](chat-turn-sequence.md) (part B).
 
 Sprint 6 live check (6 calls, `openrouter:nvidia/nemotron-3.5-super-vl:free`): 3 valid structured answers, 3
 timeouts at 6 s (recorded as degraded; the rules alone decided). The semantic layer is therefore **not reliable

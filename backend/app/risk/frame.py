@@ -31,6 +31,8 @@ import unicodedata
 from dataclasses import dataclass, field
 
 from app.risk.concepts import not_physical
+from app.risk.neutralize import _COMPLETED
+from app.risk.neutralize import _LIVE as _LIVE_TIME
 
 # ---- normalisation ------------------------------------------------------------------------------------------------
 _TYPO = {
@@ -69,32 +71,60 @@ def normalize(text: str) -> str:
 # ---- WHO ----------------------------------------------------------------------------------------------------------
 _CHILD = (r"kids?|child|children|son|daughter|toddlers?|little (?:one|boy|girl|guy|brother|sister)|boy|girl|"
           r"\d+ ?(?:year|yr|month|mo|week|wk)s?[- ]?old|babys?|babies|infant|newborn|grandson|granddaughter|"
-          r"nino|nina|ninos|hijo|hija|hijos|bebe|nene|nena|chiquit[oa]|niet[oa]|criatura")
+          r"nino|nina|ninos|hijo|hija|hijos|bebe|nene|nena|chiquit[oa]|niet[oa]|criatura|nephew|niece|sobrin[oa]")
 _ELDER = r"grandma|grandpa|grandmother|grandfather|granny|nana|abuel[oa]|abuelit[oa]|elderly \w+|old (?:man|woman|lady)"
 _ADULT = (r"mom|mum|mother|dad|father|husband|wife|partner|roommate|room mate|neighbou?r|friend|boyfriend|girlfriend|"
           r"man|woman|guy|lady|person|brother|sister|cousin|uncle|aunt|tenant|resident|coworker|fiance|fiancee|"
+          r"co-worker|colleague|boss|patient|guest|visitor|classmate|teammate|caregiver|"
           r"esposo|esposa|marido|mama|mami|papa|papi|vecin[oa]|pareja|amig[oa]|herman[oa]|senor|senora|hombre|"
           r"mujer|ti[oa]|prim[oa]|novi[oa]|companer[oa]|suegr[oa]")
 _PET = r"dog|puppy|cat|kitten|pet|perr[oa]|perrit[oa]|gat[oa]|gatit[oa]|mascota"
 _PRONOUN = r"he|she|hes|shes|him|her|they|theyre|them|his|ella|el (?=esta|no|se)"
 _GENERIC = (r"someone|somebody|anyone|anybody|a person|people|a (?:kid|child|baby|toddler)|kids|children|alguien|"
             r"una persona|la gente|un nino|una nina|un bebe|cualquiera")
-_SELF = r"i|im|ive|id|ill|me|myself|yo|estoy|me siento|tengo"
+_SELF = r"i|im|ive|id|ill|me|myself|we|were|us|our|both of us|all of us|everyone|everybody|yo|estoy|me siento|tengo|"
+_SELF += r"estamos|nosotros|todos"
+# Possessives lose their apostrophe in normalize() ("husband's" -> "husbands"), so every role also matches with "s".
 WHO = {
-    "child": re.compile(rf"\b(?:{_CHILD})\b"),
-    "elder": re.compile(rf"\b(?:{_ELDER})\b"),
-    "adult": re.compile(rf"\b(?:{_ADULT})\b"),
-    "pet": re.compile(rf"\b(?:{_PET})\b"),
+    "child": re.compile(rf"\b(?:{_CHILD})s?\b"),
+    "elder": re.compile(rf"\b(?:{_ELDER})s?\b"),
+    "adult": re.compile(rf"\b(?:{_ADULT})s?\b"),
+    "pet": re.compile(rf"\b(?:{_PET})s?\b"),
     "pronoun": re.compile(rf"\b(?:{_PRONOUN})\b"),
     "self": re.compile(rf"\b(?:{_SELF})\b"),
 }
 _SPECIFIC = re.compile(rf"\b(?:my|our|his|her|their|the|mi|mis|su|nuestr[oa])\s+(?:\w+\s+)?(?:{_CHILD}|{_ELDER}|"
-                       rf"{_ADULT}|{_PET})\b|\b(?:{_PRONOUN})\b")
+                       rf"{_ADULT}|{_PET})s?\b|\b(?:{_PRONOUN})\b")
 _GENERIC_RE = re.compile(rf"\b(?:{_GENERIC})\b")
 
 # ---- STATE (critical / weak / body) --------------------------------------------------------------------------------
 _NEG = r"(?:not|isnt|arent|wasnt|no|stopped|hasnt|havent|cant|cannot|wont|doesnt|didnt|never)"
 CRITICAL = re.compile(
+    r"\bburn(?:ed|t) (?:his|her|their|my) (?:\w+ ){0,2}?(?:badly|bad|really bad|so bad)\b|\bse quemo (?:\w+ ){0,3}?"
+    r"(?:feo|mucho|grave|horrible)\b|"
+    r"\bworst headache (?:of (?:my|his|her|their) life|ever|ive ever had|hes ever had|shes ever had)\b|"
+    r"\bel peor dolor de cabeza\b|"
+    # sprint 8: indirect breathing / stroke / fainting signs (EN + ES)
+    r"\bwheez\w* (?:and|but) (?:\w+ )?(?:cant|cannot|unable to|can barely|isnt able to) (?:talk|speak)\b|"
+    r"\b(?:asthma|allergic|anaphylactic) (?:attack|reaction)\b(?:\W+\w+){0,6}?\W+(?:inhaler|epipen|epi pen|"
+    r"medicine|meds)\b(?:\W+\w+){0,2}?\W+(?:isnt|is not|not|wont|doesnt|arent) (?:\w+ )?(?:working|helping)\b|"
+    r"\b(?:cant|cannot|can not|unable to|cant seem to) (?:get|catch|take) (?:any|enough|a|his|her|their|my) "
+    r"(?:\w+ )?(?:air|breath)\b|\bno (?:le|me) entra (?:el )?aire\b|\b(?:le|me) falta (?:el )?aire\b|"
+    r"\bse (?:le )?(?:esta )?ahoga\b|\bse esta asfixiando\b|"
+    r"\b(?:cant|cannot|unable to) (?:lift|raise|move) (?:his|her|their|my) (?:\w+ )?(?:arm|leg|hand)\b|"
+    r"\bno (?:puede|puedo) (?:levantar|mover) (?:el|la|su) (?:brazo|pierna|mano)\b|"
+    r"\b(?:words|speech|talking)\b(?:\W+\w+){0,3}?\W+(?:coming out wrong|garbled|jumbled|all mixed up|"
+    r"dont make sense|not making sense)\b|\bhabla (?:enredad[oa]|arrastrando)\b|"
+    r"\b(?:keeps?|kept) (?:passing out|fainting|blacking out)\b|\bse (?:sigue|vuelve a) desmay\w*|"
+    r"\b(?:oxygen|o2|spo2|sats?|saturation|pulse ?ox\w*|oximeter|oximetro|oxigeno|saturacion)\b(?:\W+\w+){0,4}?\W+"
+    r"(?:[1-8]\d)\b(?!\s*(?:degrees|grados|years|anos|f\b|dollars|bucks))|"
+    r"\b(?:skin|piel)\b(?:\W+\w+){0,4}\W+(?:peeling off|falling off|coming off|melting|blister\w*|se (?:esta )?(?:caye"
+    r"ndo|"
+    r"cae|despegando)|derritiendo|ampoll\w*)\b|\b(?:severe|bad|deep|third[- ]degree|second[- ]degree) burns?\b|"
+    r"\bquemadura (?:grave|fuerte|profunda)\b|\b(?:burn\w*|scald\w*|boiling|hirviendo|quem\w*|hot oil|aceite)\b(?:\W+"
+    r"\w+)"
+    r"{0,8}?\W+(?:blister\w*|ampollas?|peeling|skin (?:is )?(?:white|black|charred))\b|\bno se (?:despierta|despierte)"
+    r"\b|"
     r"\b(?:not|isnt|arent|stopped|quit|hasnt been|cant|cannot|can barely|barely|struggling to|having trouble|"
     r"trouble|hard to|unable to) (?:\w+ )?breath(?:e|ing)\b|\bno (?:esta )?respir(?:a|e|ando)\b|"
     r"\bno (?:puede|pueda) respirar\b|\bno (?:esta )?breath\w*|\b(?:not|isnt|no esta) breathing (?:well|right|good|"
@@ -113,7 +143,9 @@ CRITICAL = re.compile(
     r"morad[oa])\b|\bmottled\b|\b(?:is|are|looks?|went|esta|se ve) (?:\w+ (?:and )?){0,2}(?:blue|purple|"
     r"azul|morad[oa])\b|"
     r"\b(?:choking|chokes|se esta ahogando|ahogandose)\b|"
-    r"\b(?:face|mouth|smile|cara|boca)\b(?:\W+\w+){0,3}\W+(?:droop\w*|lopsided|caid[oa]|torcid[oa])\b|"
+    r"\b(?:face|mouth|smile|cara|boca|sonrisa)\b(?:\W+\w+){0,3}\W+(?:droop\w*|lopsided|crooked|uneven|caid[oa]|"
+    r"torcid[oa]|chuec[oa])\b|\bcrooked (?:smile|face|mouth)\b|"
+    r"\b(?:cant|cannot|unable to) (?:raise|lift) both (?:of )?(?:his |her |their |my )?arms\b(?! (?:above|over))|"
     r"\b(?:one side|un lado)\b(?:\W+\w+){0,4}\W+(?:droop\w*|numb|limp|cay[oa]|caido)\b|\bslurr\w*|"
     r"\bbleeding (?:\w+ )?(?:a lot|badly|heavily|everywhere|so much|nonstop|wont stop|like crazy)\b|"
     r"\b(?:wont|doesnt|isnt) stop bleeding\b|\bblood (?:is )?(?:everywhere|spurting|pouring|gushing|soaking)\b|"
@@ -122,8 +154,9 @@ CRITICAL = re.compile(
     r"\b(?:went|is|goes|going|gone) limp\b|\blimp\b|\bfloppy\b|\bslumped\b|\bmotionless\b|"
     r"\bface ?down\b|\bboca abajo\b|\bclutching (?:his|her|their|my) chest\b|\bse agarra el pecho\b|"
     r"\b(?:chest|pecho)\b(?:\W+\w+){0,3}\W+(?:pain|hurts|crushing|tight|pressure|dolor|duele|aprieta)\b|"
-    r"\b(?:dolor|duele|presion)\b(?:\W+\w+){0,2}\W+(?:pecho)\b|\b(?:swollen|swelling|closing)\b(?:\W+\w+){0,2}\W+"
-    r"(?:throat|tongue|lips)\b|\b(?:throat|tongue|garganta|lengua)\b(?:\W+\w+){0,3}\W+(?:swell\w*|closing|"
+    r"\b(?:dolor|duele|presion)\b(?:\W+\w+){0,4}?\W+(?:pecho)\b|\b(?:swollen|swelling|closing)\b(?:\W+\w+){0,2}\W+"
+    r"(?:throat|tongue|lips)\b|\b(?:hinchando|hinchandose|cerrando|inflamando)\b(?:\W+\w+){0,2}?\W+(?:garganta|"
+    r"lengua|labios|cara)\b|\b(?:throat|tongue|garganta|lengua)\b(?:\W+\w+){0,3}\W+(?:swell\w*|closing|"
     r"hinchad\w*|cerrando)\b")
 # Stative critical signs: an ongoing condition. Inside a conditional with a specific subject they mean "now" ("if my
 # dad can't breathe"); the EVENT forms ("if he stops breathing", "if she has a seizure") stay hypothetical.
@@ -144,10 +177,15 @@ WEAK = re.compile(
     r"\b(?:on|in) the (?:\w+ )?(?:floor|ground) (?:and |, )?(?:not|wont|cant)\b|"
     r"\b(?:hes|shes|theyre|is|are|esta|still) (?:\w+ )?(?:on|in) the (?:\w+ )?(?:floor|ground)\b|"
     r"\b(?:tirad[oa]|acostad[oa]|caid[oa]) en (?:el|la) (?:piso|suelo|bano|ducha|cocina)\b|"
-    r"\bjust (?:dropped|fell over|went down)\b|\b(?:fell|fallen|se cayo|se cayeron|tripped|slipped)\b|\bdropped (?:to "
+    r"\b(?:esta|sigue|estan) (?:\w+ )?en el (?:piso|suelo)\b|"
+    r"\bjust (?:dropped|fell over|went down)\b|\b(?:fell|fallen|se cayo|se cayeron|tripped|slipped|se resbalo|se trope"
+    r"zo|resbalo|tropezo)\b|\bdropped (?:to "
     r"the floor|like a)\b|\bwent down\b|"
-    r"\bcant get up\b|\bcant stand\b|\bno se (?:puede|pueda) (?:levantar|parar|mover)\b|\bwheez\w*|"
+    r"\bcant get up\b|\bcant stand\b|\bwont get up\b|\bno se (?:levanta|para|mueve|incorpora)\b|"
+    r"\bno (?:puede|pueda) (?:levantarse|pararse|moverse|caminar)\b|\bno se (?:puede|pueda) (?:levantar|parar|mover)\b"
+    r"|\bwheez\w*|"
     r"\bpale\b|\bpalid[oa]\b|\bclammy\b|\bsweaty\b|\bsweating\b|\bsudando\b|\bgr[ae]y\b|\bgris\b|"
+    r"\b(?:decaid[oa]|aletargad[oa]|sin fuerzas|lethargic|listless)\b|"
     r"\bshaking (?:really |so |very )?(?:hard|badly|uncontrollably)\b|\btemblando\b|\btiembla\b|"
     r"\bwont (?:respond|answer) to (?:me|us|anything)\b|\bcant feel (?:his|her|their|my) (?:arm|leg|face|legs|arms)\b")
 BODY = re.compile(
@@ -156,13 +194,17 @@ BODY = re.compile(
     r"\b(?:not|isnt|stopped|quit|no longer) sweating\b|\bno (?:esta )?suda\w*|\bdry (?:and hot|hot) skin\b|"
     r"\b(?:skin is (?:\w+ )?(?:hot and )?dry|dry skin)\b|\bnodding off\b|\bkeeps? (?:falling asleep|passing out)\b|"
     r"\bflushed\b|\b(?:hasnt|not|no) (?:peed|peeing|wet (?:a )?diapers?)\b|\bstopped making sense\b|"
+    r"\bfeverish\b|\bhigh fever\b|\bfiebre (?:muy )?alta\b|\bmucha fiebre\b|\bno (?:quiere )?(?:comer|tomar|"
+    r"beber|mamar|lactar)\b|"
     r"\b(?:confused|dizzy|weak) and (?:very |so |really )?(?:hot|cold)\b|\bhot to the touch\b|\bburning (?:hot|up)\b|"
     r"\b(?:hes|shes|he feels|she feels|skin|forehead|body) (?:is |feels )?"
     r"(?:so |"
     r"really |very )?hot\b|\bon fire to the touch\b|"
     r"\b(?:very|really|super|so|bright) red\b|\b(?:esta|muy) (?:roj[oa]|calient[ea]|ardiendo)\b|\bardiendo\b|"
     r"\bdizz\w*|\blight ?headed\b|\bmarea\w*|\bvomit\w*|\bthrowing up\b|\bthrew up\b|\bpuk\w*|"
-    r"\bwont (?:drink|eat|feed)\b|\bnot (?:drinking|eating|feeding)\b|\bno (?:quiere )?(?:come|toma|bebe)\b|"
+    r"\b(?:about to|going to|gonna|feel like i(?:m| am)? (?:going to|gonna)) (?:pass out|faint|black out)\b|"
+    r"\bme voy a desmayar\b|\bwont (?:drink|eat|feed)\b|\bnot (?:drinking|eating|feeding)\b|\bno (?:quiere )?(?:come|t"
+    r"oma|bebe)\b|"
     r"\b(?:so|really|very|super) (?:sleepy|drowsy|tired|weak)\b|\bcan barely (?:wake|keep|stay|stand)\b|"
     r"\bhard to wake\b|\bletharg\w*|\bsomnolient\w*|\bcold (?:to the touch|and blue|and pale)\b|"
     r"\b(?:hes|shes|is|are|feels?|felt|skin|hands|feet|body) (?:so |really |very |ice |icy |freezing )?cold\b(?! (?:in|"
@@ -172,6 +214,57 @@ BODY = re.compile(
     r"\bno (?:tiene sentido|dice nada coherente)\b|\bhabla (?:raro|incoherente)\b|\bheadache\b|\bnause\w*")
 
 # Spanish has no subject pronoun: a 3rd-person verb on the state is the subject ("no me responde", "esta tirada").
+# Sprint 8: an odd state after an ingestion ("está muy raro", "acting weird"), and a change in mental status that is a
+# possible sign on its own for another person (calm line only: "my dad seems really out of it today")
+_ODD = re.compile(r"\b(?:acting|actuando) (?:\w+ )?(?:weird|strange|odd|funny|raro|rara|extrano|extrana)\b|"
+                  r"\b(?:esta|anda|se ve) (?:muy |bien )?(?:rar[oa]|dormid[oa]|adormilad[oa]|somnolient[oa]|"
+                  r"extran[oa])\b|\b(?:really|very|so|super) (?:drowsy|sleepy|out of it)\b|\bdrowsy\b")
+# Sprint 8: "i don't know if my dad is breathing", "no sé si respira": a live, uncertain report, never a conditional
+_UNSURE_ALIVE = re.compile(r"\b(?:dont|do not|cant|cannot|not sure|unsure|no se|no estoy segur[oa]|no puedo saber)\b"
+                           r"(?:\W+\w+){0,3}?\W+(?:if|whether|si)\b(?:\W+\w+){0,4}?\W+(?:breathing|breathes|alive|"
+                           r"has a pulse|respira|respirando|vivo|viva|tiene pulso)\b|\b(?:cant|cannot|no puedo) "
+                           r"(?:find|feel|encontrar|sentir) (?:a |his |her |their |el |su )?(?:pulse|heartbeat|"
+                           r"pulso)\b")
+# final round (pre-existing P0): stroke signs. A numb / weak / dead limb or face WITH a companion sign (suddenly,
+# can't lift it, one side, drooping, slurred, confused); "my arm went numb from sleeping on it" is not one.
+_LIMB_NUMB = re.compile(r"\b(?:cant|cannot|can no longer) feel (?:my|his|her|their) (?:\w+ )?(?:arm|leg|hand|face|"
+                        r"side)\b|"
+                        r"\b(?:cant|cannot|unable to) (?:move|feel|use|lift) (?:the |his |her |my |their )?(?:left |r"
+                        r"ight "
+                        r"|one )side\b|\bno (?:puede|puedo) mover (?:el|su|mi) lado\b|"
+                        r"\bno (?:siento|siente) (?:el|la|mi|su) (?:brazo|pierna|mano|cara)\b|"
+                        r"\b(?:arm|leg|hand|face|side|brazo|pierna|mano|cara|lado)s?\b(?:\W+\w+){0,3}?\W+(?:numb|dead|"
+                        r"limp|weak|heavy|droopy|tingly|dormid[oa]|entumid[oa]|adormecid[oa]|debil|pesad[oa]|caid[oa]"
+                        r")\b|"
+                        r"\b(?:numb|numbness|weak|weakness|entumid\w*|adormecid\w*|durmio)\b(?:\W+\w+){0,3}?\W+(?:arm|"
+                        r"leg|hand|face|side|brazo|pierna|mano|cara|lado)\b")
+_STROKE_COMP = re.compile(r"\b(?:suddenly|all of a sudden|out of nowhere|cant (?:lift|move|raise|feel|hold)|wont (?:l"
+                          r"ift|"
+                          r"move)|droop\w*|slurr\w*|one side|left|right|confus\w*|cant (?:talk|speak)|de repente|"
+                          r"izquierd[oa]|derech[oa]|no (?:puede|lo puede|la puede) (?:levantar|mover)|no habla bien|"
+                          r"arrastra\w*)\b")
+# final round (holdout class b): an overdose quantity, also inside a question ("what happens if i took 15 xanax")
+_TOOK_QTY = re.compile(r"\b(?:took|taken|popped|downed|swallowed|tomo|tome|me tome|trague|se tomo)\b(?:\W+\w+){0,3}?"
+                       r"\W+(?:[1-9]\d+(?!\s?(?:mg|ml|mcg|milligrams?|miligramos?)\b)|a handful|handful|whole|all (?:"
+                       r"of )?(?:my|the|her|his)|too many|entire|a bunch|"
+                       r"double|triple|todas|toda la|un punado|demasiad[oa]s)\b")
+# last round (pre-existing P0): an infant with a fever AND lethargy / limpness / not feeding is a medical alert
+_INFANT = re.compile(r"\b(?:baby|babies|babys|infant|newborn|preemie|\d+ ?(?:month|week|day)s?[- ]old|bebe|recien nac"
+                     r"id[oa]|"
+                     r"nene|nena)\b")
+_FEVER = re.compile(r"\b(?:fever\w*|feverish|burning up|hot to the touch|temperature of|temp (?:of|is)|1(?:0[0-9])(?:"
+                    r"\.\d)? ?"
+                    r"(?:f|degrees)?|3[89](?:\.\d)? ?(?:c|grados)?|fiebre|calentura|ardiendo)\b")
+_INFANT_SIGN = re.compile(r"\b(?:lethargic|listless|limp|floppy|wont (?:feed|eat|drink|nurse|take (?:a|her|his|the) "
+                          r"bottle)|not (?:feeding|eating|nursing|drinking)|hard to wake|wont wake|barely (?:moving|a"
+                          r"wake)|"
+                          r"decaid[oa]|aletargad[oa]|no (?:quiere )?(?:comer|mamar|tomar|lactar|come|toma)|no se desp"
+                          r"ierta|"
+                          r"sin fuerzas|flojit[oa]|no reacciona)\b")
+_LIMB_BENIGN = re.compile(r"\b(?:slept on|sleeping on|from sleeping|from the cold|from typing|after (?:the gym|working "
+                          r"out|lifting|yoga)|dormi encima|por dormir|dentist|novocaine|anesthesia|anestesia)\b")
+_MENTAL = re.compile(r"\b(?:confus\w*|out of it|not making sense|disoriented|confundid[oa]|desorientad[oa])\b"
+                     r"(?! (?:about|by|with|over|on|regarding|why|what|how|when|where|which|sobre|con|por|de) )")
 _ES_THIRD = re.compile(r"\b(?:esta|este|se (?:puso|desmayo|desplomo|cayo|esta)|no (?:me )?(?:responde|responda|"
                        r"contesta|respira|reacciona|despierta|se mueve)|tiene (?:los|la|el))\b")
 
@@ -180,13 +273,14 @@ _HEIGHT = (r"balcony|balcon|railing|rail|railings|barandal|baranda|barandilla|wi
            r"cornisa|window|ventana|roof|rooftop|techo|azotea|edge|borde|stair ?well|landing")
 _HEIGHT_ACT = (r"climb\w*|hanging|hangs|dangling|leaning (?:out|over)|lean\w* out|halfway out|sitting (?:on|in)|"
                r"sits on|standing (?:on|at)|stands on|perched|on the edge|over the (?:rail\w*|edge)|got (?:onto|on|up "
-               r"on|out on)|crawl\w* (?:out|onto)|out (?:on|onto) the|pushed out|fell out|about to fall|could fall|"
+               r"on|out on)|crawl\w* (?:out|onto)|out (?:on|onto) the|pushed out|fell out|fell (?:from|off|out of)|"
+               r"se cayo (?:de|del|por)|about to fall|could fall|"
                r"subiendo|se (?:esta )?(?:subiendo|subio|asoma\w*)|asomad[oa]|colgad[oa]|colgando|sentad[oa] en|"
                r"parad[oa] en|trepando|se va a caer|a punto de caer")
 _WATER = r"pool|piscina|alberca|bath|bathtub|tub|tina|banera|lake|pond|lago|estanque|hot tub|jacuzzi|river|rio"
 _WATER_ACT = (r"no sale|resbal\w*|slipped (?:in|into|under)|fell in|fell into|went in|in the water|under ?water|under t"
               r"he water|face ?down|boca abajo|"
-              r"went under|not coming up|cant swim|sinking|se cayo (?:a|en)|se esta ahogando|bajo el agua|"
+              r"went under|not coming up|sinking|se cayo (?:a|en)|se esta ahogando|bajo el agua|"
               r"en el agua|drown\w*|ahog\w*|floating|flotando")
 _UNWATCHED = (r"nobody (?:is )?(?:watching|with)|no one (?:is )?(?:watching|with)|alone|by (?:him|her|them)self|"
               r"unattended|unsupervised|nadie (?:lo|la|los)? ?(?:esta )?(?:cuidando|mirando|viendo)|sol[oa]")
@@ -202,6 +296,12 @@ UNWATCHED_IN_WATER = re.compile(rf"(?:{_UNWATCHED})\b(?:\W+\w+){{0,8}}?\W+(?:in 
                                 rf"piscina)|(?:in the (?:water|pool)|en el agua|en la piscina|fell in|se cayo)"
                                 rf"(?:\W+\w+){{0,8}}?\W+(?:{_UNWATCHED})")
 EXPOSURE = re.compile(
+    r"\b(?:ac|a/c|air|air conditioning|aircon|heat|heating|heater|furnace|cooling)\s+(?:just |completely )?(?:quit|die"
+    r"d|"
+    r"gave out|stopped working|wont turn on|isnt cooling|isnt working|is not working)\b|\bno (?:cooling|heating)\b|"
+    r"\bse (?:descompuso|averio|apago|rompio|murio)\s+(?:el|la)\s+(?:aire|calefaccion|calentador|clima|minisplit)\b|"
+    r"\b(?:aire|calefaccion|calentador|clima)\b(?:\W+\w+){0,2}?\W+(?:no (?:sirve|enfria|calienta|prende|funciona)|se "
+    r"(?:descompuso|averio|apago))\b|"
     r"\b(?:no|without) (?:ac|a/c|air|air conditioning|aircon|heat|heating|power)\b|\b(?:ac|a/c|air|air conditioning|ai"
     r"rcon|"
     r"cooling|heat|heating|heater|furnace|boiler|radiators?)(?: has| is|s| has been| was| been)? (?:\w+ )?(?:broken|"
@@ -212,17 +312,55 @@ EXPOSURE = re.compile(
     r"(?:in here|inside)\b|\bsin (?:aire|calefaccion|luz)\b|\b(?:el )?aire (?:acondicionado )?no (?:funciona|sirve|"
     r"prende)\b|\bno (?:hay|tenemos) (?:aire|calefaccion|luz)\b|\bcalefaccion no (?:funciona|sirve)\b|"
     r"\bhace (?:mucho |muchisimo |demasiado )?(?:calor|frio)\b|\bmucho (?:calor|frio)\b")
-INGEST = re.compile(r"\b(?:swallow\w*|ate|eaten|eating|drank|drunk|drinking|chewed|chewing|bit into|licked|got into|"
+INGEST = re.compile(r"\b(?:swallow\w*|ate|eaten|eating|eats|drank|drunk|drinking|drinks|chewed|chewing|bit into|"
+                    r"licked|got into|se (?:traga|come|toma|bebe)|traga|"
                     r"put (?:a |an |some )?\w+ in (?:his|her|their) mouth|se (?:trago|comio|tomo|bebio|metio)|trago|"
                     r"comio|bebio|ingirio)\b")
-SUBSTANCE = re.compile(r"\b(?:batter(?:y|ies)|button battery|coin battery|magnets?|pods?|laundry \w+|detergent|bleach|"
+SUBSTANCE = re.compile(r"\b(?:prescriptions?|script|refills?|receta|bottle of (?:\w+ )?(?:pills|meds|tablets|"
+                       r"advil|tylenol)|batter(?:y|ies)|button battery|coin battery|magnets?|pods?|"
+                       r"laundry \w+|detergent|bleach|"
                        r"drain cleaner|drano|cleaner|cleaning \w+|chemicals?|antifreeze|rat poison|poison|pesticide|"
                        r"bug spray|lye|pills?|tablets?|meds|medicine|medication|edibles?|weed|nicotine|vape (?:juice|"
                        r"liquid)|pila|pilas|bateria|baterias|iman|imanes|cloro|lejia|detergente|veneno|pastillas?|"
-                       r"medicin\w*|limpiador\w*|quimic\w*|jabon)\b")
+                       r"medicin\w*|limpiador\w*|quimic\w*|jabon|"
+                       # fix round: common medicines and household chemicals (EN + ES)
+                       r"tylenol|advil|aspirin|ibuprofen|acetaminophen|paracetamol|xanax|valium|ambien|benadryl|"
+                       r"oxycodone|oxycontin|oxys|percocet|vicodin|adderall|insulin|antidepressants?|sleeping pills|"
+                       r"melatonin|zoloft|"
+                       r"prozac|lithium|klonopin|clonazepam|seroquel|gabapentin|lighter fluid|gasoline|gasolina|"
+                       r"kerosene|queroseno|paint thinner|thinner|aguarras|lamp oil|windshield (?:fluid|washer fluid)|"
+                       r"mouthwash|nail polish remover|acetone|acetona|hand sanitizer|rubbing alcohol|essential oils?|"
+                       r"ammonia|amoniaco|raticida|insecticida|veneno para ratas|weed killer|herbicida|fertilizer|"
+                       r"motor oil|aceite de motor|lavavajillas|suavizante|blanqueador|vitamins?|vitaminas?|"
+                       r"iron pills|gummy vitamins|vitamin gummies|melatonin gummies)\b")
+# fix round: Spanish "tomó / bebió" is also "I take": only with a third-person subject ("mi hija tomó cloro")
+_TOMO = re.compile(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|el|ella|alguien)s?\s+(?:\w+\s+){{0,2}}?(?:se\s+)?(?:tomo|bebio|"
+                   rf"trago|comio|tomaron|bebieron|tragaron)\b")
+# fix round: a child, baby, elder or pet shut in a vehicle (a hot car is a medical emergency, never a care line)
+_IN_CAR = re.compile(rf"\b(?:{_CHILD}|{_ELDER}|{_PET})s?\b(?:\W+\w+){{0,3}}?\W+(?:locked|stuck|trapped|shut|left "
+                     rf"(?:alone )?|alone|encerrad[oa]s?|atrapad[oa]s?|dejad[oa]s?|olvidad[oa]s?|sol[oa]s?)\s+"
+                     rf"(?:\w+\s+)?"
+                     rf"(?:in|inside|en|dentro del?)\s+(?:the |a |my |our |his |her |el |la |mi |un )?(?:hot |locked |"
+                     rf"parked )?(?:car|vehicle|truck|van|suv|minivan|carro|coche|auto|camioneta)\b")
+_LEFT_IN_CAR = re.compile(rf"\b(?:deje|left|forgot|olvide)\s+(?:a\s+)?(?:my|mi|the|el|la|our)?\s*(?:{_CHILD}|{_PET})s?"
+                          rf"\s+(?:\w+\s+){{0,2}}?(?:in|en|inside|dentro del?)\s+(?:the |el |la |mi |my )?(?:hot )?"
+                          rf"(?:car|carro|"
+                          rf"coche|auto|truck|camioneta)\b")
+_IN_CAR_NOT = re.compile(r"\b(?:stroller|car ?seat|bag|toys?|phone|keys|wallet|stuff|things|groceries|carriola|"
+                         r"llaves|juguetes?|bolsa)\b")
 _PET_TOXIC = re.compile(r"\b(?:chocolate|grapes?|raisins?|xylitol|gum|onions?|garlic|lilies|lily|antifreeze|uvas?|"
                         r"cebolla)\b")
 _INGEST_CHILD = re.compile(rf"\b(?:{_CHILD}|{_ELDER}|{_PRONOUN})\b")
+# Sprint 8: an UNKNOWN substance swallowed ("se tomó algo", "drank something under the sink"): with a body sign in
+# the same message (or the next one, app.risk.detect) it is a poisoning report.
+_SOMETHING = re.compile(r"\b(?:swallow\w*|ate|eaten|drank|drunk|took|taken|got into|se (?:trago|comio|tomo|bebio|"
+                        r"metio)|trago|comio|tomo|bebio|ingirio)\b(?:\W+\w+){0,2}?\W+(?:something|anything|stuff|"
+                        r"some(?:thing)? (?:from|under|in|out of)|algo|alguna cosa|unas? cosas?)\b")
+
+
+def unknown_ingestion(t: str) -> bool:
+    """A person swallowed something unknown or a product / medicine (normalised text)."""
+    return bool(_SOMETHING.search(t) or (INGEST.search(t) and SUBSTANCE.search(t)))
 
 # ---- property hazards: SOURCE x SIGN x EXTENT (no person needed) ---------------------------------------------------
 _APPLIANCE = (r"stove|oven|range|burner|cooktop|dryer|water heater|heater|furnace|boiler|meter|gas line|pipe|grill|"
@@ -258,7 +396,8 @@ _STRUCT = (r"boards|deck boards|ceiling|roof|floor|floors|deck|balcony|stairs|st
 _STRUCT_FAIL = (r"snapp\w*|snapped|sway\w*|groan\w*|dipping|dipped|pulled loose|pulling loose|came loose|coming loose|"
                 r"ripped (?:off|away)|despegand\w*|desprend\w*|sank|sinking|sunk|leaning|tilting|tilted|buckl\w*|crumb"
                 r"l\w*|giving way|gave way|pulling away|"
-                r"separat\w*|caving|caved|sagging|sags|bulg\w*|dropped|dropping|collaps\w*|coming down|came down|"
+                r"separat(?:ing|ed|es) (?:from|away)|caving|caved|sagging|sags|bulg\w*|dropped|dropping|collaps\w*|com"
+                r"ing down|came down|"
                 r"falling (?:apart|down|off|in)|cracking (?:loud|and|sound)|hundi\w*|inclinad\w*|derrumb\w*|"
                 r"separand\w*|cayendo|se (?:cae|cayo|vino abajo)|vencid\w*|abombad\w*")
 _ACTOR = (r"someone|somebody|a (?:man|guy|woman|person|stranger|dude)|(?:the|that|this|some) (?:man|guy|woman|"
@@ -286,8 +425,119 @@ STRUCT_FRAME = [_near_re(_STRUCT, _STRUCT_FAIL, 6)]
 ENTRY_FRAME = [_near_re(_ACTOR, _FORCE, 5), _near_re(_FORCE, _ENTRY_OBJ, 4)]
 
 
+_FABRIC = (r"shirt|sleeve|sleeves|hair|clothes|clothing|dress|pants|robe|apron|skirt|jacket|blanket|towel|curtains?|"
+           r"oven mitt|camisa|manga|pelo|cabello|ropa|vestido|toalla|cortinas?")
+_IGNITE = r"caught|catching|went up|lit up|se prendi\w*|se encendi\w*|agarro fuego"
+_HEAT_SRC = (r"stove|burner|candle|fireplace|heater|grill|gas range|cooktop|lighter|estufa|vela|chimenea|calentador|"
+             r"parrilla")
+FABRIC_FIRE = [_near_re(_FABRIC, _IGNITE, 3), _near_re(_IGNITE, _HEAT_SRC, 5)]
+
+
+WATER_ELEC = [_near_re(r"water|agua|leak\w*|puddle|drip\w*|gotea\w*", r"reaching|touching|getting (?:close )?to|"
+                       r"close to|"
+                        r"next to|near|around|onto|into|under|behind|toward|towards|heading for|llegando a|llega a|"
+                        r"cerca de|hacia|junto a|al lado de|pegad[oa] a|by|beside|en", 4),
+              re.compile(r"\b(?:outlets?|plugs?|power ?strips?|cords?|extension cords?|wires?|wiring|electrical panel|"
+                         r"panel|breaker\w*|fuse ?box|enchufes?|tomacorrientes?|cables?|regletas?)\b")]
+
+
+# Spanish "llamas" = flames only in a fire context (not "you call", not the animal)
+_ES_PLACE = (r"cocina|ventana|ventanas|puerta|sala|cuarto|recamara|habitacion|departamento|apartamento|casa|edificio|"
+             r"pasillo|balcon|techo|pared|horno|estufa|sarten|cortinas?|sofa|sillon|cama|basura|bote|enchufe|contacto|"
+             r"secadora|carro|coche|garaje|cochera|escalera|closet|bano|microondas|tostador|lavanderia|ropa|arriba|"
+             r"abajo|unidad|vecino|vecina|edificio|terraza|patio|cuarto de al lado")
+# Spanish flames / burning: a fire verb, or "llamas" WITH a place that should not burn (not "you call", the animal,
+# a toy, or a fireplace / candle burning normally). Burning a PERSON ("está ardiendo" = fever) is not a fire.
+_FIRE_ES = re.compile(
+    rf"\b(?:hay|salen|sale|saliendo|veo|vi|se ven|echando|echa|entre)\s+(?:unas |muchas |grandes |las )?llamas\s+"
+    rf"(?:en|de|del|por|desde|saliendo de)\s+(?:el |la |los |las |mi |su |un |una |nuestr\w+ )?(?:\w+ )?"
+    rf"(?:{_ES_PLACE})\b|"
+    rf"\bllamas\s+(?:en|de|del|por|saliendo de|que salen de)\s+(?:el |la |los |las |mi |su |un |una )?(?:\w+ )?"
+    rf"(?:{_ES_PLACE})\b|\b(?:{_ES_PLACE})\b(?:\W+\w+){{0,3}}?\W+(?:esta |estan )?(?:echando|con|en) llamas\b|"
+    rf"\b(?:esta|estan|se esta|se estan|sigue|siguen)\s+(?:ardiendo|incendiando|quemando)\s+(?:el|la|los|las|mi|su)\s+"
+    rf"(?:{_ES_PLACE})\b|\b(?:el|la|los|las|mi|su)\s+(?:{_ES_PLACE})\s+(?:\w+ )?(?:esta|estan|se esta|sigue)\s+"
+    rf"(?:ardiendo|incendiando|quemando)\b|\b(?:se (?:prendio|prendieron|incendio|esta quemando)|prendi\w* fuego|"
+    rf"agarr\w* fuego|se (?:le |les )?prendio fuego)\b")
+_NOT_FIRE_ES = re.compile(r"\b(?:zoo\w*|granja|farm|alpacas?|animal\w*|peluche|juguetes?|tienda|lana|wool|chimenea|"
+                          r"fogata|velas?|estufa de lena|asador|bonit\w*|me llamas|te llamas|"
+                          r"nos llamas|"
+                          r"(?:tu|usted) (?:me )?llamas|llamas (?:a|al|por telefono|mas tarde|manana))\b")
+
+
+# Something heavy fell / collapsed ON a person ("se le cayó la repisa encima a mi hijo", "the dresser fell on her")
+FELL_ON_PERSON = re.compile(
+    rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})s?\s+(?:is |are |got |was |s )?(?:pinned|trapped|stuck|crushed)"
+    rf"(?:\s+(?:under|beneath|underneath|by|between))?\b|\b(?:pinned|trapped|stuck|crushed)\s+(?:under|beneath|"
+    rf"underneath)\b|\b(?:atrapad[oa]|aplastad[oa]|prensad[oa])s?\b|"
+    rf"\b(?:fell|falls|collapsed|came down|toppled|tipped|tipped over|toppled over|landed|crashed)\s+(?:on|onto|on top "
+    rf"of)\s+"
+    rf"(?:my |the |his |her |a |our )?"
+    rf"(?:\w+ )?(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})s?\b|\bse (?:le |les |me )?(?:cay[oó]|cayeron|vino abajo|"
+    rf"desplom[oó])\b(?:\W+\w+){{0,5}}?\W+(?:encima|sobre)\b(?:\W+\w+){{0,4}}?\W+(?:{_CHILD}|{_ELDER}|{_ADULT}|"
+    rf"[eé]l|ella)\b")
+
+
+_BP = re.compile(r"\b(?:bp|blood pressure|presion|tension|cuff|monitor)\b(?:\W+\w+){0,4}?\W+(\d{2,3})\s*(?:over|"
+                 r"/|sobre)\s*"
+                 r"(\d{2,3})\b")
+_HR = re.compile(r"\b(?:heart ?rate|pulse|hr|bpm|heartbeat|ritmo cardiaco|pulso|frecuencia cardiaca|latidos)\b"
+                 r"(?:\W+\w+){0,4}?\W+(\d{2,3})\b|\b(\d{2,3})\s*bpm\b")
+_SYMPTOM_RE = re.compile(r"\b(?:headache|dolor de cabeza|duele (?:mucho )?(?:la cabeza|el pecho)|chest|pecho|"
+                         r"dizz\w*|mare\w*|faint\w*|pass out|desmay\w*|"
+                         r"confus\w*|vision|blurry|short of breath|cant breathe|sweat\w*|nause\w*|vomit\w*|numb\w*|"
+                         r"pounding|racing|palpitat\w*)\b")
+
+
+def _vital_danger(s: str) -> bool:
+    """Sprint 7: a blood pressure >= 180 systolic (or >= 120 diastolic) or a heart rate >= 150 or <= 40."""
+    for m in _BP.finditer(s):
+        sys_, dia = int(m.group(1)), int(m.group(2))
+        if sys_ >= 180 or dia >= 120 or (sys_ <= 80 and dia <= 50):
+            return True
+    for m in _HR.finditer(s):
+        v = int(m.group(1) or m.group(2))
+        if v >= 150 or 20 <= v <= 40:
+            return True
+    return False
+
+
+_HEAD_HIT = re.compile(r"\b(?:hit|struck|bumped|banged|smacked|whacked|slammed|cracked|landed on|fell on|golpe\w*|pego|"
+                       r"se pego|se golpeo)\b(?:\W+\w+){0,4}?\W+(?:head|heads|forehead|skull|cabeza|frente)\b|"
+                       r"\b(?:head|heads|cabeza)\b(?:\W+\w+){0,3}?\W+(?:hit|injury|wound|trauma|golpe)\b")
+_HEAD_SIGN = re.compile(r"\b(?:drows\w*|sleepy|wont stay awake|keeps falling asleep|confus\w*|vomit\w*|throwing up|"
+                        r"threw up|dizzy|not making sense|unequal pupils|somnolient\w*|adormilad\w*|confundid\w*|"
+                        r"vomit\w*|mareado|mareada|sangre del oido|bleeding from (?:the|her|his) ear)\b")
+
+
+# fix round: "i tried to put it out but it's spreading", "no puedo apagarlo": a live fire with no fire word
+_CANT_PUT_OUT = re.compile(r"\b(?:tried to|trying to|try to|cant|cannot|couldnt|unable to) (?:\w+ )?put (?:it|the fire|"
+                           r"the flames|them) out\b|\b(?:fire|flames?|grease|pan|stove|oven|burner|it)\b"
+                           r"(?:\W+\w+){0,2}?\W+(?:wont|doesnt|isnt) (?:go|going) out\b"
+                           r"(?! (?:of|with|tonight|today|anymore|to))|\bno (?:puedo|pude|podemos) "
+                           r"apagar\w*|\bno se (?:apaga|quiere apagar)\b")
+
+
 def _hazard(s: str) -> tuple[str, str] | None:
     """Property / intruder hazards composed from a source, a sign and an extent."""
+    if FELL_ON_PERSON.search(s):
+        return "medical", "something heavy fell on a person"
+    if _CANT_PUT_OUT.search(s):
+        return "fire_smoke", "a fire the person cannot put out"
+    if _FIRE_ES.search(s) and not _NOT_FIRE_ES.search(s):
+        return "fire_smoke", "flames (Spanish) in a fire context"
+    if all(p.search(s) for p in WATER_ELEC) and re.search(r"\b(?:water|agua|leak\w*|puddle|drip\w*|"
+                                                          r"gotea\w*)\b(?:\W+\w+)"
+                                                          r"{0,6}?\W+(?:reaching|touching|getting|close|next|near|"
+                                                          r"around|onto|into|under|behind|toward|towards|heading|"
+                                                          r"llegando|llega|cerca|hacia|junto|lado|pegad[oa]|by|"
+                                                          r"beside|en)\b"
+                                                          r"(?:\W+\w+){0,4}?\W+(?:outlets?|plugs?|power ?strips?|cords"
+                                                          r"?|"
+                                                          r"wires?|wiring|panel|breaker\w*|fuse ?box|enchufes?|"
+                                                          r"tomacorrientes?|cables?|regletas?)\b", s):
+        return "electrical", "water reaching something electrical"
+    if all(p.search(s) for p in FABRIC_FIRE):
+        return "fire_smoke", "clothing or fabric caught on a heat source"
     if all(p.search(s) for p in ENTRY_FRAME):
         return "personal_safety", "someone forcing an entry point"
     if CO_FRAME[0].search(s):
@@ -304,7 +554,8 @@ def _hazard(s: str) -> tuple[str, str] | None:
 # ---- self-harm (veiled) -------------------------------------------------------------------------------------------
 _SH_FAREWELL = re.compile(
     r"\b(?:writing|sending|this is|here is|heres) my (?:last|final) (?:message|text|note|letter|words)\b|"
-    r"\bescrib\w* (?:las |unas |mis )?cartas (?:para|a)\b|\bthis is (?:my )?(?:goodbye|farewell)\b|\b(?:my|a) (?:final"
+    r"\bescrib\w* (?:las |unas |mis )?cartas (?:para|a)\b|\b(?:carta|cartas|nota|notas|mensaje) de despedida\b|"
+    r"\bgoodbye (?:letters?|notes?)\b|\bthis is (?:my )?(?:goodbye|farewell)\b|\b(?:my|a) (?:final"
     r" |last )?goodbye\b|\b(?:said|say|saying|said all) "
     r"(?:my )?goodbyes?\b|"
     r"\b(?:wrote|written|writing|left) (?:\w+ )?(?:letters?|notes?) (?:for|to) (?:my|the|everyone)\b|"
@@ -318,7 +569,11 @@ _SH_FINAL = re.compile(
     r"\bno (?:volver a )?despertar\w*|\bdormirme y no despertar\b|\bya tengo todo listo\b|\bya no quiero seguir\b|"
     r"\bdisappear (?:tonight|forever)\b|"
     r"\bits (?:all )?over for me\b|\bthe end for me\b|\bmade my (?:plans|decision|peace)\b|\bnunca mas\b|"
-    r"\bafter (?:this|the) (?:weekend|week|month)\b|\bby (?:tomorrow|morning|monday)\b|\bya no voy a estar\b|"
+    r"\bno quiero (?:volver a )?despertar\w*|\b(?:esta noche|hoy) me voy\b|\bme voy (?:esta noche|para siempre|hoy)\b|"
+    r"\b(?:im|i am) (?:leaving|going|gone) (?:tonight|for good|forever)\b|\bno puedo mas\b|\bya no puedo\b|\bdont want"
+    r" to wake up\b|\bafter (?:this"
+    r"|the) (?:weekend|week|month)\b|\b"
+    r"by (?:tomorrow|morning|monday)\b|\bya no voy a estar\b|"
     r"\bno voy a estar (?:aqui|mas|manana)\b|\b(?:wont|will not|not going to) be (?:here|around|alive) (?:tomorrow|any"
     r"more|"
     r"much longer|for (?:it|that|long)|by)\b|\b(?:dont think|not sure|doubt) i(?:ll| will)? be (?:around|here|alive)\b|"
@@ -327,18 +582,28 @@ _SH_FINAL = re.compile(
     r"\btheres no point\b|\bya no tiene sentido\b|\b(?:dont|cant|do not) see (?:a|any) way out\b|\bno (?:veo|hay|tengo"
     r") "
     r"salida\b|\btonight (?:i(?:m| am| will|ll)? )?(?:going to |gonna )?(?:fix\w*|end\w*|do\w*|finish\w*|take care of|"
-    r"taking care of) (?:that|it|this)\b|"
+    r"taking care of) (?:that|it|this|thats|its)\b|"
     r"\bno (?:pienso|voy a) bajar\b|\bnot (?:going|planning) to come down\b")
 _SH_METHOD = re.compile(
     r"\b(?:pills|meds|pastillas|tablets) (?:\w+ ){0,3}(?:counted|lined up|ready|on the table|in front of me|aqui|"
     r"listas)\b|\b(?:counted|lined) (?:out|up) (?:\w+ ){0,2}(?:pills|meds)\b|\b(?:rope|noose|razor|blade|gun|cuerda|"
     r"soga|navaja|pistola)\b|\b(?:roof|rooftop|ledge|bridge|parking garage|top floor|azotea|puente|cornisa)\b|"
-    r"\btengo (?:las|mis) pastillas\b")
+    r"\btengo (?:las|mis) pastillas\b|\b(?:la |una )?(?:cuerda|soga) (?:\w+ )?(?:lista|preparada|colgada|amarrada)\b|"
+    r"\btengo (?:la|una) (?:cuerda|soga|navaja|pistola)\b|\bahorca\w*|\bcolgarme\b|\bcortarme\b|\btirarme\b")
 _SH_INJURY = re.compile(r"\b(?:been|keep|started) cutting\b(?! (?:the|my|a|an|some|grass|hair|wood|back|"
     r"down|coupons|class|it)\b)|\bcutting (?:myself|again)\b|\bcut myself\b|"
-    r"\b(?:burn|burned|burning|hurt|hurting) myself\b|\bme (?:corto|corte|lastimo|quemo)\b")
+    r"\b(?:burn|burned|burning|hurt|hurting) myself\b|(?<!se )\bme (?:corto|corte|lastimo|quemo)\b(?! (?:con|cocinando"
+    r"|sin querer|por accidente))")
 # Explicit intent with a means: enough on its own ("me voy a tirar del balcon", "i'm going to jump off the roof").
 _SH_INTENT = re.compile(
+    r"\b(?:tonight|today|this weekend|esta noche|hoy)\b(?:\W+\w+){0,5}?\W+(?:end|ending|acabar con|terminar con) "
+    r"(?:it all|everything|my life|todo|mi vida)\b|\b(?:im|i am)? ?(?:going to|gonna|will|ll) end (?:it all|"
+    r"everything|my life)\b|\bvoy a (?:acabar|terminar) con (?:todo|mi vida)\b|"
+    r"\b(?:cuerda|soga|rope|noose)\s+(?:\w+\s+)?(?:lista|preparada|colgada|amarrada|ready|set up|tied|hanging)\b|"
+    r"\bpara (?:ahorcarme|colgarme|matarme|cortarme|tirarme|aventarme|morirme)\b|"
+    r"\b(?:voy a|me voy a|quiero)\s+(?:ahorcarme|colgarme|cortarme las venas|matarme)\b|"
+    r"\bme (?:corte|corto|cortaba|abri) (?:las |la )?(?:venas|munecas|muneca)\b|\bcut (?:open )?(?:my|both) "
+    r"(?:wrists?|veins)\b|\bslit my wrists?\b|"
     r"\b(?:voy a|me voy a|quiero|i(?:m| am) (?:going|gonna) to|im gonna|i will|ill|about to)\s+(?:tirarme|aventarme|"
     r"tirar|aventar|lanzarme|jump|step off|throw myself)\b|\b(?:jump|jumping|step off|tirarme|aventarme)\s+(?:off|from|"
     r"de|del|desde|por)\s+(?:the |a |my |el |la |un |una )?(?:\w+ )?(?:balcon\w*|roof|rooftop|bridge|ledge|window|vent"
@@ -399,7 +664,8 @@ _DRILL = re.compile(r"\b(?:drill|drills|simulacro|simulacros|practice evacuation
                     r"detectors?|sprinklers?)|alarm test|(?:alarm|detector|sprinkler)s? (?:test|testing|inspection)|"
                     r"prueba de (?:alarma|incendio)s?|cpr class|first aid class|safety class|training)\b")
 _POLICY_Q = re.compile(
-    r"\b(?:does|do|is|are|will|can|could)\b(?:\W+\w+){0,6}\W+(?:come with|have|has|include\w*|provide\w*|equipped|"
+    r"(?:^|[.?!]\s*)\s*(?:does|do|is|are|will|can|could)\b(?:\W+\w+){0,6}\W+(?:come with|have|has|include\w*|provide\w"
+    r"*|equipped|"
     r"allowed|permitted|installed|up to code|fenced|code|required|available|safe for|childproof\w*|policy|gated|"
     r"locked|secured?|supervised|lifeguards?|covered|accessible|safe)\b|"
     r"\b(?:what(?:s| is)|whats) the (?:policy|rule|procedure|protocol|plan)\b|\b(?:policy|rules?) (?:on|about|for)\b|"
@@ -416,7 +682,8 @@ _HABITUAL_NOT_NOW = re.compile(r"\b(?:sometimes|every (?:now and then|once in a 
                                r"the moment|not happening now|ahora no|no ahorita)\b)")
 _DEVICE = re.compile(
     r"\b(?:fire|smoke|co|carbon monoxide|gas|heat) (?:alarms?|detectors?|extinguishers?|sprinklers?|doors?|exits?|"
-    r"escapes?|lanes?|drills?|stick|tv|bill|company|meter|line hookup|stove|range|grill)\b|\b(?:detector|alarma|"
+    r"escapes?|lanes?|drills?|stick|tv|bill|company|meter|line hookup|stove|range|grill|hazards?|risks?|safety|"
+    r"codes?|inspections?|insurance|marshal)\b|\b(?:detector|alarma|simulacro|salida|puerta|"
     r"extintor)\w* de (?:humo|incendio|gas|monoxido(?: de carbono)?)\b")
 _LIVE_DEVICE = re.compile(r"\b(?:going off|went off|goes off|sounding|beeping|blaring|screeching|screaming|shrieking|"
                           r"wailing|ringing|alarming|red light|flashing red|wont stop|keeps "
@@ -468,8 +735,30 @@ def _who(s: str) -> list[str]:
     return roles
 
 
+# fix round: whitespace-led alternatives start only at the beginning of a whitespace run ((?<!\s)): linear
+_FCLAUSE = re.compile(r"[,;:]+|(?<!\s)\s+-+\s+|\b(?:but|because|although|though|pero|porque|aunque)\b|"
+                      r"(?<!\s)\s+(?=(?:and\s+)?(?:we|i|there|it|they|he|she)\s+(?:had|was|were|used to|did|got|"
+                      r"once)\b)")
+_ANY_SIGN = [CRITICAL, WEAK, BODY]
+
+
 def _framing(s: str, whole: str, has_stative: bool) -> str:
-    """now | past | hypothetical | media | drill | policy | joking for the sentence that holds the signs."""
+    """Clause-local framing (fix round): if any clause that holds a sign reads as now, the sentence is now, so an
+    added past clause or "not sure if this is an emergency, but" never re-frames a live sign."""
+    clauses = [c for c in _FCLAUSE.split(s) if c and c.strip()]
+    # a signs question or a media frame scopes its whole sentence ("what are the signs of a stroke, like face
+    # drooping?"); past and "if" clauses are local
+    if len(clauses) > 1 and not _SIGNS_Q.search(s) and not (_MEDIA.search(s) and not _NOWISH.search(s)):
+        signed = [c for c in clauses if any(p.search(c) for p in _ANY_SIGN) or _hazard(c) or CHILD_HEIGHT.search(c)
+                  or (INGEST.search(c) and SUBSTANCE.search(c)) or _SOMETHING.search(c)
+                  or CHILD_WATER.search(c) or CHILD_EDGE.search(c)]
+        if any(_framing_one(c, whole, bool(_STATIVE.search(c)) or has_stative) == "now" for c in signed):
+            return "now"
+    return _framing_one(s, whole, has_stative)
+
+
+def _framing_one(s: str, whole: str, has_stative: bool) -> str:
+    """now | past | hypothetical | media for one clause or sentence."""
     if _MEDIA.search(s) and not _NOWISH.search(s):
         return "media"
     if _PAST.search(s) and not _NOWISH.search(s):
@@ -481,9 +770,7 @@ def _framing(s: str, whole: str, has_stative: bool) -> str:
         if specific and has_stative and not _EVENT_HYPO.search(s):
             return "now"  # "if my dad can't breathe what do I do": a live report inside a conditional
         return "hypothetical"
-    if _LAUGH.search(whole) and not re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})\b", s):
-        return "joking"
-    return "now"
+    return "now"  # sprint 7 fix round: a laugh marker never changes the framing of a live sign
 
 
 def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
@@ -511,9 +798,6 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         f.look_alike = "past"  # "the fan sparks sometimes, not right now, it's off": a repair, not a live hazard
     elif _PAST.search(t) and (_AFTERMATH.search(t) or "?" in t) and not (CRITICAL.search(t) or _LIVE_HAZARD.search(t)):
         f.look_alike = "past"  # "there was a kitchen fire last month and the cabinets still smell, can you repaint?"
-    elif _LAUGH.search(t) and not re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT}|{_PRONOUN})\b", t) and not \
-            _LIVE_HAZARD.search(t):
-        f.look_alike = "joking"  # "i can't breathe lol that video" (self only; never a third person)
     elif _DEVICE.search(t) and not _LIVE_DEVICE.search(t) and not re.search(
             r"\b(?:smok\w*|flames?|burn\w*|smell\w*|huele|humo|llamas|fuego|spark\w*|chispa\w*|hiss\w*)\b",
             _DEVICE.sub(" ", t)):
@@ -552,17 +836,46 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
                 and (CHILD_WATER.search(s) or UNWATCHED_IN_WATER.search(s))):
             cand.append((3, "medical", "a person in the water (fell in, face down, unwatched)"))
             f.hazards.append("water")
-        if INGEST.search(s) and SUBSTANCE.search(s) and (_INGEST_CHILD.search(s) or "self" in roles or person):
+        if (_IN_CAR.search(s) and not _IN_CAR_NOT.search(_IN_CAR.search(s).group(0))) or _LEFT_IN_CAR.search(s):
+            cand.append((3, "trapped", "a child, elder or pet shut in a vehicle"))
+        if (INGEST.search(s) or _TOMO.search(s)) and SUBSTANCE.search(s) and (_INGEST_CHILD.search(s) or "self" in
+                                                                               roles or person):
             cand.append((2, "poison", "a person swallowed a product or medicine"))
             f.hazards.append("ingestion")
-        if roles and set(roles) <= {"pet", "self"} and "pet" in roles and INGEST.search(s) and (
+        young_old = bool(re.search(rf"\b(?:{_CHILD}|{_ELDER})s?\b", s))
+        if _SOMETHING.search(s) and (person or "self" in roles or _ES_THIRD.search(s)) and (
+                crit or weak or _ODD.search(s) or (body and young_old)):
+            # a child / elder with any body sign; an adult or the speaker needs a stronger sign ("i ate something
+            # and feel sick" is not a poisoning alert)
+            cand.append((3, "poison", "a person swallowed something unknown and has a body sign"))
+            f.hazards.append("ingestion")
+        if "pet" in roles and INGEST.search(s) and (
                 SUBSTANCE.search(s) or _PET_TOXIC.search(s)):
             cand.append((1, "poison", "a pet swallowed something harmful (calm line; the notices are for people)"))
+        mild = all(re.match(r"vitamin|vitamina|gummy|melatonin", x) for x in SUBSTANCE.findall(s))
+        if _INFANT.search(s) and _FEVER.search(s) and _INFANT_SIGN.search(s):
+            cand.append((3, "medical", "an infant with a fever and lethargy or not feeding"))
+        if _TOOK_QTY.search(s) and SUBSTANCE.search(s) and (person or "self" in roles) and not (
+                mild and not re.search(r"\b(?:[1-9]\d+|whole|entire|bottle|frasco|bote)\b", s)):
+            # ("i took all my vitamins" is a daily routine; a whole bottle of them is not)
+            cand.append((3, "poison", "a quantity of a medicine taken (overdose)"))
+        if _LIMB_NUMB.search(s) and _STROKE_COMP.search(s) and not _LIMB_BENIGN.search(s) and (person or
+                                                                                         "self" in roles):
+            cand.append((3, "medical", "one-sided numbness or weakness with a stroke sign"))
+        if _UNSURE_ALIVE.search(s) and (re.search(r"\b(?:breath\w*|respir\w*)\b", s) or any(
+                r in roles for r in ("child", "elder", "adult"))):  # not "my plant", "this watch app"
+            cand.append((3, "medical", "the speaker cannot tell whether someone is breathing / alive"))
+        if _vital_danger(s):
+            cand.append((3 if (crit or weak or body or _SYMPTOM_RE.search(s)) else 1, "medical",
+                         "a measured vital sign in a danger range"
+                         + (" with a symptom" if (crit or weak or body) else "")))
+        if _HEAD_HIT.search(s) and (_HEAD_SIGN.search(s) or crit):
+            cand.append((3, "medical", "a head injury with drowsiness / confusion / vomiting"))
         hz = _hazard(s)
         if hz:
             cand.append((3, hz[0], hz[1]))
             f.hazards.append(hz[0])
-        if not cand and person and roles != ["self"] and (weak or len(set(body)) >= 2):
+        if not cand and person and roles != ["self"] and (weak or len(set(body)) >= 2 or _MENTAL.search(s)):
             cand.append((1, "medical", "a person with a possible sign"))
         if not cand:
             continue
@@ -570,6 +883,14 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
         stative = bool(_STATIVE.search(s)) or (cat == "medical" and "height" in f.hazards) or bool(hz) or (
             cat == "poison" and bool(re.search(r"\b(?:swallowed|ate|drank|se trago|trago|se comio|se tomo)\b", s)))
         framing = _framing(s, t, stative)
+        if framing == "hypothetical" and _IF.search(s) and (_SPECIFIC.search(s) or re.search(
+                r"\b(?:i|ive|me|yo)\b", s)) and not _GENERIC_RE.search(s) and (
+                _COMPLETED.search(s) or _LIVE_TIME.search(s)):
+            # fix round (P1-1): "is it bad if my daughter drank bleach a few minutes ago", "what if my husband's lips
+            # are turning blue": a completed event, an observed appearance or a recent time is a live report
+            framing = "now"
+        if _UNSURE_ALIVE.search(s) and framing == "hypothetical" and not _GENERIC_RE.search(s):
+            framing = "now"  # "i don't know if he's breathing" is a live report, not a conditional
         if framing in ("hypothetical",) and _QUESTION.search(s) and _SPECIFIC.search(s) and stative and not \
                 _EVENT_HYPO.search(s) and not _GENERIC_RE.search(s):
             framing = "now"
@@ -579,8 +900,12 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
             best = (rank, cat, framing, why, live_cond)
     if exposure:
         f.hazards.append("exposure")
-        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER})\b|\b(?:pregnant|embarazada|sick|enferm[oa]|oxygen|"
-                                      rf"oxigeno|disabled|wheelchair)\b", t):
+        if best is None and re.search(rf"\b(?:{_CHILD}|{_ELDER}|{_ADULT})s?\b|\b(?:pregnant|embarazada|sick|enferm[oa]|"
+                                      rf"oxygen|oxigeno|disabled|wheelchair|ms|multiple sclerosis|copd|asthma\w*|heart "
+                                      rf"condition|medical condition|dialysis|chemo\w*|diabet\w*|recien nacid\w*|"
+                                      rf"silla de ruedas|discapacidad|asma|\d{{2}} (?:years? old|anos)|"
+                                      rf"de (?:[6-9]\d|1[01]\d)"
+                                      rf"(?: anos)?)\b", t):
             # Lead class 2: no heat / no AC with a vulnerable person and NO symptom: urgent repair + the calm
             # "unwell" line (911 if anyone feels very unwell), not the medical person-in-danger alert.
             f.category, f.urgency, f.ongoing, f.care_hint = "medical", "possible", "now", "unwell"
@@ -607,6 +932,24 @@ def analyse(message: str, recent: list[str] | None = None) -> RiskFrame:
     return f
 
 
+_SPAN_SENTENCE = {"drill": _DRILL, "media": _MEDIA, "policy": _POLICY_Q, "signs": _SIGNS_Q, "past": re.compile(
+    rf"(?:{_PAST.pattern})|(?:{_HISTORY_Q.pattern})|\b(?:sometimes|occasionally|once in a while|a veces|"
+    rf"de vez en cuando|"
+    rf"not (?:right )?now|its off)\b")}
+
+
+def without_lookalike(message: str, look_alike: str | None) -> str:
+    """The message with the look-alike phrase removed: the sentences that carry the drill / media / policy / signs /
+    past framing, and every device noun ("smoke detector", "fire alarm"). Lowering a rule match is allowed only when
+    THIS remainder has no hazard of its own (sprint 7 fix round: lowering must be monotone-safe)."""
+    t = normalize(message)
+    pat = _SPAN_SENTENCE.get(look_alike or "")
+    if pat is not None and look_alike not in ("drill", "policy"):
+        t = " . ".join(x for x in _sentences(t) if not pat.search(x))
+    # drill / policy: only the drill words and device nouns go ("... ceiling light, is this a drill?" keeps the flood)
+    return _DRILL.sub(" ", _DEVICE.sub(" ", t))
+
+
 def _self_harm(t: str) -> tuple[str, str] | None:
     if _SH_EXCLUDE.search(t) and not _SH_METHOD.search(t):
         return None
@@ -614,6 +957,8 @@ def _self_harm(t: str) -> tuple[str, str] | None:
                              ("giving", _SH_GIVING), ("burden", _SH_BURDEN), ("closure", _SH_CLOSURE),
                              ("injury", _SH_INJURY))
               if p.search(t)]
+    if re.search(r"\b(?:cartas?|notas?|mensajes?) de despedida\b|\bgoodbye (?:letters?|notes?)\b|\bsuicide note\b", t):
+        return "emergency", "a goodbye letter"
     if _SH_INTENT.search(t) or re.search(
             r"\b(?:im|i am|estoy)\s+(?:standing|sitting|perched|parad[oa]|sentad[oa])\s+(?:at|on|en)\s+(?:the )?(?:edg"
             r"e|"
