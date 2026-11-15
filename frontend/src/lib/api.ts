@@ -5,26 +5,22 @@ import type {
   ChatRequest,
   ChatResponse,
   DemoSnapshot,
-  GateConfig,
-  GateEvalResponse,
-  GateProvider,
-  EvalCase,
-  EvalResult,
-  EvalRunResponse,
-  EvalSummary,
   Health,
-  Mode,
-  ModelTarget,
   Persona,
   PrototypeRecord,
   StaffConversation,
   StaffConversationDetail,
-  SafeContext,
-  Verdict,
 } from "./types";
 
 // Public backend URL only. LLM provider keys live exclusively on the Python server.
-export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
+// A production build without NEXT_PUBLIC_API_BASE_URL (the here.now replay) never calls localhost: it goes straight to
+// the recorded snapshot. Local development and tests default to the local backend.
+export const LIVE_BACKEND_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_API_BASE_URL);
+export const API_BASE = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:8000")
+).replace(/\/$/, "");
+// Render's free plan can take about a minute to wake up; give up after this instead of waiting forever.
+const REQUEST_TIMEOUT_MS = 90_000;
 
 export class ApiError extends Error {
   constructor(
@@ -62,49 +58,56 @@ export async function parseError(res: Response): Promise<ApiError> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_BASE) throw new ApiError("BACKEND_UNREACHABLE", "No backend is configured for this site.", false);
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
+      signal: init?.signal ?? controller.signal,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch {
-    throw new ApiError("BACKEND_UNREACHABLE", `Cannot reach the backend at ${API_BASE}. Is uvicorn running?`, true);
+    throw new ApiError("BACKEND_UNREACHABLE", `Cannot reach the backend at ${API_BASE}.`, true);
+  } finally {
+    clearTimeout(timer);
   }
   if (!res.ok) throw await parseError(res);
   return (await res.json()) as T;
 }
 
+// Staff token for the hosted staff console: held in this module's memory only (lost on reload or tab close). Never
+// written to storage, URLs, logs or the build. Sent only on the staff routes below.
+let staffToken: string | null = null;
+export function setStaffToken(token: string | null): void {
+  staffToken = token?.trim() || null;
+}
+const staffInit = (): RequestInit | undefined => (staffToken ? { headers: { "X-Staff-Token": staffToken } } : undefined);
+
 export const api = {
   health: () => request<Health>("/api/health"),
-  models: () => request<ModelTarget[]>("/api/models"),
   personas: () => request<Persona[]>("/api/personas"),
-  contextPreview: (persona_id: string | null, message: string) =>
-    request<SafeContext>("/api/context/preview", { method: "POST", body: JSON.stringify({ persona_id, message }) }),
   chat: (body: ChatRequest) => request<ChatResponse>("/api/chat", { method: "POST", body: JSON.stringify(body) }),
-  evalCases: () => request<EvalCase[]>("/api/evals/cases"),
-  runEvals: (targets: string[], case_ids?: string[], modes?: Mode[]) =>
-    request<EvalRunResponse>("/api/evals/run", { method: "POST", body: JSON.stringify({ targets, case_ids, modes }) }),
-  evalResults: (run_id?: number) => request<EvalRunResponse>(`/api/evals/results${run_id ? `?run_id=${run_id}` : ""}`),
-  evalSummary: (run_id?: number) => request<EvalSummary>(`/api/evals/summary${run_id ? `?run_id=${run_id}` : ""}`),
-  review: (id: number, human_verdict: Verdict | null, human_notes: string | null) =>
-    request<EvalResult>(`/api/evals/results/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ human_verdict, human_notes }),
-    }),
-  gatesConfig: () => request<GateConfig>("/api/gates/config"),
-  /** Routing-only comparison. "llm" makes one model call per scenario. */
-  evaluateGates: (providers: GateProvider[]) =>
-    request<GateEvalResponse>("/api/gates/evaluate", { method: "POST", body: JSON.stringify({ providers }) }),
   /** The body names the session and kind only; the backend saves its own server-side draft. */
   confirmAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
     request<ActionResult>("/api/actions/confirm", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
   cancelAction: (session_id: string, persona_id: string | null, kind: ActionKind) =>
     request<ActionResult>("/api/actions/cancel", { method: "POST", body: JSON.stringify({ session_id, persona_id, kind }) }),
-  prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`),
-  staffConversations: (limit = 30) => request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`),
-  staffConversation: (hash: string) => request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`),
+  prototypeRecords: (limit = 50) => request<PrototypeRecord[]>(`/api/prototype/records?limit=${limit}`, staffInit()),
+  staffConversations: (limit = 30) =>
+    request<StaffConversation[]>(`/api/staff/conversations?limit=${limit}`, staffInit()),
+  staffConversation: (hash: string) =>
+    request<StaffConversationDetail>(`/api/staff/conversations/${encodeURIComponent(hash)}`, staffInit()),
 };
+
+/** Whether the customer page may offer the demo sign-in picker. The backend decides (app/auth.py): a hosted backend
+ * says demo_personas_enabled=false and returns no personas, so the page is guest-only. Picking a demo persona is
+ * NOT authentication; the backend re-derives and checks the principal on every request. */
+export function demoSignInAvailable(personas: Persona[], health: Health | null): boolean {
+  if (health?.demo_personas_enabled === false) return false;
+  return personas.length > 0;
+}
 
 /** Root-relative static snapshot served with the site (used when the backend is unreachable). */
 export const SNAPSHOT_PATH = "/demo/snapshot.json";
@@ -118,7 +121,7 @@ export async function loadDemoSnapshot(): Promise<DemoSnapshot> {
   }
   if (!res.ok) throw new ApiError("SNAPSHOT_UNAVAILABLE", `The static demo snapshot could not be loaded (${res.status}).`);
   const data = (await res.json()) as DemoSnapshot;
-  if (data?.kind !== "static_demo_snapshot" || !data.responses || !Array.isArray(data.cases)) {
+  if (data?.kind !== "static_demo_snapshot" || !Array.isArray(data.personas)) {
     throw new ApiError("SNAPSHOT_INVALID", "The static demo snapshot is not in the expected format.");
   }
   return data;

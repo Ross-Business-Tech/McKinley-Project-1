@@ -19,6 +19,11 @@ _ISOLATED_ENV = [
     "DECISION_GATE_LLM_TARGET", "DECISION_GATE_TIMEOUT_SECONDS", "GATE_OVERRIDE_ENABLED", "TYPESAFE_API_KEY",
     "TYPESAFE_BASE_URL", "JEV_MODEL", "SAFETY_CLASSIFIER", "SAFETY_CLASSIFIER_TARGET",
     "SAFETY_CLASSIFIER_TIMEOUT_SECONDS", "EVAL_TARGETS", "DB_PATH", "DATA_PATH", "CORS_ORIGINS",
+    "DATABASE_URL", "RESIDENT_DATA_SOURCE", "GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_BASE_URL",
+    "UM_TOOLKIT_API_KEY", "UM_TOOLKIT_BASE_URL", "UM_TOOLKIT_MODEL", "UM_TOOLKIT_HOSTED_APPROVED",
+    "GEMINI_THINKING_LEVEL", "APP_ENV",
+    "DEMO_PERSONAS_ENABLED", "UNDERSTANDING_PROVIDER", "UNDERSTANDING_TIMEOUT_SECONDS",
+    "OPENROUTER_REASONING_EFFORT", "LLM_CALL_BUDGET", "LLM_CALL_LEDGER",
 ]
 
 
@@ -26,6 +31,13 @@ _ISOLATED_ENV = [
 def _isolate_environment(monkeypatch):
     for name in _ISOLATED_ENV:
         monkeypatch.delenv(name, raising=False)
+    # Sprint 7: tests never read backend/.env. Deleting the variables is not enough, because Settings also reads the
+    # .env file directly; a developer's real DATABASE_URL (e.g. Supabase) or key there must never reach a test.
+    from app.config import Settings, get_settings
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 REAL_WORKBOOK = Path(__file__).resolve().parent.parent / "data" / "um_ai_sprint_sample_residents.xlsx"
@@ -102,9 +114,7 @@ def settings(tmp_path: Path) -> Settings:
         openrouter_api_key=None,
         anthropic_api_key=None,
         db_path=tmp_path / "test.sqlite3",
-        eval_results_path=tmp_path / "actual_results.json",
         eval_targets="mock:mock-deterministic-v1,openrouter:google/gemma-4-31b-it:free,ollama:llama3.2",
-        gate_override_enabled=True,  # tests exercise the per-turn override; production default is False
     )
 
 
@@ -116,3 +126,31 @@ def client(settings, workbook):
     with TestClient(app) as c:
         yield c
     set_state(None)  # type: ignore[arg-type]
+
+
+def throwaway_pg_url() -> str:
+    """TEST_DATABASE_URL for the destructive Postgres tests (they TRUNCATE / drop every table). Refuses anything that
+    looks like a real project unless ALLOW_DESTRUCTIVE_DB_TESTS=1 is set deliberately."""
+    import os
+
+    url = os.environ.get("TEST_DATABASE_URL", "").strip()
+    if not url:
+        return ""
+    real = os.environ.get("DATABASE_URL", "").strip()
+    looks_real = url == real or "supabase" in url.split("@")[-1]
+    if looks_real and os.environ.get("ALLOW_DESTRUCTIVE_DB_TESTS") != "1":
+        raise pytest.UsageError("TEST_DATABASE_URL looks like a real database (equals DATABASE_URL or is a Supabase "
+                                "host). These tests delete data: use a throwaway database, or set "
+                                "ALLOW_DESTRUCTIVE_DB_TESTS=1 for a throwaway Supabase project.")
+    return url
+
+
+def forget_persona_records(persona: str) -> None:
+    """Sprint 8 C: hypothesis examples in one test share one store, and an OPEN request the persona saved in an
+    earlier session now gets a follow-up note instead of a second record. Tests that need a clean persona per example
+    (they test something else) call this first. Test-only: the app has no delete path for records."""
+    from app.state import get_state
+
+    store = get_state().store
+    with store._lock, store._tx():
+        store._q("DELETE FROM prototype_records WHERE persona_id=?", (persona,))

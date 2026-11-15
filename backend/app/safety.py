@@ -73,7 +73,42 @@ _INJECTION = re.compile(
 
 
 def looks_like_injection(text: str) -> bool:
+    """Broad screen for STORED / retrieved data (staff notes, history, workbook fields): any of these words there is
+    dropped. Never use it on what a customer types: "I forgot my portal password" is not an attack (review P0)."""
     return bool(_INJECTION.search(text))
+
+
+# Customer messages (review P0, Sprint 10): only an attempt to give the assistant instructions counts: an override
+# ("ignore your previous instructions"), a request for the system prompt or keys, a role change ("you are now",
+# "pretend to be the admin"), a role marker ("SYSTEM:"), a forced reply. Everyday words (password, secret, reveal,
+# act as, override, disregard on their own) are ordinary customer language.
+_MESSAGE_INJECTION = re.compile(
+    r"\b(?:ignore|disregard|forget|override|bypass|skip)\s+(?:all\s+|any\s+|of\s+)?(?:your|the|my|these|those|previous|"
+    r"prior|earlier|above|system|safety|existing|original)?\s*(?:previous\s+|prior\s+|earlier\s+|above\s+|system\s+|"
+    r"safety\s+)?(?:instructions?|rules|prompts?|guidelines|directions|policies|programming|guardrails|constraints)\b|"
+    r"\bsystem\s+prompt\b|\b(?:your|the)\s+(?:hidden|internal|initial|original)\s+(?:instructions?|prompt|rules)\b|"
+    r"\b(?:reveal|show|print|repeat|output|tell me|give me|dump)\s+(?:me\s+)?(?:your|the)\s+(?:instructions?|prompt|"
+    r"configuration|config|api[ _-]?keys?|secrets?|safe_context)\b|\bapi[ _-]?keys?\b|"
+    r"\bignore (?:all of |everything )?(?:the above|everything above|the previous|what you were told)\b|"
+    r"\b(?:repeat|print|output) (?:everything|all|the text|the words) above\b|\bforget everything you were told\b|"
+    r"\bignora (?:todas )?(?:las )?instrucciones\b|\bolvida (?:todas )?(?:las )?instrucciones\b|"
+    r"\byou are now\b|\bfrom now on,?\s+you\b|\bnew instructions?\s*:|\bdeveloper mode\b|\bjailbreak\b|"
+    r"(?-i:\bDAN mode\b)|"
+    r"\b(?:act|behave)\s+as\s+(?:if\s+you\s+(?:are|were)\s+)?(?:an?\s+|the\s+)?(?:admin|administrator|developer|system|"
+    r"unrestricted|unfiltered|staff member|manager with|root)\b|"
+    r"\bpretend\s+(?:to\s+be|you\s+are)\s+(?:an?\s+|the\s+)?(?:property\s+)?(?:admin|administrator|developer|system|staff|manager|"
+    r"leasing agent|unrestricted)\b|"
+    r"</?\s*(?:system|safe_context|instructions?)\s*>|(?:^|\n)\s*>?\s*(?:system|assistant|developer)\s*:|"
+    r"\b(?:assistant|system|ai|bot|developer)\s+(?:instructions?|override|command)\b|"
+    r"\breply (?:only )?with ['\"]|\brespond (?:only )?with ['\"]",
+    re.IGNORECASE,
+)
+
+
+def looks_like_message_injection(text: str) -> bool:
+    """Is this CUSTOMER message trying to instruct the assistant? (The message is data either way: this only decides
+    whether to say "I can't follow instructions written inside a message".)"""
+    return bool(_MESSAGE_INJECTION.search(text))
 
 
 def sanitize_field(text: str, max_len: int = 120) -> str | None:
@@ -116,6 +151,8 @@ _GATES: list[tuple[str, str, re.Pattern[str], str]] = [
         "fair_housing_or_legal",
         re.compile(
             r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
+            r"(?:take|taking|go|going|see|seeing) (?:you |this |it |us )?(?:to |in )court|small claims|"
+            r"legal action|press charges|"
             r"retaliat|"
             r"accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|autis\w*|adhd|"
             r"special needs|medical condition|mobility|blind(?!s)|deaf|hearing impair|"
@@ -177,7 +214,19 @@ def pre_model_gates(message: str) -> list[PolicySignal]:
 
 # ---- post-model output checks -------------------------------------------------------
 
-_BANNED_TERMS = re.compile(r"\bbed\s?rooms?\b|\bunit\s?types?\b|\b[1-4]\s?BR\b|\bstudio unit type\b", re.IGNORECASE)
+# Leasing vocabulary: McKinley says "beds" / "floor plans", so "bedroom" is banned as a UNIT SIZE ("2-bedroom",
+# "three bedrooms", "a one bedroom apartment", "how many bedrooms"). The room itself is fine in a maintenance reply
+# ("your bedroom AC", "the bedroom window", "both bedrooms").
+_NUM_WORD = r"(?:\d|one|two|three|four|five|single|double|a one|a two)"
+_UNIT_NOUN = (r"(?:apartments?|units?|homes?|floor ?plans?|layouts?|options?|places?|flats?|condos?|townhomes?|"
+              r"houses?|rentals?)")
+_BANNED_TERMS = re.compile(
+    rf"\b{_NUM_WORD}[\s-]?bed[\s-]?rooms?\b|\bbed\s?rooms?\s+(?:and \w+ baths?\s+)?{_UNIT_NOUN}\b(?<!units)(?<!unit)|"
+    # "bedroom unit" is the AC/heater unit in the bedroom unless a size word precedes it (caught above) or it is
+    # leasing phrasing ("bedroom units available", "bedroom unit for rent")
+    r"\bbed\s?rooms? units? (?:available|for (?:rent|lease)|options?|pric\w*|floor ?plans?|open|left|in stock)\b|"
+    r"\bhow many bed\s?rooms\b|\bbed\s?rooms? (?:available|do you need|are you looking)|"
+    r"\bunit\s?types?\b|\b[1-4]\s?BR\b|\bstudio unit type\b", re.IGNORECASE)
 _APOS = "['\u2019]"  # straight or curly apostrophe
 _ACTION_CLAIMS = re.compile(
     rf"\bI(?:{_APOS}ve| have)? (?:just |already )?(?:notified|alerted|contacted|emailed|texted|called|messaged|"
@@ -230,6 +279,123 @@ _SECRET_LEAK = re.compile(r"api[ _-]?key|system prompt|\bsk-[A-Za-z0-9]|safe_con
 _EMERGENCY_GUIDANCE = re.compile(r"911|emergency", re.IGNORECASE)
 
 
+# Sprint 5.1 (L-4): checked only when the caller says nothing was sent this turn (`nothing_sent=True`). A promise that
+# staff will follow up / call is false while the card is still being filled in or no contact was collected. Honest
+# conditionals ("once you send it, staff can review it") and offers ("would you like me to...") are allowed.
+_PENDING_PROMISE = re.compile(
+    r"\b(?:a |the |our |one of our )?(?:staff(?: member)?s?|team members?|(?:property |community |leasing )?managers?|"
+    r"someone|somebody|the (?:office|team|leasing team|maintenance team)|maintenance(?: staff| team)?|leasing(?: "
+    r"team)?|a (?:person|specialist|technician|tech))\W+(?:\w+\W+){0,2}(?:should|will|would|is going to|are going "
+    r"to|can|to)?\s?(?:follow up|call you|reach out|contact you|get back to you|be in touch|text you|email you|"
+    r"call|phone you|get in touch)\b|"
+    rf"\bI(?:{_APOS}m| am) (?:now |currently |also )?(?:flagging|escalating|forwarding|notifying|alerting|routing|"
+    r"passing|sending|submitting|filing|logging|handing)\b(?! (?:you|over the (?:steps|options)))",
+    re.IGNORECASE)
+_CONDITIONAL = re.compile(r"\b(?:once|after|when|if|as soon as)\s+(?:you|it|this|that|the (?:note|request|card))\b|"
+                          r"\bwould you like\b|\bdo you want\b|\bshall i\b|\bif you(?:'d| would)? like\b|"
+                          # approved after-send wording: "In the real service the team would follow up"
+                          r"\bin (?:the|a) real (?:service|deployment|system)\b|\b(?:team|staff|office|manager|"
+                          r"someone|leasing|maintenance)(?: member)?s? would\b", re.I)
+
+
+# Sprint 9: in this demo NOTHING reaches McKinley staff, so a reply may never state that a request was sent to, received
+# by, waiting with or about to be confirmed by a person, whether or not a prototype record was written this turn
+# (a saved demo record is not a sent one). Negated ("hasn't been sent to the leasing team") and conditional ("in the
+# real service they would confirm") clauses are honest and pass.
+_STAFF = (r"(?:the |our |your )?(?:office|leasing(?: team| office)?|maintenance(?: team)?|staff|team|manager|"
+          r"community manager|property management(?: team)?|front desk)")
+_DEMO_STATUS_CLAIM = re.compile(
+    rf"\b(?:sent|forwarded|passed|submitted|delivered|routed|escalated)(?: (?:it|this|that|them|your \w+(?: \w+)?))?"
+    rf"(?: (?:along|over|on))? to {_STAFF}\b|"
+    rf"\b{_STAFF} (?:has|have|has now|just) (?:received|got|seen|been sent)\b|"
+    rf"\b{_STAFF}(?:{_APOS}ll| will| is going to| are going to) (?:confirm|review|look (?:at|into)|get back|reach out|"
+    r"call|contact|schedule|follow up|be in touch|pick a time)\b|"
+    rf"\b(?:waiting|queued|pending) (?:for|with|in) {_STAFF}(?: (?:review|to review it))?\b|"
+    r"\b(?:we|they|the team|staff)(?: have| has)? received your (?:request|note|message)\b|"
+    r"\b(?:is|are|'s) (?:now )?(?:in|on (?:its|the) way to) (?:the )?(?:office|maintenance|leasing)(?: team)?"
+    r"(?: queue)?\b|"
+    r"\b(?:your |the )?(?:visit|tour|appointment|booking|repair)(?: request)? (?:is|has been) (?:now )?(?:confirmed|"
+    r"booked|scheduled)\b|"
+    r"\b(?:fue|ha sido|qued[oó]) enviad[oa] (?:al|a la|a el|a mantenimiento|a la oficina)\b|\ble confirmar[áa]n?\b|"
+    r"\ble llamar[áa]n?\b|\brecibi(?:ó|eron) su\b|"
+    # Sprint 9 live Gemini review: Send framed as delivery ("press Send to submit it to our maintenance team",
+    # "press Send so our team can follow up", "so our office receives your details", "a leasing team member should
+    # follow up", "para que la reciba el equipo de mantenimiento")
+    r"\b(?:submit|send|pass|forward|get) (?:it|this|them|that|your \w+(?: \w+)?) (?:along |over |on )?to "
+    r"(?:our |the |your )?(?:\w+ ){0,3}(?:maintenance|leasing|office|staff|team|manager)\b|"
+    r"\bso (?:that )?(?:our |the |your )?(?:\w+ ){0,2}(?:team|office|staff|manager|maintenance|leasing)"
+    r"(?: team| office)? (?:can|will|could) (?:follow up|review|contact|reach|get back|call|look|schedule|confirm|"
+    r"see)\b|"
+    r"\b(?:once|after|when) you (?:tap |press |hit )?send(?: it)?,? (?:a |the |our )?(?:staff|team|office|manager|"
+    r"maintenance|leasing)(?: member| team)? (?:can|will|could) \w+|"
+    r"\bso (?:that )?(?:our |the |your )?(?:\w+ ){0,2}(?:team|office|staff|manager)(?: team)? (?:gets|receives|sees)\b|"
+    r"\b(?:a |an |one of our )?(?:leasing|maintenance|office|staff)(?: team)? (?:member|representative|agent)s? "
+    r"(?:should|will|can|is going to) (?:follow up|reach out|contact|call|get back|be in touch)\b|"
+    r"\bpara que (?:la|lo|las|los) (?:reciba|vea)n? (?:el|la|nuestro|nuestra)\b|"
+    # Gemini live run on 4047176: offers or questions that presume staff contact
+    r"\bsave (?:it|this|them) for (?:our|the|your) (?:\w+ )?(?:team|office|staff)\b|"
+    r"\b(?:phone number|number|time(?: of day)?|best time|day) (?:that )?(?:you(?:'d)? prefer |works? best |is best )?"
+    r"for (?:a|the|our|their) (?:call|callback|call back|visit)\b|"
+    r"\bfor (?:a|the|our) (?:\w+ )?(?:manager|staff member|team member|technician|leasing agent|agent) to "
+    r"(?:review|call|contact|visit|discuss|go over|meet)\w*(?: (?:it|this|that|them))? with you\b",
+    re.IGNORECASE,
+)
+
+
+_NOT = re.compile(r"(?:\b(?:can'?t|cannot|not|never|no|nobody|nothing|unable to|nadie|nunca)|n['\u2019]t)\W+"
+                  r"(?:\w+\W+){0,5}$", re.IGNORECASE)
+# idioms that are not a negation of what follows ("No problem! I've sent it to the office." is a claim)
+_NOT_IDIOM = re.compile(r"\b(?:no problem|no worries|not a problem|don'?t worry|no te preocupes|no se preocupe|"
+                        r"sin problema)\b\W*", re.IGNORECASE)
+# an offer is not a claim: "I can pass your question to the leasing team in a note" (the note is a demo card)
+_OFFER_LEAD = re.compile(r"\b(?:I can|I could|can I|could I|want me to|would you like me to|shall I|should I|"
+                         r"I'd be happy to|I(?:'m| am) happy to)\s+$",
+                         re.IGNORECASE)
+# only the explicit "in the real service" framing (or "would") makes a staff action hypothetical; "if you send it,
+# the office will get back to you" is still false in this demo (review G-1)
+_REAL_SERVICE = re.compile(r"\bin (?:the|a) real (?:service|deployment|system)\b|\bwould\b(?! you\b)|"
+                           r"\bel servicio real\b|"
+                           r"\b\w+r[íi]a(?:n)?\b", re.IGNORECASE)
+
+
+def _demo_status_claim(reply: str) -> str | None:
+    for m in _DEMO_STATUS_CLAIM.finditer(reply):
+        start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
+        clause = reply[start + 1:m.end()]
+        before = _NOT_IDIOM.sub("", clause[: len(clause) - len(m.group(0))])  # same sentence only (review G-1)
+        imperative = not before.strip() and m.group(0).lower().startswith("send")  # "Send it to the office when
+        # you're ready": the instruction to press the card's own button, whose demo line says it reaches nobody
+        if imperative or _REAL_SERVICE.search(clause) or _NOT.search(before[-60:]) or _OFFER_LEAD.search(before[-30:]):
+            continue
+        return m.group(0)
+    return None
+
+
+def _pending_promise(reply: str) -> str | None:
+    for m in _PENDING_PROMISE.finditer(reply):
+        start = max(reply.rfind(".", 0, m.start()), reply.rfind("?", 0, m.start()), reply.rfind("!", 0, m.start()))
+        clause = reply[start + 1:m.end()]
+        if _CONDITIONAL.search(clause) or _NEGATION.search(reply[max(0, m.start() - 60):m.start()]):
+            continue
+        return m.group(0)
+    return None
+
+
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?\s?k?\b", re.I)
+
+
+def _amounts(text: str) -> set[float]:
+    out: set[float] = set()
+    for raw in _NUMBER.findall(text):
+        r = raw.replace(",", "").strip().lower()
+        mult = 1000.0 if r.endswith("k") else 1.0
+        try:
+            out.add(round(float(r.rstrip("k").strip()) * mult, 2))
+        except ValueError:
+            continue
+    return out
+
+
 def _unnegated(pat: re.Pattern[str], text: str) -> str | None:
     """First match not preceded (within ~5 words) by a negation, e.g. 'I can't offer a discount' is fine."""
     for m in pat.finditer(text):
@@ -238,8 +404,11 @@ def _unnegated(pat: re.Pattern[str], text: str) -> str | None:
     return None
 
 
-def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None) -> list[OutputCheck]:
-    """Check a model reply. `allowed_text` = safe context text; times/prices found there are not 'invented'."""
+def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None, user_text: str = "",
+                  nothing_sent: bool = False) -> list[OutputCheck]:
+    """Check a model reply. `allowed_text` = safe context text; times/prices found there are not 'invented'.
+    `user_text` = what the person typed in this conversation: a price that only echoes their own number (their
+    budget) is not invented. `nothing_sent` = no record was written this turn: staff follow-up promises are false."""
     checks: list[OutputCheck] = []
 
     term = _BANNED_TERMS.search(reply)
@@ -250,13 +419,19 @@ def output_checks(reply: str, allowed_text: str = "", urgency: str | None = None
     ))
 
     claim_text = _unnegated(_ACTION_CLAIMS, reply)  # "No one has been dispatched" is honest, not a claim
+    if claim_text is None and nothing_sent:
+        claim_text = _pending_promise(reply)
+    if claim_text is None:
+        claim_text = _demo_status_claim(reply)
     checks.append(OutputCheck(
         code="no_false_action_claim",
         passed=claim_text is None,
         detail=f"Possible claimed action: '{claim_text}'" if claim_text else "No claimed side-effect actions",
     ))
 
-    invented_prices = [p for p in _PRICE.findall(reply) if p not in allowed_text]
+    said = _amounts(user_text) if user_text else set()
+    invented_prices = [p for p in _PRICE.findall(reply) if p not in allowed_text
+                       and not (said and _amounts(p) and _amounts(p) <= said and "%" not in p)]
     checks.append(OutputCheck(
         code="no_invented_price",
         passed=not invented_prices,

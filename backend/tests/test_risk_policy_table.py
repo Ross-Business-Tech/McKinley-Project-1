@@ -23,7 +23,9 @@ CASES = [  # (deterministic, semantic, prior hazards, expected rule, expected re
     (DeterministicRisk(mentioned_kind="gas", framing="past"), sem("none"), [], "R5", "safety_info", "info"),
     (DeterministicRisk(care="unwell"), sem("none", conf=0.99), [], "R6", "care_line", "unwell"),
     (DeterministicRisk(care="danger"), sem("none", conf=0.5), [], "R7", "care_line", "danger"),
-    (DeterministicRisk(care="danger"), sem("none", conf=0.95), [], "R7-suppressed", "none", None),
+    # Sprint 7 (stricter, moved): this case used to be "R7-suppressed" (semantic none at >= 0.8 removed the broad 911
+    # line). The semantic layer may now only add guidance, so the line is kept and the disagreement recorded.
+    (DeterministicRisk(care="danger"), sem("none", conf=0.95), [], "R7", "care_line", "danger"),
     (DeterministicRisk(care="danger"), sem("none", conf=0.99), ["personal_safety"], "R9e", "full_alert", None),
     (DeterministicRisk(), sem("none"), ["self_harm"], "R9", "care_line", "distress"),
     (DeterministicRisk(), sem("none"), [], "R8", "none", None),
@@ -61,9 +63,12 @@ def test_a_failed_classifier_is_never_less_cautious_than_the_rules_alone(det, s,
 
 
 def test_joking_self_harm_end_to_end_keeps_988(client):
+    # Sprint 7 fix round (stricter, moved): this used to expect the R3 988 care line with no alert. A laugh marker may
+    # no longer lower a live disclosure (monotone-safe lowering), so it is the full self-harm alert, which still
+    # leads with 988. R3 stays in the policy table for a deterministic "joking" framing built directly.
     det = detect("i want to kill myself lol")
-    assert det.framing == "joking" and det.care == "distress"
+    assert det.kind == "self_harm" and det.framing == "report" and det.care == "distress"
     r = client.post("/api/chat", json={"message": "i want to kill myself lol", "persona_id": "R001",
                                        "mode": "aware", "session_id": "r3"}).json()
-    assert r["safety_notice"] is None and r["care_kind"] == "distress" and "988" in r["care_note"]
-    assert r["risk"]["decision"]["rule"] == "R3"
+    assert r["safety_notice"] and "988" in r["safety_notice"]
+    assert r["risk"]["decision"]["rule"] == "R1" and r["risk"]["decision"]["kind"] == "self_harm"

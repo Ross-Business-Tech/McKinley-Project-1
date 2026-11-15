@@ -22,19 +22,28 @@ _PROXY_HEADERS = ("x-forwarded-for", "x-real-ip", "forwarded", "x-forwarded-host
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1", "testserver"}
 
 
-def staff_allowed(request: Request, state: AppState) -> bool:
-    token = state.deps.settings.staff_api_token
-    if token is not None and token.get_secret_value():
-        given = request.headers.get("x-staff-token", "")
-        return hmac.compare_digest(given.encode(), token.get_secret_value().encode())
+def request_is_local(request: Request) -> bool:
+    """True only for a request made straight from this machine: no proxy/tunnel header, a local Host header and a
+    loopback peer. Anything else (a reverse proxy, a tunnel, a LAN address, DNS rebinding) is remote. Fail closed:
+    used for the no-token staff guard, demo personas (app/auth.py) and server-issued sessions."""
     if any(h in request.headers for h in _PROXY_HEADERS):
-        return False  # without a token, proxied requests are never treated as local (even "XFF: 127.0.0.1")
+        return False  # proxied requests are never treated as local (even "XFF: 127.0.0.1")
     raw_host = request.headers.get("host") or ""
     host_header = raw_host.split("]")[0] + "]" if raw_host.startswith("[") else raw_host.rsplit(":", 1)[0]
     if host_header.lower() not in _LOCAL_HOSTS:
         return False
     host = request.client.host if request.client else ""
     return host in _LOOPBACK
+
+
+def staff_allowed(request: Request, state: AppState) -> bool:
+    token = state.deps.settings.staff_api_token
+    if token is not None and token.get_secret_value():
+        given = request.headers.get("x-staff-token", "")
+        return hmac.compare_digest(given.encode(), token.get_secret_value().encode())
+    if state.deps.settings.app_env == "hosted":
+        return False  # a hosted backend never falls back to "loopback = staff" (startup also requires a token)
+    return request_is_local(request)
 
 
 def require_staff(request: Request, state: AppState = Depends(get_state)) -> None:

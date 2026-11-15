@@ -73,7 +73,11 @@ def _error_message(resp: httpx.Response) -> str:
 
 
 def _map_status(provider: str, status: int, resp: httpx.Response) -> LLMError:
-    detail = _error_message(resp)
+    return map_status(provider, status, _error_message(resp))
+
+
+def map_status(provider: str, status: int, detail: str = "") -> LLMError:
+    """HTTP status -> gateway error code. Shared so an error reported inside a 200 body maps the same way."""
     suffix = f": {detail}" if detail else ""
     if status == 401:
         return LLMError("MODEL_AUTH_ERROR", f"{provider} rejected the API key (401){suffix}")

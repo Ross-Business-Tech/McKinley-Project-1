@@ -1,0 +1,133 @@
+// Mobile acceptance test: typing (fill) and sending with taps, on phone/tablet/desktop sizes, in Chromium and WebKit.
+//   node e2e/mobile-acceptance.mjs <built site dir | https://url> <screenshot dir> [engines] [sizes]
+// A site dir is served on http://127.0.0.1:${PORT:-3000} (add that origin to the backend's CORS_ORIGINS).
+// Needs Playwright (npx playwright install chromium webkit; set NODE_PATH to where it is installed).
+// The "keyboard" step shrinks the viewport to 55% height: an approximation, not a real on-screen keyboard.
+import { createServer } from "node:http";
+import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
+import { join, extname } from "node:path";
+import { createRequire } from "node:module";
+const require = createRequire(process.env.NODE_PATH ? process.env.NODE_PATH + "/x" : import.meta.url);
+const pw = require("playwright");
+const [site, out, engArg = "chromium,webkit", sizeArg] = process.argv.slice(2);
+const SIZES = (sizeArg ?? "320x568,375x667,390x844,430x932,768x1024,1440x900,844x390").split(",").map(s => s.split("x").map(Number));
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".ico": "image/x-icon", ".txt": "text/plain" };
+const PORT = Number(process.env.PORT ?? 3000);
+const remote = /^https?:\/\//.test(site);
+const BASE = remote ? site.replace(/\/$/, "") : `http://127.0.0.1:${PORT}`;
+const srv = remote ? null : createServer(async (req, res) => {
+  let p = decodeURIComponent(req.url.split("?")[0]); let f = join(site, p);
+  try { if ((await stat(f)).isDirectory()) f = join(f, "index.html"); } catch { f = join(site, "404.html"); }
+  try { res.writeHead(200, { "content-type": TYPES[extname(f)] ?? "application/octet-stream" }); res.end(await readFile(f)); }
+  catch { res.writeHead(404); res.end("nf"); }
+}).listen(PORT, "127.0.0.1");
+await mkdir(out, { recursive: true });
+const results = [];
+// a live free model can take most of a minute per reply: REPLY_TIMEOUT_MS=120000 for deployed runs
+const REPLY_MS = Number(process.env.REPLY_TIMEOUT_MS ?? 20000);
+const Q = [process.env.Q1 ?? "What floor plans do you have?", process.env.Q2 ?? "Can I tour on Saturday afternoon?"];
+for (const eng of engArg.split(",")) {
+  const browser = await pw[eng].launch();
+  for (const [w, h] of SIZES) {
+    const mobile = w < 900 && eng !== "firefox";
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: mobile && eng === "chromium", hasTouch: mobile, deviceScaleFactor: 2 });
+    const page = await ctx.newPage(); const errs = [];
+    page.on("pageerror", e => errs.push(String(e))); page.on("console", m => m.type() === "error" && errs.push(m.text()));
+    const tag = `${eng}-${w}x${h}`; const r = { tag, ok: true, notes: [] };
+    const fail = (n) => { r.ok = false; r.notes.push("FAIL " + n); };
+    try {
+      await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+      const box = page.locator("textarea");
+      await box.waitFor({ timeout: 15000 });
+      if (await box.isDisabled()) fail("composer disabled (static replay, not live)");
+      const ov = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      if (ov > 0) fail(`horizontal overflow ${ov}px`);
+      await page.screenshot({ path: `${out}/${tag}-1-open.png` });
+      const vis = async (loc) => { const b = await loc.boundingBox(); return b && b.y >= 0 && b.y + b.height <= (await page.evaluate(() => window.visualViewport?.height ?? innerHeight)) + 1; };
+      if (!(await vis(box))) fail("composer not visible on open");
+      // Sprint 8 (product owner): the always-visible tap-to-call 911 link was removed. Was: "911 link not visible on open".
+      // Now: no tap-to-call control in the normal state (only a plain-text 911 line); an active alert is checked below.
+      if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail("persistent call link visible in the normal state");
+      const sendBtn = page.locator('form button[type="submit"]');
+      const tb = await sendBtn.boundingBox(); if (tb && (tb.width < 44 || tb.height < 44)) fail(`send target ${tb.width}x${tb.height}`);
+      for (let i = 0; i < Q.length; i++) {
+        const before = await page.locator('[role="article"]').count();
+        if (mobile) await box.tap(); else await box.click();
+        // keyboard approximation: the visual viewport shrinks by ~45% when a phone keyboard opens
+        if (mobile && h > w) { await page.setViewportSize({ width: w, height: Math.round(h * 0.55) }); await page.waitForTimeout(250);
+          if (!(await vis(box))) fail(`q${i + 1}: composer hidden with keyboard-height viewport`);
+          const share = await page.evaluate(() => { const c = document.querySelector("textarea")?.closest(".sticky"); return c ? c.getBoundingClientRect().height / (window.visualViewport?.height ?? innerHeight) : 0; });
+          r.notes.push(`q${i + 1}: composer uses ${Math.round(share * 100)}% of the keyboard-height screen`);
+          if (share > 0.42) fail(`q${i + 1}: composer takes ${Math.round(share * 100)}% of the screen while typing`);
+          // Sprint 8: was "911 link not visible while typing"; the persistent link is gone, so: no call link while typing.
+          if (await page.locator('a[href^="tel:"], a[href^="sms:"]').count()) fail(`q${i + 1}: call link shown in a normal conversation`);
+          await page.screenshot({ path: `${out}/${tag}-2-keyboard-q${i + 1}.png` }); }
+        await box.fill(Q[i]);
+        if (mobile) await sendBtn.tap(); else await sendBtn.click();
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: REPLY_MS });
+        await page.waitForTimeout(400);
+        if (mobile && h > w) await page.setViewportSize({ width: w, height: h });
+        await page.waitForTimeout(250);
+        const last = page.locator('[role="article"]').last();
+        const txt = (await last.innerText()).slice(0, 140).replace(/\s+/g, " ");
+        r.notes.push(`q${i + 1} reply: ${txt}`);
+        const lb = await last.boundingBox(); const cb = await box.boundingBox();
+        if (lb && cb && lb.y > cb.y) fail(`q${i + 1}: newest reply starts below the composer`);
+        const ov2 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        if (ov2 > 0) fail(`q${i + 1}: horizontal overflow ${ov2}px`);
+        await page.screenshot({ path: `${out}/${tag}-3-after-q${i + 1}.png` });
+      }
+      await page.reload({ waitUntil: "networkidle" }); await page.waitForTimeout(500);
+      const kept = await page.locator('[role="article"]').count();
+      r.notes.push(`after refresh: ${kept} assistant messages restored`);
+      if (kept < Q.length + 1) fail(`refresh restored ${kept} assistant messages, expected ${Q.length + 1}`);
+      await page.screenshot({ path: `${out}/${tag}-4-refresh.png` });
+      // Sprint 8: an active emergency shows an in-conversation alert with labelled contact links (never auto-dialled).
+      // Judge fix round: for each active type the FIRST contact link must be fully on screen above the sticky composer
+      // on arrival (it was hidden under it at 320x568 and 844x390), the composer stays visible, and focus is not on a link.
+      // Each emergency starts a fresh conversation (session cleared) so one incident doesn't shape the next.
+      const EMERGENCIES = (process.env.Q_EMERGENCY ?? [
+        "medical=My neighbor collapsed in the hallway and isn't breathing",
+        "gas=I smell gas really strongly in my kitchen right now",
+        "poison=My toddler just swallowed a laundry detergent pod",
+        "self_harm=I want to kill myself tonight",
+      ].join("|")).split("|").map((x) => x.split("="));
+      for (const [kind, q] of EMERGENCIES) {
+        if (await box.isDisabled()) break;
+        await page.evaluate(() => sessionStorage.clear()); await page.reload({ waitUntil: "networkidle" }); await box.waitFor();
+        const before = await page.locator('[role="article"]').count();
+        await box.fill(q);
+        if (mobile) await sendBtn.tap(); else await sendBtn.click();
+        await page.waitForFunction((n) => document.querySelectorAll('[role="article"]').length > n, before, { timeout: REPLY_MS });
+        await page.waitForTimeout(500);
+        const alert = page.locator('[role="article"]').last().locator('[data-testid="safety-alert"]');
+        if (!(await alert.count())) { fail(`${kind}: no in-conversation alert`); continue; }
+        const first = alert.locator('a[href^="tel:"], a[href^="sms:"]').first();
+        if (!(await first.count())) { fail(`${kind}: alert has no contact link`); continue; }
+        const label = (await first.innerText()).trim();
+        if (!/911|988|1-800-222-1222/.test(label)) fail(`${kind}: first link is not labelled with its number ("${label}")`);
+        if (kind === "medical" && !(await alert.locator('a[href="tel:911"]').count())) fail('medical: no labelled "Call 911" link');
+        const lb = await first.boundingBox(); const cb = await page.locator("textarea").evaluate((t) => t.closest(".sticky").getBoundingClientRect().top);
+        if (!lb || lb.y < 0 || lb.y + lb.height > cb + 1) fail(`${kind}: first contact link not above the composer (link ${lb && Math.round(lb.y + lb.height)} > composer ${Math.round(cb)})`);
+        if (await first.evaluate((a) => a.getClientRects().length > 1 || a.querySelector('[data-testid="phone-number"]')?.getClientRects().length > 1)) fail(`${kind}: link label breaks mid-number`);
+        if (!(await vis(box))) fail(`${kind}: composer hidden`);
+        if (await page.evaluate(() => document.activeElement?.matches('a[href^="tel:"], a[href^="sms:"]'))) fail(`${kind}: focus moved onto a call link`);
+        if (page.url().startsWith("tel:") || page.url().startsWith("sms:")) fail(`${kind}: dialled without a tap`);
+        const ov3 = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        if (ov3 > 0) fail(`${kind}: horizontal overflow ${ov3}px`);
+        r.notes.push(`${kind}: first link "${label}"`);
+        await page.screenshot({ path: `${out}/${tag}-5-active-${kind}.png` });
+      }
+      // tap target audit (outside running text)
+      const small = await page.evaluate(() => [...document.querySelectorAll("button, a, select, textarea, input, summary")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.height < 44 || b.width < 24) && !e.closest("p"); }).map(e => (e.textContent || e.tagName).trim().slice(0, 30) + ` ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
+      if (small.length) r.notes.push("small targets: " + small.join("; "));
+    } catch (e) { fail(String(e).split("\n")[0]); await page.screenshot({ path: `${out}/${tag}-x-error.png` }).catch(() => {}); }
+    if (errs.length) r.notes.push("console: " + errs.slice(0, 3).join(" | ").slice(0, 300));
+    results.push(r); console.log((r.ok ? "PASS " : "FAIL ") + tag + "\n   " + r.notes.join("\n   "));
+    await ctx.close();
+  }
+  await browser.close();
+}
+await writeFile(`${out}/results.json`, JSON.stringify(results, null, 2));
+srv?.close();
+process.exitCode = results.every((r) => r.ok) ? 0 : 1;

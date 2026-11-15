@@ -9,6 +9,15 @@ approve the list and the wording (docs/workflows/traceability.md, I-17/I-18).
 import re
 import unicodedata
 
+from app.risk.concepts import PRESENT_PERSON as _PRESENT_PERSON_RE
+from app.risk.concepts import RULES as CONCEPT_RULES
+from app.risk.concepts import cold_exposure as _cold_exposure
+from app.risk.concepts import concern as _concern
+from app.risk.concepts import not_physical as _not_physical
+from app.risk.concepts import present_signs as _present_signs
+from app.risk.concepts import stockpile as _stockpile
+from app.risk.concepts import veiled_farewell as _veiled_farewell
+
 # Ordered: the first match wins, so the most life-critical kinds come first.
 _W = r"(?:\w+\W+){0,6}"  # up to six words in between
 KINDS: list[tuple[str, re.Pattern[str]]] = [
@@ -37,7 +46,15 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r"lift)\W+(?:\w+\W+){0,4}stuck|trapped (in|inside|under)|"
         r"atrapad[oa] en el (elevador|ascensor)", re.I)),
     ("structural", re.compile(
-        r"(railing|handrail|balcony)\W+(?:\w+\W+){0,4}(loose|broke|broken|gave way|came off|came loose|wobbl\w*)|"
+        # fix round (P2): a loose / wobbly railing alone is a repair (calm 911 line + form); it is an emergency when
+        # it broke, came off or gave way, or with a danger sign (someone almost fell, leaning on it, a child near it)
+        r"(railing|handrail|balcony)\W+(?:\w+\W+){0,4}(broke|broken|gave way|came off|came loose|snapped|"
+        r"fell (?:off|down)|collaps\w*)|"
+        r"(railing|handrail)\W+(?:\w+\W+){0,4}(loose|wobbl\w*|moves|shak\w*)\W+(?:\w+\W+){0,10}(almost fell|nearly "
+        r"fell|about to (?:give|fall|come off|break)|could fall|leaning on|lean on|kid|child|toddler|baby|"
+        r"fell|falling|pulling (?:out|away))|"
+        r"(almost fell|nearly fell|leaning on|lean on)\W+(?:\w+\W+){0,8}(railing|handrail)\W+(?:\w+\W+){0,4}"
+        r"(loose|wobbl\w*|moves|shak\w*)|"
         r"almost fell (off|out|over|from)|"
         rf"\b(ceiling|roof|floor|wall|balcony|stairs?|deck)\W+{_W}(collaps\w*|fell (in|down)|falling (in|down)|sag\w*|"
         r"cav(ed|ing) in|caving)|collapsed (ceiling|roof|balcony)|techo se (cay[oó]|derrumb)", re.I)),
@@ -81,11 +98,19 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
         r" egg|\bgaz\b|gaz kokusu|odeur de gaz|zapach gazu", re.I)),
     ("co", re.compile(
         r"carbon mon\w*|mon[oó]xid\w*|monixide|\bco (thing|sensor)|\bco\b ?(alarm|detector|monitor)|(alarm|detector)"
-        r" (for|de) (co|mon[oó]xido)",
+        r" (for|de) (co|mon[oó]xido)|"
+        # sprint 5.1 (E-1): "CO" abbreviated next to the device or its display ("the alarm says CO", "it shows CO on
+        # the detector", "CO level is 80"). "co" must stand alone: not "co-signer", "co.", "& co".
+        r"(?:alarm|detector|monitor|sensor|display|screen)\w*\W+(?:\w+\W+){0,4}(?:says?|said|reads?|shows?|showing|"
+        r"display\w*|flash\w*|blink\w*)\W+(?:\w+\W+){0,2}co\b(?![-'.&]\w)|"
+        r"(?:says?|reads?|shows?|showing|display\w*|flash\w*)\W+(?:\w+\W+){0,1}co\b(?![-'.&]\w)\W+(?:\w+\W+){0,4}"
+        r"(?:alarm|detector|monitor|sensor|display|screen)|"
+        r"\bco\b(?![-'.&]\w)\W+(?:\w+\W+){0,3}(?:on|in) (?:the|my|our) (?:\w+ )?(?:alarm|detector|monitor|sensor|"
+        r"display|screen)|\bco (?:levels?|reading|ppm|warning|alert)\b",
         re.I)),
     ("fire_smoke", re.compile(
-        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|works|fighter|d\b|station|house|escape|"
-        r"lane))|\bflames?\b|"
+        r"\bfire\b(?! ?(alarm test|drill|place|pit|extinguisher|department|dept\b|works|fighter|d\b|station|"
+        r"house|escape|lane|marshal|truck|engine|crew|m[ae]n\b))|\bflames?\b|"
         r"on fire|\bburning\b(?! question)|burnt? (smell|plastic|rubber)|smells? (like |of )?(burn|smoke)|"
         r"smell\w*\W+(?:\w+\W+){0,2}(?:burnt|burning|smoky)|"
         r"\bsmok(e|ing|y|in'?)\b(?! ?(detector|alarm)\b(?!.{0,30}(going off|sounding|won'?t stop|keeps going)))|"
@@ -108,7 +133,7 @@ KINDS: list[tuple[str, re.Pattern[str]]] = [
     ("flood", re.compile(
         r"\bflood(ing|ed|s)?\b(?! ?(zone|insurance|plain|light))|water (is )?(pouring|everywhere|gushing|spraying|"
         r"coming in|pouring in|all over)|(pipe|line|hose) (has )?(burst|broke|exploded|split)|burst (pipe|line)|"
-        r"\bgushing\b|overflow\w*\W+(?:\w+\W+){0,8}(hallway|everywhere|floor|won'?t stop|another room|downstairs)|"
+        r"\bgushing\b|overflow\w*\W+(?:\w+\W+){0,8}(hallway|everywhere|won'?t stop|another room|downstairs)|"
         r"inund\w*|agua por todas partes|se rompi[oó] (una|la) (tuber[ií]a|ca[ñn]er[ií]a)|tuber[ií]a rota|ngập|"
         r"revent[oó] (?:una|la) (?:tuber[ií]a|ca[ñn]er[ií]a)|agua\W+(?:\w+\W+){0,2}(?:entrando|saliendo|cayendo) "
         r"(?:por|del) (?:el )?techo",
@@ -152,7 +177,8 @@ _FUMES = (r"mix\w* (?:the )?(?:bleach|cleaners|chemicals)\W+(?:\w+\W+){0,4}(?:an
           r"another|other)|bleach and ammonia|(?:fumes|chemical smell)\W+(?:\w+\W+){0,10}(?:cough\w*|can'?t breathe|"
           r"eyes (?:burn|sting)|dizz\w*)")
 _SYMPTOM = (r"head ?aches?|head (?:hurts|is (?:pounding|killing))|pounding head|dizz\w*|light-?headed|nause\w*|"
-            r"throwing up|vomit\w*|drows\w*|sleepy|confus\w*|faint\w*|letharg\w*|feel (?:sick|weird|off)|"
+            r"throwing up|vomit\w*|drows\w*|sleepy|confus\w*|faint\w*|letharg\w*|"
+            r"feel (?:sick(?! of| and tired)|weird|off)|"
             r"mare\w*|dolor de cabeza|n[aá]use\w*|v[oó]mit\w*|somnolien\w*")
 _HEAT = (r"furnace|heater|heat(?:ing)?(?:'s| is| was| has)?(?: been)? (?:on|running|blasting|cranked)|turned (?:the"
          r" )?heat (?:on|up)|boiler|"
@@ -188,7 +214,9 @@ _STRUCT2 = (r"(?:ceiling|roof|wall)\W+(?:\w+\W+){0,3}(?:came|fell|caved|crashed)
             r"roof|wall|floor) (?:came|fell|collapsed|caved)|crack\w*\W+(?:\w+\W+){0,8}(?:bowing|bulging|sagging|"
             r"widening|spreading|getting bigger)|bowing (?:down|in|out)|pull\w* away from (?:the )?(?:building|wall)|"
             r"about to (?:give out|collapse|fall|cave)|g[ai]ve way|tree (?:fell|came down|crashed) (?:on|through|into)|"
-            r"hole in (?:the|my) (?:roof|ceiling)|hole above|se est[aá] cayendo el techo|grieta")
+            r"hole in (?:the|my) (?:roof|ceiling)|hole above|se est[aá] cayendo el techo|"
+            # sprint 7: a crack alone is a repair; only a crack that grows / opens is structural danger
+            r"grieta\W+(?:\w+\W+){0,4}(?:creciendo|cada vez m[aá]s|se (?:est[aá] )?abriendo|enorme|se agranda)")
 _ELEC2 = (r"\bzapp\w*|\bshocked\b|electric (?:shock|current)|(?:outlet|socket|switch|plug|panel|"
           r"breaker)\W+(?:\w+\W+){0,8}"
           r"(?:pop\w*|bang|black mark|scorch\w*|crackl\w*|warm|hot to the touch|burn\w*)|(?:pop\w*|"
@@ -257,6 +285,21 @@ _GONE = (r"(?:when|after|once|if) i(?:'m (?:not around|gone|not here|no longer h
 _GONE_PLAN = (r"planning|plan\b|tonight|soon|this week|already|arrang\w*|sorted|found someone|take (?:my|care of my)|"
               r"have to deal|won't have to|so (?:my|the) (?:family|kids|sister|brother|mom|dad|parents|roommate)|"
               r"deposit|rent early|for after|my stuff|my things|my (?:dog|cat|pets?)")
+# Sprint 8 (verifier P0-B): a wish or plan to take MORE medicine than prescribed ("I want to take the whole bottle",
+# "thinking of taking the rest", "wish I could take them all", "quiero tomarme todo el frasco") is self-harm intent,
+# also after a routine dose ("I took 2 tylenol for my headache but I want to take the whole bottle").
+OD_INTENT = re.compile(
+    # only with a medicine word somewhere in the message ("take the rest of the week off" is not an overdose)
+    r"^(?=[\s\S]*\b(?:pills?|tablets?|meds|medicines?|medications?|tylenol|advil|ibuprofen|aspirin|xanax|sleeping|"
+    r"prescriptions?|pastillas?|medicinas?|frasco)\b)[\s\S]*?"
+    r"\b(?:want(?:s|ed)?|wanna|thinking (?:about|of)|wish(?: i could)?|going to|gonna|plan(?:ning)? (?:to|on)|might|"
+    r"about to|tempted to|could just|feel like|quiero|pienso|voy a|tengo ganas de)\b[^.?!]{0,40}?"
+    r"\b(?:tak(?:e|ing)|"
+    r"swallow(?:ing)?|down(?:ing)?|tomar(?:me)?|tragar(?:me)?)\b[^.?!]{0,30}?\b(?:the rest|the whole|whole bottle|all "
+    r"(?:of )?(?:them|it|my|the|those)|them all|everything|the (?:entire )?bottle|todo|todas|el resto|el frasco)\b",
+    re.I)
+
+
 _INTENT = (r"(?:roof|rooftop|top (?:floor|of (?:the|a|my) (?:\w+ ){0,2}(?:garage|building|bridge|parking structure|"
            r"tower))|bridge|ledge|overpass|balcony)\W+(?:\w+\W+){0,10}(?:not coming (?:back|down|home)|never coming "
            r"back|step off|jump\w*|let go|for the last time|one last time)|how easy it (?:would|'d) be to (?:just )?"
@@ -333,6 +376,38 @@ _STRUCT3 = (r"(?:pedazos|trozos|partes|pieces|chunks) (?:del|de la|of the) (?:te
 _CO_SIGNS = (r"soot|yellow (?:flame|burner)|lazy flame|flame (?:is |looks )?(?:yellow|orange|floppy|lazy)|"
              r"(?:everyone|we all|the (?:whole )?family|all of us)\W+(?:\w+\W+){0,4}(?:sick|headaches?|dizzy|nause\w*)")
 
+# ---- sprint 5.1: indirect reports from the resident simulator (own development wording; see tests) ----
+# E-2: a young child (or someone) swallowed an unknown thing / a household product; the product named on its own
+# with a sign of harm ("the dishwasher pod stuff, he's coughing").
+_SMALL_CHILD = (r"toddler|baby|infant|little one|(?:my |the |our )(?:\d+ ?(?:year|yr|month)[- ]old|kid|son|"
+                r"daughter|child)")
+_UNKNOWN_SWALLOW = (r"(?:swallow\w*|got into|put \w+ in (?:his|her|their) mouth|chew\w* on|lick\w*)\W+(?:\w+\W+){0,4}"
+                    r"(?:something|some (?:stuff|liquid|powder)|whatever)|(?:swallow\w*|ate|eaten|drank|got into|"
+                    r"chew\w* on|lick\w*)\W+(?:\w+\W+){0,4}(?:(?:from )?(?:under|below) the (?:kitchen |"
+                    r"bathroom )?sink|"
+                    r"from the (?:cleaning |cleaner )?(?:cabinet|cupboard))")
+_HOUSEHOLD = (r"(?:dishwasher|laundry|detergent|tide) ?(?:pods?|tabs?|tablets?|stuff|soap|liquid|packets?)|"
+              r"drain cleaner|"
+              r"drano|bleach|lye|oven cleaner|toilet (?:bowl )?cleaner|rat poison|antifreeze|button batter\w*|"
+              r"from under the sink|under the sink stuff")
+_SWALLOW_HARM = (r"cough\w*|chok\w*|gag\w*|vomit\w*|throw\w* up|threw up|puk\w*|drool\w*|foaming|wheez\w*|"
+                 r"(?:mouth|throat|lips) (?:is |are )?(?:burn\w*|red|swollen)|crying (?:and|a lot)|won'?t stop crying")
+# E-3: a person fell and is calling out / hurt; or a person heard calling for help.
+_PERSON_FELL = (r"(?:" + _PERSON + r"|\b(?:she|he|they)\b)\W+(?:\w+\W+){0,3}(?:fell|fallen|took a (?:bad )?fall|"
+                r"has had a fall|slipped|tripped|went down)\b")
+_FALL_SIGN = (r"calling (?:out|for help|help)|cr(?:y|ies|ying) (?:out|for help)|(?:yell|scream|shout|call)\w* (?:out )?"
+              r"(?:for )?help|moan\w*|groan\w*|hurt|in pain|bleed\w*|on the floor|on the ground|can'?t (?:get up|"
+              r"stand|move|reach)|hasn'?t (?:gotten|got) up|won'?t get up|not getting up|help me")
+_CALLING_HELP = (r"(?:\b(?:she|he|they|someone|somebody|a (?:woman|man|person|lady|guy|kid|child))(?:'s| is| are|'re)?|"
+                 + _NAMED_PERSON + r")\W+(?:\w+\W+){0,3}(?:calling|crying|yelling|screaming|shouting|"
+                 r"begging)\W+(?:out\W+)?"
+                 r"(?:for )?help\b(?! (?:desk|line|center|centre|button|page|article|ticket))")
+# E-6: someone testing doors at night.
+_DOOR_TRY = (r"(?:trying|tried|testing|jiggl\w*|rattl\w*|twist\w*|pull\w* on|turning|checking)\W+(?:\w+\W+){0,1}"
+             r"(?:(?:the|our|every|each|all the|people'?s|neighbou?rs'?|residents'?)\s+)?"
+             r"(?:door ?handles|door ?knobs|doorknobs|handles|doors|locks)\b|(?:trying|tried|testing|jiggl\w*|rattl\w*)"
+             r"\W+(?:every|each|all the) (?:door|handle|lock|unit)")
+
 
 def _near(a: str, b: str, gap: int = 12) -> re.Pattern[str]:
     """a then b, or b then a, within `gap` words."""
@@ -344,6 +419,7 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("self_harm", re.compile(_SELF_HARM2, re.I)),
     ("self_harm", _near(_BURDEN, _FINAL, 20)),
     ("self_harm", re.compile(_HEIGHT_ALONE + "|" + _METHOD + "|" + _INTENT, re.I)),
+    ("self_harm", OD_INTENT),
     ("self_harm", _near(_GONE, _GONE_PLAN, 20)),
     ("poison", re.compile(_OD_SIGNS, re.I)),
     ("poison", _near(_CHEM, _CHEM_HARM, 10)),
@@ -355,6 +431,11 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("co", _near(_CO_SIGNS, _SYMPTOM + "|" + _HEAT + "|furnace|boiler|vomit\\w*|throwing up", 14)),
     ("fire_smoke", re.compile(_FIRE3, re.I)),
     ("poison", _near(_INGEST, _SUBSTANCE, 8)),
+    ("poison", _near(_SMALL_CHILD, _UNKNOWN_SWALLOW, 6)),
+    ("poison", _near(_HOUSEHOLD, _SWALLOW_HARM, 10)),
+    ("medical", _near(_PERSON_FELL, _FALL_SIGN, 10)),
+    ("medical", re.compile(_CALLING_HELP, re.I)),
+    ("personal_safety", _near(_THREAT_ACTOR, _DOOR_TRY, 8)),
     ("poison", re.compile(_FUMES, re.I)),
     ("trapped", re.compile(_TRAPPED2, re.I)),
     ("medical", _near(_PERSON, _UNRESPONSIVE, 10)),
@@ -372,6 +453,8 @@ CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
     ("flood", re.compile(_FLOOD2, re.I)),
     ("gas", re.compile(_GAS2, re.I)),
 ]
+# Sprint 6: concept-slot rules (app/risk/concepts.py) run after every explicit rule above, through the same framing.
+CONCEPTS.extend(CONCEPT_RULES)
 
 # Danger vocabulary: high recall, low severity. Not enough for the full alert or an urgent note, but enough that
 # the reply leads with "if anyone is hurt or in danger, call 911". Measured separately from full-alert recall.
@@ -389,7 +472,14 @@ _DANGER = re.compile(
     r"trapped|stuck in|can'?t get out|won'?t open|locked in|"
     r"rope|goodbye|giving away|sleep forever|no way out|end it|despedí|lo hago|"
     r"humo|fuego|incendio|sangr\w*|herid\w*|inconsciente|atrapad\w*|miedo|pistola|cuchillo)\b", re.I)
-_DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
+# Sprint 7 fix round (UX judge): benign senses of danger words: an interjection ("oh shoot"), a consumable that
+# burned out (a bulb, the oven light), being burnt out (tired). A live sign elsewhere in the message still counts.
+_DANGER_NOT = re.compile(r"\b(?:oh|aw|ah|ahh|dang|well) shoot\b|^\W*shoot\b(?!\s+(?:me|him|her|them|us|at|someone))|"
+                         r"\bshoot[,!.]|\b(?:bulbs?|light ?bulbs?|lights?|lamps?|nightlight|oven light|fridge light|"
+                         r"fuses?|candles?)\W+(?:\w+\W+){0,4}burn(?:ed|t) out\b|\bburn(?:ed|t) out (?:bulbs?|lights?)"
+                         r"\b|"
+                         r"\b(?:i'?m|feel|feeling|so) (?:so |really |totally )?burn(?:ed|t) out\b|sparks? joy|gas (bil"
+                         r"l|station|company|stove (is|works) fine)|fire (lane|exit|drill|alarm "
                          r"test|extinguisher)|chest of drawers|burning question|smoke[- ]free|no smoking|"
                          r"bone dry|broke (?:the )?bank|smoke (?:detector|alarm)s? (?:repair|battery|batteries|replace"
                          r"ment|replaced|"
@@ -410,7 +500,9 @@ _DANGER_NOT = re.compile(r"sparks? joy|gas (bill|station|company|stove (is|works
                          r"\W+)"
                          r"{0,3}gas|gas\W+(?:\w+\W+){0,3}(?:incluido|incluida)|(?:smoke|co|carbon monoxide) (?:alarm|"
                          r"detector)s?\W+(?:\w+\W+){0,6}(?:chirp\w*|low batter\w*|batter(?:y|ies))", re.I)
-_SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to|letter|note)|giving away (?:my|all)|sleep forever|no way out|"
+_SELF_HARM_HINT = re.compile(r"\brope\b|goodbye (?:to(?! (?:this|the|my|our) (?:apartment|place|unit|building|lease|"
+                             r"neighbou?rhood|city|town|area|old \w+)\b)|letter|note)|giving away (?:my|all)|"
+                             r"sleep forever|no way out|"
                              r"(?:rather|want to|wanna) (?:just )?(?:not exist|disappear|be dead|not wake up)|"
                              r"(?:no|any) reason to (?:keep going|go on|live|stay)|how (?:i would|to) do it|"
                              r"\bcutting (?:again|myself)|hurting myself|self[- ]harm|(?:won'?t|wont) be (?:alive|here|"
@@ -431,17 +523,26 @@ _DISTRESS = re.compile(
     r"everything is falling apart|nothing matters|it doesn'?t matter anyway|tired of (?:living|everything|life)|"
     r"ya no puedo m[aá]s|no aguanto m[aá]s|feels? (?:so |really |completely )?hopeless|so stressed (?:that )?i "
     r"can'?t (?:sleep|eat|breathe)|panic attacks?|" + _OVERWHELM, re.I)
-_UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick|weird|off)|", "")
+_UNWELL = re.compile(_SYMPTOM.replace(r"confus\w*|", "").replace(r"feel (?:sick(?! of| and tired)|weird|off)|", "")
                      + r"|can'?t breathe well|short of breath", re.I)
 _NEGATED_SELF_HARM = re.compile(
     r"(?:not|never been|i'?m not|im not) (?:really )?suicidal|not (?:going|gonna|trying) to (?:hurt|kill) myself|"
     r"(?:no|nunca) (?:me voy a|quiero) (?:matar|hacer daño)|no (?:estoy|soy) suicida", re.I)
 # Possibly someone in danger, but not enough for the full alert: the 911 line, never silence.
 _DANGER_HINT = re.compile(
+    # fix round (P2): a loose / wobbly railing alone is a repair with the calm 911 line, not a full alert
+    r"\b(?:railing|handrail|guard ?rail)s?\W+(?:\w+\W+){0,4}(?:loose|wobbl\w*|shak\w*|moves)\b|"
     r"(?:crash|scream\w*|thud|bang\w*|yell\w*)\W+(?:\w+\W+){0,10}(?:then )?(?:silence|quiet|nothing|stopped)|"
     r"(?:has|have|kept|still has) (?:a |the )?key\w*\W+(?:\w+\W+){0,12}(?:coming in|came in|let (?:him|her|them)sel\w* "
     r"in|moved|in my (?:apartment|unit|place)|when i'?m (?:not home|out|away|asleep))|(?:things|stuff) (?:keep )?"
-    r"(?:moved|moving|missing) (?:around )?in my (?:apartment|unit|place)", re.I)
+    r"(?:moved|moving|missing) (?:around )?in my (?:apartment|unit|place)|"
+    # sprint 5.1 (E-6): a neighbour who may need a welfare check (door left open / not seen, plus a bad smell)
+    r"(?:(?<!\bmy )(?<!\bour )door (?:has been|was|is|been|left|standing) (?:\w+ )?open|haven'?t (?:seen|"
+    r"heard from) (?:him|her|them|my "
+    r"neighbou?r|the (?:\w+ )?neighbou?r)|mail (?:is )?piling up|packages piling up|(?:hasn'?t|not) (?:answered|"
+    r"answering) (?:the|her|his|their) door)\W+(?:\w+\W+){0,12}(?:(?:smell\w*|stench|odou?r|stink\w*)\W+(?:\w+\W+){0,3}"
+    r"(?:awful|terrible|horrible|really bad|so bad|rotten|rotting|decay\w*|like something died|foul|nasty)|(?:awful|"
+    r"terrible|horrible|rotten|rotting|foul|nasty|really bad|dead) (?:smell|stench|odou?r|stink))", re.I)
 
 
 CARE_NOTE = {
@@ -472,16 +573,23 @@ REFUSE_LEAD = {
 }
 
 
+def person_concern(message: str) -> bool:
+    """Sprint 6: the care line came from a sign that a PERSON may be hurt or in danger (concept slots or the welfare /
+    break-in hints), not just from broad hazard vocabulary. Such a line is never removed by the semantic layer (R7)."""
+    text = _clean(_prepare(message))
+    return bool(_concern(text) or _DANGER_HINT.search(text))
+
+
 def possible_risk(message: str) -> str | None:
     """'distress' / 'danger' / 'unwell' / None for messages that are not a clear emergency."""
     raw = _prepare(message)
     # Someone who brings up self-harm only to deny it ("I'm not suicidal, but...") still gets the calm 988 line.
     if _NEGATED_SELF_HARM.search(raw) or (_LAUGH.search(raw) and _kind_of(raw) == "self_harm"):
         return "distress"
-    text = _strip_negated(_strip_figurative(raw))
-    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text):
+    text = _clean(raw)
+    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text) or _stockpile(text) or _veiled_farewell(text):
         return "distress"
-    if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text):
+    if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text) or _concern(text):
         return "danger"
     if _UNWELL.search(text):
         return "unwell"
@@ -502,8 +610,18 @@ _POLICY_OR_FIGURATIVE = re.compile(
     r"ammonia|vinegar)|"
     r"knife (block|set|drawer)|stroke of (luck|genius)|burning (to|question)|burn(s|ing)? (food|the food|toast|rice|"
     r"dinner)|well[- ]lit|just kidding|jk\b|fire (pit|place|sale|drill)|smoking hot|"
-    r"smoke machine|fog machine|haze machine",
+    r"smoke machine|fog machine|haze machine|"
+    # sprint 6: asking for a detector (new, extra, replacement) is a maintenance request, not an alarm sounding
+    r"(?:get|install\w*|replac\w*|buy|add|put in|new|another|extra|spare|expired|old)\W+(?:\w+\W+){0,3}(?:co|"
+    r"carbon monoxide|smoke|fire) (?:detectors?|alarms?)(?!\W+(?:\w+\W+){0,4}(?:going off|beep\w*|sounding|"
+    r"won'?t stop|went off))|(?:co|carbon monoxide|smoke) (?:detectors?|alarms?) (?:installed|replaced|put in)",
     re.I)
+# sprint 6: a past break-in of a car / storage / mailbox is property crime, not a person in danger now. Fix round: the
+# exemption never applies when the same message describes someone present now ("...and the guy is still in our
+# garage"); see _kind_of.
+_PAST_PROPERTY_CRIME = re.compile(
+    r"(?:car|truck|vehicle|bike|storage(?: unit)?|mailbox|locker|garage)\W+(?:\w+\W+){0,2}(?:got |was |been |were )?"
+    r"(?:broken into|broke into|stolen)\W+(?:\w+\W+){0,4}(?:last|ago|yesterday|over the weekend|the other)\w*", re.I)
 # Everyday idioms that use hazard words ("this rent is killing me", "the view is fire", "dying to see it").
 _FIGURATIVE = re.compile(
     r"\b(?:rent|prices?|fees?|bills?|commute|noise|traffic|stairs|heat|humidity|wait(?:ing)?|process|paperwork|"
@@ -518,23 +636,43 @@ _FIGURATIVE = re.compile(
     r"\b(?:ceasefire|cease fire)\b|blow(?:ing)? up my phone|blew up my phone|out of gas|gas (?:money|prices|mileage)|"
     r"smoke break|drowning in (?:work|bills|paperwork|debt|emails)|bomb (?:deal|view|place|apartment)|"
     r"break(?:ing)? the bank|(?:i'?m|im) (?:so )?dead\b(?! (?:serious))(?=.{0,20}(?:lol|lmao|haha|😂|🤣|💀))|"
-    r"(?:heart|this) attack of (?:cuteness|nostalgia)", re.I)
+    r"(?:heart|this) attack of (?:cuteness|nostalgia)|"
+    # sprint 6: "the bill almost gave me a heart attack"
+    r"(?:almost |nearly |about to |going to |gonna )?(?:gave|give|giving|gives) me (?:a )?(?:heart attack|stroke)\b",
+    re.I)
+# Sprint 7: "this paperwork is going to give me a stroke" / "i'm about to have a heart attack" is hyperbole, but only
+# when NO body symptom is described (fix round P0: "I think I might have a stroke, my face is numb on one side").
+_MODAL_HYPERBOLE = re.compile(r"\b(?:about to|going to|gonna|could|might|will|i'?ll) have (?:a |an )?(?:stroke|heart "
+                              r"attack|aneurysm|breakdown|meltdown)\b", re.I)
+_BODY_SYMPTOM = re.compile(r"\b(?:numb\w*|tingl\w*|droop\w*|slurr\w*|face|arm|chest|jaw|vision|blurr\w*|dizz\w*|"
+                           r"head ?ache|headache|pain|hurts?|weak\w*|can'?t (?:feel|move|speak|talk|see|breathe|lift)|"
+                           r"sweat\w*|short of breath|faint\w*|confus\w*|vomit\w*|nause\w*|pressure|tight\w*|"
+                           r"entumid\w*|dolor|mare\w*|pecho|brazo|cara)\b", re.I)
 # Negated hazards ("no smoke", "it's not sparking", "I don't smell gas"); only the negated phrase is removed.
 _NEGATED = re.compile(
     r"\bnothing (?:is |was |'s )?(?:sparking|smoking|burning|on fire|leaking gas)\b|"
+    # fix round: the hazard sign has stopped ("the smell is gone", "the hissing stopped"); a negation never clears
+    # an active incident by itself (app/risk/incident.py decides that)
+    r"\b(?:the )?(?:gas )?(?:smell|odou?r|stench|hissing|sparking)(?:'s| is| has| has been)? (?:completely |finally |"
+    r"all )?(?:gone|stopped|cleared|went away|gone away|faded)\b|"
     r"\bnot (?:a |any )?(?:flood\w*|fire|on fire|smok\w+|sparking|sparks|gas(?: leak| smell)?|an emergency|emergency|"
     r"burning)\b|"
     r"\bnever (?:reported|said|mentioned|told you|claimed)\W+(?:\w+\W+){0,3}(?:gas|fire|smoke|leak|emergency)\w*|"
+    # Sprint 10 (simulator safety miss): in "oh no smoke coming from the outlet", "oh no" is an exclamation
+    r"(?<!\boh )(?<!\bohh )(?<!\boh, )"
     r"\b(?:no|not any|without(?: any)?|zero|never (?:saw|smelled|had))\s+(?:\w+\s+)?(?:signs? of\s+)?(?:smoke|fire|"
     r"flames?|sparks?|sparking|gas(?: smell| leak)?|smell of gas|burning(?: smell)?|water on the floor|flooding|blood|"
     r"injur\w+|beeping)\b|"
+    r"\bnot (?:the|my|our) (?:smoke|fire|co)(?: (?:one|alarm|detector))?\b(?! (?:is|was|coming|everywhere|"
+    r"pouring|filling))|"
     r"\b(?:there'?s|there is|it'?s|it is|i'?m|i am|that'?s|that is|its|im)\s+not\s+(?:a |any |really )?(?:smoke|fire|"
     r"on fire|gas(?: leak)?|an emergency|emergency|flooding|sparking|shocked|smoking|beeping|suicidal|leaking gas)\b|"
     r"\b(?:i |we )?(?:don'?t|do not|didn'?t|did not)\s+(?:smell|see|hear|notice)\s+(?:any |anything like )?(?:gas|smoke"
     r"|fire|sparks?|burning)\b|"
     r"\b(?:isn'?t|is not|aren'?t|are not|wasn'?t|was not)\s+(?:\w+\s+)?(?:beeping|sparking|smoking|on fire|leaking"
     r" gas|going off)\b|"
-    r"\bno (?:hay|había|veo|huele a)\s+(?:\w+\s+)?(?:humo|fuego|olor a gas|gas|chispas)\b|\bsin (?:humo|fuego|chispas)"
+    r"\bno (?:hay|había|veo|huele a|huele|se huele|siento olor a)\s+(?:\w+\s+)?(?:humo|fuego|olor a gas|gas|chispas)\b"
+    r"|\bsin (?:humo|fuego|chispas)"
     r"\b",
     re.I)
 # Framing: a hazard named only in a question/hypothetical, a school project, or a clearly past event.
@@ -545,7 +683,10 @@ _HYPO = re.compile(
     r"(?:i|you|we) (?:know|tell) if|is it (?:dangerous|safe|normal|bad) (?:if|when|to)|should i (?:worry|be worried)"
     r" if|what happens (?:if|when)|what(?:'?s| is) the (?:procedure|protocol|plan|policy) (?:for|if|in case)|"
     r"(?:project|homework|essay|report|presentation|class|research|paper) (?:about|on)|for (?:a|my) (?:class|school|"
-    r"project)|(?:the |my )?lease (?:says|states)|qu[eé] (?:hago|debo hacer|hacer|pasa) si|en caso de)", re.I)
+    r"project)|(?:the |my )?lease (?:says|states)|qu[eé] (?:hago|debo hacer|hacer|pasa) si|en caso de|"
+    # sprint 6: asking how to recognise a hazard is a safety question, not a report
+    r"what are (?:the )?(?:signs|symptoms|warning signs) of|how (?:do|can|would) (?:i|you|we) (?:recogni[sz]e|spot"
+    r"|detect)|cu[aá]les son (?:los )?s[ií]ntomas de)", re.I)
 _PAST = re.compile(r"\b(?:last (?:year|month|summer|winter|spring|fall|time)|years? ago|months? ago|a while (?:ago|bac"
                    r"k)|"
                    r"back in (?:19|20)\d\d|in (?:19|20)\d\d|(?:the|that) (?:fire|flood|leak) (?:we|there) (?:had|was)|"
@@ -557,7 +698,15 @@ _LAUGH = re.compile(r"\b(?:lol|lmao|lmfao|haha\w*|jk|jaja\w*)\b|😂|🤣|💀|�
 # Never downgraded by framing: a hypothetical or past mention of these can still be a disclosure.
 _NEVER_DOWNGRADE = {"self_harm", "personal_safety"}
 _BENIGN_CHIRP = re.compile(r"(smoke|co|carbon monoxide) (alarm|detector).{0,40}(chirp|beep|batter)\w*.{0,40}"
-                           r"(batter|chirp)|batter\w*.{0,40}(smoke|co|carbon monoxide) (alarm|detector)", re.I)
+                           r"(batter|chirp)|batter\w*.{0,40}(smoke|co|carbon monoxide) (alarm|detector)|"
+                           # sprint 5.1 (E-9): a fire alarm's low-battery chirp is maintenance, not a fire
+                           r"fire (alarm|detector)s?\W+(?:\w+\W+){0,6}(?:low[- ]?batter\w*|chirp\w*|"
+                           r"needs? (?:a )?(?:new )?"
+                           r"batter\w*)|(?:low[- ]?batter\w*|chirp\w*)\W+(?:\w+\W+){0,6}fire (alarm|detector)", re.I)
+# Hazard words that still mean a real fire / CO even when the message also mentions a chirp or battery.
+_CHIRP_BUT_DANGER = re.compile(r"smoke (is|coming)|\bsmok\w*\b(?! ?(?:alarm|detector|one))|hazy|"
+                               r"\bfire\b(?! ?(?:alarm|detector))|flame|head|dizz|nause|going off|"
+                               r"won'?t stop (?:beeping|sounding|going)|burn|smell", re.I)
 
 
 _CONTRACTIONS = [(re.compile(rf"\b{a}\b", re.I), b) for a, b in (
@@ -580,29 +729,244 @@ def _prepare(message: str) -> str:
 
 
 def _strip_figurative(text: str) -> str:
-    return _FIGURATIVE.sub(" ", text)
+    text = _FIGURATIVE.sub(" ", text)
+    if not _BODY_SYMPTOM.search(text):
+        text = _MODAL_HYPERBOLE.sub(" ", text)
+    return text
 
 
 def _strip_negated(text: str) -> str:
     return _NEGATED.sub(" ", text)
 
 
+# Sprint 7: body heat is not a fire ("burning up", "his skin is burning hot", "ardiendo en fiebre").
+# Fix round (P0): scoped to fever / temperature wording. "On fire" and "caught" are never removed ("he is on fire",
+# "her sleeve caught on the stove" are fires).
+_BODY_HEAT = re.compile(r"\bburning hot\b|\b(?:confused|hot|sick|sweaty|feverish|red|flushed|dizzy|clammy|weak)\s+"
+                        r"(?:and\s+)?burning up\b|\b(?:he|she|they|baby|kid|child|son|daughter|toddler|grandma|grandpa"
+                        r"|mom|dad|i)(?:'s| is| are|"
+                        r"'re|'m| am)? (?:really |so |just )?burning up\b(?! (?:in|inside))|\bburning up with (?:a )?f"
+                        r"ever\b|"
+                        r"\b(?:skin|forehead|body)\W+(?:\w+\W+){0,2}(?:is |feels |felt )(?:so |really |very )?burning("
+                        r"?: hot)?"
+                        r"\b(?! (?:smell|down|in))|\bburning (?:with )?fever\b|\bardiendo (?:en|de) fiebre\b|"
+                        r"\bfever\W+(?:\w+\W+){0,3}burning\b", re.I)
+# Sprint 7 (lead class 1): smoke from OTHER people's habits (a neighbour smoking cigarettes or weed, smoke drifting in
+# from the hallway) is a nuisance for the office, not a fire. Removed only when nothing in the message describes a
+# fire: flames, "fire", black / thick smoke pouring or filling, an alarm going off, a burning smell, sparks.
+_HABIT_SMOKE = re.compile(
+    r"\b(?:cigarettes?|cigs?|cigars?|weed|pot\b|marijuana|cannabis|joints?|blunts?|vap(?:e|es|ing)|hookah|tobacco|"
+    r"second[- ]?hand smoke|cigarrillos?|cigarros?|mota|marihuana|tabaco|porro)\b|"
+    r"\b(?:neighbou?rs?|someone|somebody|people|they|guy|guys|tenants?|roommates?|upstairs|downstairs|next door|"
+    r"vecin\w*|alguien|la gente)\b\W+(?:(?!unit|apartment|door|vent|kitchen|building|house|place|oven|dryer|stove|"
+    r"room|hallway|wall|outlet|panel|car|attic|roof)\w+\W+){0,3}(?:smok(?:e|es|ing)|chain ?smok\w*|light(?:s|ing)? up|"
+    r"fuma\w*)\b", re.I)
+_REAL_FIRE_SIGN = re.compile(r"\b(?:fill(?:ed|ing|s)? (?:up )?with|full of|thick with|lleno de|llena de)"
+                             r"\W+(?:\w+\W+){0,1}"
+                             r"(?:smoke|humo)\b|\b(?:smoke|humo)\W+(?:\w+\W+){0,3}(?:pour\w*|billow\w*|fill\w*|"
+                             r"everywhere|coming (?:out|from|under|in)|out of|getting (?:thick|worse|bigger)|thick|bla"
+                             r"ck|negro|sale|"
+                             r"saliendo|por todas partes)|\borange (?:light|glow)\b|"
+                             r"\b(?:sale|saliendo|hay)\W+(?:\w+\W+){0,1}(?:humo|smoke)\b|\bsmoke\W+(?:\w+\W+){0,6}gett"
+                             r"ing (?:thick|worse)|\b(?:the|my|our|his|her|a) (?!neighbou?r|"
+                             r"guy|man|woman|roommate|tenant)\w+ (?:is|are|'s) (?:now )?smoking\b|\bsmoking now\b|"
+                             r"\b(?:fell|falls|fallen) asleep (?:while )?smoking\b|\bcaught\b|"
+                             r"\bfire\b(?! (?:alarm|exit|door|lane|code|hazard|department|dept))|\bflames?\b|"
+                             r"\bon fire\b|\b(?:black|thick|heavy|gr[ae]y) smoke\b|smoke (?:is )?(?:pouring|billowing|"
+                             r"filling|everywhere|coming out of (?:the|my|our) (?:vent|outlet|wall|ceiling|oven|dryer)"
+                             r")|"
+                             r"(?:alarm|detector)s? (?:is |are )?(?:going off|sounding|went off)|burn(?:ing|t) "
+                             r"(?:smell|plastic|rubber)|smells? (?:like |of )?burn|\bsparks?\b|\bllamas?\b|\bfuego\b|"
+                             r"\bincendio\b|can'?t (?:breathe|see)", re.I)
+_SMOKE_WORD = re.compile(r"\b(?:smok(?:e|ing|y|es)|humo|fumes?)\b", re.I)
+
+
+_ATTRIBUTED_SMOKE = re.compile(r"\b(?:cigarette|cig|cigar|weed|pot|marijuana|vape|vaping|tobacco|hookah|"
+                               r"second[- ]?hand|"
+                               r"their|his|her)\s+(?:smoke|smoking)\b|\bhumo (?:de|del) (?:cigarr\w*|tabaco|marihuana|"
+                               r"vecino)\b", re.I)
+
+
+def _strip_habit_smoke(text: str) -> str:
+    """Only when no present smoke / fire sign remains once the smoke attributed to the habit ("cigarette smoke
+    coming under my door") is set aside: "my neighbor smokes and now the hallway is full of smoke" stays a fire."""
+    if _HABIT_SMOKE.search(text) and not _REAL_FIRE_SIGN.search(_ATTRIBUTED_SMOKE.sub(" ", text)):
+        return _SMOKE_WORD.sub(" ", text)
+    return text
+
+
+def clean_for_frame(message: str) -> str:
+    """The message with negated, figurative, not-physical, body-heat and other people's smoking phrases removed, for
+    the compositional frame (app/risk/frame.py), so both layers read the same meaning."""
+    return _clean(_prepare(message))
+
+
+# Fix round (P0 false alarm): "balcony door", "deck light", "porch gate" name hardware, not the structure: a door that
+# won't latch is a repair. The compound becomes the hardware noun alone before any rule runs.
+_HARDWARE_COMPOUND = re.compile(r"\b(?:balcony|patio|deck|porch|closet|stair(?:well|case)?|roof|ceiling|wall|floor|"
+                                r"balc[oó]n|techo|pared)\s+(door|doors|window|windows|light|lights|lamp|fan|gate|"
+                                r"screen|lock|slider|latch|handle|knob|hinge|vent|outlet|tile|tiles|puerta|ventana|"
+                                r"luz|l[aá]mpara|ventilador|cerradura)\b", re.I)
+
+
+# Final round (P0 false alarm): a body-state verb with an OBJECT subject is a broken object, not a person ("the closet
+# shelf collapsed", "the cabinet handle fell off"). Kept when it fell / collapsed ON someone; ceilings, roofs, floors,
+# balconies are not in the list and stay structural.
+_OBJECT_FELL = re.compile(
+    r"\b((?:shelf|shelves|shelving|rack|cabinet|cupboard|closet door|(?<!next )door|handle|knob|curtain rod|rod|"
+    r"blinds?|tv|mirro"
+    r"r|"
+    r"picture|frame|towel (?:bar|rack)|hook|light fixture|fixture|ceiling fan|table|chair|bed ?frame|bunk|couch|tent|"
+    r"boxes|box|pile|stack|organizer|bracket|drawer|lid|cover|vent cover|grab bar|toilet seat|repisa|estante|"
+    r"gabinete|puerta|manija|cortinero|espejo|cuadro|mueble|silla|mesa|cajón|cajon))\s+(?:just |completely |totally |"
+    r"kind of |sort of )?(?:collapsed|fell (?:off|down|apart)|came off|broke off|se (?:cay[oó]|cayeron|desplom[oó]|"
+    r"rompi[oó]))\b(?!\s+(?:on|onto|over|on top of|encima|sobre)\b)", re.I)
+
+
+# Spanish word order: the verb first ("se cayó la repisa", "se desprendió la manija") or the object with a "del ..."
+# complement ("la puerta del closet se cayó"). Kept when it fell ON someone ("se le cayó la repisa encima a mi hijo").
+_OBJ_ES = (r"repisas?|estantes?|gabinetes?|puertas?|manijas?|perillas?|cortineros?|toalleros?|espejos?|cuadros?|"
+           r"muebles?|sillas?|mesas?|caj[oó]n|cajones|persianas?|cortinas?|ganchos?|tapas?|rejillas?|lamparas?|l[aá]mparas?|"
+           r"ventiladores?|bisagras?|jaladeras?|barras?|tablas?|literas?")
+_OBJECT_FELL_ES = re.compile(
+    rf"\bse (?:cay[oó]|cayeron|desprendi[oó]|desprendieron|despeg[oó]|rompi[oó]|zaf[oó]|solt[oó]|vino abajo)"
+    rf"\s+(?:el|la|"
+    rf"los|las|un|una|mi|mis)\s+((?:{_OBJ_ES}))\b(?![^.?!]{{0,40}}\b(?:encima|sobre|a mi|al ni[nñ]o|a la ni[nñ]a|a mi "
+    rf"\w+))|\b((?:{_OBJ_ES}))(?:\s+(?:del?|de la)\s+\w+)?\s+se (?:cay[oó]|cayeron|desprendi[oó]|despeg[oó]|"
+    rf"rompi[oó]|zaf[oó]|solt[oó])\b(?![^.?!]{{0,40}}\b(?:encima|sobre|a mi))", re.I)
+
+
+# Final round (structural): "collapsed / fell off / came off / gave out" is a PERSON body state only when its noun
+# subject is a person; a building part (ceiling, roof, floor, balcony, stairs, wall...) stays structural; any other
+# noun subject is a broken object ("my bookcase collapsed", "the bracket in my den collapsed") = a repair. "On / onto
+# <someone>" is never rewritten.
+_NOUN_SUBJECT_VERB = re.compile(
+    r"\b(?:the|my|a|an|our|this|that|his|her|their|one of (?:the|my|our))\s+((?:[\w'-]+\s+){0,5}?)([\w'-]+)\s+"
+    r"(?:just |completely |totally |suddenly |kind of |sort of )?(collapsed|fell off|fell apart|came off|came apart|"
+    r"gave out|gave way)\b(?!\s+(?:on|onto|over|on top of)\b)", re.I)
+_PERSONISH = re.compile(_PERSON + r"|\b(?:i|me|we|us)\b|\b(?:grand\w+|mom|mum|dad|wife|husband|son|daughter|kid|baby|"
+                        r"child|toddler|friend|roommate|neighbou?r|tenant|man|woman|guy|lady|boy|girl|brother|sister|"
+                        r"uncle|aunt|cousin|partner|boyfriend|girlfriend|someone|somebody|person|dog|cat|"
+                        # sprint 8: more people nouns ("my coworker collapsed" is a person, not a broken object)
+                        r"co-?workers?|colleagues?|boss|nephew|niece|patient|classmate|teammate|elderly|senior|"
+                        r"visitor|guest|stranger|caregiver|nurse|teacher|student|fianc[eé]e?|husband)'?s?\b", re.I)
+_BUILDING_PART = re.compile(r"\b(?:ceilings?|roofs?|floors?|balcon(?:y|ies)|stairs|staircase|stairway|steps|"
+                            r"walls?|decks?|"
+                            r"porch|building|foundation|beams?|joists?|garage|parking (?:deck|garage|structure)|"
+                            r"structure|overhang|awning|chimney|walkway|landing|railing|ceiling tiles?)\b", re.I)
+
+
+def _object_subject(m: re.Match[str]) -> str:
+    np_ = (m.group(1) or "") + m.group(2)
+    head = re.split(r"\b(?:in|on|at|of|from|by|near|under|inside|behind|next to)\b", np_, maxsplit=1, flags=re.I)[0]
+    if _PERSONISH.search(np_) or _BUILDING_PART.search(head):
+        return m.group(0)
+    return m.group(0)[: m.start(3) - m.start(0)] + "broke"
+
+
+def _clean(text: str) -> str:
+    """Figurative, negated and "not a physical state" phrases removed (the speaker refusing to answer, staff not
+    replying, "passed out the forms"); sprint 7: body heat and other people's smoking habits."""
+    text = _HARDWARE_COMPOUND.sub(lambda m: m.group(1), text)
+    text = _OBJECT_FELL.sub(lambda m: m.group(1) + " broke", text)
+    text = _NOUN_SUBJECT_VERB.sub(_object_subject, text)
+    text = _OBJECT_FELL_ES.sub(lambda m: (m.group(1) or m.group(2)) + " roto", text)
+    # final round: body heat is a FEVER, not a fire, but the person and the sign are kept ("my baby is burning up and
+    # limp" was read as "my and limp": no person, no alert)
+    return _strip_habit_smoke(_BODY_HEAT.sub(_as_fever, _not_physical(_strip_negated(_strip_figurative(text)))))
+
+
+def _as_fever(m: re.Match[str]) -> str:
+    return re.sub(r"burning(?: up| hot)?|ardiendo", "feverish", m.group(0), flags=re.I)
+
+
+# Sprint 5.1 (journey j-safe-indirect-co): an alarm sounding + (a heat source OR several people) + symptoms = CO, even
+# without the words "CO" / "carbon monoxide". Symptoms the person puts down to something else ("a headache from
+# work", "sick of this") are not counted.
+_SYMPTOM_ELSEWHERE = re.compile(
+    r"(?:head ?aches?|head hurts|dizz\w*|nause\w*|sick|tired|foggy)\W+(?:\w+\W+){0,2}(?:from|because of|after) "
+    r"(?:work|school|class|stress|studying|my (?:job|shift|boss|workout)|the gym|drinking|last night|crying|the "
+    r"screen)|\bhangover|sick of\b|sick and tired|\b(?:a|my) cold\b|the flu\b|allerg\w*", re.I)
+_ALARM_SOUNDING = re.compile(
+    r"(?:\balarms?\b|detector|sensor|monitor|something|thing|it)\W+(?:\w+\W+){0,4}(?:beep\w*|going off|went off|"
+    r"goes off|sounding|blar\w*|screech\w*|shriek\w*|ringing|won'?t stop)|\bbeep(?:ing|s|ed)?\b(?! (?:when|while|"
+    r"whenever|every time) (?:i|we) (?:cook|shower))", re.I)
+_NOT_A_HOME_ALARM = re.compile(r"\b(?:car|clock|phone|microwave|oven timer|timer|watch|security system) ?alarms?\b|"
+                               r"alarm clock|microwave|timer|my phone", re.I)
+_SEVERAL = re.compile(
+    r"\bwe(?:'re| are)? (?:all|both)\b|\ball of us\b|\b(?:everyone|everybody)\b(?! in the building)|\bthe (?:whole )?"
+    r"family\b|\bboth\b|\b(?:the|my|our) (?:kids|children|roommates|parents)\b|\b(?:\w+ )?(?:and|&) (?:i|me)\b|"
+    r"\bme and\b|\b(?:wife|husband|partner|roommate|kid|son|daughter|mom|dad|baby)\W+(?:\w+\W+){0,6}(?:too|also|"
+    r"as well)\b|\b(?:wife|husband|partner|roommate|son|daughter|mom|dad) and (?:my |our |the )?(?:wife|husband|"
+    r"partner|roommate|son|daughter|kids?|mom|dad|baby)\b", re.I)
+_CO_SYMPTOM = re.compile(_SYMPTOM + r"|fogg\w*|brain fog|out of it|groggy|woozy|spacey|loopy|feel(?:s|ing)? weird|"
+                         r"head (?:is )?(?:pounding|throbbing)", re.I)
+_HEAT_SOURCE = re.compile(_HEAT + r"|space heater|heat(?:ing)? (?:unit|system)|basement|utility (?:room|closet)",
+                          re.I)
+_REAL_FIRE = re.compile(r"\bsmok(?:e|ing|y)\b(?! ?(?:alarm|detector))|\bflames?\b|\bfire\b(?! ?(?:alarm|"
+                        r"detector))|\bburning\b", re.I)
+
+
+def _indirect_co(text: str) -> bool:
+    sym = _SYMPTOM_ELSEWHERE.sub(" ", text)
+    if not (_ALARM_SOUNDING.search(text) and _CO_SYMPTOM.search(sym)) or _REAL_FIRE.search(text):
+        return False
+    if _NOT_A_HOME_ALARM.search(text) and not re.search(r"detector|sensor", text, re.I):
+        return False
+    return bool(_HEAT_SOURCE.search(text) or _SEVERAL.search(sym))
+
+
+# Sprint 5.1 (judge re-score): an UPPERCASE standalone "CO" / "C.O." (as an alarm display shows it) plus a person
+# feeling unwell = carbon monoxide, even without "alarm" in the same message. Case-sensitive on purpose: "co-op",
+# "c/o", "Co." (company), "CO2", Colorado ("Denver, CO", "moving to CO") are excluded.
+_CO_UPPER = re.compile(r"(?<![\w/.&-])(?:CO|C\.O\.?)(?![\w/&'-]|\.\s*[A-Z]|\.\w)")
+_COLORADO = re.compile(r"(?:\b(?:in|to|from|near|visiting|out of|moving to|denver|boulder|springs|aurora|"
+                       r"lakewood|fort collins)\W{1,2}|,\s?)CO\b(?!\W+(?:on|is|says|reading|level|alarm|detector))|"
+                       r"\bCO\s?\d{5}\b", re.I)
+_UNWELL_CUE = re.compile(_CO_SYMPTOM.pattern + r"|out of it|faint\w*|passed out|confus\w*|sick\b(?! of)|"
+                         r"not (?:feeling|acting) (?:right|well|herself|himself)|can'?t wake", re.I)
+
+
+def _abbrev_co(text: str) -> bool:
+    if not _CO_UPPER.search(text) or _COLORADO.search(text):
+        return False
+    return bool(_UNWELL_CUE.search(_SYMPTOM_ELSEWHERE.sub(" ", text)))
+
+
+_PRESENT_PERSON = re.compile(_PRESENT_PERSON_RE, re.I)
+_CO_POISONING = re.compile(r"\b(?:carbon mon\w*|co|mon[oó]xido(?: de carbono)?)\s+poison\w*|"
+                           r"intoxicaci[oó]n por mon[oó]xido", re.I)
+_INGESTED = re.compile(r"\b(?:drank|ate|swallow\w*|took|pills?|bleach|chemical\w*|clean\w*)\b", re.I)
+
+
 def _kind_of(text: str) -> str | None:
     """Layer-1 + concept match on prepared text (no framing)."""
-    if re.search(r"(smoke|co) (alarm|detector)", text, re.I) and re.search(r"dizz|headache|nause|head hurts|sick",
-                                                                          text, re.I):
+    if _abbrev_co(text):
+        return "co"
+    if re.search(r"(smoke|co|fire) (alarm|detector)", text, re.I) and re.search(
+            r"dizz|headache|nause|head hurts|sick", _SYMPTOM_ELSEWHERE.sub(" ", text), re.I):
         return "co"  # alarm + symptoms = treat as carbon monoxide
-    text = _strip_negated(_strip_figurative(text))
+    text = _clean(text)
     if _POLICY_OR_FIGURATIVE.search(text):
         text = _POLICY_OR_FIGURATIVE.sub(" ", text)
+    if _PAST_PROPERTY_CRIME.search(text) and not _PRESENT_PERSON.search(text):
+        text = _PAST_PROPERTY_CRIME.sub(" ", text)
+    if _cold_exposure(text):
+        return "medical"  # fix round: extreme cold + a vulnerable person with a sign of harm (911, stay with them)
     # "Is the parking lot well lit? I don't feel safe walking" asks about lighting; it is not a threat in progress.
     threat = re.search(r"following|stranger|\bex\b|someone|scared|threat|gun|knife|hit|hurt|kill|break", text, re.I)
     if not threat and "?" in text and re.search(r"feel safe (walking|at night|in the parking)", text, re.I):
         text = re.sub(r"feel safe", " ", text, flags=re.I)
     if _BENIGN_CHIRP.search(text) and not re.search(r"smoke (is|coming)|fire|flame|head|dizz|nause", text, re.I):
         return None
+    if _BENIGN_CHIRP.search(text) and not _CHIRP_BUT_DANGER.search(text):
+        return None
+    if _indirect_co(text):
+        return "co"
     for kind, pat in KINDS:
         if pat.search(text):
+            if kind == "poison" and _CO_POISONING.search(text) and not _INGESTED.search(text):
+                return "co"  # "carbon monoxide poisoning" is CO (fresh air first), not an ingestion
             return kind
     for kind, pat in CONCEPTS:
         if pat.search(text):
@@ -611,6 +975,39 @@ def _kind_of(text: str) -> str | None:
 
 
 _SENTENCE = re.compile(r"(?<=[.!?;])\s+|\n+")
+# Fix round (P0): clause boundaries used to find what the message says OUTSIDE its question / past-event part.
+_CLAUSE = re.compile(r"[.!?;,:\n]+|\s+(?=(?:we|i|there|it|they|he|she)\s+(?:had|was|were|used to|did|got|once)\b)|"
+                     r"\s+[-\u2013\u2014]+\s+|\b(?:but|because|cause|cuz|since|although|though|so|"
+                     r"y|pero|porque)\b|\band\b(?=\s+(?:now|right now|then|the|he|she|they|it|it'?s|there|someone|"
+                     r"somebody|that|this)\b)", re.I)
+_IF_CLAUSE = re.compile(r"^\s*(?:and\s+)?(?:what if|if|in case|si|en caso)\b", re.I)
+_PAST_CLAUSE = re.compile(_PAST.pattern + r"|\b(?:last (?:night|week|weekend)|yesterday|the other (?:day|night)|"
+                          r"over the weekend|earlier (?:this|today)|(?:years?|months?|weeks?|days?) ago|anoche|ayer)\b"
+                          r"", re.I)
+
+
+def _present_now(text: str) -> bool:
+    """Fix round (P0): does the message ALSO describe a current situation (a person or the speaker with a symptom
+    now, a hazard sign perceived now, a person / intruder present now) outside its question or past-event clauses?
+    If so, the "asking about signs" and "past event" framings never apply: a question plus a live report is a
+    report ("what are the signs of a stroke, my dad can't lift his arm")."""
+    rest = [c for c in _CLAUSE.split(text) if c and c.strip() and not _HYPO.search(c) and not _IF_CLAUSE.search(c)
+            and not _PAST_CLAUSE.search(c) and not re.search(r"\?\s*$", c)]
+    residual = " , ".join(rest)
+    if not residual.strip():
+        return False
+    clean = _clean(residual)
+    # Fix round: the hazard named in a clause that is not a question / "if" / past clause is a current report on its
+    # own ("the outlet is sparking, we had a leak last year"); no subject word is needed.
+    return _present_signs(clean) or bool(_kind_of(residual)) or bool(_kind_of(residual) and re.search(
+        r"\b(?:i|we|my|our|his|her|he|she|they|it|it'?s|there'?s|everyone|everybody|someone|somebody|the (?:guy|man|"
+        r"baby|kids?))\b", clean, re.I))
+
+
+def describes_current_situation(message: str) -> bool:
+    """Sprint 7 (for app/risk/frame.py): the message also describes something happening now, outside its question or
+    past-event clauses ("how do I recognise a gas leak, it smells like sulfur in here")."""
+    return _present_now(_prepare(message))
 
 
 def scan(message: str) -> tuple[str | None, str]:
@@ -630,6 +1027,8 @@ def scan(message: str) -> tuple[str | None, str]:
     hits = [(s, _kind_of(s)) for s in sentences]
     hazard = [(s, k) for s, k in hits if k] or [(text, kind)]
     now_any = bool(_NOW.search(text))
+    if (_HYPO.search(text) or _PAST.search(text)) and _present_now(text):
+        return kind, "report"  # a question / past event PLUS a current situation in the same message
     framings: list[tuple[str, str]] = []
     for s, k in hazard:
         if k in _NEVER_DOWNGRADE:
@@ -646,9 +1045,16 @@ def scan(message: str) -> tuple[str | None, str]:
 
 
 def emergency_kind(message: str) -> str | None:
-    """Hazard kind for an acute emergency being reported now, or None (see scan for framing)."""
-    kind, framing = scan(message)
-    return kind if framing == "report" else None
+    """Hazard kind for an acute emergency being reported now, or None.
+
+    Sprint 7: the same single-message decision as the safety layer (phrase rules + the compositional frame in
+    app.risk.detect), so the chat turn and the task controller never disagree with it: a look-alike the frame reads as a
+    drill / policy question / past event is not re-raised here, and a frame alert (a symptom-only or Spanish
+    subjectless report) is an emergency here too."""
+    from app.risk.detect import detect  # late import: app.risk.detect imports this module
+
+    det = detect(message)
+    return det.kind if det.framing == "report" else None
 
 
 def intent_to_self_harm(message: str) -> bool:
@@ -657,6 +1063,56 @@ def intent_to_self_harm(message: str) -> bool:
     return bool(_SELF_HARM_HINT.search(text) or _DISTRESS.search(text) or re.search(
         r"on purpose|intentional\w*|so i (?:could|would|wouldn'?t)|wanted to (?:sleep|not|stop|end)|\bi (?:took|"
         r"swallowed|downed|popped)\b|a prop[oó]sito|me tom[eé]", text, re.I))
+
+
+# Fix round (P1), NEEDS McKINLEY REVIEW: asked for the emergency number during an incident. The prototype has no
+# community emergency line, so say so plainly; the closing 911 sentence is the approved emergency_follow wording.
+NO_LINE = {
+    "en": "I don't have your community's emergency maintenance number in this prototype, and I can't call or connect "
+          "you from here. Your urgent note {ref} is saved, but nobody is notified automatically. If anyone feels "
+          "unwell or is in danger, call 911.",
+    "es": "En este prototipo no tengo el número de emergencias de mantenimiento de su comunidad, y desde aquí no puedo "
+          "llamar ni comunicarle. Su nota urgente {ref} está guardada, pero no se avisa a nadie automáticamente. Si "
+          "alguien se siente mal o corre peligro, llame al 911.",
+}
+_ASKS_LINE = re.compile(
+    r"\b(?:don'?t|do not|dont|didn'?t|never got|can'?t find|cant find|lost) (?:have |know |get )?(?:the|an?|your|that|"
+    r"any|their) (?:\w+ )?(?:emergency |maintenance |after[- ]?hours |on[- ]?call )?(?:number|line|phone(?: number)?|"
+    r"contact)\b|\bwhat(?:'?s| is) (?:the|that|your|their) (?:\w+ )?(?:emergency|maintenance|after[- ]?hours|on["
+    r"- ]?call)"
+    r" (?:number|line|phone)\b|\b(?:where|how) (?:do|can|would) (?:i|we) (?:find|get|call) (?:the|that|your) "
+    r"(?:\w+ )?(?:emergency|maintenance) (?:number|line)\b|\b(?:which|what) (?:number|line) (?:do|should) (?:i|we) "
+    r"call\b|\bno tengo (?:el|ese) (?:n[uú]mero|tel[eé]fono)\b|\bcu[aá]l es el (?:n[uú]mero|tel[eé]fono)\b", re.I)
+
+
+def asks_emergency_line(message: str) -> bool:
+    """'I don't have the emergency number' / 'what's the maintenance line?' (fix round P1)."""
+    return bool(_ASKS_LINE.search(_prepare(message)))
+
+
+# Sprint 8, NEEDS McKINLEY REVIEW: labels of the explicit contact links the website shows under a safety alert or a
+# concern line (ChatResponse.safety_contacts, chosen in app/risk/ui_state.py). A link is only ever a labelled tel:/sms:
+# link the person taps themselves; nothing is dialled, sent or notified. The prototype has no community emergency
+# maintenance number, so that entry is plain information with no link.
+CONTACT_LABEL: dict[str, dict[str, str]] = {
+    "call_911": {"en": "Call 911", "es": "Llamar al 911"},
+    "call_911_gas": {"en": "Call 911 once you're outside", "es": "Llamar al 911 cuando esté afuera"},
+    "gas_company": {"en": "Or call your gas company's emergency line (it's on your gas bill)",
+                    "es": "O llame a la línea de emergencias de su compañía de gas (está en su factura)"},
+    "call_911_poison": {"en": "Call 911 if they're hard to wake or not breathing",
+                        "es": "Llamar al 911 si no despierta bien o no respira"},
+    "poison_help": {"en": "Call Poison Help 1-800-222-1222",
+                    "es": "Llamar a Poison Help 1-800-222-1222 (hay ayuda en español)"},
+    "call_988": {"en": "Call 988", "es": "Llamar al 988"},
+    "text_988": {"en": "Text 988", "es": "Enviar un mensaje al 988"},
+    "call_911_self": {"en": "Call 911 if you're in immediate danger", "es": "Llamar al 911 si está en peligro ahora"},
+    "call_911_if_danger": {"en": "Call 911 if anyone is in danger", "es": "Llamar al 911 si alguien corre peligro"},
+    "call_911_if_worse": {"en": "Call 911 if anyone feels very unwell or it gets worse",
+                          "es": "Llamar al 911 si alguien se siente muy mal o empeora"},
+    "maintenance_line": {"en": "Your community's emergency maintenance line (this prototype doesn't have the number)",
+                         "es": "La línea de emergencias de mantenimiento de su comunidad (este prototipo no tiene el "
+                               "número)"},
+}
 
 
 QUEUE_NOTE = {
@@ -759,3 +1215,39 @@ def notice(kind: str, lang: str = "en") -> str:
 def heading(kind: str | None, lang: str = "en") -> str:
     h = HEADING[kind if kind in ("self_harm", "gas", "co") else "default"]
     return h.get(lang) or h["en"]
+
+
+# Safety steps when the hazard kind is unknown (no note claim).
+EMERGENCY_NOTICE = (
+    "If anyone is in danger, leave the area now and call 911. If you smell gas, leave without using switches or "
+    "flames and call 911 or your gas utility from outside. Then call your community's emergency maintenance line. "
+    "This assistant cannot dispatch anyone."
+)
+EMERGENCY_STEPS_ES = (
+    "Su seguridad es lo primero. Salga del área ahora y llame al 911. Si huele a gas, no use "
+    "interruptores ni llamas y llame desde afuera. Después llame a la línea de emergencias de "
+    "mantenimiento."
+)
+
+
+# "she won't leave", "I'm fine, I'm staying", "just send someone": the approved REFUSE_LEAD comes first
+REFUSING_TO_LEAVE = re.compile(
+    r"(?:not|n'?t|never) (?:going to |gonna )?(?:leav|go(?:ing)? out|evacuat|get out)\w*|(?:won'?t|wont|can'?t|cant|"
+    r"refuse to) (?:leave|go out|get out|evacuate)|just send (?:someone|somebody|help|a tech|maintenance)|"
+    r"send (?:someone|somebody|help|a tech) (?:now|over|up)|i'?m (?:fine|ok|okay),? (?:i'?m )?staying|"
+    r"staying (?:here|inside|put)|no (?:me )?voy a salir|no (?:quiero|puedo) salir|manden a alguien|"
+    # safety engineer's addition: someone else refusing to leave, or the danger being played down
+    r"(?:doesn'?t|doesnt|don'?t|dont|does not) want to (?:leave|go (?:out|outside)|get out)|refus\w* to (?:leave|go)|"
+    r"says (?:it'?s|its) (?:just|only) ", re.I)
+FOLLOW_UP = {  # an urgent note already exists for this incident: say so honestly, never a second note
+    "en": " Your urgent note {ref} is saved, but this assistant hasn't sent anyone. If you haven't yet, call your "
+          "community's emergency maintenance line. If anyone feels unwell or is in danger, call 911.",
+    "es": " Su nota urgente {ref} está guardada, pero este asistente no ha enviado a nadie. Si aún no lo hizo, llame a "
+          "la línea de emergencias de mantenimiento. Si alguien se siente mal o corre peligro, llame al 911.",
+}
+PEOPLE_FOLLOW_UP = {  # a person at risk: no maintenance-line steps
+    "en": " Your urgent note {ref} is saved without your words, and nobody is notified automatically. I'm here if you "
+          "want help with anything at home.",
+    "es": " Su nota urgente {ref} está guardada sin sus palabras, y no se avisa a nadie automáticamente. Aquí estoy si "
+          "quiere ayuda con algo de su casa.",
+}

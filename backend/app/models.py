@@ -1,7 +1,7 @@
 """Pydantic API contracts shared by the chat, persona and eval endpoints."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,7 +12,6 @@ from app.risk.models import RiskAssessment
 Mode = Literal["baseline", "prompt_only", "aware"]
 Audience = Literal["prospect", "resident", "unknown"]
 PersonaKind = Literal["prospect", "resident", "unmatched_resident"]
-Verdict = Literal["GOOD", "BAD"]
 # Inbound channel. Phone/voice (F1) has no telephony integration and is not accepted.
 Channel = Literal["web_chat", "sms", "email"]
 # The nine function modules of "McKinley AI Agent Flow.md" (docs/workflows/traceability.md).
@@ -62,12 +61,6 @@ class SafeContext(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class ContextPreviewRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    persona_id: str | None = Field(default=None, max_length=40)
-    message: str = Field(default="", max_length=4000)
-
-
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     message: str = Field(min_length=1, max_length=4000)
@@ -80,7 +73,7 @@ class ChatRequest(BaseModel):
     channel: Channel = "web_chat"
 
 
-# ---- decision gate / workflow / handoff (pipeline v2) ----------------------------------
+# ---- workflow / handoff response shapes (kept for the API contract) ---------------------
 
 Intent = Literal["leasing", "maintenance", "renewal", "general"]
 Urgency = Literal["low", "medium", "high", "emergency"]
@@ -181,7 +174,7 @@ class OutputCheck(BaseModel):
     detail: str
 
 
-# ---- customer actions (prototype system of record; see app/actions.py) --------------------------------
+# ---- customer actions (prototype system of record; see app/tasks.py) ----------------------------------
 
 ActionKind = Literal["maintenance_request", "tour_request", "staff_handoff"]
 # collecting = still asking questions; ready = read-back shown, waiting for the person to confirm;
@@ -209,6 +202,23 @@ class ProposedAction(BaseModel):
     record: "PrototypeRecord | None" = None
 
 
+# Sprint 9: the ONE customer- and staff-facing status for a saved prototype record, derived from its status code on
+# every read (old rows with older wording are relabelled too). Honest about the demo: nothing reaches McKinley staff,
+# so no label may say a team "will confirm", "is reviewing" or "received" it. The model never writes a status.
+STATUS_LABEL: dict[str, str] = {
+    "submitted_for_review": "Saved in demo",
+    "requested": "Saved in demo",
+    "queued": "Saved in demo",
+    "urgent_queued": "Urgent · saved in demo",
+}
+
+
+def with_status_label(record: dict) -> dict:
+    """The record with its status_label taken from STATUS_LABEL (unknown codes keep their stored label)."""
+    label = STATUS_LABEL.get(str(record.get("status") or ""))
+    return {**record, "status_label": label} if label else record
+
+
 class PrototypeRecord(BaseModel):
     """A row in the clearly-labelled prototype store. Not Yardi, not a real queue; nobody is notified."""
 
@@ -224,6 +234,11 @@ class PrototypeRecord(BaseModel):
     team: str | None = None
     priority: str | None = None
     system: Literal["prototype"] = "prototype"
+    # Sprint 8 (staff view): repeat-request history and the manager review flag for a repair. Not set by the MVP
+    # (kept for the record shape); staff-only: app/api/views.customer_record removes them for non-staff callers.
+    repeat_history: dict[str, Any] | None = None
+    manager_review: bool | None = None
+    review_queue: str | None = None
 
 
 class StatusItem(BaseModel):
@@ -250,6 +265,18 @@ class ActionResult(BaseModel):
     action: ProposedAction | None = None
     record: PrototypeRecord | None = None
     error_code: str | None = None
+
+
+SafetyState = Literal["normal", "concern", "active"]
+
+
+class SafetyContact(BaseModel):
+    """Sprint 8: one explicit, labelled contact the website may show (never auto-dialled). Chosen by
+    app/risk/ui_state.py from the final safety decision; the label is fixed text from app/emergency.CONTACT_LABEL."""
+
+    label: str
+    href: Literal["tel:911", "tel:988", "sms:988", "tel:18002221222"] | None = None
+    kind: Literal["call", "text", "info"] = "call"
 
 
 class ChatResponse(BaseModel):
@@ -281,7 +308,7 @@ class ChatResponse(BaseModel):
     created_at: datetime
     gate: GateDecision | None = None  # None in baseline (generic) mode
     workflow: WorkflowSelection | None = None  # the active flow (may refine the routed one, e.g. leasing -> tour)
-    routed_workflow: WorkflowSelection | None = None  # what the decision gate selected; evals grade this
+    routed_workflow: WorkflowSelection | None = None  # kept for the API contract (not set by the MVP)
     maintenance: MaintenanceTriage | None = None
     lead: LeadProfile | None = None
     renewal: RenewalAssessment | None = None
@@ -302,6 +329,10 @@ class ChatResponse(BaseModel):
     care_kind: Literal["distress", "unwell", "danger", "info"] | None = None
     care_note: str | None = None
     risk: RiskAssessment | None = None  # layered safety result (rules, semantic classifier, policy): staff view
+    # Sprint 8 UI safety state (app/risk/ui_state.py): active = an alert is shown this turn; concern = a calm line or
+    # safety info is shown; normal = no safety text. Contacts are category-specific and empty for normal.
+    safety_state: SafetyState = "normal"
+    safety_contacts: list[SafetyContact] = Field(default_factory=list)
 
 
 class ErrorBody(BaseModel):
@@ -331,117 +362,11 @@ class HealthResponse(BaseModel):
     data_error: str | None
     resident_count: int
     interaction_count: int
-
-
-# ---- evals -----------------------------------------------------------------
-
-
-class EvalCase(BaseModel):
-    id: str
-    title: str
-    persona_id: str
-    message: str
-    expected_audience: Audience
-    expect_handoff: bool | None  # None = either acceptable
-    reference_note: str
-    suite: Literal["core", "extended"] = "core"
-    expected_intent: Intent | None = None
-    expected_workflow: WorkflowId | None = None
-    expected_urgency: Urgency | None = None
-
-
-class CriterionResult(BaseModel):
-    criterion: str
-    passed: bool | None  # None = requires human judgment
-    detail: str
-
-
-class EvalResult(BaseModel):
-    id: int
-    run_id: int
-    case_id: str
-    mode: Mode
-    created_at: datetime
-    status: Literal["ok", "error"]
-    error_code: str | None = None
-    error_message: str | None = None
-    reply: str | None = None
-    audience: str | None = None
-    gate_intent: str | None = None
-    gate_urgency: str | None = None
-    gate_source: str | None = None
-    workflow_id: str | None = None
-    recommended_handoff: bool | None = None
-    handoff_category: str | None = None
-    handoff_reason: str | None = None
-    provider: str
-    requested_model: str
-    model: str
-    is_mock: bool = False
-    parse_mode: str | None = None
-    temperature: float | None = None
-    prompt_version: str
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    estimated_cost_usd: float | None = None
-    latency_ms: int | None = None
-    criteria: list[CriterionResult] = Field(default_factory=list)
-    provisional_verdict: Verdict | None = None
-    provisional_rationale: str | None = None
-    human_verdict: Verdict | None = None
-    human_notes: str | None = None
-
-
-class EvalRunRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    case_ids: list[str] | None = None
-    modes: list[Mode] = Field(default_factory=lambda: ["baseline", "prompt_only", "aware"])
-    # provider:model keys; the default target is used when omitted
-    targets: list[str] | None = Field(default=None, max_length=6)
-
-
-class EvalRunResponse(BaseModel):
-    run_id: int
-    results: list[EvalResult]
-
-
-class EvalReviewPatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    human_verdict: Verdict | None = None
-    human_notes: str | None = Field(default=None, max_length=2000)
-
-
-class EvalRun(BaseModel):
-    id: int
-    created_at: datetime
-    targets: list[str]
-    aware_prompt_version: str
-    baseline_prompt_version: str
-    temperature: float | None
-
-
-class TargetModeSummary(BaseModel):
-    target: str
-    mode: str
-    is_mock: int
-    runs: int
-    errors: int
-    good: int
-    bad: int
-    human_reviewed: int
-    handoffs_recommended: int
-    json_contract_failures: int
-    avg_latency_ms: int | None
-    input_tokens: int | None
-    output_tokens: int | None
-    estimated_cost_usd: float | None
-
-
-class EvalSummary(BaseModel):
-    run_id: int | None
-    total: int
-    by_target_mode: dict[str, TargetModeSummary]
-    failure_categories: dict[str, int]
+    # deployment facts (no secrets): where it runs, which database kind, where residents came from
+    app_env: str = "local"
+    database: str = "sqlite"
+    resident_source: str | None = None
+    is_mock: bool = False  # the default responder is the deterministic mock, not a language model
 
 
 GateDecision.model_rebuild()

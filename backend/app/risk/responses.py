@@ -6,10 +6,8 @@ the community's emergency maintenance line for property hazards; ordinary mainte
 
 from dataclasses import dataclass
 
-from app.emergency import ALSO_988, CARE_NOTE, INFO_LEAD, notice
+from app.emergency import ALSO_988, CARE_NOTE, EMERGENCY_NOTICE, EMERGENCY_STEPS_ES, INFO_LEAD, notice
 from app.risk.models import RiskDecision
-from app.templates import t
-from app.workflows import EMERGENCY_NOTICE
 
 
 @dataclass
@@ -21,7 +19,7 @@ class SafetyText:
 
 def generic_steps(lang: str) -> str:
     """Safety steps when the hazard kind is unknown (no note claim; EN keeps the long-standing EMERGENCY_NOTICE)."""
-    return EMERGENCY_NOTICE if lang != "es" else t("emergency_steps", "es")
+    return EMERGENCY_NOTICE if lang != "es" else EMERGENCY_STEPS_ES
 
 
 def select(decision: RiskDecision, lang: str) -> SafetyText:
@@ -33,7 +31,10 @@ def select(decision: RiskDecision, lang: str) -> SafetyText:
             text += ALSO_988[lang]
         return SafetyText(safety_notice=text)
     if decision.response == "safety_info" and decision.kind:
-        return SafetyText(care_kind="info", care_note=INFO_LEAD[lang] + notice(decision.kind, lang))
+        # final round: R5p = a small event that already happened ("i got a little shock"): the steps directly,
+        # without "If that happens:"
+        lead = "" if decision.rule == "R5p" else INFO_LEAD[lang]
+        return SafetyText(care_kind="info", care_note=lead + notice(decision.kind, lang))
     if decision.response == "care_line" and decision.care in CARE_NOTE:
         return SafetyText(care_kind=decision.care, care_note=CARE_NOTE[decision.care][lang])
     return SafetyText()

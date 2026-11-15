@@ -11,8 +11,11 @@ flowchart LR
     D[("action_drafts<br/>redacted slot values")]
   end
 
-  subgraph Gate["Backend boundary"]
-    ID{"Matched resident?<br/>(trusted demo sign-in)"}
+  subgraph Gate["Backend boundary (Sprint 6: app/auth.py)"]
+    PR{"Principal resolved server-side:<br/>anonymous / demo_persona / staff<br/>(authenticated_resident: not built)"}
+    BIND{"Session bound to this persona?<br/>(session_bindings, else 403)"}
+    ID{"Matched resident?<br/>and not disclaimed as holder"}
+    SS["ScopedStore: deny by default<br/>records by owner, history + drafts by session"]
     AL["Allowlist + redaction +<br/>injection screen + topic gate"]
   end
 
@@ -36,14 +39,20 @@ flowchart LR
   end
   T[("chat_turns<br/>what was typed + replies")]
 
+  PR -- "anonymous, or hosted mode<br/>(demo personas off)" --> X
+  PR -- "demo_persona (local / dev only)" --> BIND
+  BIND -- "yes" --> ID
+  BIND -- "no: 403 SESSION_PERSONA_MISMATCH" --> X
   R --> ID
   I --> ID
   ID -- "yes" --> AL
+  ID -- "yes" --> SS
   ID -- "no: nothing from the record" --> X["Public info + office note only"]
   AL --> SC
   AL --> CARD
-  I --> STAT
-  P --> STAT
+  SS --> STAT
+  I --> SS
+  P --> SS
   P --> RECS
   D --> CARD
   SC --> DIAG
@@ -56,7 +65,7 @@ Never forwarded anywhere: last name, email, phone, unit type, rent, balance, lat
 
 Known prototype limitations
 
-- **Identity is a demo selector.** The browser sends `persona_id`; production must bind identity to an authenticated session server-side (I-10, I-11).
+- **Identity is a demo selector, now behind a server-side principal (Sprint 6).** The browser still picks `persona_id`, but only a `demo_persona` principal may use it, a session is bound to its first persona, and the data layer (`ScopedStore`) refuses anything else. Hosted mode turns demo personas off, so a public deployment serves public information only. A demo persona is **not** authentication; production must add real sign-in that produces `authenticated_resident` (I-10, I-11). See [../security/AUTHORIZATION_BOUNDARIES.md](../security/AUTHORIZATION_BOUNDARIES.md).
 - **Staff notes contain a redacted snippet of what the person typed** (max 240 characters; when the note was created from a button, the person's last three messages), because staff need it to avoid asking again. It is redacted for email, phone, SSN, card number, card expiry/CVV and DOB patterns.
 - **The staff boundary is demo-only.** Without `STAFF_API_TOKEN`, staff, evaluation, gate and records routes answer only direct requests from this machine; since sprint 3 any proxy-forwarding header (X-Forwarded-For, X-Real-IP, Forwarded, Via, ...) makes the request non-local. A shared deployment must still set a token, and real staff sign-in is still required.
 - **The safety decision is visible to staff only** (`risk` on each response: rule, layers, conflict, degraded). The customer sees only the approved safety text.

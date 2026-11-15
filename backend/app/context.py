@@ -127,6 +127,27 @@ def load_workbook(path: Path) -> Workbook:
     r_header, r_rows = _sheet_rows(wb, "Residents", REQUIRED_RESIDENT)
     i_header, i_rows = _sheet_rows(wb, "Interactions", REQUIRED_INTERACTION)
     wb.close()
+    return build_workbook(r_rows, i_rows, path.name, r_header, i_header, warnings)
+
+
+def workbook_readme(path: Path) -> str:
+    """Text of the workbook's README sheet (used to confirm the data is marked synthetic before seeding)."""
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        if "README" not in wb.sheetnames:
+            return ""
+        return "\n".join(" ".join(str(c) for c in row if c) for row in wb["README"].iter_rows(values_only=True))
+    finally:
+        wb.close()
+
+
+def workbook_from_rows(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], source: str) -> Workbook:
+    """Same Workbook as load_workbook, from rows stored in the database (synthetic reference tables)."""
+    return build_workbook(r_rows, i_rows, source, list(r_rows[0]) if r_rows else [], INTERACTION_COLUMNS, [])
+
+
+def build_workbook(r_rows: list[dict[str, str]], i_rows: list[dict[str, str]], source: str, r_header: list[str],
+                   i_header: list[str], warnings: list[str]) -> Workbook:
     for col in set(RESIDENT_COLUMNS) - set(r_header):
         warnings.append(f"Residents column '{col}' absent; treated as missing")
     for col in set(INTERACTION_COLUMNS) - set(i_header):
@@ -169,16 +190,18 @@ def load_workbook(path: Path) -> Workbook:
         residents=residents,
         interaction_count=len(i_rows),
         warnings=warnings,
-        source=path.name,
+        source=source,
     )
 
 
 # ---- topic relevance -----------------------------------------------------------------
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "hvac": ["ac", "a/c", "air condition", "cooling", "cool", "heat", "heater", "hvac", "thermostat",
+    # Sprint 9: not a bare "cool" ("ok cool. mornings please" is an interjection, not an AC problem)
+    "hvac": ["ac", "a/c", "air condition", "cooling", "won't cool", "wont cool", "doesn't cool", "doesnt cool",
+             "not cool down", "heat", "heater", "hvac", "thermostat",
              "furnace", "compressor", "air handler",
-             # Spanish (minimal; R012 prefers Spanish). Other languages: docs/architecture/decision-gate.md.
+             # Spanish (minimal; R012 prefers Spanish). Other languages are not supported yet.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
                  "shower", "tub", "water", "toliet", "clogd", "overflow", "fuga", "gotea", "grifo", "llave",
@@ -228,9 +251,29 @@ def detect_topics(text: str) -> list[str]:
                               r"tapad[oa]|lavabo|lights? (?:\w+ ){0,5}(?:is|are) out|bulbs? (?:is |are )?(?:out|burnt?"
                               r")|"
                               r"burn(?:ed|t) out", t)
+    if not (set(topics) & MAINTENANCE_TOPICS):
+        # Sprint 8 C fix round: a fixture named with the shared object lexicon (EN + ES, app/utterance.py) is a repair
+        # topic even when this keyword list misses the word ("my bathtub is clogged", "la ducha no drena"), so a direct
+        # repair request gets the on-file fields (entry window). Other objects need a symptom ("the blinds are bent").
+        from app.utterance import has_symptom, things
+
+        objs = things(re.sub(r"\bbath ?tubs?\b", "tub", text or "", flags=re.I))
+        fam = next((topic for topic, members in _OBJECT_TOPIC.items() if objs & members), None)
+        if fam and fam not in topics:
+            topics.append(fam)
+        elif objs and (generic_maint or has_symptom(text)) and "amenity" not in topics:
+            generic_maint = True  # type: ignore[assignment]
     if generic_maint and not (set(topics) & MAINTENANCE_TOPICS):
         topics.append("maintenance_general")
     return topics
+
+
+_OBJECT_TOPIC: dict[str, set[str]] = {  # shared-lexicon object names -> repair topic
+    "plumbing": {"sink", "faucet", "toilet", "shower", "water heater", "hot water", "pipe", "drain"},
+    "appliance": {"dishwasher", "fridge", "oven", "microwave", "disposal", "washer", "dryer", "ice maker"},
+    "hvac": {"ac", "heat", "thermostat", "vent"},
+    "pest": {"pests"},
+}
 
 
 def interaction_topics(i: Interaction) -> set[str]:
@@ -369,17 +412,3 @@ def _shares_word(a: str, b: str) -> bool:
     def words(x: str) -> set[str]:
         return {w[:5] for w in re.findall(r"[a-záéíóúñ]{4,}", x.lower()) if w not in _STOP}
     return bool(words(a) & words(b))
-
-
-def render_context_block(ctx: SafeContext) -> str:
-    """Text block placed inside <safe_context> in the aware-mode user turn."""
-    lines = [
-        f"audience: {ctx.audience}",
-        f"record_found: {'yes' if ctx.record_found else 'no'}",
-        f"message_topics: {', '.join(ctx.topics) or 'none detected'}",
-    ]
-    for f in ctx.fields:
-        lines.append(f"{f.name}: {f.value}")
-    for n in ctx.notes:
-        lines.append(f"note: {n}")
-    return "\n".join(lines)

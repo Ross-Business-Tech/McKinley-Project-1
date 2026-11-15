@@ -18,6 +18,8 @@ the current state is recorded.
 +describe it otherwise.
 +
 +- Backend: Python with `uv` in `backend/`; frontend: Next.js in `frontend/`. Run both test suites before committing.
++- Planned hosting (not yet live): Vercel (website), Render (backend), Supabase (database), Gemini (replies); see
++  `docs/DEPLOYMENT_READINESS.md`. Keep `npm run publish:preview` as the preview path until Ross IT approves the switch.
 +- Safety changes (`backend/app/risk/`, `backend/app/emergency.py`, safety wording) need tests and an independent
 +  review; never let a model write safety text or claim anyone was notified.
 +- Model keys live only in `backend/.env`; mock or template output is never reported as live-model evidence.
