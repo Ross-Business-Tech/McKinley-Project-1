@@ -415,7 +415,76 @@ def _near(a: str, b: str, gap: int = 12) -> re.Pattern[str]:
     return re.compile(rf"(?:{a}){w}(?:{b})|(?:{b}){w}(?:{a})", re.I)
 
 
+# Remediation P0 (method-seeking): a MANNER idea next to an ENDING action is a request for a method, whatever the exact
+# words ("what's the fastest painless way to end it", "easiest way to not wake up", "la forma más fácil de morir").
+# Ambiguous objects ("end it", "end things") count only with a pain-related manner or a finality cue, so "the fastest
+# way to end my lease" is not matched.
+_MANNER = (r"(?:painless\w*|pain[- ]?free|least painful|without (?:any )?pain|peaceful\w*|quiet\w*|quick\w*|"
+           r"fast\w*|easi\w*|easy|surest|simplest|best|most effective|sin dolor|indolor[oa]|r[aá]pid[oa]|f[aá]cil|"
+           r"tranquil[oa])")
+# "die" / "morir" never before an object, "cut", or a comic emotion ("die my hair", "die-cut", "die of embarrassment",
+# "morir de risa"); "od" not "on coffee"; "never wake up" not "late / early"
+_COMIC = r"(?:embarrassment|laughter|laughing|boredom|cuteness|verg[uü]enza|risa|aburrimiento)"
+# review F1: "dying" only at a clause end or before a manner ("dying grass" is a plant); never "die in <a game>", "die
+# easter eggs / tie shirts" (dye), "the best way to die is ...", "od of / the pipe", "never wake up tired / the baby"
+_NOT_AFTER_DIE = (r"(?!\W+(?:my|the|your|his|her|our|their|them|it|some|a|cut|cast|easter|eggs?|tie|fabric|shirts?|"
+                  r"yarn|clothes|hair|is|was)\b)(?!\W+in\W+(?:the\W+|a\W+)?(?:game|games|fortnite|minecraft|roblox|"
+                  r"elden ring|movie|film|show|level|match)\b)")
+_DIE_ACT = (rf"(?:die an? \w+ death|die\b{_NOT_AFTER_DIE}(?!\W+(?:of|from|with)\W+{_COMIC})|"
+            rf"dying(?=\W*(?:[.,;!?]|$|quick\w*|fast\w*|painless\w*|peaceful\w*|slowly))|kill (?:my ?self|me)|"
+            rf"end my (?:own )?life|commit suicide|"
+            rf"(?:not|never) wake up\b(?!\W+(?:late|early|on time|in time|before|at|for|tired|groggy|with|the|my|"
+            rf"neighbou?rs?|roommates?|anyone|everyone|feeling|in)\b)|overdose|"
+            rf"od\b(?!\W+(?:on\W+(?:coffee|caffeine|sugar|candy|energy|netflix|tv|games?)|of|the|a|an|this|that|"
+            rf"pipe|fitting)\b)(?=\W+on\b|\W*$|\W*[.,;!?])|"
+            rf"morir(?:me)?(?!\W+de\W+(?:la\W+)?{_COMIC})|matarme|quitarme la vida|suicidarme|no despertar)")
+# an "end ..." with an object is about that object ("end this lease", "end things with him", "end it early")
+_END_ACT = (r"(?:end (?:it|it all|things|everything|this)(?!\W+(?:lease|contract|subscription|call|chat|agreement|"
+            r"deal|renewal|plan|account|early|now\b(?! for good)|with|for|on|at|between|today)\b)|be done with (?:it|"
+            r"everything|life)\b(?!\W+\w)|acabar con (?:todo|esto)(?!\W+(?:el|la|los|las|mi|su|contrato)\b))")
+_PAIN_MANNER = r"(?:painless\w*|pain[- ]?free|least painful|without (?:any )?pain|peaceful\w*|sin dolor|indolor[oa])"
+# self-directed finality only: "I'm done with this lease" / "no point in renewing" are about something else
+_FINALITY_CUE = (r"(?:i'?m done\b(?!\W+with\b)|i am done\b(?!\W+with\b)|can'?t (?:do|take) (?:this|it) anymore|"
+                 r"no point (?:in|to) (?:living|going on|being alive)|tired of (?:living|life|being alive)|"
+                 r"ya no puedo m[aá]s|no aguanto m[aá]s)")
+_METHOD_SEEK = (
+    rf"{_MANNER}\W+(?:\w+\W+){{0,2}}?(?:way|ways|method|methods|means|how|forma|manera|modo)\W+(?:\w+\W+){{0,2}}?"
+    rf"(?:to|of|de|para)\W+(?:\w+\W+){{0,1}}?{_DIE_ACT}\b|"
+    rf"\b(?:forma|manera|modo)\W+(?:m[aá]s\W+)?{_MANNER}\W+(?:de|para)\W+{_DIE_ACT}\b|"
+    rf"\bhow (?:can|could|do|would|should) i\W+{_DIE_ACT}\W+(?:\w+\W+){{0,2}}?{_MANNER}\b|"
+    rf"\bhow to\W+{_DIE_ACT}\W+(?:\w+\W+){{0,1}}?{_PAIN_MANNER}\b|"
+    rf"{_PAIN_MANNER}\W+(?:\w+\W+){{0,3}}?{_END_ACT}\b|"
+    rf"{_MANNER}\W+(?:\w+\W+){{0,2}}?(?:way|ways|method|means|forma|manera)\W+(?:\w+\W+){{0,2}}?(?:to|de|para)\W+"
+    rf"{_END_ACT}\b(?=[\s\S]*{_FINALITY_CUE})|{_FINALITY_CUE}[\s\S]{{0,60}}\b(?:way|ways|how)\b(?:\W+\w+){{0,3}}?\W+"
+    rf"(?:to )?{_END_ACT}\b")
+
+# PR #18 review (E089): getting a means of self-harm AND hiding it ("bought a rope today. please don't tell anyone"),
+# or getting it next to self-directed finality, is preparation: a full self-harm alert. Neither half alone is (a rope
+# alone keeps the calm 988 line). A stated ordinary purpose (camping, a gift, a surprise, protection) never raises it.
+_MEANS = (r"(?<!jump )(?:ropes?|nooses?|razor ?blades?|charcoal|helium|rat poison|cuerda|soga)\b"  # firearms: own rules
+          r"(?!\W*(?:lights?|ladders?|swings?|filters?|toys?|leash\w*|course|bridge|burners?|grill|briquettes?|tank|"
+          r"balloons?|for|to fix)\b)")
+# the speaker got it ("I bought", "compré"), not maintenance or a neighbour
+_GET_VERB = r"(?:bought|got|picked up|ordered|purchased|tied|hid|stashed)"
+_GET_MEANS = (rf"(?:\b(?:i|i'?ve|i just|i finally|just)\W+(?:\w+\W+){{0,1}}?{_GET_VERB}|(?:^|[.!;,]\s*|\bbut\s+)"
+              rf"{_GET_VERB}|\b(?:compr[eé]|consegu[ií]))\W+(?:\w+\W+){{0,3}}?{_MEANS}")
+# secrecy from everyone, not from one person ("don't tell my wife it was expensive" is about money)
+_SECRECY = (r"\b(?:don'?t|do not|dont) tell (?:anyone|anybody|no ?one)\b|\btell no ?one\b|\bkeep (?:this|it) "
+            r"(?:a )?secret\b|\bbetween (?:us|you and me)\b|\b(?:no ?one|nobody) (?:can|must|should) know\b|"
+            r"\bpromise (?:you )?(?:won'?t|wont|not to) tell\b|\bno (?:le |se lo )?digas a nadie\b")
+_ORDINARY_USE = (r"\b(?:surprise|gift|present|birthday|party|proposal|camping|camp|climb\w*|swing|hammock|tent|"
+                 r"boat|kayak|hik\w*|tow\w*|clothes ?line|gym|class|craft\w*|project|halloween|costume|props?|"
+                 r"hunt\w*|range|protection|self[- ]defen[cs]e|safety|grill\w*|bbq|balloons?|garden\w*|moving|"
+                 r"shav\w*|curtains?|blinds?|filters?|fish|aquarium|tank|leash|ladder|lights?|box ?cutter|dogs?|"
+                 r"cats?|pets?|decorat\w*|fix\w*|repair\w*|tie[- ]?downs?|boxing|work|job|cookout|picnic|paint\w*|"
+                 r"scrap\w*|recycl\w*|trash|garbage|pack\w*|boxes)\b")
+_PREPARATION = (rf"^(?![\s\S]*{_ORDINARY_USE})[\s\S]*?(?:{_GET_MEANS}\W+(?:\w+\W+){{0,10}}?(?:{_SECRECY})|"
+                rf"(?:{_SECRECY})\W+(?:\w+\W+){{0,10}}?{_GET_MEANS})|"
+                rf"{_GET_MEANS}[\s\S]{{0,80}}{_FINALITY_CUE}|{_FINALITY_CUE}[\s\S]{{0,80}}{_GET_MEANS}")
+
 CONCEPTS: list[tuple[str, re.Pattern[str]]] = [
+    ("self_harm", re.compile(_METHOD_SEEK, re.I)),
+    ("self_harm", re.compile(_PREPARATION, re.I)),
     ("self_harm", re.compile(_SELF_HARM2, re.I)),
     ("self_harm", _near(_BURDEN, _FINAL, 20)),
     ("self_harm", re.compile(_HEIGHT_ALONE + "|" + _METHOD + "|" + _INTENT, re.I)),

@@ -12,7 +12,9 @@ Framing = Literal["report", "hypothetical", "past", "joking", "quoted", "figurat
 Ongoing = Literal["now", "past", "hypothetical", "negated", "unknown"]
 Subject = Literal["self", "adult", "child", "infant", "elder", "pet", "unknown", "none"]
 CareKind = Literal["distress", "unwell", "danger", "info"]
-ClassifierStatus = Literal["ok", "disabled", "unavailable", "timeout", "rate_limited", "error", "bad_output", "mock"]
+# "blocked" (remediation P0): the provider's content filter refused the message itself, a signal about the content
+ClassifierStatus = Literal["ok", "disabled", "unavailable", "timeout", "rate_limited", "error", "bad_output", "mock",
+                           "blocked"]
 
 
 class DeterministicRisk(BaseModel):
@@ -31,6 +33,9 @@ class DeterministicRisk(BaseModel):
     frame_rule: bool = False
     conditional_danger: bool = False  # sprint 8: a live-looking sign only inside "if ..." (see RiskDecision)
     happened: bool = False  # final round: a small event that already happened ("i got a little shock"): rule R5p
+    # PR #18 review: a self-directed death / pain / overdose word too weak for any rule ("least painful way to go").
+    # Used ONLY when the provider's content filter refused the message (policy R4c): the calm 988 line, never an alert
+    self_harm_words: bool = False
 
 
 class SemanticRisk(BaseModel):

@@ -119,13 +119,19 @@ sequenceDiagram
    alert; R2 semantic emergency → full alert; R3 "joking" self-harm → 988 line; R4u semantic "uncertain" with no
    category → 911 care line; R4 semantic urgent / uncertain with a category → that category's care line; R5 / R5p /
    R5c hypothetical, past, or conditional hazard → calm safety info; R6 distress / unwell → that care line; R9e new
-   danger words after a person-danger alert → full alert again; R7 danger vocabulary → 911 care line; R9 a
-   person-danger alert earlier in the chat → keep a calm line; R8 nothing.
+   danger words after a person-danger alert → full alert again; R4b the provider's content filter refused the
+   message **and** the rules or an earlier person-danger alert show a sign of danger → calm line (988 for distress or
+   self-harm, else 911) plus a staff check; R4c the same refusal with only a weak self-directed death / pain /
+   overdose phrase → the calm 988 line; R4n the same refusal with no sign → no safety text (a filter alone is not
+   evidence of danger); R7 danger vocabulary → 911 care line; R9 a person-danger alert earlier in the chat → keep a
+   calm line; R8 nothing.
 4. **Incident state** (`risk/incident.py`, stored as `gate_decisions` rows with mode `safety_incident`, no message
    text): an active incident repeats the alert for follow-ups (R10) and keeps a calm line on quiet turns (R10q). It
    closes on a responder-grounded resolution ("the gas company fixed the leak", R10r), an explicit retraction, the
    hazard reported under control (for example the water shut off), the person safe and on another topic, or after 3
-   quiet turns; a self-harm incident is never closed by these. A new report after closing opens a new incident (and a
+   quiet turns; a self-harm incident is never closed by these. Vague reassurance ("it's fine now") never closes it,
+   and a resolution or "under control" claim does not count when the same message says the danger is still there
+   ("fixed, but I still smell gas", "the smell came back", "he's still outside"). A new report after closing opens a new incident (and a
    new urgent note).
 5. **Approved text** (constants in `emergency.py`, chosen by `risk/responses.py`): fixed team-draft wording (911 / 988 / gas company / Poison Help /
    maintenance line). The model never writes safety text. McKinley has **not** approved these scripts.
@@ -143,10 +149,13 @@ sequenceDiagram
 ## Model providers (`backend/app/llm/`)
 One gateway, one explicit `provider:model` per request (`LLM_PROVIDER`, `LLM_MODEL`); providers receive only a system
 prompt and messages. Same-model retries only; a different served model is rejected (`MODEL_SWITCHED`). A failed call
-never changes task state. Timeouts, rate limits and bad or empty output get a fixed "say it another way" line
-(`FALLBACK_CODES` in `chat_engine.py`); any other provider error — an HTTP 400 such as a content-filter rejection, an
-authentication or key problem — ends the turn with HTTP 503 "The assistant is not available right now". On a
-message that needed crisis guidance this is the P0 recorded in [TESTING.md](TESTING.md). The **mock** provider
+never changes task state. Timeouts, rate limits, bad or empty output and a provider **content-filter** rejection
+(`MODEL_CONTENT_FILTERED`: an HTTP 400/403 whose provider error text names the content filter or moderation) get a
+fixed "say it another way" line (`FALLBACK_CODES` in `chat_engine.py`); any other provider error (an authentication
+or key problem, another 400) ends the turn with HTTP 503 "The assistant is not available right now". A turn that
+already shows safety text never becomes an error: whatever the model does, it keeps the approved notice plus a fixed
+line, and no second model call is made for emergency guidance. Gemini and Anthropic safety blocks still map to
+`MODEL_REFUSAL`, not to the content-filter code. The **mock** provider
 is a keyword stand-in for offline tests and the replay, always labelled MOCK, never evidence of conversation quality.
 
 ## Key decisions

@@ -230,6 +230,62 @@ def is_retraction(message: str, kind: str | None = None) -> bool:
 
 _CLAUSE_BREAK = re.compile(r"[,.;!]|\b(?:but|pero|and then|y luego)\b")
 
+# Remediation P1 (S006): a resolution claim followed by a contrast / persistence word and a live hazard is NOT a
+# resolution ("they said it's fixed but I still smell gas"). Closed-class words only; the hazard itself is found by
+# the same detector as everywhere else (`scan`), so this is not a per-sentence exception.
+_CONTRAST = re.compile(r"\b(?:but|still|yet|however|although|though|except|pero|todav[ií]a|a[uú]n|sigue|sigo|"
+                       r"siguen)\b", re.I)
+# Remediation P1 (S005): the hazard itself claimed to be fine / gone / over, with no responder named. That is vague
+# reassurance, not evidence the danger has ended: the incident stays active and the approved alert is re-issued.
+_VAGUE_OK = re.compile(
+    r"\b(?:it|everything|all|things?|that|the (?:\w+ ){0,2}(?:smell|odou?r|alarm|detector|smoke|leak|water|sparks?|"
+    r"beeping|fire|flames?|heat))(?:'s|’s| is| seems| looks| sounds| feels)?(?: (?:all|probably|totally|really|"
+    r"just|pretty))? (?:fine|ok|okay|good|gone|over|stopped|better|normal|alright|all right)\b|"
+    r"\b(?:todo|ya) (?:est[aá] |esta )?(?:bien|normal|tranquilo)\b|\bya pas[oó]\b|\bya se fue\b", re.I)
+
+
+# A hazard SIGN that is still there ("the smell is still strong", "still beeping", "sigue oliendo"): persistence + a
+# sensation or hazard state, in either order, within one clause.
+_SIGN = (r"(?:smell\w*|odou?r|stink\w*|fumes?|smok\w*|alarm|detector|beep\w*|spark\w*|leak\w*|water|flam\w*|fire|"
+         r"burn\w*|hiss\w*|dizz\w*|headache|nause\w*|sick|vomit\w*|throw\w* up|pass\w* out|faint\w*|unconscious|"
+         r"reignit\w*|flar\w*|olor|huele|humo|alarma|chispa\w*|fuga|agua|mare\w*|v[oó]mit\w*|desmay\w*)")
+_STILL_SIGN = re.compile(rf"\b(?:still|todav[ií]a|sigue|siguen|a[uú]n)\b[^.;!?]{{0,40}}\b{_SIGN}|"
+                         rf"\b{_SIGN}[^.;!?]{{0,40}}\b(?:still|todav[ií]a|sigue|siguen|a[uú]n)\b", re.I)
+
+
+_SIGN_BACK = re.compile(rf"\b{_SIGN}\b[^.;!?]{{0,40}}\b(?:again|back|returned|came back|otra vez|volvi[oó])\b|"
+                        rf"\b(?:again|back|otra vez)\b[^.;!?]{{0,30}}\b{_SIGN}", re.I)
+
+
+_LIVE_SIGN = re.compile(r"\b(?:vomit\w*|throw\w* up|threw up|pass\w* out|faint\w*|unconscious|reignit\w*|flar\w* "
+                        r"up|v[oó]mit\w*|desmay\w*)\b", re.I)
+
+
+# review F3: the threat itself is still there ("he's still outside", "they're still at the door")
+_STILL_PRESENT = re.compile(
+    r"\b(?:he|she|they|someone|somebody|the (?:man|guy|woman|person|intruder|attacker|neighbou?r|ex))(?:'s|’s| is| are|"
+    r"'re)? still (?:here|outside|out there|around|nearby|at (?:the|my|our) (?:door|window)|in the (?:building|hallway|"
+    r"parking lot|lobby)|downstairs|upstairs|banging|yelling|trying)\b|\b(?:sigue|siguen|todav[ií]a est[aá]n?) "
+    r"(?:afuera|aqu[ií]|en la puerta)\b", re.I)
+
+
+def _live_in(rest: str) -> bool:
+    return bool(scan(rest)[0]) or bool(_STILL_DANGER.search(rest.lower())) or bool(_STILL_SIGN.search(rest)) or bool(
+        _SIGN_BACK.search(rest)) or bool(_LIVE_SIGN.search(rest)) or bool(_STILL_PRESENT.search(rest))
+
+
+def _persists(text: str) -> bool:
+    """A live hazard, a still-in-danger cue, or a hazard sign that is still there / back, AFTER the first contrast word
+    or AFTER the resolution claim itself ("they fixed it. now the outlet is sparking", "I'm dizzy and have a
+    headache")."""
+    m = _CONTRAST.search(text)
+    if m and _live_in(text[m.start():]):
+        return True
+    low = text.lower()
+    claims = [c for c in [*re.finditer(_HANDLED, low, re.I), *_RESOLVED_ALONE.finditer(low)]
+              if not re.match(r"\W+back\b", low[c.end():])]  # "the smell came back" is not a resolution claim
+    return any(_live_in(text[c.end():]) for c in claims)
+
 
 def _clause_at(text: str, pos: int) -> str:
     """The clause of `text` around position `pos` (up to the next break; the question mark stays in it)."""
@@ -249,15 +305,17 @@ def classify(message: str, inc: Incident) -> Turn:
         # is controlled; "is the water off?" and "should i shut it off?" are not)
         rest = _CONTROLLED.sub(" ", text)
         if not scan(rest)[0] and possible_risk(rest) not in ("unwell", "distress") and not (
-                _CONTINUE_PERSON.search(rest)):
-            return "controlled"
+                _CONTINUE_PERSON.search(rest)) and not _persists(text) and not _STILL_SIGN.search(rest):
+            return "controlled"  # review F3: "I shut off the gas, the smell is still strong" is not controlled
     if asks_emergency_line(text):
         return "follow"  # "I don't have the emergency number": answered honestly by the planner's emergency step
-    if (re.search(_RESPONDER, low, re.I) and re.search(_HANDLED, low, re.I) and not _NOT_YET.search(low)) or (
-            _RESOLVED_ALONE.search(low) and not _NOT_YET.search(low)):
+    if ((re.search(_RESPONDER, low, re.I) and re.search(_HANDLED, low, re.I) and not _NOT_YET.search(low)) or (
+            _RESOLVED_ALONE.search(low) and not _NOT_YET.search(low))) and not _persists(text):
         return "resolved"
     if inc.kind in HAZARD_KINDS and _SAFE_UPDATE.search(low) and not _STILL_DANGER.search(low):
-        return "ack"  # an ack; step() also records that the resident is out / safe
+        return "ack"  # an ack; step() also records that the resident is out / safe ("we're outside, all fine")
+    if inc.kind in HAZARD_KINDS and _VAGUE_OK.search(low) and not re.search(_RESPONDER, low, re.I):
+        return "follow"  # "it's fine now": vague reassurance keeps the incident active and the approved alert shown
     if _PRIVACY_OR_STATUS.search(low):
         return "ack"  # the planner answers privacy / status questions after an alert; the calm line stays
     if _ACK.match(low):

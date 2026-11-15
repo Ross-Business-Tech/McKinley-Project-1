@@ -159,10 +159,15 @@ def apply(op: Op, active: dict[str, Any] | None, waiting: list[dict[str, Any]], 
         return None, [active, *waiting], "suspended"
     if op == "resume":
         pick = next((w for w in waiting if not kind or w["kind"] == kind), None)
+        # remediation P2: details given in the same message ("you can let yourselves in") are applied to the card that
+        # comes back, as an update would; only values the person said (the model's proposal), never inferred ones
         if pick is None:
+            if active is not None and (not kind or active["kind"] == kind):
+                set_fields(active, values)
             return active, waiting, "continued" if active is not None else "nothing_to_resume"
         rest = [w for w in waiting if w is not pick]
         pick = {k: v for k, v in pick.items() if k not in ("declined", "paused")}
+        set_fields(pick, values)
         return pick, ([active, *rest] if active is not None else rest), "resumed"
     if op == "cancel" and active is not None:
         nxt, rest = (waiting[0], waiting[1:]) if waiting and not waiting[0].get("declined") else (None, waiting)

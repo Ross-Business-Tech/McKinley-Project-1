@@ -1,6 +1,7 @@
 """Shared HTTP call with bounded retries and typed error mapping. Never logs request bodies or keys."""
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -76,9 +77,24 @@ def _map_status(provider: str, status: int, resp: httpx.Response) -> LLMError:
     return map_status(provider, status, _error_message(resp))
 
 
+# Remediation P0: a provider content filter (Azure OpenAI behind the U-M Toolkit answers HTTP 400 "The response was
+# filtered due to the prompt triggering Azure OpenAI's content management policy", code content_filter /
+# ResponsibleAIPolicyViolation) is not a malformed request. Matched on the PROVIDER's error text, never the user's.
+_CONTENT_FILTER = re.compile(
+    r"filtered due to|content management polic|responsibleaipolicyviolation|"
+    r"\b(?:flagged|blocked|rejected|triggered|violat\w*)\b[^.]{0,40}\bcontent[ _-]?(?:filter|polic)|"
+    r"\bcontent[ _-]?(?:filter|polic)\w*\b[^.]{0,30}\b(?:flagged|blocked|rejected|triggered)\b", re.I)
+# OpenRouter-style moderation rejections (HTTP 403): the INPUT was flagged, not the account, key or service
+_MODERATION = re.compile(r"\b(?:input|prompt|message|content|request)\b (?:was|is|has been|got) flagged|"
+                         r"\bflagged by (?:the )?moderation\b", re.I)
+
+
 def map_status(provider: str, status: int, detail: str = "") -> LLMError:
     """HTTP status -> gateway error code. Shared so an error reported inside a 200 body maps the same way."""
     suffix = f": {detail}" if detail else ""
+    if status in (400, 403) and (_CONTENT_FILTER.search(detail or "") or (status == 403 and _MODERATION.search(
+            detail or ""))):  # checked first: a moderation 403 is a content filter, not a permission problem
+        return LLMError("MODEL_CONTENT_FILTERED", f"{provider} content filter blocked the request ({status})")
     if status == 401:
         return LLMError("MODEL_AUTH_ERROR", f"{provider} rejected the API key (401){suffix}")
     if status == 402:
