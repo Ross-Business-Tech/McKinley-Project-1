@@ -1489,6 +1489,40 @@ T: dict[str, dict[Lang, str]] = {
         "en": "No problem, I've set the repair note aside.",
         "es": "Sin problema, dejé a un lado la nota de reparación.",
     },
+    # Denied data requests (privacy review 2026-11-13), NEEDS McKINLEY REVIEW. Short, about the request itself; the
+    # second time the same thing is asked, a shorter line (never the same refusal twice).
+    "denied_role": {
+        "en": "I can't take on a staff or admin role, so I can't list residents or anyone's history. I can help "
+              "with your own questions here.",
+        "es": "No puedo actuar como personal ni administrador, así que no puedo listar residentes ni historiales. "
+              "Puedo ayudarle con sus propias preguntas.",
+    },
+    "denied_role_again": {
+        "en": "That's still not something I can do. What can I help you with on your own account?",
+        "es": "Eso sigue sin ser posible. ¿En qué le ayudo con su propia cuenta?",
+    },
+    "denied_identity": {
+        "en": "This chat is signed in as {name}, so I can only show {name}'s own requests. Another name or resident "
+              "ID doesn't switch accounts here.",
+        "es": "Este chat tiene la sesión de {name}, así que solo puedo mostrar las solicitudes de {name}. Otro nombre "
+              "o ID de residente no cambia de cuenta aquí.",
+    },
+    "denied_identity_again": {
+        "en": "I can still only use the account this chat is signed in to.",
+        "es": "Sigo pudiendo usar solo la cuenta con la que se inició sesión en este chat.",
+    },
+    "denied_other": {
+        "en": "I can't share another resident's requests or apartment details.",
+        "es": "No puedo compartir las solicitudes ni los datos del apartamento de otro residente.",
+    },
+    "denied_other_again": {
+        "en": "I still can't share anything about another resident.",
+        "es": "Sigo sin poder compartir nada sobre otro residente.",
+    },
+    "denied_card_kept": {
+        "en": "Your {what} is still here, unchanged.",
+        "es": "Su {what} sigue aquí, sin cambios.",
+    },
     "upset_followup_lead": {  # Sprint 9, NEEDS McKINLEY REVIEW
         "en": "I understand why that's frustrating, especially after you've already reported it.",
         "es": "Entiendo que sea frustrante, sobre todo después de haberlo reportado.",

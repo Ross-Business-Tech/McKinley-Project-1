@@ -47,6 +47,7 @@ from app.intake import (
     claims_prior_decision,
     community_in,
     contact_change,
+    denied_data_request,
     describes_issue,
     detail_to_add,
     detect_language,
@@ -1827,7 +1828,25 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
     if not is_resident and gate.urgency != "emergency" and (says_resident(msg) or (
             gate.intent == "maintenance" and (is_issue_description(msg) or _things_in(msg)))):
         mem["guest_repair"] = True  # flag only: a visitor who says they live here / reports a repair
-    if not verified and gate.urgency != "emergency" and claims_account_access(msg):
+    # Denied data requests (privacy review 2026-11-13): another resident's records, a claimed identity that isn't the
+    # signed-in person, or a claimed staff/admin role are answered BEFORE any status lookup, so the words "requests" or
+    # "work orders" inside a refused request never show this person's own records. An open card is left untouched.
+    denied = None if gate.urgency == "emergency" else denied_data_request(
+        msg, _ctx_value(ctx, "first_name") if verified else None, persona_id if verified else None)
+    live_card = draft if draft and not draft.get("declined") else None
+
+    def denial(key: str, reason: str) -> TurnPlan:
+        refused = mem.get("refused") or []
+        text = t(f"{key}_again" if key in refused else key, lang, name=_ctx_value(ctx, "first_name") or "")
+        mem["refused"] = [*refused, key] if key not in refused else refused
+        if live_card:
+            text = f"{text} {t('denied_card_kept', lang, what=WHAT[live_card['kind']][lang])}"
+        return done(TurnPlan(template=text, functions=["F3"], skip_model=True, consumed_by_draft=True,
+                             action=_proposed(live_card["kind"], live_card, lang) if live_card else None,
+                             chips=[] if live_card else
+                             CHIPS["resident_next" if is_resident else "prospect_next"][lang],
+                             workflow=_sel("general_inquiry", reason)))
+    if not verified and gate.urgency != "emergency" and (claims_account_access(msg) or denied == "impersonation"):
         # j-safe-impersonation: a name typed in chat unlocks nothing; never a tour card from it
         if draft and not draft.get("declined") and draft["kind"] == "tour_request" and store and not draft.get(
                 "fields", {}).get("days"):
@@ -1840,6 +1859,10 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
                              chips=["Send a note to the office" if lang == "en" else "Enviar nota a la oficina"],
                              workflow=_sel("general_inquiry", "Account details asked for without that account "
                                                               "signed in: nothing shared.")))
+    if denied == "role_escalation":
+        return denial("denied_role", "Asked the assistant to act as staff or an administrator: nothing shared.")
+    if denied == "impersonation" and verified:
+        return denial("denied_identity", "Claimed another resident's identity in a signed-in chat: nothing shared.")
     if is_resident and not_account_holder(msg) and gate.urgency != "emergency":
         if draft and store:  # a card built on that account is discarded (not parked: it can't be restored or shown)
             store.clear_draft(session_id, pkey)
@@ -1847,7 +1870,9 @@ def plan_turn(*, msg: str, gate: GateDecision, workflow: WorkflowSelection, ctx:
         return done(TurnPlan(template=t("other_person", lang), functions=["F3"], skip_model=True,
                              chips=CHIPS["prospect_next"][lang],
                              workflow=_sel("general_inquiry", "Person says they are not the account holder.")))
-    if gate.urgency != "emergency" and (asks_about_other_resident(msg) or (
+    if denied == "other_resident" and live_card:
+        return denial("denied_other", "Asked about another resident during an open request: nothing shared.")
+    if gate.urgency != "emergency" and (asks_about_other_resident(msg) or denied == "other_resident" or (
             mem.get("other_resident") and re.search(r"\b(?:him|her|he|she|his|them|their|roommate|live with)\b", msg,
                                                     re.I) and not is_issue_description(msg))):
         if mem.get("other_resident") and _CHECK_ON.search(msg):
