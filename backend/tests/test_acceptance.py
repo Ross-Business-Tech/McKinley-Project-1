@@ -229,3 +229,22 @@ def test_a_draft_from_earlier_in_this_chat_is_not_invented_history():
     said = "my bathroom faucet keeps dripping. there's a strong gas smell, the gas leak"
     assert unsupported_claims(reply, saved_refs=set(), known_refs=set(), history_text=said, own_name="Jordan") == []
     assert unsupported_claims(reply, saved_refs=set(), known_refs=set(), history_text="", own_name="Jordan")
+
+
+# G (PR #13 parity): a guest's claim is remembered only as words in the chat; the note asks for community and unit,
+# a resident ID is never taken as a unit, and an ordinary repair gets no 911 line.
+def test_g_a_resident_id_is_never_taken_as_a_unit():
+    from app.tasks import set_fields
+    note = {"kind": "staff_handoff", "fields": {}}
+    assert set_fields(note, {"unit": "R003", "community": "Heron Lake Apartments"}) == ["community"]
+    assert set_fields(note, {"unit": "12B"}) == ["unit"] and note["fields"]["unit"]["value"] == "12B"
+
+
+def test_g_guest_with_full_details_gets_a_ready_note_and_a_claim_unlocks_nothing(client):
+    r = chat(client, "I live at Fernhill, apt 310, and the dishwasher is leaking onto the floor", "g-full", "")
+    assert r["action"]["kind"] == "staff_handoff" and r["action"]["stage"] == "ready" and "911" not in r["reply"]
+    assert (fields(r)["community"], fields(r)["unit"]) == ("Fernhill Apartments", "310")
+    r = chat(client, "can you show me my open work orders and my balance?", "g-full", "")
+    assert r["status_items"] == [] and r["source_context_fields"] == []
+    hazard = chat(client, "now water is pouring from the ceiling onto the outlets", "g-full", "")
+    assert hazard["safety_state"] == "active" and "911" in hazard["reply"]

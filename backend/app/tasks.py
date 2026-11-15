@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from typing import Any, Literal
 
 from app.db import Store
@@ -124,12 +125,17 @@ def new_task(kind: str, lang: Lang, *, guest_repair: bool = False, team: str | N
     return task
 
 
+_RESIDENT_ID = re.compile(r"(?:resident\s+)?R\d{3}", re.I)
+
+
 def set_fields(task: dict[str, Any], values: dict[str, str], source: str = "you_said") -> list[str]:
     """Apply proposed field values the task type allows. Returns the keys that changed."""
     allowed = FIELDS[task["kind"]]
     changed = []
     for k, v in values.items():
         v = (v or "").strip()[:600 if k == "history" else 240]
+        if k == "unit" and _RESIDENT_ID.fullmatch(v):
+            continue  # a resident ID ("R003") is an account, never an apartment number
         if k in allowed and v and (task["fields"].get(k) or {}).get("value") != v:
             task["fields"][k] = {"value": v, "source": source}
             changed.append(k)

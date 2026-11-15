@@ -27,6 +27,11 @@ Rules:
 - `demo_personas_allowed`: `DEMO_PERSONAS_ENABLED` unset means on for `APP_ENV=local` and off for `APP_ENV=hosted`.
   It is always false when hosted, and `hosted_problems()` refuses to start a hosted backend with
   `DEMO_PERSONAS_ENABLED=true`. A local deployment can switch personas off with `DEMO_PERSONAS_ENABLED=false`.
+- Requests for another resident's data, a claimed other identity or resident ID, and a claimed staff/admin role are
+  refused by `guardrails.denied` **before** the model is called: a fixed refusal, nothing listed, and an open card
+  stays unchanged. The same refusal twice in a row gets a shorter line ("As I said, I can only help with this
+  account's own information here.") so the chat doesn't loop on one long sentence; only the wording changes, never
+  what is refused. The refusal only chooses the reply: access itself is enforced by the scoped store (section 2).
 - API requests are strict: a `persona_id` on a deployment without demo personas gets **403
   `DEMO_PERSONAS_DISABLED`**, so the caller knows it was not used. Offline tooling (`strict=False`) quietly drops it.
 

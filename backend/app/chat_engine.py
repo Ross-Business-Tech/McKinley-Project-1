@@ -228,7 +228,8 @@ def run_turn(
         handoff_team, handoff_reason, op_done = team, f"Safety: {hazard}", "paused"
     elif reason := guardrails.denied(msg, name, persona_id if verified else None):
         # privacy: refused before the model; the open card is untouched and nothing is listed
-        reply = guardrails.refusal(reason, lang, name)
+        last = next((h["content"] for h in reversed(history) if h.get("role") == "assistant"), "")
+        reply = guardrails.refusal(reason, lang, name, last)
         if active:
             reply += tasks._l(KEPT, lang).format(what=tasks._l(tasks.WHAT[active["kind"]], lang))
         op_done = f"refused:{reason}"

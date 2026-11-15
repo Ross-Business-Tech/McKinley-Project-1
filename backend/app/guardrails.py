@@ -97,10 +97,15 @@ def denied(message: str, own_name: str | None, own_id: str | None) -> str | None
     return None
 
 
-def refusal(reason: str, lang: str, name: str | None) -> str:
+# The same refusal twice in a row: a shorter line, so the conversation doesn't loop on one long sentence.
+REFUSAL_AGAIN = ("As I said, I can only help with this account's own information here.",
+                 "Como le dije, aquí solo puedo ayudar con la información de esta cuenta.")
+
+
+def refusal(reason: str, lang: str, name: str | None, previous_reply: str = "") -> str:
     key = "guest_identity" if reason == "identity" and not name else reason
-    text = REFUSAL[key][1 if lang == "es" else 0]
-    return text.format(name=name or "")
+    text = REFUSAL[key][1 if lang == "es" else 0].format(name=name or "")
+    return REFUSAL_AGAIN[1 if lang == "es" else 0] if previous_reply.startswith(text) else text
 
 
 # ---- 4. claims in a model reply that only the backend can make true ----------------------------------------------
