@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     app_env: Literal["local", "hosted"] = "local"
     # Demo personas (the "Demo sign-in" picker) let anyone act as any SYNTHETIC account. That is NOT authentication.
     # Unset = on for APP_ENV=local, off for hosted. DEMO_PERSONAS_ENABLED=true is refused on a hosted backend
-    # (hosted_problems). See app/auth.py and docs/security/AUTHORIZATION_BOUNDARIES.md.
+    # (hosted_problems). See app/auth.py and docs/SECURITY.md.
     demo_personas_enabled: bool | None = None
     # Sprint 10: approved_only = only McKinley-approved knowledge-base answers; demo_samples = also the labelled SAMPLE
     # answers in knowledge_base.json (made-up example content for a supervised local demo; refused when hosted)
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
 
     # Staff routes: loopback-only unless this token is set (then the X-Staff-Token header).
     staff_api_token: SecretStr | None = None
-    # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
+    # ---- semantic safety classifier (layer 2, see docs/ARCHITECTURE.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
     # per non-baseline turn. It can only add guidance; it never removes a rules alert or care line (Sprint 7, R7 DRAFT).
     safety_classifier: Literal["auto", "off"] = "auto"

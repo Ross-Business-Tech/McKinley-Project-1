@@ -14,7 +14,7 @@ Audience = Literal["prospect", "resident", "unknown"]
 PersonaKind = Literal["prospect", "resident", "unmatched_resident"]
 # Inbound channel. Phone/voice (F1) has no telephony integration and is not accepted.
 Channel = Literal["web_chat", "sms", "email"]
-# The nine function modules of "McKinley AI Agent Flow.md" (docs/workflows/traceability.md).
+# The nine function modules of "McKinley AI Agent Flow.md" (docs/HANDOFF.md, F1-F9).
 FunctionId = Literal["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
 
 HandoffCategory = Literal[
