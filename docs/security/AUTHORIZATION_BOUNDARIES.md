@@ -1,7 +1,7 @@
 # Authorization boundaries (Sprint 6)
 
 Who can read which data, where identity comes from, and what stops one caller seeing another's data. This
-describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `chat_engine.py` step 2,
+describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `chat_engine.py` part A (identity),
 `api/*.py`). Tests: `backend/tests/test_authorization.py`, `backend/tests/test_authorization.py`.
 
 > **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list.
@@ -16,17 +16,22 @@ describes the code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `cha
 | `anonymous` | The default. No persona id; an unknown persona id; offline tooling with demo personas off. | No |
 | `demo_persona` | Only on a deployment that allows demo personas (`Settings.demo_personas_allowed`), and only for a **known** demo persona id (fictional prospect, unmatched resident, the injection fixture, or a workbook/database resident). | Only that exact persona's synthetic record (`can_read_resident_data` is true for resident personas only) |
 | `authenticated_resident` | **Never.** The type exists for a future real sign-in; no code path creates it. | n/a |
-| `staff` | Only behind `require_staff` (loopback without a token, or `X-Staff-Token` = `STAFF_API_TOKEN`), plus offline staff tooling (`auth.TOOLING`: eval runs, gate evals, journey evals, the demo exporter, tests). Never for `/api/chat` or `/api/actions/*`. | Any synthetic persona |
+| `staff` | Only behind `require_staff` (loopback without a token, or `X-Staff-Token` = `STAFF_API_TOKEN`), plus offline staff tooling (`auth.TOOLING`: the demo exporter and tests; earlier also the removed eval runners). Never for `/api/chat` or `/api/actions/*`. | Any synthetic persona |
 
 Rules:
 
 - The principal is derived **server-side only** (`derive_principal`). The browser's `persona_id` is just the demo
   selector value; it is used only after the checks above.
 - Conversation text ("I'm her roommate", "I'm resident R001", "borrowing a login"), the model and audience
-  classification (prospect/resident wording, LLM gate) **never** change the principal.
+  classification (prospect/resident wording, the conversation model's output) **never** change the principal.
 - `demo_personas_allowed`: `DEMO_PERSONAS_ENABLED` unset means on for `APP_ENV=local` and off for `APP_ENV=hosted`.
   It is always false when hosted, and `hosted_problems()` refuses to start a hosted backend with
   `DEMO_PERSONAS_ENABLED=true`. A local deployment can switch personas off with `DEMO_PERSONAS_ENABLED=false`.
+- Requests for another resident's data, a claimed other identity or resident ID, and a claimed staff/admin role are
+  refused by `guardrails.denied` **before** the model is called: a fixed refusal, nothing listed, and an open card
+  stays unchanged. The same refusal twice in a row gets a shorter line ("As I said, I can only help with this
+  account's own information here.") so the chat doesn't loop on one long sentence; only the wording changes, never
+  what is refused. The refusal only chooses the reply: access itself is enforced by the scoped store (section 2).
 - API requests are strict: a `persona_id` on a deployment without demo personas gets **403
   `DEMO_PERSONAS_DISABLED`**, so the caller knows it was not used. Offline tooling (`strict=False`) quietly drops it.
 
@@ -35,13 +40,13 @@ Rules:
 | Access point | Check |
 |---|---|
 | `personas.build_context(persona_id, msg, wb, *, principal)` | `principal` is required. It returns the persona's context only if `may_access_persona(principal, persona_id)`. Otherwise it returns the anonymous context (no record, no fields). Database-loaded residents (Supabase) are `Workbook` rows too, so the same check applies. |
-| `chat_engine.run_turn` step 2 | Derives the principal (or takes the one the API derived). It rebinds `persona_id` / `hist_key` to the **authorized** persona only, so the later steps (`resident_for`, `plan_turn`, status lookups, history, persistence) never see an unauthorized persona id. It replaces `deps.store` with a `ScopedStore`. |
-| `db.ScopedStore(store, session_id, persona_key, principal_kind=…)` | The only store the chat turn, the planner and confirm/cancel get. Chat state (history, user messages, gate memory, drafts) is **per session + persona**: reads for any other session or persona return nothing, writes for them raise `PermissionError`. Prototype records are **per owner** (see §2a). It has no staff-wide listings (`conversations`, `conversation`, `gate_log`, eval runs): accessing them raises `AttributeError`. |
-| `actions.resident_for` / `status_items` (planner, owned by the conversation engineer) | Receive only the authorized persona id and the scoped store (above). Synthetic history items come from `resident_for(persona_id)`, which `chat_engine` calls only when the context is a verified resident record. |
+| `chat_engine.run_turn` part A | Derives the principal (or takes the one the API derived). It rebinds `persona_id` / the history key to the **authorized** persona only, so the later parts (safety, the conversation call, `tasks.my_requests` / `tasks.history_lines`, persistence) never see an unauthorized persona id. It replaces `deps.store` with a `ScopedStore`. |
+| `db.ScopedStore(store, session_id, persona_key, principal_kind=…)` | The only store the chat turn, the task controller (`app/tasks.py`) and confirm/cancel get. Chat state (history, user messages, per-turn metadata such as `last_gate`, the task draft row) is **per session + persona**: reads for any other session or persona return nothing, writes for them raise `PermissionError`. Prototype records are **per owner** (see §2a). It has no staff-wide listings (`conversations`, `conversation`, `gate_log`, eval runs): accessing them raises `AttributeError`. |
+| `tasks.my_requests` / `tasks.history_lines` (part E tools) | Receive only the authorized persona id and the scoped store (above). Synthetic history items come from the persona's own record and only when the context is a verified resident record (`verified`); otherwise they return nothing. |
 | Session binding (`session_bindings` table, `Store.bind_session`) | A session id is bound to (principal kind, persona key) on first use (atomic insert-if-absent). |
 | `/api/chat` with a session bound to someone else | **Starts a new conversation** under a fresh server-issued `session_id`, returned in the response (the website adopts it). No history, drafts or records of the first session are visible. It is never a 403, so an emergency message is always answered. |
 | `/api/actions/confirm`, `/api/actions/cancel` | Derive the principal and require the session binding to match. Otherwise **403 `SESSION_PERSONA_MISMATCH`**. Then they work only on the scoped store, and the draft is keyed by (session, persona) and kind. A wrong kind gets `NO_PENDING_ACTION`. Repair requests still need a verified resident context (`NOT_AUTHORIZED`). |
-| Account-holder rule (`personas.apply_account_holder_rule`, `states_not_account_holder`) | Wording-based **caution only** (defence in depth on a demo-enabled deployment; the hosted boundary is the real control). If it fires, at any point in the session, the rest of the session uses no account data: the context has no fields and is not a verified resident, **and** `chat_engine` step 2 / `confirm` narrow the store with `ScopedStore.without_account_access()` (§2a), so status, history, renewal, typed-reference and card paths get no account data whatever they ask for. It is **not** the security boundary: the principal and the scoped store are. |
+| Account-holder rule (`personas.apply_account_holder_rule`, `states_not_account_holder`) | Wording-based **caution only** (defence in depth on a demo-enabled deployment; the hosted boundary is the real control). If it fires, at any point in the session, the rest of the session uses no account data: the context has no fields and is not a verified resident, **and** `chat_engine` part A / `confirm` narrow the store with `ScopedStore.without_account_access()` (§2a), so status, history, renewal, typed-reference and card paths get no account data whatever they ask for. It is **not** the security boundary: the principal and the scoped store are. |
 
 ## 2a. Records: scoped by owner, not by session (Sprint 6 fix round)
 
@@ -67,9 +72,9 @@ Deny by default: a `ScopedStore` built without `principal_kind` is session-only.
 | `GET /api/personas` | none | Synthetic persona labels (id, first name, community) | Empty list when demo personas are off (hosted) |
 | `GET /api/health` | none | Counts, provider, `app_env`, `demo_personas_enabled` (no records, no secrets) | Public by design |
 | `GET /api/models` | none | Configured `provider:model` targets (no keys or URLs) | Public by design |
-| `POST /api/chat` → step 2 `build_context` | Server-derived principal (client `persona_id` is the demo selector only) | Allowlisted context fields, as `source_context_fields` and in the model prompt | `may_access_persona`. Hosted: 403 for any persona id. |
-| `POST /api/chat` → history (`history`, `user_messages`, `last_gate`) | `session_id` (a client-generated random UUID, the bearer) + principal key | Earlier turns, given to the model and the planner | `ScopedStore` + session binding |
-| `POST /api/chat` → status lookups (`status_items`, typed `DEMO-WO-…` reference, "the one for the sink", hurry/frustration) | Principal → scoped store + `resident_for` | References, short subjects, statuses, opened dates of this persona's own items | Records: this persona's own, any session (§2a); none after a non-holder statement. History items: own synthetic record only, verified resident context only. |
+| `POST /api/chat` → part A `build_context` | Server-derived principal (client `persona_id` is the demo selector only) | Allowlisted context fields, as `source_context_fields` and in the model prompt | `may_access_persona`. Hosted: 403 for any persona id. |
+| `POST /api/chat` → history (`history`, `user_messages`, `last_gate`) | `session_id` (a client-generated random UUID, the bearer) + principal key | Earlier turns, given to the safety window and the model | `ScopedStore` + session binding |
+| `POST /api/chat` → status lookups (`tasks.my_requests`: the list given to the model and shown as status items; references the model names are checked by `guardrails.unsupported_claims`) | Principal → scoped store + own record | References, short subjects, statuses, opened dates of this persona's own items | Records: this persona's own, any session (§2a); none after a non-holder statement. History items: own synthetic record only, verified resident context only. |
 | `POST /api/chat` → drafts / action cards | session + principal key | Draft fields the person typed | `ScopedStore` |
 | `POST /api/chat` → `identity_note`, renewal, contact preference, entry window | Context fields above | Own persona's allowlisted fields only | `build_context` |
 | `POST /api/actions/confirm` / `cancel` | Server-derived principal + session binding | The saved record (own draft) | 403 on mismatch, scoped store |
@@ -130,7 +135,7 @@ principals x sessions x endpoints x references; Hypothesis variant when installe
   status items and records, suggestions, language, session id, provider/model label). Risk layers, gate, pipeline,
   context-field provenance, policy and output checks, handoff reason, workflow internals, usage, prompt version are
   removed. Deny by default: a new field is hidden until added to `CUSTOMER_FIELDS`. Same JSON shape, so the website
-  needs no change. `target`, `gate_provider` and any mode other than `aware` are staff-only (403 `STAFF_ONLY`).
+  needs no change. `target`, `gate_provider` (still accepted, no effect since the MVP reset) and any mode other than `aware` are staff-only (403 `STAFF_ONLY`).
 - **Public `/api/health`** shows status, provider/model, demo sign-in availability and `app_env` only; counts,
   resident source, data error, database kind and prompt version are staff-only.
 - **Fail closed on misconfiguration.** Demo personas are honoured only for requests made straight from this machine

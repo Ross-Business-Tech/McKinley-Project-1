@@ -3,7 +3,7 @@
 Every model call in the app goes through `LLMGateway.complete` with one of three JSON schemas:
 
 - generate_response: `app.chat_engine.run_turn` (customer reply), `mckinley_reply`, `app.llm.base.OUTPUT_SCHEMA`
-- decide_gate: `app.gates.llm_gate.LLMGate.classify`, `mckinley_gate`, `app.gates.llm_gate.GATE_SCHEMA`
+- converse: `app.assistant.ask` (the one conversational call), `mckinley_assistant`, `app.assistant.SCHEMA`
 - classify_risk: `app.risk.classifier.SemanticRiskClassifier`, `mckinley_risk`, `app.risk.classifier.SCHEMA`
 
 This module is a thin, documented facade: it holds NO business logic (prompts, parsing, validation and policy stay
@@ -15,7 +15,6 @@ real callers is caught by tests (tests/test_llm_providers.py).
 from dataclasses import dataclass
 from typing import Any
 
-from app.gates.llm_gate import GATE_SCHEMA, GATE_SCHEMA_NAME
 from app.llm import GenerationConfig, LLMGateway, LLMResult, Target
 from app.llm.base import OUTPUT_SCHEMA
 from app.risk.classifier import SCHEMA as RISK_SCHEMA
@@ -31,10 +30,10 @@ class ModelUse:
 
 
 GENERATE_RESPONSE = ModelUse("generate_response", "mckinley_reply", OUTPUT_SCHEMA, "app.chat_engine.run_turn")
-DECIDE_GATE = ModelUse("decide_gate", GATE_SCHEMA_NAME, GATE_SCHEMA, "app.gates.llm_gate.LLMGate.classify")
+CONVERSE = ModelUse("converse", "mckinley_assistant", {}, "app.assistant.ask")  # schema filled below
 CLASSIFY_RISK = ModelUse("classify_risk", RISK_SCHEMA_NAME, RISK_SCHEMA,
                          "app.risk.classifier.SemanticRiskClassifier.classify")
-MODEL_USES: dict[str, ModelUse] = {u.name: u for u in (GENERATE_RESPONSE, DECIDE_GATE, CLASSIFY_RISK)}
+MODEL_USES: dict[str, ModelUse] = {u.name: u for u in (GENERATE_RESPONSE, CONVERSE, CLASSIFY_RISK)}
 
 
 def complete_for(use: ModelUse, gateway: LLMGateway, system: str, messages: list[dict[str, str]],
@@ -51,13 +50,22 @@ def generate_response(gateway: LLMGateway, system: str, messages: list[dict[str,
     return complete_for(GENERATE_RESPONSE, gateway, system, messages, target, cfg)
 
 
-def decide_gate(gateway: LLMGateway, system: str, messages: list[dict[str, str]],
-                target: Target | None = None, cfg: GenerationConfig | None = None) -> LLMResult:
-    """Routing decision: parse `result.extra["content"]` with `app.gates.llm_gate.parse_gate_json`."""
-    return complete_for(DECIDE_GATE, gateway, system, messages, target, cfg)
+def converse(gateway: LLMGateway, system: str, messages: list[dict[str, str]],
+             target: Target | None = None, cfg: GenerationConfig | None = None) -> LLMResult:
+    """The conversational turn: parse `result.extra["content"]` like `app.assistant.ask` does."""
+    return complete_for(CONVERSE, gateway, system, messages, target, cfg)
 
 
 def classify_risk(gateway: LLMGateway, system: str, messages: list[dict[str, str]],
                   target: Target | None = None, cfg: GenerationConfig | None = None) -> LLMResult:
     """Semantic risk: parse `result.extra["content"]` with `app.risk.classifier.parse`."""
     return complete_for(CLASSIFY_RISK, gateway, system, messages, target, cfg)
+
+
+def _fill() -> None:  # late import: app.assistant imports app.llm
+    from app.assistant import SCHEMA, SCHEMA_NAME
+    CONVERSE.schema.update(SCHEMA)
+    assert CONVERSE.schema_name == SCHEMA_NAME
+
+
+_fill()

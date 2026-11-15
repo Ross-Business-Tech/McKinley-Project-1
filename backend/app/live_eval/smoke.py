@@ -7,7 +7,6 @@ Steps (one fixed provider:model, rules gate for chat turns, same-model retries o
   1. leasing_inquiry        run_turn, fictional prospect                          (1 reply call)
   2. resident_maintenance   run_turn, synthetic resident R001 (or unmatched)      (1 reply call)
   3. follow_up              run_turn x2 in one session (history sent)             (2 reply calls)
-  4. gate_decision          app.gates.llm_gate.LLMGate.classify (gate schema)     (1 call)
   5. risk_classifier        app.risk.classifier.SemanticRiskClassifier (risk schema) (1 call)
   6. bad_model_id           gateway call to a model id that does not exist; checks the error mapping (1 call)
 
@@ -45,7 +44,6 @@ LEASING = ("P-RELOCATE-AA", "Hi! I'm relocating to Ann Arbor next month and need
 MAINTENANCE = "My bathroom sink has been draining slowly for two days. Can someone take a look?"
 FOLLOW_UP = ("P-BROWSE-FL", ["Do you allow pets at your Florida communities?",
                              "And what about parking for a second car?"])
-GATE_MESSAGE = "The heat in my unit stopped working last night and it's freezing in here."
 RISK_MESSAGE = "There's a strong rotten-egg smell by the stove and I'm feeling dizzy."
 
 
@@ -136,8 +134,8 @@ def run_smoke(settings: Settings, provider: str, *, model: str | None = None, ma
             return blocked("MODEL_NOT_FREE", f"'{target.model}' is priced; pass --allow-paid", listing=listing)
 
     run_settings = settings.model_copy(update={
-        "llm_provider": provider, "llm_model": target.model, "decision_gate_provider": "rules",
-        "gate_override_enabled": False, "safety_classifier": "off", "safety_classifier_target": None,
+        "llm_provider": provider, "llm_model": target.model,
+        "safety_classifier": "off", "safety_classifier_target": None,
         "llm_max_retries": 0,  # the first 429 must surface (and stop the run), not be retried away
         "db_path": Path(tempfile.mkdtemp(prefix="live-smoke-")) / "smoke.sqlite3",
     })
@@ -149,8 +147,6 @@ def run_smoke(settings: Settings, provider: str, *, model: str | None = None, ma
 
     from app.chat_engine import prompt_for, run_turn
     from app.db import Store
-    from app.gates.base import GateContext
-    from app.gates.llm_gate import LLMGate
     from app.risk.classifier import PROMPT_VERSION as RISK_PROMPT_VERSION
     from app.risk.classifier import SemanticRiskClassifier
     from app.state import build_state
@@ -172,18 +168,6 @@ def run_smoke(settings: Settings, provider: str, *, model: str | None = None, ma
         problems = _calls_ok(calls, target)
         status = "no_model_call" if not calls and not problems else ("fail" if problems else "pass")
         return {"persona": persona, "turns": turns, "problems": problems, "status": status, **_call_summary(calls)}
-
-    def gate() -> dict[str, Any]:
-        n0 = len(gw.calls)
-        ctx = GateContext(audience="resident", identity_verified=True, record_found=True, topics=["maintenance"])
-        d = LLMGate(gw, target, timeout_seconds=run_settings.llm_timeout_seconds).classify(
-            GATE_MESSAGE, ctx, None)  # type: ignore[arg-type]  # rules decision is not used by the LLM gate
-        calls = gw.calls[n0:]
-        problems = _calls_ok(calls, target, check_parse=False)  # gate JSON has no 'reply': parsed by the gate
-        return {"decision": {"intent": d.intent, "urgency": d.urgency, "requires_human": d.requires_human,
-                             "confidence": d.confidence, "risk_flags": d.risk_flags,
-                             "decision_source": d.decision_source},
-                "problems": problems, "status": "fail" if problems else "pass", **_call_summary(calls)}
 
     def risk() -> dict[str, Any]:
         n0 = len(gw.calls)
@@ -217,7 +201,6 @@ def run_smoke(settings: Settings, provider: str, *, model: str | None = None, ma
         ("leasing_inquiry", 1, lambda: chat("leasing_inquiry", LEASING[0], [LEASING[1]])),
         ("resident_maintenance", 1, lambda: chat("resident_maintenance", resident, [MAINTENANCE])),
         ("follow_up", 2, lambda: chat("follow_up", FOLLOW_UP[0], FOLLOW_UP[1])),
-        ("gate_decision", 1, gate),
         ("risk_classifier", 1, risk),
         ("bad_model_id", 1, bad_model),
     ]

@@ -225,7 +225,7 @@ Three more got only a care line: a downed power line, indirect CO symptoms, and 
 **Privacy (P1):** after "I'm not Marisol, I'm her roommate", the account's open requests are still shown. The
 account-holder rule only matches some wordings. `persona_id` comes from the client, so there is no authentication.
 
-Sprint 5 changed only conversation logic (`actions.py` / `intake.py`). One change touches the safety flow:
+Sprint 5 changed only conversation logic (`actions.py` / `intake.py`, both removed in the MVP reset). One change touches the safety flow:
 - **What:** after a self-harm, personal-safety or medical alert, short follow-ups now get a privacy and status
   reply instead of the maintenance-emergency follow-up. The policy's approved care line is still shown.
 - **Review:** the two new templates are marked for McKinley review. The independent verifier re-ran this holdout

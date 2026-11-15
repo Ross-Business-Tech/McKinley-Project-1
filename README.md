@@ -26,6 +26,15 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 - **Identity:** the demo sign-in (`persona_id`) is chosen by the browser. It is not authentication. Since Sprint 6
   the server decides what a caller may see (deny by default), binds each conversation to one persona, and turns
   demo sign-in off in hosted mode (public information only).
+- **MVP reset (2026-11-15):** the conversation layer was rebuilt around five small parts: server-side identity,
+  deterministic safety on every message, **one** structured model call per ordinary turn, a task controller (one
+  card on screen, others waiting; only Send or "send it" saves), and guardrails that check every model reply against
+  backend state. The planner, decision gates, understanding layer and quick-fix tips were removed
+  ([architecture overview](docs/architecture/overview.md); old design in
+  [docs/archive/pre-mvp/](docs/archive/pre-mvp/README.md)). Offline tests use the mock and check only the
+  deterministic guarantees; conversation quality was checked in small live runs on the U-M GPT Toolkit
+  (`gpt-6.1-sol`, synthetic data, local only). The safety numbers below were measured on the pre-MVP pipeline; the
+  safety rules themselves are unchanged apart from how an incident ends.
 - **No integrations:** no Yardi, CRM, work orders, paging, SMS/email or calendar. Nobody is ever notified.
 - **Models:** exactly one historical run used a real model (2026-11-01, sprint-1 pipeline). Everything since is the
   deterministic **mock**. **Gemini** is the intended provider for deployments; its adapter is built and tested offline
@@ -102,8 +111,8 @@ A **synthetic-data prototype** of a McKinley customer-service assistant, with tw
 | | Workflow | State |
 | --- | --- | --- |
 | F1 | Phone / voice | Not implemented |
-| F2 | SMS / email channel rules | Simulated (opt-out keywords, length rules; nothing is sent) |
-| F3 | Caller type (resident, prospect, vendor, unverified) | Working on the demo identity |
+| F2 | SMS / email channel rules | Not in the MVP (the simulated rules were removed with the planner) |
+| F3 | Caller type (resident, prospect, unverified) | Working on the demo identity (vendors are not handled) |
 | F4 | FAQs from approved content | Working; unapproved topics say so |
 | F5 | Tour request | Simulated (a request, never a booking) |
 | F6 | Maintenance intake, emergency first | Working with draft rules; emergency detection not production ready |
@@ -121,14 +130,14 @@ Details per instruction and data input: [docs/workflows/traceability.md](docs/wo
 ```
 frontend/src/components/customer   customer chat (CustomerApp, ActionCard, StatusPill)
 frontend/src/components/staff      staff queue (saved requests, live conversations)
-backend/app/chat_engine.py         one turn: receive → identity → SAFETY → privacy → context → gate → plan → generate
-                                   → validate → handoff → persist (11 traced steps)
-backend/app/risk/                  safety: rules → optional semantic classifier → policy R1–R9e → approved text
-backend/app/gates/                 decision gate (rules always; optional LLM / Jev may only add risk)
-backend/app/actions.py             planner: questions, read-back cards, notes, status (F2–F9)
-backend/app/intake.py, templates.py, content/knowledge_base.json   detectors, wording, FAQ content
-backend/app/context.py, personas.py  workbook adapter, allowlisted context, demo identity
-backend/app/llm/                   Gemini | OpenRouter | Ollama | Anthropic (optional) | Mock, one gateway
+backend/app/chat_engine.py         one turn: A identity → B SAFETY → C conversation → D tasks (+ reply checks)
+backend/app/auth.py, db.py          A: server-side principal, store scoped to (session, principal)
+backend/app/risk/, emergency.py     B: rules → optional semantic classifier → policy → approved text, incidents
+backend/app/assistant.py            C: the one structured model call (reply + at most one task operation)
+backend/app/guardrails.py           consent (explicit send), privacy refusals, unsupported-claim checks
+backend/app/tasks.py                D: active card + waiting list, confirm (save), own requests and history
+backend/app/context.py, personas.py, content/knowledge_base.json   E: allowlisted context, demo identity, facts
+backend/app/llm/                   Gemini | OpenRouter | U-M Toolkit | Ollama | Anthropic (optional) | Mock
 backend/migrations/, app/seed_synthetic.py   Alembic migrations (SQLite + Postgres) and the synthetic seed
 backend/app/live_eval/, export_demo.py   dev-only: provider preflight + budgeted smoke, static demo snapshot
 ```
@@ -154,6 +163,9 @@ owner for it. Without it, resident sign-ins find no record (prospects and guests
   `GEMINI_MODEL=gemini-3.6-flash`, `LLM_MODEL=` empty. See [docs/deployment/gemini.md](docs/deployment/gemini.md).
 - **OpenRouter (free models, evaluations):** `LLM_PROVIDER=openrouter`, `LLM_MODEL=nvidia/nemotron-3.5-super-vl:free`,
   `OPENROUTER_API_KEY=` (<https://openrouter.ai/keys>).
+- **U-M GPT Toolkit (local testing of the MVP):** `LLM_PROVIDER=um_toolkit`, `UM_TOOLKIT_API_KEY=`, model
+  `gpt-6.1-sol`. A hosted backend refuses it until the university confirms the key may serve a public site
+  (`UM_TOOLKIT_HOSTED_APPROVED`).
 - Shared settings: temperature 0.2 (not sent to Gemini or Anthropic, which ignore or reject it), 4000 max tokens, 60 s timeout, 2 same-model retries. A different served model is
   rejected (`MODEL_SWITCHED`), never used. Check without generating anything:
   `cd backend && uv run python -m app.live_eval.preflight` (exit code 3 = blocked).
@@ -161,8 +173,7 @@ owner for it. Without it, resident sign-ins find no record (prospects and guests
   but no key, chat answers `NEEDS_API_KEY`; nothing silently falls back to the mock.
 
 Free hosted models may log prompts: send synthetic data only. All settings, with comments:
-[`backend/.env.example`](backend/.env.example) (gate provider, `GATE_OVERRIDE_ENABLED` — set `false` on any shared
-deployment, `SAFETY_CLASSIFIER`, `STAFF_API_TOKEN`, `EVAL_TARGETS`, `CORS_ORIGINS`, paths). The frontend has one
+[`backend/.env.example`](backend/.env.example) (`SAFETY_CLASSIFIER`, `DEMO_PERSONAS_ENABLED`, `STAFF_API_TOKEN`, `EVAL_TARGETS`, `CORS_ORIGINS`, paths). The frontend has one
 setting, `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000`), fixed at build time.
 
 ## Run
@@ -183,14 +194,14 @@ Database tables come from migrations (`cd backend && uv run alembic upgrade head
 synthetic residents from the database after `uv run python -m app.seed_synthetic`.
 
 **Static replay mode** = the here.now build (`npm run build` → `dist/`) with no backend. The customer view replays
-17 recorded journeys from `frontend/public/demo/snapshot.json` (mock model, rules gate) with typing turned off; the
+the recorded journeys in `frontend/public/demo/snapshot.json` (mock model) with typing turned off; the
 staff console opens on the Conversation inspector and its live tabs say they need a backend. After backend changes,
 re-record with `cd backend && uv run python -m app.export_demo`. Preview links come only from
 `npm run publish:preview` (see `CLAUDE.md`).
 
 ### Staff / demo console
 
-Staff, evaluation, gate, records and context-preview routes answer only direct requests from this machine. Set
+Staff routes (saved records, conversations) answer only direct requests from this machine. Set
 `STAFF_API_TOKEN` for anything shared; requests then need the `X-Staff-Token` header (the browser console does not
 send it, so its staff tabs work only locally). Any proxy-forwarding header or non-local `Host` is refused. This is a
 demo boundary, not sign-in.

@@ -9,15 +9,13 @@ to work here). The project is a **prototype, not production ready**.
 - [INTERACTIVE_DEMO_READINESS.md](INTERACTIVE_DEMO_READINESS.md) — can a phone open a public link and chat? (not yet)
 - [design/BRAND_SYSTEM.md](design/BRAND_SYSTEM.md) — McKinley colours, type, components, contrast
 - [design/MOBILE_UX_AUDIT.md](design/MOBILE_UX_AUDIT.md) — viewport matrix, findings, fixes, open issues
-- [architecture/CONVERSATION_STATE.md](architecture/CONVERSATION_STATE.md) — conversation state, card lifecycle, tour states
 - [development/GEMINI_ACCEPTANCE_CHECKLIST.md](development/GEMINI_ACCEPTANCE_CHECKLIST.md) — what to run the moment a Gemini key exists
 - [deployment/gemini.md](deployment/gemini.md) · [deployment/supabase.md](deployment/supabase.md) (migrations, seed) ·
   [deployment/render.md](deployment/render.md) · [deployment/vercel.md](deployment/vercel.md)
 
 ## Architecture
-- [architecture/overview.md](architecture/overview.md) — components, endpoints, providers, context, safety, security
-- [architecture/decisions.md](architecture/decisions.md) — ADR-001…011 (modes, gate, pipeline, static demo, safety, store)
-- [architecture/decision-gate.md](architecture/decision-gate.md) — intent / urgency / human-required gate
+- [architecture/overview.md](architecture/overview.md) — **the MVP's five parts**, components, endpoints, providers, context, security
+- [architecture/decisions.md](architecture/decisions.md) — architecture decisions, including the MVP reset (older gate/planner decisions marked superseded)
 - [architecture/build-vs-buy.md](architecture/build-vs-buy.md)
 
 ## Workflows
@@ -33,15 +31,12 @@ to work here). The project is a **prototype, not production ready**.
 
 ## Evaluation
 - [evaluation/README.md](evaluation/README.md) — how to check the app, and every recorded result (live vs mock)
-- [evaluation/PROTOTYPE_REVIEW_REMEDIATION.md](evaluation/PROTOTYPE_REVIEW_REMEDIATION.md) — independent review findings and their status
-- [evaluation/GEMINI_GATEWAY_ACCEPTANCE.md](evaluation/GEMINI_GATEWAY_ACCEPTANCE.md) — Gemini via the U-M gateway: not accepted yet
 - [evaluation/accessibility-review.md](evaluation/accessibility-review.md) — WCAG 2.2 AA review
 
 ## Diagrams (Mermaid, validated against the code)
 - [diagrams/system-architecture.md](diagrams/system-architecture.md)
-- [diagrams/chat-turn-sequence.md](diagrams/chat-turn-sequence.md) — one chat turn and the confirm button
+- [diagrams/chat-turn-sequence.md](diagrams/chat-turn-sequence.md) — one MVP chat turn and the Send button
 - [diagrams/safety-architecture.md](diagrams/safety-architecture.md) — layers and policy rule order
-- [diagrams/conversation-routing.md](diagrams/conversation-routing.md) — planner order of checks and handoff routing
 - [diagrams/data-access.md](diagrams/data-access.md) — who can see what
 
 ## Development
@@ -54,5 +49,7 @@ to work here). The project is a **prototype, not production ready**.
 ## Archive
 - [archive/README.md](archive/README.md) — the real-model evidence kept in the tree; sprint reports, changelogs and
   generated outputs are in Git history (`git show 59c155c:<path>`)
+- [archive/pre-mvp/](archive/pre-mvp/README.md) — the planner, decision-gate, conversation-state, quick-fix and
+  pre-MVP evaluation documents (accurate for the code before the MVP reset, not for the current code)
 
 Team reference material (`docs/references/`) is kept locally and is not part of the public repository.

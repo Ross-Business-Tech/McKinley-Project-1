@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
-from app.actions import confirm
+from app import tasks
 from app.api.protection import SESSION_LOCKS, rate_limited
 from app.api.staff_guard import request_is_local, require_staff, staff_allowed
 from app.api.views import customer_record
@@ -71,9 +71,8 @@ def _confirm_locked(req: ActionConfirmRequest, request: Request, state: AppState
     ctx = apply_account_holder_rule(record_ctx, store.user_messages(req.session_id, pkey))
     if holder_disclaimed(record_ctx, ctx):
         store = store.without_account_access()  # the saved note carries no on-file account slots either
-    draft = store.get_draft(req.session_id, pkey)
-    lang = draft.get("lang", "en") if draft else "en"
-    res = confirm(store, req.session_id, principal.persona_id, req.kind, ctx, lang)  # type: ignore[arg-type]
+    verified = ctx.persona_kind == "resident" and ctx.record_found
+    res = tasks.confirm(store, req.session_id, principal.persona_id, req.kind, verified)
     # Sprint 8: a customer's confirm response carries the customer view of the record (no staff-only review fields)
     if res.record and not staff_allowed(request, state):
         return res.model_copy(update={"record": customer_record(res.record)})
@@ -85,13 +84,16 @@ def cancel_action(req: ActionConfirmRequest, request: Request,
                   state: AppState = Depends(get_state)) -> ActionResult:
     _limit(req, request, state)
     principal, store = _authorized(req, request, state)
-    draft = None if _not_issued(req, request, state) else store.get_draft(req.session_id, principal.key)
-    if not draft or draft.get("kind") != req.kind:
+    active, waiting = (None, []) if _not_issued(req, request, state) else tasks.load(store, req.session_id,
+                                                                                         principal.key)
+    if not active or active["kind"] != req.kind:
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION", message=_NOTHING)
-    # kept, marked declined, so "send it after all" in the chat can bring it back once
-    store.save_draft(req.session_id, principal.key, draft["kind"], {**draft, "declined": True})
-    return ActionResult(ok=True, message="Okay, I haven't sent it. If you change your mind, say \"send it after "
-                                         "all\".")
+    # CANCEL: kept (restorable by asking for it again); the next waiting task, if any, opens
+    active, waiting, _ = tasks.apply("cancel", active, waiting)
+    tasks.save(store, req.session_id, principal.key, active, waiting)
+    nxt = (f" Your {tasks.WHAT[active['kind']][0]} is back on screen." if active else "")
+    return ActionResult(ok=True, action=tasks.card(active, active.get("lang", "en")) if active else None,
+                        message="Okay, I haven't sent it. If you change your mind, just ask for it again." + nxt)
 
 
 @router.get("/prototype/records", response_model=list[PrototypeRecord], dependencies=[Depends(require_staff)])

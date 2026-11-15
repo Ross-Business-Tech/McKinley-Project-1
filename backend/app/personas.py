@@ -215,7 +215,6 @@ def apply_account_holder_rule(ctx: SafeContext, said: list[str]) -> SafeContext:
     """If the person said this is someone else's account ('my roommate let me use her phone', 'I'm Jordan's
     roommate'), nothing from the record is used for the rest of the session: chat turns AND the confirm/cancel
     buttons (single rule, one place)."""
-    from app.intake import not_account_holder
 
     if ctx.persona_kind != "resident":
         return ctx
@@ -302,3 +301,18 @@ def _persona_context(persona_id: str | None, message: str, wb: Workbook | None) 
         withheld_fields=NEVER_FORWARDED if persona_id else [],
         notes=["No persona selected or record unavailable; audience unknown."],
     )
+
+
+# 'This is actually Jordan from unit 2C, Casey let me use her phone' (the not-the-account-holder rule)
+_OTHER_PERSON = re.compile(
+    # Sprint 7: "on" needs someone else's device ("on her phone"); "anything still open on my account?" is a status
+    # question by the account holder
+    r"\b(?:this is (?:actually |not )?(?:\w+ )?(?:from|in) (?:unit|apt|apartment) \w+|(?:using|borrowed) (?:my "
+    r"|her |his |their )?(?:\w+'s )?(?:phone|account|login)|\bon (?:her |his |their |my \w+'s |\w+'s )(?:phone|"
+    r"account|login)|let me use (?:her|his|their|my \w+'s) (?:phone|"
+    r"account|login)|this isn'?t my account|not (?:my|the) account holder|i'?m not (?:the person|the resident|the "
+    r"account holder)|(?:her|his|their|my \w+'s) (?:account|phone|login),? (?:not mine|but))", re.I)
+
+
+def not_account_holder(message: str) -> bool:
+    return bool(_OTHER_PERSON.search(message))

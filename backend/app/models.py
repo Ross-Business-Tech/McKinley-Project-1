@@ -73,7 +73,7 @@ class ChatRequest(BaseModel):
     channel: Channel = "web_chat"
 
 
-# ---- decision gate / workflow / handoff (pipeline v2) ----------------------------------
+# ---- workflow / handoff response shapes (kept for the API contract) ---------------------
 
 Intent = Literal["leasing", "maintenance", "renewal", "general"]
 Urgency = Literal["low", "medium", "high", "emergency"]
@@ -174,7 +174,7 @@ class OutputCheck(BaseModel):
     detail: str
 
 
-# ---- customer actions (prototype system of record; see app/actions.py) --------------------------------
+# ---- customer actions (prototype system of record; see app/tasks.py) ----------------------------------
 
 ActionKind = Literal["maintenance_request", "tour_request", "staff_handoff"]
 # collecting = still asking questions; ready = read-back shown, waiting for the person to confirm;
@@ -234,9 +234,8 @@ class PrototypeRecord(BaseModel):
     team: str | None = None
     priority: str | None = None
     system: Literal["prototype"] = "prototype"
-    # Sprint 8 (agent C, staff view): repeat-request history and the manager review flag saved with a repair. Stored
-    # by app/actions.py; returned by the staff /api/prototype/records route. app/api/views.customer_record removes
-    # them from anything a non-staff caller gets.
+    # Sprint 8 (staff view): repeat-request history and the manager review flag for a repair. Not set by the MVP
+    # (kept for the record shape); staff-only: app/api/views.customer_record removes them for non-staff callers.
     repeat_history: dict[str, Any] | None = None
     manager_review: bool | None = None
     review_queue: str | None = None
@@ -309,7 +308,7 @@ class ChatResponse(BaseModel):
     created_at: datetime
     gate: GateDecision | None = None  # None in baseline (generic) mode
     workflow: WorkflowSelection | None = None  # the active flow (may refine the routed one, e.g. leasing -> tour)
-    routed_workflow: WorkflowSelection | None = None  # what the decision gate selected; evals grade this
+    routed_workflow: WorkflowSelection | None = None  # kept for the API contract (not set by the MVP)
     maintenance: MaintenanceTriage | None = None
     lead: LeadProfile | None = None
     renewal: RenewalAssessment | None = None
