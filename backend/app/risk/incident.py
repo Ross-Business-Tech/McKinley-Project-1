@@ -484,6 +484,16 @@ def _step(store: Any, session_id: str, persona_key: str, message: str, risk: Ris
     d = risk.decision
     inc = load(store, session_id, persona_key)
     now = now_iso()
+    if d.response == "full_alert" and d.kind and inc and inc.status == "active" and d.kind in inc.kinds and \
+            classify(message, inc) == "resolved" and not _STILL_DANGER.search(message):
+        # A grounded resolution of THIS incident ("the gas company fixed the leak", "fire dept said it's all clear")
+        # names the hazard but reports no new danger: the incident closes with one calm line instead of a new alert.
+        # A vague "it's fine", a hazard still present, or a different hazard still alerts (classify / _STILL_DANGER).
+        inc.status, inc.resolved_reason, inc.resolved_at, inc.last_seen_turn = "resolved", "explicit", now, turn
+        _save(store, session_id, persona_key, inc)
+        nd = d.model_copy(update={"response": "care_line", "care": "danger", "kind": None, "incident": None})
+        return risk.model_copy(update={"decision": _call(nd, inc, "R10r", f"{inc.kind} incident reported resolved "
+                                                                           "by a responder: closed, calm line kept")})
     if d.response == "full_alert" and d.kind:
         if inc and inc.status == "active":
             inc.kind, inc.last_seen_turn, inc.quiet = d.kind, turn, 0

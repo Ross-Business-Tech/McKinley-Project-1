@@ -1048,7 +1048,7 @@ def emergency_kind(message: str) -> str | None:
     """Hazard kind for an acute emergency being reported now, or None.
 
     Sprint 7: the same single-message decision as the safety layer (phrase rules + the compositional frame in
-    app.risk.detect), so the decision gate and the planner never disagree with it: a look-alike the frame reads as a
+    app.risk.detect), so the chat turn and the task controller never disagree with it: a look-alike the frame reads as a
     drill / policy question / past event is not re-raised here, and a frame alert (a symptom-only or Spanish
     subjectless report) is an emergency here too."""
     from app.risk.detect import detect  # late import: app.risk.detect imports this module
@@ -1215,3 +1215,39 @@ def notice(kind: str, lang: str = "en") -> str:
 def heading(kind: str | None, lang: str = "en") -> str:
     h = HEADING[kind if kind in ("self_harm", "gas", "co") else "default"]
     return h.get(lang) or h["en"]
+
+
+# Safety steps when the hazard kind is unknown (no note claim).
+EMERGENCY_NOTICE = (
+    "If anyone is in danger, leave the area now and call 911. If you smell gas, leave without using switches or "
+    "flames and call 911 or your gas utility from outside. Then call your community's emergency maintenance line. "
+    "This assistant cannot dispatch anyone."
+)
+EMERGENCY_STEPS_ES = (
+    "Su seguridad es lo primero. Salga del área ahora y llame al 911. Si huele a gas, no use "
+    "interruptores ni llamas y llame desde afuera. Después llame a la línea de emergencias de "
+    "mantenimiento."
+)
+
+
+# "she won't leave", "I'm fine, I'm staying", "just send someone": the approved REFUSE_LEAD comes first
+REFUSING_TO_LEAVE = re.compile(
+    r"(?:not|n'?t|never) (?:going to |gonna )?(?:leav|go(?:ing)? out|evacuat|get out)\w*|(?:won'?t|wont|can'?t|cant|"
+    r"refuse to) (?:leave|go out|get out|evacuate)|just send (?:someone|somebody|help|a tech|maintenance)|"
+    r"send (?:someone|somebody|help|a tech) (?:now|over|up)|i'?m (?:fine|ok|okay),? (?:i'?m )?staying|"
+    r"staying (?:here|inside|put)|no (?:me )?voy a salir|no (?:quiero|puedo) salir|manden a alguien|"
+    # safety engineer's addition: someone else refusing to leave, or the danger being played down
+    r"(?:doesn'?t|doesnt|don'?t|dont|does not) want to (?:leave|go (?:out|outside)|get out)|refus\w* to (?:leave|go)|"
+    r"says (?:it'?s|its) (?:just|only) ", re.I)
+FOLLOW_UP = {  # an urgent note already exists for this incident: say so honestly, never a second note
+    "en": " Your urgent note {ref} is saved, but this assistant hasn't sent anyone. If you haven't yet, call your "
+          "community's emergency maintenance line. If anyone feels unwell or is in danger, call 911.",
+    "es": " Su nota urgente {ref} está guardada, pero este asistente no ha enviado a nadie. Si aún no lo hizo, llame a "
+          "la línea de emergencias de mantenimiento. Si alguien se siente mal o corre peligro, llame al 911.",
+}
+PEOPLE_FOLLOW_UP = {  # a person at risk: no maintenance-line steps
+    "en": " Your urgent note {ref} is saved without your words, and nobody is notified automatically. I'm here if you "
+          "want help with anything at home.",
+    "es": " Su nota urgente {ref} está guardada sin sus palabras, y no se avisa a nadie automáticamente. Aquí estoy si "
+          "quiere ayuda con algo de su casa.",
+}

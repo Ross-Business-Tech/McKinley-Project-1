@@ -11,15 +11,15 @@ import httpx2
 import pytest
 from google.genai import errors
 
+from app.assistant import SCHEMA as TURN_SCHEMA
+from app.assistant import SCHEMA_NAME as TURN_SCHEMA_NAME
 from app.config import Settings
-from app.gates.base import GateContext
-from app.gates.llm_gate import GATE_SCHEMA, GATE_SCHEMA_NAME, LLMGate, coerce_decision, parse_gate_json
 from app.live_eval import smoke
 from app.live_eval.preflight import fetch_models, model_info, recommend, run_preflight
 from app.llm import FACTORIES, SUPPORTED_PROVIDERS, LLMError, LLMGateway, ModelOutput, Target, parse_output, same_model
 from app.llm.base import OUTPUT_SCHEMA, GenerationConfig
 from app.llm.base import Target as Target_lb
-from app.llm.contracts import CLASSIFY_RISK, DECIDE_GATE, GENERATE_RESPONSE, MODEL_USES, complete_for
+from app.llm.contracts import CLASSIFY_RISK, CONVERSE, MODEL_USES, complete_for
 from app.llm.gemini_provider import GeminiProvider, _to_contents
 from app.llm.mock import MockProvider
 from app.llm.ollama import OllamaProvider
@@ -234,15 +234,18 @@ REPLY = {"reply": "Thanks! Which day works for a tour?", "audience": "prospect",
          "handoff_category": "leasing_follow_up", "handoff_reason": "Tour request", "language": "English"}
 
 
-GATE = {"intent": "maintenance", "urgency": "high", "requires_human": False, "handoff_reason": "",
-        "confidence": 0.9, "risk_flags": []}
+TURN = {"reply": "Sorry about the heat. Which room is coldest?",
+        "task": {"op": "start", "kind": "maintenance_request",
+                 "fields": {f: "" for f in ["area", "beds", "community", "days", "entry", "issue", "location",
+                                            "message", "move_in", "time", "topic", "unit"]} | {"issue": "Heat is out"}},
+        "other_needs": [], "show_my_requests": False, "handoff": {"team": "none", "reason": ""}, "language": "en"}
 
 
 RISK = {"risk_level": "emergency", "risk_categories": ["gas"], "immediate_danger": True, "needs_human": True,
         "confidence": 0.92, "framing": "report", "reason": "Possible gas leak described."}
 
 
-SAMPLES = {"generate_response": REPLY, "decide_gate": GATE, "classify_risk": RISK}
+SAMPLES = {"generate_response": REPLY, "converse": TURN, "classify_risk": RISK}
 
 
 HISTORY = [{"role": "user", "content": "Hi, I'm looking at 2-bed apartments."},
@@ -448,10 +451,8 @@ def test_each_schema_round_trips_through_the_callers_parser(h, use):
     raw = r.extra["content"]
     if use == "generate_response":
         assert r.output == ModelOutput.model_validate(REPLY)
-    elif use == "decide_gate":
-        ctx = GateContext(audience="resident", identity_verified=True, record_found=True)
-        d = coerce_decision(parse_gate_json(raw), ctx, "llm", "llm")
-        assert (d.intent, d.urgency, d.confidence) == ("maintenance", "high", 0.9)
+    elif use == "converse":
+        assert json.loads(raw)["task"]["fields"]["issue"] == "Heat is out"
     else:
         risk = risk_classifier.parse(raw)
         assert (risk.risk_level, risk.risk_categories, risk.immediate_danger) == ("emergency", ["gas"], True)
@@ -533,14 +534,13 @@ def test_served_model_is_reported_and_switches_are_rejected(h, tmp_path, served,
 
 
 @pytest.mark.usefixtures("no_sleep")
-def test_llm_gate_caller_uses_the_gate_schema_and_decides(h, tmp_path):
-    gw = LLMGateway(settings_for(h, tmp_path), {h.name: h.provider(h.ok(json.dumps(GATE)))})
-    ctx = GateContext(audience="resident", identity_verified=True, record_found=True, topics=["maintenance"])
-    d = LLMGate(gw, target(h), timeout_seconds=5).classify("My heat is out", ctx, None)  # type: ignore[arg-type]
-    assert h.schema()[1] is DECIDE_GATE.schema or h.schema()[1] == DECIDE_GATE.schema
-    assert DECIDE_GATE.schema is GATE_SCHEMA and DECIDE_GATE.schema_name == GATE_SCHEMA_NAME  # facade == caller
-    assert (d.intent, d.urgency, d.decision_source) == ("maintenance", "high", "llm")
-    assert d.gate_usage.input_tokens == 120 and d.gate_usage.output_tokens == 42
+def test_conversation_caller_uses_the_assistant_schema_and_parses_a_proposal(h, tmp_path):
+    from app import assistant
+    gw = LLMGateway(settings_for(h, tmp_path), {h.name: h.provider(h.ok(json.dumps(TURN)))})
+    turn = assistant.ask(gw, target(h), "system", [], "My heat is out")
+    assert h.schema()[1] == CONVERSE.schema and CONVERSE.schema_name == assistant.SCHEMA_NAME  # facade == caller
+    assert turn.proposal and (turn.proposal.op, turn.proposal.kind) == ("start", "maintenance_request")
+    assert turn.proposal.fields == {"issue": "Heat is out"}
 
 
 @pytest.mark.usefixtures("no_sleep")
@@ -568,15 +568,15 @@ def test_generate_response_through_run_turn(h, tmp_path):
     from app.db import Store
     from app.state import build_state
 
-    s = settings_for(h, tmp_path, decision_gate_provider="rules", safety_classifier="off")
+    s = settings_for(h, tmp_path, safety_classifier="off")
     gw = LLMGateway(s, {h.name: h.provider(h.ok(json.dumps(REPLY)))})
     deps = build_state(settings=s, gateway=gw, store=Store(s.db_path)).deps
     resp = run_turn(deps, "Do you allow pets at your Florida communities?", "aware", "P-BROWSE-FL", None)
-    if h.requests:  # the planner may answer from a template; when the model is called the contract must hold
-        assert h.schema()[1] == GENERATE_RESPONSE.schema and h.system()
-        assert resp.model == h.model and resp.requested_model == h.model
-    else:
-        assert resp.reply_source == "template"
+    # one conversational call per ordinary turn, with the assistant schema; a reply that isn't the assistant JSON
+    # falls back to a fixed message (never the raw model text)
+    assert h.schema()[1] == CONVERSE.schema and h.system()
+    assert resp.model == h.model and resp.requested_model == h.model
+    assert resp.reply_source in ("model", "template_after_model_error")
 
 
 @pytest.mark.usefixtures("no_sleep")
@@ -588,10 +588,12 @@ def test_mock_reports_requested_model_and_is_labelled(tmp_path):
 
 
 @pytest.mark.usefixtures("no_sleep")
-def test_mock_gate_content_parses_with_the_gate_parser():
-    r = MockProvider().complete("s", [{"role": "user", "content": "my sink leaks"}], Target("mock", "m"), CFG_pc,
-                                schema=GATE_SCHEMA, schema_name=GATE_SCHEMA_NAME)
-    assert parse_gate_json(r.extra["content"])["intent"] == "maintenance"
+def test_mock_answers_the_assistant_contract():
+    from app import assistant
+    r = MockProvider().complete("## Who you are talking to\nSigned-in synthetic resident\nACTIVE: none",
+                                [{"role": "user", "content": "my sink leaks"}], Target("mock", "m"), CFG_pc,
+                                schema=assistant.SCHEMA, schema_name=assistant.SCHEMA_NAME)
+    assert json.loads(r.extra["content"])["task"]["kind"] == "maintenance_request" and r.is_mock
 
 
 @pytest.mark.usefixtures("no_sleep")
@@ -619,10 +621,10 @@ def test_difference_cost_reported_by_openrouter_only(h):
 
 @pytest.mark.usefixtures("no_sleep")
 def test_difference_schema_name_only_on_openrouter(h):
-    h.provider(h.ok(json.dumps(GATE))).complete("s", HISTORY, target(h), CFG_pc, schema=GATE_SCHEMA,
-                                                schema_name=GATE_SCHEMA_NAME)
+    h.provider(h.ok(json.dumps(TURN))).complete("s", HISTORY, target(h), CFG_pc, schema=TURN_SCHEMA,
+                                                schema_name=TURN_SCHEMA_NAME)
     name, _ = h.schema()
-    assert name == (GATE_SCHEMA_NAME if h.wire == "openai" else None)
+    assert name == (TURN_SCHEMA_NAME if h.wire == "openai" else None)
 
 
 @pytest.mark.usefixtures("no_sleep")
@@ -745,13 +747,13 @@ def test_request_shape_system_history_schema_and_limits():
     assert r.estimated_cost_usd is None  # no invented prices
 
 
-def test_custom_schema_for_gate_classification():
+def test_custom_schema_is_passed_to_the_model():
     gate = {"intent": "maintenance", "urgency": "low", "requires_human": False, "handoff_reason": "",
             "confidence": 0.9, "risk_flags": []}
     p, models = provider(response(text=json.dumps(gate)))
-    r = p.complete("gate", [{"role": "user", "content": "x"}], TARGET, CFG_gp, schema=GATE_SCHEMA,
-                   schema_name=GATE_SCHEMA_NAME)
-    assert models.calls[0]["config"].response_json_schema is GATE_SCHEMA
+    r = p.complete("gate", [{"role": "user", "content": "x"}], TARGET, CFG_gp, schema=TURN_SCHEMA,
+                   schema_name=TURN_SCHEMA_NAME)
+    assert models.calls[0]["config"].response_json_schema is TURN_SCHEMA
     assert json.loads(r.extra["content"])["intent"] == "maintenance"
 
 
@@ -1107,6 +1109,29 @@ def test_settings_default_model_and_base_url():
     assert _settings(llm_model="gpt-6-luna").llm_model == "gpt-6-luna"
 
 
+def test_conversation_and_safety_classifier_both_reach_the_toolkit_correctly():
+    """Regression (local 401 report): both model uses of a turn go to the U-M gateway with the Toolkit key as a Bearer
+    token and max_completion_tokens (never max_tokens); the classifier uses the chat default target."""
+    from app import assistant
+    from app.risk.classifier import SemanticRiskClassifier
+    seen: list[httpx.Request] = []
+    s = _settings(llm_model="gpt-6.1-sol", safety_classifier="auto")
+    risk = {"risk_level": "none", "risk_categories": [], "immediate_danger": False, "needs_human": False,
+            "confidence": 0.9, "framing": "none", "reason": ""}
+    gw = LLMGateway(s, providers={"um_toolkit": UMToolkitProvider("test-key-not-real", s.base_url_for("um_toolkit"),
+                                                                    client=_client(seen, body={
+        "model": "gpt-6.1-sol-2026-09-29", "choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps(risk)}}], "usage": {"prompt_tokens": 10, "completion_tokens": 5}}))})
+    assistant.ask(gw, gw.default_target, "system", [], "my sink leaks")
+    assert SemanticRiskClassifier(s, gw).classify("my sink leaks").status == "ok"
+    assert len(seen) == 2
+    for req in seen:
+        body = json.loads(req.content)
+        assert str(req.url) == "https://api.toolkit.umgpt.umich.edu/v1/chat/completions"
+        assert req.headers["authorization"] == "Bearer test-key-not-real"
+        assert body["model"] == "gpt-6.1-sol" and body["max_completion_tokens"] > 0 and "max_tokens" not in body
+
+
 def test_request_shape_and_parsed_result():
     seen: list[httpx.Request] = []
     s = _settings()
@@ -1239,7 +1264,7 @@ RISK_ls = {"risk_level": "emergency", "risk_categories": ["gas"], "immediate_dan
         "confidence": 0.9, "framing": "report", "reason": "Possible gas leak."}
 
 
-BY_SCHEMA = {"mckinley_reply": REPLY_ls, "mckinley_gate": GATE, "mckinley_risk": RISK_ls}
+BY_SCHEMA = {"mckinley_reply": REPLY_ls, "mckinley_assistant": TURN, "mckinley_risk": RISK_ls}
 
 
 def listing_client() -> httpx.Client:
@@ -1348,14 +1373,13 @@ def test_full_smoke_passes_through_the_real_app_path(tmp_path, provider):
     code, doc, _ = run(tmp_path, provider, providers=prov, allow_paid=True)
     st = steps(doc)
     assert code == smoke.EXIT_PASS and doc["status"] == "pass", doc["steps"]
-    assert len(seen) == doc["budget"]["calls_made"] == 7 <= smoke.HARD_CAP
+    assert len(seen) == doc["budget"]["calls_made"] == 6 <= smoke.HARD_CAP  # no separate gate call any more
     model = OR_MODEL if provider == "openrouter" else GEM_MODEL
-    for name in ("leasing_inquiry", "resident_maintenance", "follow_up", "gate_decision", "risk_classifier"):
+    for name in ("leasing_inquiry", "resident_maintenance", "follow_up", "risk_classifier"):
         assert st[name]["status"] == "pass" and st[name]["served_model"] == model
         assert st[name]["input_tokens"] and st[name]["thinking_tokens"] and st[name]["latency_ms"] is not None
     assert st["follow_up"]["model_calls"] == 2 and len(st["follow_up"]["turns"]) == 2
     assert st["resident_maintenance"]["persona"] in ("R001", "U-NOMATCH")  # workbook is git-ignored
-    assert st["gate_decision"]["decision"]["intent"] == "maintenance"
     assert st["risk_classifier"]["classifier_status"] == "ok" and st["risk_classifier"]["agrees_with_expected"]
     assert st["bad_model_id"]["error_code"] in smoke.BAD_MODEL_CODES
     assert all(c["schema_name"] for s in doc["steps"] for c in s["calls"])

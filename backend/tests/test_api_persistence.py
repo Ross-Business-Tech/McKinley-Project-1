@@ -40,18 +40,6 @@ def test_personas(client):
     assert {"P-RELOCATE-AA", "P-BROWSE-FL", "U-NOMATCH", "R001"} <= {p["id"] for p in ps}
 
 
-def test_chat_aware_vs_baseline(client):
-    a = client.post("/api/chat", json={"message": AC_MSG, "persona_id": "R001", "mode": "aware",
-                                       "session_id": "s1"}).json()
-    b = client.post("/api/chat", json={"message": AC_MSG, "persona_id": "R001", "mode": "baseline",
-                                       "session_id": "s1"}).json()
-    assert a["is_mock"] and a["provider"] == "mock" and a["model"] == "mock-deterministic-v1"
-    assert a["recommended_handoff"] and a["handoff_is_recommendation_only"]
-    assert a["source_context_fields"] and b["source_context_fields"] == []
-    assert a["prompt_version"].startswith("mckinley-v0.2") and b["prompt_version"].startswith("baseline-v1")
-    assert {c["code"] for c in a["output_checks"]} >= {"terminology", "no_false_action_claim", "structured_output"}
-
-
 def test_aware_policy_gate_forces_handoff(client):
     r = client.post("/api/chat", json={"message": "I smell gas in my kitchen", "persona_id": "U-NOMATCH",
                                        "mode": "aware"}).json()
@@ -321,7 +309,7 @@ def test_explicit_sslmode_or_local_host_is_left_alone(url):
 # ---- Hosted (Render) readiness: unsafe settings refuse to start, health shows deployment facts but no secrets.
 
 GOOD = dict(_env_file=None, app_env="hosted", llm_provider="openrouter", cors_origins="https://mckinley-demo.vercel.app",  # noqa: E501
-            staff_api_token="k7Qp2vX9mR4tL8wZ3nB6yC1dF5hJ0sGa", gate_override_enabled=False,
+            staff_api_token="k7Qp2vX9mR4tL8wZ3nB6yC1dF5hJ0sGa",
             database_url="postgresql://user:secret-password@db.example.com:5432/postgres")
 
 
@@ -335,7 +323,6 @@ def test_good_hosted_settings_have_no_problems():
     ({"cors_origins": "http://mckinley-demo.example.com"}, "https"),
     ({"staff_api_token": None}, "STAFF_API_TOKEN"),
     ({"staff_api_token": "short"}, "STAFF_API_TOKEN"),
-    ({"gate_override_enabled": True}, "GATE_OVERRIDE_ENABLED"),
     ({"database_url": None}, "DATABASE_URL"),
 ])
 def test_unsafe_hosted_settings_are_reported_without_values(override, needle):

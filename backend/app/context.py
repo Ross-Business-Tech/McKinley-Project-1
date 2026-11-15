@@ -201,7 +201,7 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
     "hvac": ["ac", "a/c", "air condition", "cooling", "won't cool", "wont cool", "doesn't cool", "doesnt cool",
              "not cool down", "heat", "heater", "hvac", "thermostat",
              "furnace", "compressor", "air handler",
-             # Spanish (minimal; R012 prefers Spanish). Other languages: docs/architecture/decision-gate.md.
+             # Spanish (minimal; R012 prefers Spanish). Other languages are not supported yet.
              "aire acondicionado", "calefacción", "calefaccion", "no enfría", "no enfria"],
     "plumbing": ["leak", "drip", "faucet", "sink", "toilet", "pipe", "drain", "clog", "water heater",
                  "shower", "tub", "water", "toliet", "clogd", "overflow", "fuga", "gotea", "grifo", "llave",
@@ -412,17 +412,3 @@ def _shares_word(a: str, b: str) -> bool:
     def words(x: str) -> set[str]:
         return {w[:5] for w in re.findall(r"[a-záéíóúñ]{4,}", x.lower()) if w not in _STOP}
     return bool(words(a) & words(b))
-
-
-def render_context_block(ctx: SafeContext) -> str:
-    """Text block placed inside <safe_context> in the aware-mode user turn."""
-    lines = [
-        f"audience: {ctx.audience}",
-        f"record_found: {'yes' if ctx.record_found else 'no'}",
-        f"message_topics: {', '.join(ctx.topics) or 'none detected'}",
-    ]
-    for f in ctx.fields:
-        lines.append(f"{f.name}: {f.value}")
-    for n in ctx.notes:
-        lines.append(f"note: {n}")
-    return "\n".join(lines)

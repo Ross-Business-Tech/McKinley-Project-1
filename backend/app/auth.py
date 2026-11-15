@@ -185,6 +185,6 @@ def with_session_state(store: Any, principal: Principal) -> Principal:
     return principal
 
 
-# Offline / staff tooling (eval runs behind require_staff, gate evals, journey evals, the demo exporter, tests): a
+# Offline / staff tooling (the demo exporter, tests): a
 # staff principal, because those runs read synthetic personas on purpose. Never used for a customer request.
 TOOLING = staff_principal(source="offline_tooling")

@@ -25,15 +25,6 @@ class Settings(BaseSettings):
     # Unset = on for APP_ENV=local, off for hosted. DEMO_PERSONAS_ENABLED=true is refused on a hosted backend
     # (hosted_problems). See app/auth.py and docs/security/AUTHORIZATION_BOUNDARIES.md.
     demo_personas_enabled: bool | None = None
-    # Structured understanding layer (app/understanding.py): rules (default, deterministic) | model | auto. The model
-    # pass may only add acts/entities; it never mutates state, grants access or confirms a save.
-    understanding_provider: Literal["rules", "model", "auto"] = "rules"
-    understanding_timeout_seconds: float = 5.0
-    # Sprint 8 quick-fix tips before a repair request (app/quickfix.py, content in app/content/quickfix_drafts.py).
-    # off = never offer tips | approved_only (default) = only entries whose status is "approved" by McKinley (none yet,
-    # so nothing is shown) | demo_drafts = also the team DRAFT tips, labelled as drafts, on APP_ENV=local only. A hosted
-    # backend refuses demo_drafts at startup (hosted_problems) and is forced to approved_only (fail closed).
-    quickfix_content_mode: Literal["off", "approved_only", "demo_drafts"] = "approved_only"
     # Sprint 10: approved_only = only McKinley-approved knowledge-base answers; demo_samples = also the labelled SAMPLE
     # answers in knowledge_base.json (made-up example content for a supervised local demo; refused when hosted)
     knowledge_content_mode: Literal["approved_only", "demo_samples"] = "approved_only"
@@ -100,26 +91,14 @@ class Settings(BaseSettings):
         "gemini:gemini-3.6-flash"
     )
 
-    # ---- decision gate (see docs/architecture/decision-gate.md) ----
-    # rules = deterministic only (default, free) | llm = structured-output LLM gate | jev = EXPERIMENTAL Jev.
-    # Rules always run as the safety floor; external gates fall back to rules on any failure.
-    decision_gate_provider: Literal["rules", "llm", "jev"] = "rules"
-    decision_gate_llm_target: str | None = None  # provider:model; defaults to the chat default target
-    # Allow the browser to pick a gate per turn / run LLM gate comparisons. Local demo convenience; set False on
-    # any shared deployment (each llm/jev call costs money and sends the message to that provider).
-    gate_override_enabled: bool = False  # GATE_OVERRIDE_ENABLED=true for local experiments only
-    decision_gate_timeout_seconds: float = Field(default=8, gt=0, le=60)
-    typesafe_api_key: SecretStr | None = None
-    # Staff/eval/diagnostics routes: loopback-only unless this token is set (then the X-Staff-Token header).
+    # Staff routes: loopback-only unless this token is set (then the X-Staff-Token header).
     staff_api_token: SecretStr | None = None
-    typesafe_base_url: str = "https://api.typesafe.ai"
     # ---- semantic safety classifier (layer 2, see docs/safety/safety-evaluation.md) ----
     # auto = run when the target provider is ready (has a key) and is not the mock; off = never. One extra model call
     # per non-baseline turn. It can only add guidance; it never removes a rules alert or care line (Sprint 7, R7 DRAFT).
     safety_classifier: Literal["auto", "off"] = "auto"
     safety_classifier_target: str | None = None  # provider:model; defaults to the chat default target
     safety_classifier_timeout_seconds: float = Field(default=6, gt=0, le=60)
-    jev_model: str = "jev-latest"
 
     # ---- local paths ----
     data_path: Path = Path("data/um_ai_sprint_sample_residents.xlsx")
@@ -129,7 +108,6 @@ class Settings(BaseSettings):
     # Where synthetic resident data comes from: auto = the workbook file if present, else the database tables
     # loaded by `python -m app.seed_synthetic` (a hosted backend has no git-ignored XLSX); file; database.
     resident_data_source: Literal["auto", "file", "database"] = "auto"
-    prompt_path: Path = REPO_DIR / "prompts" / "mckinley_system_prompt.md"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     @model_validator(mode="after")
@@ -172,14 +150,9 @@ class Settings(BaseSettings):
         token = self.staff_api_token.get_secret_value().strip() if self.staff_api_token else ""
         if len(token) < 24 or len(set(token)) < 8:
             out.append("STAFF_API_TOKEN must be set (24+ random characters) so staff routes are not open")
-        if self.gate_override_enabled:
-            out.append("GATE_OVERRIDE_ENABLED must be false")
         if self.knowledge_content_mode == "demo_samples":
             out.append("KNOWLEDGE_CONTENT_MODE must not be demo_samples: sample answers are made up and are for a "
                        "supervised local demo only")
-        if self.quickfix_content_mode == "demo_drafts":
-            out.append("QUICKFIX_CONTENT_MODE must not be demo_drafts: draft tips are not "
-                       "McKinley-approved and are for a local demo only")
         if self.demo_personas_enabled:
             out.append("DEMO_PERSONAS_ENABLED must be false: demo personas are not authentication, so a shared "
                        "deployment must not let anyone act as a resident account")
