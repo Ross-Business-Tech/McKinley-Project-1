@@ -4,8 +4,7 @@
   "speed": 1.1,
   "cover": {
     "title": "McKinley Help",
-    "subtitle": "Report a repair in a short chat, any time of day.",
-    "footer": "Demo · Sample data"
+    "subtitle": "Report a repair in a short chat, any time of day."
   },
   "scenes": [
     {

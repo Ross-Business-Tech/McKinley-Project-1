@@ -62,7 +62,7 @@ const coverHtml = (c) => `<!doctype html><html><head><meta charset="utf-8"><styl
   <h1>${esc(c.title || "")}</h1>
   <div class="sub">${esc(c.subtitle || "")}</div>
   ${(c.chapters || []).length ? `<ol>${c.chapters.map((t, i) => `<li><b>${i + 1}</b>${esc(t)}</li>`).join("")}</ol>` : ""}
-  <div class="foot">${esc(c.footer || "")}</div>
+  ${c.footer ? `<div class="foot">${esc(c.footer)}</div>` : ""}
 </div></body></html>`;
 
 (async () => {
