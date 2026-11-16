@@ -121,6 +121,10 @@ class Settings(BaseSettings):
         if self.llm_provider == "gemini" and not self.llm_model.startswith("gemini"):
             raise ValueError(f"LLM_PROVIDER=gemini but LLM_MODEL={self.llm_model!r} is not a Gemini model; leave "
                              "LLM_MODEL empty to use GEMINI_MODEL")
+        # A leftover OpenRouter id (e.g. the old Render nemotron value) must not reach the Toolkit as its model.
+        if self.llm_provider == "um_toolkit" and ("/" in self.llm_model or self.llm_model.endswith(":free")):
+            raise ValueError(f"LLM_PROVIDER=um_toolkit but LLM_MODEL={self.llm_model!r} is an OpenRouter model id; set "
+                             "LLM_MODEL to the Toolkit model (e.g. gpt-6.1-sol) or leave it empty for UM_TOOLKIT_MODEL")
         return self
 
     def resolve(self, p: Path) -> Path:
@@ -159,6 +163,11 @@ class Settings(BaseSettings):
         if "llm_provider" not in self.model_fields_set:
             out.append("LLM_PROVIDER must be set explicitly on a hosted backend (the built-in default can change "
                        "between releases; a shared deployment must never switch provider silently)")
+        key_env = {"um_toolkit": "UM_TOOLKIT_API_KEY", "openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY",
+                   "anthropic": "ANTHROPIC_API_KEY"}.get(self.llm_provider)
+        if key_env and not self.api_key_for(self.llm_provider):
+            out.append(f"{key_env} must be set for the {self.llm_provider} provider (or LLM_API_KEY): without a key "
+                       "every model turn fails; there is no fallback model")
         if (self.llm_provider == "um_toolkit" or "um_toolkit:" in self.eval_targets) and \
                 not self.um_toolkit_hosted_approved:
             out.append("LLM_PROVIDER=um_toolkit is not allowed on a hosted backend until the university confirms the "

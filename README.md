@@ -44,6 +44,15 @@ The synthetic resident workbook `backend/data/um_ai_sprint_sample_residents.xlsx
 owner for it. Without it, the workbook residents are missing (the built-in fixture personas, prospects and visitors
 still work).
 
+**Which model, where**
+| | Provider and model | Status |
+| --- | --- | --- |
+| Render demo (intended, `render.yaml`) | U-M GPT Toolkit `gpt-6.1-sol` | Pinned in the Blueprint; a hosted start needs university approval for public use (not yet given) |
+| Render demo (live, observed 2026-11-16 via `/api/health` and one chat turn) | U-M GPT Toolkit `gpt-6.1-sol` (served `gpt-6.1-sol-2026-09-29`) | Running with `APP_ENV=local`, so the approval check and other hosted safeguards are off ([DEPLOYMENT.md](docs/DEPLOYMENT.md#2-environments)); earlier the same day it served OpenRouter `nvidia/nemotron-3.5-super-vl:free` |
+| Safety classifier | The same provider and model as chat when `SAFETY_CLASSIFIER=auto` | On Render: not visible from outside (unverified) |
+| Full evaluation ([TESTING.md](docs/TESTING.md)) | `gpt-6.1-sol`, classifier on the same model | Local server, commit `537410a`; PR #18 re-runs on `cc6f002` and `b397aa3` |
+| Other supported providers | OpenRouter, Gemini, Anthropic, Ollama, mock | Not part of the full evaluation; chosen explicitly, never a silent fallback |
+
 **Model (optional; the app runs on the mock without one):** set `LLM_PROVIDER` and the matching key in
 `backend/.env`, for example `LLM_PROVIDER=um_toolkit` + `UM_TOOLKIT_API_KEY` (model `gpt-6.1-sol`), or
 `LLM_PROVIDER=openrouter` + `OPENROUTER_API_KEY`. Check without spending tokens:

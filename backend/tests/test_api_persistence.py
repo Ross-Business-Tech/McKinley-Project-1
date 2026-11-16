@@ -309,7 +309,7 @@ def test_explicit_sslmode_or_local_host_is_left_alone(url):
 # ---- Hosted (Render) readiness: unsafe settings refuse to start, health shows deployment facts but no secrets.
 
 GOOD = dict(_env_file=None, app_env="hosted", llm_provider="openrouter", cors_origins="https://mckinley-demo.vercel.app",  # noqa: E501
-            staff_api_token="k7Qp2vX9mR4tL8wZ3nB6yC1dF5hJ0sGa",
+            staff_api_token="k7Qp2vX9mR4tL8wZ3nB6yC1dF5hJ0sGa", openrouter_api_key="test-key-not-real",
             database_url="postgresql://user:secret-password@db.example.com:5432/postgres")
 
 
