@@ -67,15 +67,17 @@ code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `guardrails.py`, `
 ## 5. Hosted vs local, and the current Render state
 `APP_ENV=hosted` refuses to start with unsafe settings (`Settings.hosted_problems`): wildcard/localhost/non-https or
 path-bearing `CORS_ORIGINS`; a weak or missing `STAFF_API_TOKEN`; `KNOWLEDGE_CONTENT_MODE=demo_samples`;
-`DEMO_PERSONAS_ENABLED=true`; an implicit `LLM_PROVIDER`; the U-M Toolkit without `UM_TOOLKIT_HOSTED_APPROVED=true`;
+`DEMO_PERSONAS_ENABLED=true`; an implicit `LLM_PROVIDER`; a missing key for the chosen provider; the U-M Toolkit without `UM_TOOLKIT_HOSTED_APPROVED=true`;
 non-https provider base URLs; a missing `DATABASE_URL`. Hosted also hides `/docs`, `/openapi.json` and the model list,
 and turns on rate limits for `/api/chat` and `/api/actions/*` (30 requests/min per visitor and 15/min per conversation,
 counted per route; staff are exempt).
 
-**Observed 2026-11-15:** the Render backend runs with `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true` for the short-term
+**Observed 2026-11-15 and 2026-11-16:** the Render backend runs with `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true` for the short-term
 synthetic demo (sample-resident switcher). That turns **off** every hosted check above: `/docs` and `/openapi.json` are
-public, the model list is public, rate limits default to off, and GPT-6.1 Sol serves the public site without the
-university approval the hosted check requires. Staff routes stay protected (Render's proxy makes requests non-local,
+public, the model list is public, rate limits default to off, and the approval check for the U-M Toolkit does not
+run: on 2026-11-16 the site was served by GPT-6.1 Sol (after OpenRouter's free Nemotron earlier that day) without the
+university approval the hosted check requires. `render.yaml` describes the hosted configuration instead; it refuses
+to start until that approval is recorded (`UM_TOOLKIT_HOSTED_APPROVED=true`). Staff routes stay protected (Render's proxy makes requests non-local,
 so the staff token is required). Restoring the hosted safeguards with the switcher needs a code change (allow
 `DEMO_PERSONAS_ENABLED=true` on hosted while keeping the other checks) — not built.
 

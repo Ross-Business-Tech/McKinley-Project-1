@@ -56,19 +56,28 @@ machine without a token.
 it (follow [CLAUDE.md](../CLAUDE.md) for sign-in and links). Built without `NEXT_PUBLIC_API_BASE_URL`, the site
 never calls a backend: it replays recordings. It is a showcase, not evidence that live chat works.
 
-**Render, current state (observed 2026-11-15).** For the short-term synthetic demo the backend runs with
+**Render, current state (observed 2026-11-16 from `/api/health` and one synthetic chat turn; the Dashboard itself
+was not read).** The backend serves U-M GPT Toolkit `gpt-6.1-sol` (snapshot `gpt-6.1-sol-2026-09-29`); earlier the
+same day it served OpenRouter `nvidia/nemotron-3.5-super-vl:free`. The safety classifier's target is not visible from
+outside. For the short-term synthetic demo the backend runs with
 `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true`, so the sample-resident switcher is on. Because `APP_ENV` is not
 `hosted`, the hosted startup checks do not run, and: `/docs` and `/openapi.json` are public, `/api/models` is public,
-the U-M GPT Toolkit approval check is skipped, and rate limits default to off. Staff routes still require
+the U-M GPT Toolkit approval check is skipped (so the Toolkit serves the public site without the recorded university
+approval the hosted check requires), and rate limits default to off. Staff routes still require
 `STAFF_API_TOKEN`, because Render's proxy makes every request non-local. Switching to `APP_ENV=hosted` currently
 refuses to start while `DEMO_PERSONAS_ENABLED=true` ("DEMO_PERSONAS_ENABLED must be false").
 
 **Render, intended hosted configuration** (what `render.yaml` describes): `APP_ENV=hosted`, demo personas off,
-an explicit `LLM_PROVIDER`, `DATABASE_URL` set, exact `https` `CORS_ORIGINS`, a generated `STAFF_API_TOKEN`. With
+`LLM_PROVIDER=um_toolkit` with `LLM_MODEL` and `UM_TOOLKIT_MODEL` both `gpt-6.1-sol`, the semantic safety classifier
+on the same model (`SAFETY_CLASSIFIER=auto`, no separate target), `EVAL_TARGETS` limited to that model,
+`RESIDENT_DATA_SOURCE=database`, `DATABASE_URL` set, exact `https` `CORS_ORIGINS`, a generated `STAFF_API_TOKEN`.
+The Blueprint has no OpenRouter, Gemini or mock setting and there is no fallback model. **Blocking prerequisite:**
+`UM_TOOLKIT_HOSTED_APPROVED` is a `sync: false` value that must stay unset until the university confirms in writing
+that the Toolkit key may serve a public website; until then this configuration **refuses to start** (by design). With
 `APP_ENV=hosted` the backend **refuses to start** (`Settings.hosted_problems`, messages never print values) if:
 CORS origins are missing, a wildcard, a path, localhost or `http`; `STAFF_API_TOKEN` is shorter than 24 characters
 or not random-looking; `KNOWLEDGE_CONTENT_MODE=demo_samples`; `DEMO_PERSONAS_ENABLED=true`; `LLM_PROVIDER` is not set
-explicitly; `um_toolkit` is used (as provider or in `EVAL_TARGETS`) without `UM_TOOLKIT_HOSTED_APPROVED=true`;
+explicitly; the provider's API key is missing; `um_toolkit` is used (as provider or in `EVAL_TARGETS`) without `UM_TOOLKIT_HOSTED_APPROVED=true`;
 `GEMINI_BASE_URL` or `UM_TOOLKIT_BASE_URL` is not `https`; or `DATABASE_URL` is empty. A refused start leaves the
 previous deploy serving. Hosted also hides `/docs`, `/redoc` and `/openapi.json`, returns an empty `/api/models` to
 non-staff, turns on rate limits (30 requests a minute per visitor, 15 per conversation) and turns demo personas off.
@@ -78,7 +87,9 @@ conversation locks are in memory). Health check: `GET /api/health`.
 
 ## 3. Backend settings
 
-Set in Render's **Environment** page (the live service takes its values from there, not from `render.yaml`).
+Set in Render's **Environment** page (the live service takes its values from there, not from `render.yaml`;
+`render.yaml` is applied when a Blueprint is created or synced). Known differences on 2026-11-16: the live service
+runs `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true`; the Blueprint says `hosted` and leaves personas off.
 Locally in `backend/.env`. "Hosted" = required or checked when `APP_ENV=hosted`.
 
 | Setting | Purpose | Hosted | Secret |
@@ -105,8 +116,9 @@ Locally in `backend/.env`. "Hosted" = required or checked when `APP_ENV=hosted`.
 | `RESIDENT_DATA_SOURCE` | `auto`, `file` or `database` (Render: `database`) | not checked (set `database`: no XLSX on Render) | no |
 | `CORS_ORIGINS` | Exact website address(es), comma-separated, no trailing path | exact `https` origins | no |
 
-`GATE_OVERRIDE_ENABLED` is still listed in `render.yaml` but no longer has any effect. `RENDER_GIT_COMMIT` is set by
-Render and shown as `commit` in `/api/health`.
+`RENDER_GIT_COMMIT` is set by Render and shown as `commit` in
+`/api/health`. Any startup: `LLM_PROVIDER=um_toolkit` with an OpenRouter-style `LLM_MODEL` (containing `/` or ending
+`:free`) is refused, so a leftover value cannot reach the Toolkit as its model.
 
 ## 4. Website build settings
 
@@ -156,11 +168,13 @@ Render Environment page; never paste it into chat or git. This is a demo boundar
   `MODEL_SWITCHED`. With `LLM_PROVIDER=gemini`, `LLM_MODEL` must be empty or a Gemini model.
 - Check keys and model availability without spending tokens: `cd backend && uv run python -m app.live_eval.preflight`
   (writes `evals/live/preflight.json`, git-ignored).
-- The provider configured for the MVP is `um_toolkit` `gpt-6.1-sol`. On a hosted backend it is refused until
+- The provider configured for the MVP and the Render Blueprint is `um_toolkit` `gpt-6.1-sol`, with the safety
+  classifier on the same model; it is also the model of the full evaluation. On a hosted backend it is refused until
   `UM_TOOLKIT_HOSTED_APPROVED=true`, which needs university confirmation that the key may serve a public site; that
-  confirmation has not been given.
-- OpenRouter's free model was verified end to end with the MVP locally (2026-11-15). Free models may log prompts:
-  synthetic data only.
+  confirmation has not been given. A working `APP_ENV=local` deployment is **not** that confirmation.
+- OpenRouter, Gemini, Anthropic and Ollama remain supported for local work (OpenRouter's free model was verified end
+  to end locally on 2026-11-15; free models may log prompts: synthetic data only). Using one on Render is a
+  deliberate change of `LLM_PROVIDER`, `LLM_MODEL`, the key and `EVAL_TARGETS` together, followed by a live check.
 - Customers never see provider error text: they get "busy" or "not available" messages; staff-token callers see
   the underlying code.
 
@@ -170,8 +184,10 @@ Before merging into `development`: tests green, the Render Environment has every
 the provider key, `STAFF_API_TOKEN`), `LLM_PROVIDER` is set explicitly, and `CORS_ORIGINS` lists the website's
 exact address. After the auto-deploy:
 
-1. **Health:** `GET /api/health` shows `status: ok`, the expected `provider`/`model`, `provider_ready: true`,
-   `is_mock: false`, the expected `app_env`, and `commit` equal to the merged commit.
+1. **Health:** `GET /api/health` shows `status: ok`, `provider: um_toolkit`, `model: gpt-6.1-sol`,
+   `provider_ready: true`, `is_mock: false`, the expected `app_env`, and `commit` equal to the merged commit. One
+   synthetic chat turn reports `model` `gpt-6.1-sol-…` (the served snapshot). The classifier target is visible only to
+   staff (`/api/models` and the staff diagnostics), or on the Render Environment page.
 2. **CORS:** a request from the website origin gets `access-control-allow-origin` back; another origin gets none.
 3. **Customer chat** on a phone: ask a question, a follow-up that needs the earlier turn, a tour request with a
    correction, then Send; refresh and the conversation continues.
@@ -183,8 +199,11 @@ exact address. After the auto-deploy:
 
 - **Free plan sleeps** when idle; the first visit takes about a minute ("Waking the assistant up…"; the website
   waits up to 90 seconds).
-- **`APP_ENV=local` on Render** (observed 2026-11-15) exposes `/docs`, `/openapi.json` and `/api/models`, skips the
-  startup checks and leaves rate limits off. Move to `APP_ENV=hosted` once the demo switcher is no longer needed.
+- **`APP_ENV=local` on Render** (observed 2026-11-15 and 2026-11-16) exposes `/docs`, `/openapi.json` and
+  `/api/models`, skips the startup checks (including the Toolkit approval check) and leaves rate limits off. Move to
+  `APP_ENV=hosted` once the demo switcher is no longer needed.
+- **University approval for the Toolkit on a public site** is not confirmed. The Blueprint's hosted configuration
+  will not start without `UM_TOOLKIT_HOSTED_APPROVED=true`; set it only with that confirmation.
 - **Demo personas on a hosted backend need a code change:** `APP_ENV=hosted` always turns them off and refuses
   `DEMO_PERSONAS_ENABLED=true`. The planned change allows the synthetic switcher on hosted while keeping every other
   hosted check; until then, do not weaken `hosted_problems` ad hoc.

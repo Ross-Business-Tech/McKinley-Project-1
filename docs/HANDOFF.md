@@ -4,19 +4,22 @@ For the next developer or Claude Code session. Read [README.md](../README.md), t
 [ARCHITECTURE.md](ARCHITECTURE.md). The root [CLAUDE.md](../CLAUDE.md) (Ross IT) wins on publishing, branches and the
 staff-owned paths (`scripts/`, `.github/`, `.claude/`, `admin/`, `CLAUDE.md`).
 
-## Where things stand (2026-11-15)
+## Where things stand (2026-11-16)
 - **Verdict:** a working **prototype on synthetic data; not production ready.**
 - **Code:** the simplified MVP is on `development` (PR #14, the "MVP reset": identity → safety → one model call →
-  task controller → guardrails). Staff token sign-in on the hosted staff page: PRs #15 and #16. `main` shows the
-  Ross IT "Coming soon" page until staff reveal it. PR #13 (guest repairs on the removed planner) is superseded by #14
-  and still open.
+  task controller → guardrails). Staff token sign-in on the hosted staff page: PRs #15 and #16. Docs consolidated: PR #17. Safety and workflow
+  remediation (crisis guidance survives provider failures, emergency continuity, task and consent fixes): PR #18,
+  merged 2026-11-15 as `ea734af`. `main` shows the Ross IT "Coming soon" page until staff reveal it. PR #13 (guest
+  repairs on the removed planner) was closed, superseded by #14.
 - **Live demo:** Render website + backend from `development`, Supabase (development project, synthetic), running
-  with `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true` for the sample-resident switcher (observed 2026-11-15; this
-  turns off the hosted safeguards, see [SECURITY.md](SECURITY.md#5-hosted-vs-local-and-the-current-render-state)).
-  Details: [DEPLOYMENT.md](DEPLOYMENT.md).
-- **Model:** U-M GPT Toolkit `gpt-6.1-sol` (with the semantic safety classifier on the same model). University
-  approval for a public site is **not** confirmed. OpenRouter's free model was verified end to end locally as an
-  alternative.
+  with `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true` for the sample-resident switcher (observed 2026-11-15 and
+  2026-11-16; this turns off the hosted safeguards, see
+  [SECURITY.md](SECURITY.md#5-hosted-vs-local-and-the-current-render-state)). Details: [DEPLOYMENT.md](DEPLOYMENT.md).
+- **Model:** U-M GPT Toolkit `gpt-6.1-sol` with the semantic safety classifier on the same model: the model of the
+  full evaluation and of `render.yaml`. The live Render backend served it on 2026-11-16 (OpenRouter's free Nemotron
+  earlier that day); its classifier setting is not visible from outside. University approval for a public site is
+  **not** confirmed, so the Blueprint's hosted configuration will not start yet. OpenRouter's free model was verified
+  end to end locally as an alternative.
 - **Latest evaluation:** a fresh regression evaluation of this MVP on 2026-11-15 — results and missed cases in
   [TESTING.md](TESTING.md).
 
@@ -46,7 +49,8 @@ staff-owned paths (`scripts/`, `.github/`, `.claude/`, `admin/`, `CLAUDE.md`).
 | P1 | Spanish wording is a draft (NEEDS McKINLEY REVIEW) |
 
 ## Recommended next steps
-1. Decide the model for the public demo: Toolkit approval for public use, or another provider after a live check.
+1. Get (or rule out) university approval for the Toolkit on a public site. With it: set
+   `UM_TOOLKIT_HOSTED_APPROVED=true` in Render. Without it: choose another provider deliberately and run a live check.
 2. A small change so a hosted backend can allow the synthetic persona switcher while keeping every other hosted
    safeguard; then return Render to `APP_ENV=hosted`.
 3. Have McKinley risk/legal review every missed emergency in [TESTING.md](TESTING.md) and the safety scripts.

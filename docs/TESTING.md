@@ -21,6 +21,7 @@ npm run smoke                                                         # from the
 | `backend/tests/test_authorization.py` | Principals, scoped store, session binding, hosted vs local, staff guard, CORS for the staff token, generated principal × session × endpoint attacks |
 | `backend/tests/test_api_persistence.py` | API contract, SQLite/Postgres persistence (Postgres tests need `TEST_DATABASE_URL` on a throwaway database), migrations, health |
 | `backend/tests/test_llm_providers.py` | Every provider adapter over fake transports, structured output, `MODEL_SWITCHED`, error mapping without leaking keys |
+| `backend/tests/test_render_blueprint.py` | `render.yaml`: both services intact, the hosted Toolkit `gpt-6.1-sol` configuration pinned (chat and classifier), no other provider or fallback, secrets and the approval flag never committed, refused start without approval or key, leftover OpenRouter model ids refused |
 | `backend/tests/test_message_normalization.py` | Startup import and Unicode line-break normalization |
 | `backend/tests/test_remediation.py` | The safety and workflow remediation: provider failures (content filter, 5xx, timeouts, auth) never remove crisis guidance and never add it without a sign of danger, method-seeking self-harm, emergency continuity, task corrections, second repairs, explicit consent; 3 strict expected failures for known gaps |
 | `frontend/src/**/*.test.ts(x)` | Customer chat, cards, staff console (incl. the staff-token flow), API client |
@@ -44,7 +45,8 @@ not to read the app code, prompts, rules or tests. Nothing was tuned on them; th
 `gpt-6.1-sol` (served `gpt-6.1-sol-2026-09-29`), semantic safety classifier on (`SAFETY_CLASSIFIER=auto`, same
 model). **Budget:** 1,500 calls cap (server-enforced); **731 used** (452 classifier, 279 conversation).
 **Setup:** local uvicorn with the Render demo configuration observed that day (`APP_ENV=local`,
-`DEMO_PERSONAS_ENABLED=true`), fresh SQLite, every request sent as a remote (proxied) customer request.
+`DEMO_PERSONAS_ENABLED=true`), fresh SQLite, every request sent as a remote (proxied) customer request. The Render
+service itself was not evaluated; on 2026-11-16 it served the same model (`gpt-6.1-sol-2026-09-29`).
 **Source of truth:** `evals/final/McKinley_MVP_Final_Evaluation_2026-11-15.xlsx` (local, git-ignored; every prompt,
 every response, every transcript turn, grading reasons and adjudications). Harness, holdout and reproduction steps:
 `evals/final/` (`RUN.md`).

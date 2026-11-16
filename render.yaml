@@ -21,33 +21,43 @@ services:
         value: 3.12.11
       - key: UV_PYTHON_PREFERENCE  # use Render's Python; never download one into a folder that may not persist
         value: only-system
-      - key: APP_ENV               # hosted: startup refuses wildcard/localhost CORS, a missing staff token, etc.
+      # hosted: startup refuses unsafe settings (CORS, staff token, implicit provider, Toolkit without approval,
+      # missing provider key, ...), hides /docs, turns rate limits on and demo personas OFF. The live demo's
+      # Dashboard may differ (docs/DEPLOYMENT.md section 2); do not change this to local in the Blueprint.
+      - key: APP_ENV
         value: hosted
-      - key: LLM_PROVIDER          # OpenRouter now (Gemini later: set gemini + GEMINI_API_KEY, keep the rest)
-        value: openrouter
-      - key: LLM_MODEL             # the one model this project evaluated (free tier: rate-limited, may log prompts)
-        value: nvidia/nemotron-3.5-super-vl:free
-      - key: OPENROUTER_API_KEY    # backend only, never in the website; Render asks for it on first apply
+      # DEMO_PERSONAS_ENABLED is deliberately not set: hosted refuses "true" (not authentication). Running the
+      # synthetic resident switcher on a hosted backend needs a code change (docs/DEPLOYMENT.md section 9).
+      # The one chat model, U-M GPT Toolkit gpt-6.1-sol (the model of the full evaluation). Both values are pinned so
+      # a missing or leftover setting cannot switch the demo to another provider or model; no fallback model exists.
+      - key: LLM_PROVIDER
+        value: um_toolkit
+      - key: LLM_MODEL
+        value: gpt-6.1-sol
+      - key: UM_TOOLKIT_MODEL
+        value: gpt-6.1-sol
+      - key: UM_TOOLKIT_BASE_URL
+        value: https://api.toolkit.umgpt.umich.edu/v1
+      - key: UM_TOOLKIT_API_KEY    # backend only, never in the website; Render asks for it on first apply
         sync: false
-      - key: OPENROUTER_REASONING_EFFORT  # low latency (Sprint 5.1: slowest reply 48 s -> 3.4 s)
-        value: none
-      # Sprint 10 (independent review P1): a model-call cap per running instance (the free plan restarts after idle,
-      # which resets it); when spent, replies fall back to the approved templates. Server time stays under the
-      # browser's 90 s: 25 s x (1 + 1 retry), plus the short safety and gate calls.
+      # BLOCKING PREREQUISITE: set to true ONLY after the university confirms in writing that this Toolkit key may serve
+      # a public website. Until then a hosted backend refuses to start (by design). Never committed as a value.
+      - key: UM_TOOLKIT_HOSTED_APPROVED
+        sync: false
+      # Staff model list: only the demo model (no OpenRouter/Gemini targets without keys on this service).
+      - key: EVAL_TARGETS
+        value: um_toolkit:gpt-6.1-sol
+      # A model-call cap per running instance (the free plan restarts after idle, which resets it); when spent,
+      # replies fall back to the approved templates. Server time stays under the browser's 90 s: 25 s x (1 + 1
+      # retry), plus the short safety call. Toolkit latency on Render has not been measured yet.
       - key: LLM_CALL_BUDGET
         value: "1500"
       - key: LLM_TIMEOUT_SECONDS
         value: "25"
       - key: LLM_MAX_RETRIES
         value: "1"
-      - key: GEMINI_MODEL          # kept ready for the Gemini migration (unused while LLM_PROVIDER=openrouter)
-        value: gemini-3.6-flash
-      - key: GEMINI_API_KEY        # optional until the Gemini migration
-        sync: false
-      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer also runs on the provider (one extra call/turn)
-        value: auto
-      - key: GATE_OVERRIDE_ENABLED # staff-only override stays off on any shared deployment
-        value: "false"
+      - key: SAFETY_CLASSIFIER     # auto = the semantic safety layer runs on the same provider and model (one extra
+        value: auto                #   call per turn); SAFETY_CLASSIFIER_TARGET unset = the chat model above
       - key: RESIDENT_DATA_SOURCE  # residents come from the synthetic seed in the database (no XLSX on Render)
         value: database
       - key: DATABASE_URL          # Supabase Session pooler URI; set in Render, never commit it
