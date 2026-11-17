@@ -66,3 +66,42 @@ anything after tonight".
 4. **Product and UI support** for `maintenance_urgency`: today a removed 911 line simply disappears.
 
 A lower false-alarm rate alone is **not** acceptance.
+
+## `legal_v2.py`: a structured sensitive-topic boundary (EXPERIMENT, not accepted)
+
+**Why.** PR #20's legal boundary is a list of about 150 reply patterns in English and Spanish. It works for the forms
+it knows and grows with every new paraphrase.
+
+**Design** (the module docstring has the diagram):
+- **Two independent recognisers** decide whether a question is sensitive: a topic label the model would return next
+  to its reply (a fixed list, validated; simulated here), and the existing message-side fair-housing pattern.
+- **If either one says sensitive:** the backend shows the knowledge-base referral (`fair_housing`, still
+  `pending_approval`) and routes the note to leasing or management. The model's own prose is dropped, whatever it
+  says.
+- **Otherwise:** the model's reply passes a small backstop: a named law, "legally", "illegal" or a right claimed, or
+  production's existing resident-profile patterns.
+- **Provider failure:** no model text, routing by the message gate. A missing or invalid label counts as "not
+  recognised".
+
+**Offline result** (2026-11-17; 18 cases: 10 replies stating a determination, 2 good referrals, 6 ordinary FAQ or
+instruction answers; EN + ES, including indirect wording):
+
+| | Determinations shown | Ordinary answers replaced |
+|---|---|---|
+| Production today (PR #20 patterns) | **1** (D7: "Con esa carta deben eximirle de la cuota.", a verb form the list lacks) | 0 |
+| Experiment, correct topic label | 0 | 0 |
+| Experiment, wrong or missing label | **2** (D6, D7: indirect questions with no topic word and replies with no named law) | 0 |
+
+**What this means.**
+- With a correct label, the experiment covers every case **without** paraphrase patterns, and the model never has
+  authority.
+- With a wrong label, indirect wording gets through. So the obligation and permission patterns can't be deleted on
+  this evidence.
+
+**Before this could replace production:**
+1. Add the topic field to the conversation schema (a public API and prompt change).
+2. Measure label accuracy live on a fresh EN / ES set, with your approval.
+3. Keep production's patterns as a second backstop until label accuracy on indirect wording is shown.
+
+The D7 gap in production is real today. It is pinned by a test and not fixed on this branch: production enforcement
+is unchanged.
