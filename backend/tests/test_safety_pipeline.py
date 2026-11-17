@@ -12,7 +12,6 @@ from app.config import Settings
 from app.db import Store
 from app.emergency import notice, scan  # noqa: E402
 from app.llm import LLMError, LLMGateway
-from app.llm.base import LLMResult, ModelOutput
 from app.main import app
 from app.risk.classifier import SemanticRiskClassifier, parse
 from app.risk.detect import detect
@@ -23,6 +22,7 @@ from app.risk.policy import decide
 from app.risk.responses import select
 from app.risk.ui_state import safety_ui
 from app.state import build_state, set_state
+from tests.fakes import ScriptedProvider
 
 # ---- Sprint 3: layered safety pipeline (rules -> semantic classifier -> policy -> approved text -> escalation).
 
@@ -152,19 +152,8 @@ def test_classifier_output_contract_is_strict():
         parse("I think it's fine")
 
 
-class FakeProvider:
-    name = "openrouter"
-
-    def __init__(self, content=None, error=None, model="test/risk-model"):
-        self.content, self.error, self.model, self.calls = content, error, model, []
-
-    def complete(self, system, messages, target, cfg, schema=None, schema_name="mckinley_reply"):
-        self.calls.append(schema_name)
-        if self.error:
-            raise self.error
-        return LLMResult(output=ModelOutput(reply=""), provider="openrouter", requested_model=target.model,
-                         model=self.model, stop_reason="stop", input_tokens=10, output_tokens=10, latency_ms=5,
-                         parse_mode="json", extra={"content": self.content})
+def FakeProvider(content=None, error=None, model=None):  # noqa: N802 - the name the tests below use
+    return ScriptedProvider(content, error=error, model=model)
 
 
 def _settings(tmp_path, **kw):

@@ -21,9 +21,9 @@ from app.assistant import TASK_FIELDS
 from app.config import Settings
 from app.db import Store
 from app.llm import LLMGateway
-from app.llm.base import LLMResult, ModelOutput
 from app.main import app
 from app.state import build_state, set_state
+from tests.fakes import ScriptedProvider
 from tests.helpers import chat, fields, press_send
 
 PROSPECT, RESIDENT = "P-RELOCATE-AA", "R003"
@@ -39,22 +39,9 @@ def turn(reply="Happy to help.", op="none", kind="none", team="none", reason="",
         "include_history": "none", "handoff": {"team": team, "reason": reason}, "language": "en"})
 
 
-class Sequenced:
+def Sequenced(answers: list[str], risk: dict | None = None):  # noqa: N802 - the name the tests below use
     """Classifier calls get `risk`; conversation calls get the next scripted answer in order."""
-    name = "openrouter"
-
-    def __init__(self, answers: list[str], risk: dict | None = None):
-        self.answers, self.risk, self.chat_calls = list(answers), risk or NONE_RISK, 0
-
-    def complete(self, system, messages, target, cfg, schema=None, schema_name="mckinley_reply"):
-        if schema_name == "mckinley_risk":
-            content = json.dumps(self.risk)
-        else:
-            self.chat_calls += 1
-            content = self.answers.pop(0) if self.answers else turn()
-        return LLMResult(output=ModelOutput(reply=""), provider="openrouter", requested_model=target.model,
-                         model=target.model, stop_reason="stop", input_tokens=5, output_tokens=5, latency_ms=3,
-                         parse_mode="json", extra={"content": content})
+    return ScriptedProvider(chat=list(answers), risk=json.dumps(risk or NONE_RISK), chat_default=turn())
 
 
 @pytest.fixture

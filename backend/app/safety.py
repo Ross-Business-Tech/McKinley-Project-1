@@ -6,7 +6,7 @@ These rules are intentionally simple and auditable. They supplement, not replace
 import re
 import unicodedata
 
-from app.models import OutputCheck, PolicySignal
+from app.models import OutputCheck
 
 # ---- redaction ---------------------------------------------------------------
 
@@ -82,35 +82,6 @@ def looks_like_injection(text: str) -> bool:
 # ("ignore your previous instructions"), a request for the system prompt or keys, a role change ("you are now",
 # "pretend to be the admin"), a role marker ("SYSTEM:"), a forced reply. Everyday words (password, secret, reveal,
 # act as, override, disregard on their own) are ordinary customer language.
-_MESSAGE_INJECTION = re.compile(
-    r"\b(?:ignore|disregard|forget|override|bypass|skip)\s+(?:all\s+|any\s+|of\s+)?(?:your|the|my|these|those|previous|"
-    r"prior|earlier|above|system|safety|existing|original)?\s*(?:previous\s+|prior\s+|earlier\s+|above\s+|system\s+|"
-    r"safety\s+)?(?:instructions?|rules|prompts?|guidelines|directions|policies|programming|guardrails|constraints)\b|"
-    r"\bsystem\s+prompt\b|\b(?:your|the)\s+(?:hidden|internal|initial|original)\s+(?:instructions?|prompt|rules)\b|"
-    r"\b(?:reveal|show|print|repeat|output|tell me|give me|dump)\s+(?:me\s+)?(?:your|the)\s+(?:instructions?|prompt|"
-    r"configuration|config|api[ _-]?keys?|secrets?|safe_context)\b|\bapi[ _-]?keys?\b|"
-    r"\bignore (?:all of |everything )?(?:the above|everything above|the previous|what you were told)\b|"
-    r"\b(?:repeat|print|output) (?:everything|all|the text|the words) above\b|\bforget everything you were told\b|"
-    r"\bignora (?:todas )?(?:las )?instrucciones\b|\bolvida (?:todas )?(?:las )?instrucciones\b|"
-    r"\byou are now\b|\bfrom now on,?\s+you\b|\bnew instructions?\s*:|\bdeveloper mode\b|\bjailbreak\b|"
-    r"(?-i:\bDAN mode\b)|"
-    r"\b(?:act|behave)\s+as\s+(?:if\s+you\s+(?:are|were)\s+)?(?:an?\s+|the\s+)?(?:admin|administrator|developer|system|"
-    r"unrestricted|unfiltered|staff member|manager with|root)\b|"
-    r"\bpretend\s+(?:to\s+be|you\s+are)\s+(?:an?\s+|the\s+)?(?:property\s+)?(?:admin|administrator|developer|system|staff|manager|"
-    r"leasing agent|unrestricted)\b|"
-    r"</?\s*(?:system|safe_context|instructions?)\s*>|(?:^|\n)\s*>?\s*(?:system|assistant|developer)\s*:|"
-    r"\b(?:assistant|system|ai|bot|developer)\s+(?:instructions?|override|command)\b|"
-    r"\breply (?:only )?with ['\"]|\brespond (?:only )?with ['\"]",
-    re.IGNORECASE,
-)
-
-
-def looks_like_message_injection(text: str) -> bool:
-    """Is this CUSTOMER message trying to instruct the assistant? (The message is data either way: this only decides
-    whether to say "I can't follow instructions written inside a message".)"""
-    return bool(_MESSAGE_INJECTION.search(text))
-
-
 def sanitize_field(text: str, max_len: int = 120) -> str | None:
     """Return a redacted, length-capped value, or None when the value should be dropped."""
     if not text:
@@ -122,101 +93,10 @@ def sanitize_field(text: str, max_len: int = 120) -> str | None:
     return clean[:max_len] + ("…" if len(clean) > max_len else "")
 
 
-# ---- pre-model policy gates (run on the user message) ------------------------------
-
-_GATES: list[tuple[str, str, re.Pattern[str], str]] = [
-    (
-        "human_requested",
-        "human_requested",
-        re.compile(
-            r"(talk|speak|connect)( me)? (to|with) (a |an |the )?(person|human|real person|someone|manager|"
-            r"agent|staff|representative)|\b(human|real person) please\b|can someone (call|explain|help)|"
-            r"hablar con (una persona|alguien|un humano|el gerente|un agente)|nói chuyện với",
-            re.IGNORECASE,
-        ),
-        "Resident or prospect asked for a person.",
-    ),
-    (
-        "sensitive_data_request",
-        "sensitive_data_request",
-        re.compile(
-            r"\b(ssn|social security|credit card|card number|cvv|bank account|routing number|"
-            r"date of birth|\bdob\b)\b",
-            re.IGNORECASE,
-        ),
-        "Message references highly sensitive identifiers; never collect or repeat them in chat.",
-    ),
-    (
-        "fair_housing_or_legal",
-        "fair_housing_or_legal",
-        re.compile(
-            r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
-            r"(?:take|taking|go|going|see|seeing) (?:you |this |it |us )?(?:to |in )court|small claims|"
-            r"legal action|press charges|"
-            r"retaliat|"
-            r"accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|autis\w*|adhd|"
-            r"special needs|medical condition|mobility|blind(?!s)|deaf|hearing impair|"
-            r"(emotional )?support (animal|dog|cat)|assistance animal|\besa\b|discapacidad|adaptaci[oó]n|"
-            r"discrimina",
-            re.IGNORECASE,
-        ),
-        "Fair-housing, accommodation or legal topic needs authorized staff.",
-    ),
-    (
-        "financial_or_lease",
-        "financial_or_lease",
-        re.compile(
-            r"payment plan|can'?t (afford|pay)|late fee|dispute|refund|security deposit|break (my|the) lease|"
-            r"renewal (offer|price|cost|rate)|rent increase|rent (go|going|went) up|worried about the cost|kick (me|"
-            r"us) out|"
-            r"rent credit|\bcredit\b|compensat|reimburs|\bbalance\b|what do i owe|cu[aá]nto debo|"
-            r"no (puedo|me alcanza)\W+(?:\w+\W+){0,3}(pagar|la renta)|sube la renta|aumento de (la )?renta|"
-            r"plan de pago|desalojo|me van a (echar|sacar)",
-            re.IGNORECASE,
-        ),
-        "Financial or lease-term question cannot be decided by the assistant.",
-    ),
-    (
-        "voucher_eligibility",
-        "policy_or_eligibility",
-        re.compile(r"voucher|section 8|housing choice|subsid", re.IGNORECASE),
-        "Voucher eligibility details must be verified by staff (all properties accept vouchers).",
-    ),
-    (
-        "repeat_language",
-        "repeat_issue",
-        re.compile(r"\bagain\b|multiple times|keeps (happening|breaking)|still (broken|not)|third time|"
-                   r"second time", re.IGNORECASE),
-        "Message describes a recurring problem.",
-    ),
-]
-
-
 def normalize_for_matching(text: str) -> str:
     """NFKC-fold (fullwidth -> ASCII) and drop zero-width/format characters so patterns can't be dodged."""
     folded = unicodedata.normalize("NFKC", text)
     return "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
-
-
-def gate_matches(code: str, message: str) -> bool:
-    """One gate pattern on its own (acceptance MN9: the fair-housing / legal gate is used by the MVP's boundary in
-    app.guardrails; the old gate framework that consumed every signal is not rebuilt)."""
-    pat = next(p for c, _, p, _ in _GATES if c == code)
-    return bool(pat.search(normalize_for_matching(message or "")))
-
-
-def pre_model_gates(message: str) -> list[PolicySignal]:
-    from app.emergency import LABEL, emergency_kind
-
-    message = normalize_for_matching(message)
-    kind = emergency_kind(message)
-    emergency = [PolicySignal(code="emergency_hazard", category="safety_emergency",
-                              detail=f"{LABEL[kind]}: emergency channels must be prioritized.")] if kind else []
-    return emergency + [
-        PolicySignal(code=code, category=cat, detail=detail)  # type: ignore[arg-type]
-        for code, cat, pat, detail in _GATES
-        if pat.search(message)
-    ]
 
 
 # ---- post-model output checks -------------------------------------------------------

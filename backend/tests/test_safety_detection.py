@@ -10,7 +10,6 @@ import pytest
 from app.config import Settings
 from app.emergency import NO_LINE, OD_INTENT, emergency_kind, notice, possible_risk, scan
 from app.llm import LLMError, LLMGateway
-from app.llm.base import LLMResult, ModelOutput
 from app.personas import states_not_account_holder
 from app.risk.category import refine
 from app.risk.classifier import MAX_TIMEOUT_SECONDS, SemanticRiskClassifier, parse
@@ -22,7 +21,8 @@ from app.risk.pipeline import assess
 from app.risk.policy import decide
 from app.risk.responses import select
 from app.risk.ui_state import safety_ui
-from app.safety import contains_pii, output_checks, pre_model_gates, redact
+from app.safety import contains_pii, output_checks, redact
+from tests.fakes import ScriptedProvider
 from tests.helpers import chat  # noqa: F401
 from tests.safety_devset import LOOKALIKES, POSITIVES, evaluate
 
@@ -62,19 +62,6 @@ def test_invented_price_and_time():
 def test_risky_diy_and_pii_in_reply():
     c = codes(output_checks("Take apart the faucet and replace the washer. Email me at x@example.com"))
     assert not c["no_risky_diy"] and not c["no_pii"]
-
-
-def test_gates():
-    def cats(m):
-        return {s.category for s in pre_model_gates(m)}
-    assert "safety_emergency" in cats("I smell gas in the kitchen")
-    assert "safety_emergency" in cats("water is pouring from the ceiling, it's flooding")
-    assert "human_requested" in cats("Can I talk to a real person?")
-    assert "sensitive_data_request" in cats("Do you need my SSN or credit card?")
-    assert "fair_housing_or_legal" in cats("Do you accept an emotional support animal?")
-    assert "policy_or_eligibility" in cats("Do you take Section 8 vouchers?")
-    assert "financial_or_lease" in cats("I'm worried about the cost of the renewal offer")
-    assert cats("My kitchen faucet has a little drip. Should I fix it myself?") == set()
 
 
 def test_false_action_claims_seen_in_real_runs():
@@ -885,19 +872,8 @@ def test_self_contradictory_output_is_rejected_not_guessed():
     assert parse(_sem_json(risk_level="urgent", immediate_danger=True)).risk_level == "urgent"
 
 
-class FakeProvider:
-    name = "openrouter"
-
-    def __init__(self, content=None, error=None):
-        self.content, self.error, self.cfgs = content, error, []
-
-    def complete(self, system, messages, target, cfg, schema=None, schema_name="mckinley_reply"):
-        self.cfgs.append(cfg)
-        if self.error:
-            raise self.error
-        return LLMResult(output=ModelOutput(reply=""), provider="openrouter", requested_model=target.model,
-                         model=target.model, stop_reason="stop", input_tokens=1, output_tokens=1, latency_ms=3,
-                         parse_mode="json", extra={"content": self.content})
+def FakeProvider(content=None, error=None):  # noqa: N802 - the name the tests below use
+    return ScriptedProvider(content, error=error)
 
 
 def _clf(tmp_path, provider, **kw):
@@ -2420,26 +2396,6 @@ def test_a_bare_yes_after_another_topic_does_not_escalate():
     # last round (lead, P1-B): a FILLER ("ok", "one sec") keeps the question open, so [Q, "ok", "yes"] now escalates
     # (see test_a_filler_keeps_the_question_open); a different topic in between still closes it
     assert run_turns([Q, "my AC is broken", "yes"])[-1].response != "full_alert"
-
-
-def test_the_planner_can_see_an_open_question():
-    from app.risk.incident import pending_open, step
-
-    class Store:
-        def __init__(self):
-            self.g = {}
-
-        def last_gate(self, s, mode, p):
-            return self.g.get((s, mode, p))
-
-        def log_gate(self, s, mode, p, data):
-            self.g[(s, mode, p)] = dict(data)
-
-    st = Store()
-    step(st, "s", "p", Q, assess(Q, [], None), 1)
-    assert pending_open(st, "s", "p", 2)
-    step(st, "s", "p", "my AC is broken", assess("my AC is broken", [Q], None), 2)
-    assert not pending_open(st, "s", "p", 3)
 
 
 # folded (same assertion): test_stroke_and_infant_fever_alert

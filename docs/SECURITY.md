@@ -117,3 +117,10 @@ missed emergencies remain (see [TESTING.md](TESTING.md)).
 6. On a demo-enabled deployment, anyone who picks a persona sees that persona's saved demo requests from every
    session, including text other visitors typed (contact patterns are masked; names typed in free text are not).
 7. The Render demo currently runs without the hosted safeguards (section 5).
+8. **Message prompt injection** has no dedicated detector. The defence is structural: messages are data, the model only
+   proposes, the backend decides identity, access, saving and the shown text, and no secret or other resident's data
+   is in any prompt. (The pre-MVP message gates, removed 2026-11-17 because nothing called them, each had an MVP
+   equivalent: "talk to a person" → the model's note card; SSN / card numbers → redacted from every message before
+   anything sees it, `chat_engine.clean_message`, and blocked in replies, `no_pii`; lease or billing questions → the
+   reply rules plus a note; vouchers → the approved knowledge-base answer; repeat issues → the context's repeat flag.
+   Only the fair-housing pattern is kept, for routing: `guardrails.legal_sensitive`.)

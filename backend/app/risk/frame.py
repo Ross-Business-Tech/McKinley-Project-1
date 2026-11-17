@@ -98,7 +98,6 @@ _SPECIFIC = re.compile(rf"\b(?:my|our|his|her|their|the|mi|mis|su|nuestr[oa])\s+
 _GENERIC_RE = re.compile(rf"\b(?:{_GENERIC})\b")
 
 # ---- STATE (critical / weak / body) --------------------------------------------------------------------------------
-_NEG = r"(?:not|isnt|arent|wasnt|no|stopped|hasnt|havent|cant|cannot|wont|doesnt|didnt|never)"
 CRITICAL = re.compile(
     r"\bburn(?:ed|t) (?:his|her|their|my) (?:\w+ ){0,2}?(?:badly|bad|really bad|so bad)\b|\bse quemo (?:\w+ ){0,3}?"
     r"(?:feo|mucho|grave|horrible)\b|"

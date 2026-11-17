@@ -484,12 +484,6 @@ def confirms_pending(message: str, risk: RiskAssessment, next_turn: bool = True,
     return next_turn and bool(_AFFIRM_BARE.search(text)) and not _OTHER_TOPIC.search(text)
 
 
-def pending_open(store: Any, session_id: str, persona_key: str, turn: int) -> bool:
-    """For the planner: a safety question ("is anything like that happening right now?") is waiting for an answer."""
-    pend = _pending(store, session_id, persona_key)
-    return bool(pend and pend.get("open") and turn - int(pend.get("last", pend.get("turn", 0))) <= PENDING_TURNS)
-
-
 def step(store: Any, session_id: str, persona_key: str, message: str, risk: RiskAssessment,
          turn: int) -> RiskAssessment:
     """Apply the incident state machine to this turn's assessment and persist the new state. Never lowers the
