@@ -60,7 +60,7 @@ flowchart LR
 
 ## One chat turn: five parts, always in this order
 
-`backend/app/chat_engine.py` (`run_turn`):
+`backend/app/chat_engine.py` (`run_turn`, a short sequence of steps over one per-turn `_Turn` record: `_prepare` → `_assess_safety` → `_emergency_turn` | `_backend_reply` | `_model_turn` → `_validate` → `_persist` → `_response`):
 
 | Part | Code | What it does |
 | --- | --- | --- |
