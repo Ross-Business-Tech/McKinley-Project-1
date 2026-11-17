@@ -1,126 +1,106 @@
 # Security, privacy and data handling
 
-Who can read what, where identity comes from, and what stops one caller seeing another's data. This describes the
-code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `guardrails.py`, `api/`). Tests:
-`backend/tests/test_authorization.py`, `backend/tests/test_acceptance.py`. Results of the latest attack set:
-[TESTING.md](TESTING.md).
+Who can read what, where identity comes from, and which guards are implemented, as the code stands. Main code:
+`backend/app/auth.py`, `personas.py`, `db.py`, `guardrails.py`, `api/`. Tests: `backend/tests/test_authorization.py`,
+`test_acceptance.py`.
 
-> **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list.
-> Anyone who can reach a demo-enabled backend can act as any synthetic persona. That is acceptable **only** because
+> **There is no authentication in this prototype.** A "demo persona" is a synthetic account picked from a list:
+> anyone who can reach a demo-enabled backend can act as any synthetic persona. That is acceptable **only** because
 > every persona is synthetic. Never load real resident data.
 
-## 1. Identity (principal) — derived on the server only
+## 1. Identity (implemented)
 
-| Kind | Produced when | Reads resident data |
+| Principal | Produced when | Resident data |
 | --- | --- | --- |
-| `anonymous` | The default: no persona id or an unknown id (a persona id where demo personas are off is refused with 403, below) | No |
-| `demo_persona` | Only when the deployment allows demo personas **and** the id is a known synthetic persona | Its own record only |
-| `staff` | Only behind `require_staff`: `X-Staff-Token` = `STAFF_API_TOKEN`, or loopback on a local backend without a token | All synthetic data (staff routes) |
-| `authenticated_resident` | **Never** produced: reserved for a future real sign-in | n/a |
+| `anonymous` | No persona id, or an unknown one | None |
+| `demo_persona` | The deployment allows demo personas **and** the id is a known synthetic persona | Its own record only |
+| `staff` | `X-Staff-Token` = `STAFF_API_TOKEN`, or a loopback request on a local backend without a token | All synthetic data, on staff routes only |
+| `authenticated_resident` | **Never**: reserved for a future real sign-in | — |
 
-- The browser's `persona_id` is only the demo selector. Conversation text ("I'm Jordan from R003", "I'm the
-  manager"), the model's output and audience wording **never** change the principal.
-- Demo personas: on by default for `APP_ENV=local`, off for `APP_ENV=hosted` (and a hosted backend refuses to start
-  with `DEMO_PERSONAS_ENABLED=true`). A request that is not straight from the machine (any proxy header, non-local
-  Host) gets personas only if `DEMO_PERSONAS_ENABLED=true` was set explicitly. A persona id where personas are off
-  gets **403 `DEMO_PERSONAS_DISABLED`**.
-- **Privacy refusals** (`guardrails.denied`): requests for another resident's data, a claimed other identity or
-  resident id, and a claimed staff/admin role are refused **before** the model is called, with fixed text; nothing is
-  listed and an open card stays unchanged. The same refusal twice in a row gets a shorter line. This only chooses the
-  reply: access itself is enforced below.
-- **Legal and fair-housing boundary** (`guardrails.legal_conclusion` / `legal_referral`): a model reply that states
-  what the law requires, allows or prohibits, says what a landlord must, may or cannot do about an accommodation,
-  animal, fee or request, says the person qualifies or won't be charged, or describes a community by who lives there
-  (English and Spanish), is replaced by a referral to the leasing team (prospects) or the management team
-  (residents). The replacement is **mandatory**: it does not depend on `enforce_validation`. The referral wording is
-  the knowledge base topic `fair_housing`: **provisional** (`pending_approval`, not approved by McKinley or legal)
-  until McKinley approves an answer. A note on such a question, new or already open, is routed to the same team (a
-  visitor's repair note stays with maintenance). Ordinary factual answers (pets, amenities) are untouched. This is
-  pattern matching: it reduces, but cannot guarantee against, legal determinations worded in ways it doesn't know.
+- **Where identity comes from:** the browser's `persona_id` is only the demo selector. Conversation text ("I'm R003",
+  "I'm the manager"), model output and audience wording never change the principal.
+- **When demo personas are on:**
+  - on by default for `APP_ENV=local`, always off for `APP_ENV=hosted`;
+  - a request that isn't straight from the machine gets them only with `DEMO_PERSONAS_ENABLED=true`;
+  - otherwise a persona id gets 403 `DEMO_PERSONAS_DISABLED`.
 
-## 2. Data access: deny by default
+## 2. Data access: deny by default (implemented)
 
 | Access point | Rule |
 | --- | --- |
-| Resident context (`personas.build_context`) | Returned only if `may_access_persona(principal, persona_id)`; otherwise the anonymous context (no record, no fields) |
-| Chat state (`db.ScopedStore`) | The chat turn (also for a staff caller), task controller and confirm/cancel get a store bound to **this session + this principal**; other sessions and personas read as empty and writes raise `PermissionError`. Only the staff list routes read the raw store. |
-| Own requests and history (`tasks.my_requests`, `tasks.history_lines`) | Only the authorized persona's own record and prototype records; visitors get only this chat's own notes |
-| Saved records | Belong to the persona that wrote them (visible in that persona's later sessions); a guest's records stay in their session; another persona's reference reveals nothing |
-| Session binding (`session_bindings`) | A session is bound to (principal kind, persona) on first use. A chat on a session bound to someone else starts a **new** conversation; confirm/cancel get **403 `SESSION_PERSONA_MISMATCH`** |
-| Sessions on remote / hosted requests | Only a server-issued id (32 hex) the server already bound is continued; anything else starts a new conversation under a fresh id the website adopts |
-| "Not the account holder" | Persisted per (session, persona) (`session_account_revocations`): later turns get no account fields, and fields filled from the record are stripped from drafts |
-| Model input | Allowlisted fields only (see [ARCHITECTURE.md](ARCHITECTURE.md#context-and-data)); never last name, email, phone, rent, balances, household, entry permission, raw staff notes or transcripts |
+| Resident context (`personas.build_context`) | Only if `auth.may_access_persona`; otherwise the anonymous context |
+| Chat state (`db.ScopedStore`) | Bound to this session and principal. Other sessions and personas read as empty; writes raise `PermissionError`. Only staff list routes read the raw store. |
+| Own requests and history | The authorized persona's own record and prototype records only; a visitor gets only this chat's own notes |
+| Saved records | Belong to the persona that wrote them; another persona's reference reveals nothing |
+| Session binding | A session is bound to (principal kind, persona) on first use. Someone else's session starts a new conversation; confirm and cancel get 403 `SESSION_PERSONA_MISMATCH`. Remote requests continue only a server-issued id. |
+| "Not the account holder" | Persisted per session and persona; later turns get no account fields |
+| Model input | Allowlisted fields only ([ARCHITECTURE.md](ARCHITECTURE.md#identity-and-scoped-data)); free text is redacted, screened and length-capped |
 
-## 3. Endpoints × callers
+## 3. Guards on what is said and saved (implemented)
+
+| Guard | What it does | Limits |
+| --- | --- | --- |
+| Privacy refusal (`guardrails.denied`) | Requests for another resident's data, a claimed other identity or a claimed staff role are refused **before** the model, with fixed text | Only chooses the reply; access itself is enforced by section 2 |
+| Consent (`guardrails.explicit_send`, `tasks.confirm`) | Only the Send button or a whole-message "send it" saves; a question ("send it?") never does. One record per card; Send never saves a card that isn't on screen. | — |
+| Reply checks (`guardrails.unsupported_claims`, `safety.output_checks`) | Claims that something was saved or sent, identity changes, unknown references, invented prices or times, contact details and secrets are replaced by backend text | Pattern based |
+| Legal / fair-housing boundary (`guardrails.legal_conclusion_kind`, `legal_referral`) | A reply that states a legal determination (what the law or a landlord must, may or can't do, eligibility, a claimed right) or describes a community by who lives there is **always** replaced by a referral. A note on such a question goes to leasing (prospects) or management (residents). | **Pattern matching in EN and ES: it reduces, but cannot guarantee against, unsupported legal claims** (known miss: a Spanish paraphrase, see [TESTING.md](TESTING.md)). The referral wording is **provisional** (`pending_approval`), not approved by McKinley or legal. |
+| Safety | Emergencies are assessed before the model, with fixed wording ([ARCHITECTURE.md](ARCHITECTURE.md#safety-assessment-safety-pipeline)) | Team-draft wording, **not McKinley-approved**; nobody is paged or dispatched |
+
+Nothing reaches McKinley staff or responders. A note for the office notifies nobody. An emergency saves an urgent
+prototype note and tells the person to make the call themselves. A tour request is never a booking.
+
+## 4. Endpoints × callers
 
 | Endpoint | Customer (anonymous or persona) | Staff |
 | --- | --- | --- |
-| `GET /api/personas` | Synthetic list when personas are allowed for the request, else `[]` | same |
-| `GET /api/health` | Public subset: status, provider/model, `app_env`, `demo_personas_enabled`, version/commit | + counts, database, resident source, prompt version |
-| `GET /api/models` | Public on a local backend; `[]` on a hosted backend | targets (no keys or URLs) |
-| `POST /api/chat` | `customer_view`: reply, safety/care notices, card, own status items and records, session id; diagnostics removed (allowlist). `target`, `gate_provider` and non-`aware` modes are staff-only (403) | full diagnostics (risk layers, rule ids, checks) |
-| `POST /api/actions/confirm`, `cancel` | Own draft in a session bound to this caller | same |
-| `GET /api/prototype/records`, `/api/staff/conversations[/{hash}]` | **403** | allowed (redacted turns, session hashes) |
-| `/demo/snapshot.json` (here.now replay) | Recorded synthetic journeys only | — |
+| `GET /api/personas` | The synthetic list when personas are allowed, else `[]` | same |
+| `GET /api/health` | Public subset (status, provider/model, `app_env`, version/commit) | plus counts, database, prompt version |
+| `GET /api/models` | Public on a local backend; `[]` on a hosted one | targets (no keys or URLs) |
+| `POST /api/chat` | Customer view; diagnostics removed. `target`, `gate_provider` and non-`aware` modes are staff-only (403). | Full diagnostics |
+| `POST /api/actions/confirm`, `cancel` | Own draft, in a session bound to this caller | same |
+| `GET /api/prototype/records`, `/api/staff/conversations[/{hash}]` | **403** | Allowed (redacted turns, session hashes) |
 
-## 4. Staff access
-- Staff routes answer only loopback requests on a local backend without a token, or requests with
-  `X-Staff-Token: <STAFF_API_TOKEN>`. A hosted backend never treats loopback as staff and refuses to start without a
-  strong token (24+ random characters).
-- The hosted staff page (`/staff/`) asks for the token when a staff route answers 403. The token is kept in the page's
-  memory only (gone on reload), sent only on staff requests, never in URLs, browser storage, logs or the build. CORS
-  allows the `X-Staff-Token` header for the configured website origins only.
-- Anyone with the token can read every saved demo request and conversation: share it with staff only. There are no
-  staff accounts, roles or audit trail.
+## 5. Staff access
+- **Who gets staff routes:** a request with `X-Staff-Token: <STAFF_API_TOKEN>`, or a loopback request on a local
+  backend without a token. A hosted backend never treats loopback as staff and requires a strong token.
+- **How the staff page holds the token:** it asks for the token when a staff route answers 403 and keeps it in page
+  memory only, never in storage, URLs, logs or the build.
+- **One shared token:** anyone with it reads every saved demo request and conversation. There are no staff accounts,
+  roles or audit trail.
 
-## 5. Hosted vs local, and the current Render state
-`APP_ENV=hosted` refuses to start with unsafe settings (`Settings.hosted_problems`): wildcard/localhost/non-https or
-path-bearing `CORS_ORIGINS`; a weak or missing `STAFF_API_TOKEN`; `KNOWLEDGE_CONTENT_MODE=demo_samples`;
-`DEMO_PERSONAS_ENABLED=true`; an implicit `LLM_PROVIDER`; a missing key for the chosen provider; the U-M Toolkit without `UM_TOOLKIT_HOSTED_APPROVED=true`;
-non-https provider base URLs; a missing `DATABASE_URL`. Hosted also hides `/docs`, `/openapi.json` and the model list,
-and turns on rate limits for `/api/chat` and `/api/actions/*` (30 requests/min per visitor and 15/min per conversation,
-counted per route; staff are exempt).
+## 6. Hosted protections
+- **Startup refusal:** `APP_ENV=hosted` refuses to start with unsafe settings (`Settings.hosted_problems`, listed in
+  [DEPLOYMENT.md](DEPLOYMENT.md#3-backend-settings)).
+- **What hosted hides and limits:** `/docs`, `/openapi.json` and the model list are hidden, and rate limits are on.
+- **The Render demo currently runs `APP_ENV=local`**, so none of this is active there
+  ([DEPLOYMENT.md](DEPLOYMENT.md#2-environments)). The U-M Toolkit approval check doesn't run either.
 
-**Observed 2026-11-15 and 2026-11-16:** the Render backend runs with `APP_ENV=local` and `DEMO_PERSONAS_ENABLED=true` for the short-term
-synthetic demo (sample-resident switcher). That turns **off** every hosted check above: `/docs` and `/openapi.json` are
-public, the model list is public, rate limits default to off, and the approval check for the U-M Toolkit does not
-run: on 2026-11-16 the site was served by GPT-6.1 Sol (after OpenRouter's free Nemotron earlier that day) without the
-university approval the hosted check requires. `render.yaml` describes the hosted configuration instead; it refuses
-to start until that approval is recorded (`UM_TOOLKIT_HOSTED_APPROVED=true`). Staff routes stay protected (Render's proxy makes requests non-local,
-so the staff token is required). Restoring the hosted safeguards with the switcher needs a code change (allow
-`DEMO_PERSONAS_ENABLED=true` on hosted while keeping the other checks) — not built.
-
-## 6. Secrets and data rules
-- Provider keys, `DATABASE_URL` and `STAFF_API_TOKEN` live only in `backend/.env` (git-ignored) or the host's
-  secret settings. Never print, log, commit or copy them; check presence as booleans only. Nothing secret goes in the
-  website: every `NEXT_PUBLIC_*` value is public.
-- Synthetic data only, everywhere (app, repository, Site Data, Supabase). The resident workbook is git-ignored; the
-  seeder refuses a workbook whose README sheet does not say every value is synthetic. Free hosted models may log
-  prompts. The repository is public: commits and pull requests are readable by anyone.
-- Logs hold status, latency, token counts and replacement reasons — never message content or keys. Request bodies
-  are capped (`MAX_REQUEST_BYTES`, 64 KB) and validated.
-- User input, workbook notes and retrieved history are untrusted: free text is screened for injected instructions,
-  redacted (contact patterns) and length-capped before the model sees it; model output is checked before display.
-
-## 7. Safety governance
-Emergency detection is deterministic first; the semantic classifier may only add caution. Safety wording is fixed
-team-draft text (911 / 988 / gas company / Poison Help / maintenance line), **not approved by McKinley**. The prototype
-pages and calls nobody: it saves an urgent prototype note and tells the person to make the call. Release-blocking:
-missed emergencies remain (see [TESTING.md](TESTING.md)).
+## 7. Secrets and data rules
+- **Where secrets live:** provider keys, `DATABASE_URL` and `STAFF_API_TOKEN` only in `backend/.env` (git-ignored)
+  or the host's secret settings. Check them as booleans; never print or commit them. Every `NEXT_PUBLIC_*` value is
+  public.
+- **Synthetic data only, everywhere:** the seeder refuses a workbook that isn't marked synthetic. Free hosted models
+  may log prompts, and the repository is public.
+- **Logs:** they hold status, latency, token counts and controlled reason codes, never message content or keys.
+  Request bodies are capped (64 KB) and validated.
+- **Prompt injection:** messages are treated as data. There is no dedicated detector (gap 8 below).
 
 ## 8. Known gaps (do not hide these)
-1. **No real authentication**; the demo persona is chosen in the browser. Production needs real resident sign-in.
-2. **The session id is a bearer secret** within a persona: whoever has it continues that conversation.
-3. **Staff protection is one shared token**, not staff accounts.
+1. **No real authentication**; the demo persona is chosen in the browser.
+2. **The session id is a bearer secret** within a persona.
+3. **Staff protection is one shared token**, not accounts.
 4. "Not the account holder" detection is wording-based caution, not a security control.
 5. `ScopedStore` is an allowlist: a new store method used by the chat turn must be added there with the same checks.
-6. On a demo-enabled deployment, anyone who picks a persona sees that persona's saved demo requests from every
-   session, including text other visitors typed (contact patterns are masked; names typed in free text are not).
-7. The Render demo currently runs without the hosted safeguards (section 5).
-8. **Message prompt injection** has no dedicated detector. The defence is structural: messages are data, the model only
-   proposes, the backend decides identity, access, saving and the shown text, and no secret or other resident's data
-   is in any prompt. (The pre-MVP message gates, removed 2026-11-17 because nothing called them, each had an MVP
-   equivalent: "talk to a person" → the model's note card; SSN / card numbers → redacted from every message before
-   anything sees it, `chat_engine.clean_message`, and blocked in replies, `no_pii`; lease or billing questions → the
-   reply rules plus a note; vouchers → the approved knowledge-base answer; repeat issues → the context's repeat flag.
-   Only the fair-housing pattern is kept, for routing: `guardrails.legal_sensitive`.)
+6. **Shared persona records:** on a demo-enabled deployment, anyone who picks a persona sees that persona's saved demo
+   requests from every session (contact patterns masked; names typed in free text are not).
+7. **The Render demo runs without the hosted protections** (section 6).
+8. **No prompt-injection detector.** The defence is structural: the model only proposes, the backend decides identity,
+   access, saving and the shown text, and no secret or other resident's data is in any prompt.
+
+**Production prerequisites (not built):**
+- real resident sign-in;
+- staff accounts with roles and an audit log;
+- real integrations, with an authorized data gateway;
+- retention controls;
+- McKinley-approved safety and fair-housing wording;
+- legal, security and vendor review.
