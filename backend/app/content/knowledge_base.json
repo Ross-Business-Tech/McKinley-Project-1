@@ -304,6 +304,26 @@
       "pending_reply_es": "Si alguien puede ser aval depende de los criterios de arrendamiento de McKinley, sobre los que no tengo información aprobada. El equipo de arrendamiento puede decirle qué necesita un aval, y puedo pasarle su pregunta.",
       "sample_answer": "Sample: a cosigner can be added to a lease if they meet the same income and background criteria.",
       "sample_answer_es": "Ejemplo: se puede agregar un aval si cumple los mismos criterios de ingresos y antecedentes."
+    },
+    {
+      "id": "fair_housing",
+      "label": "accommodations, assistance animals and fair housing",
+      "keywords": [
+        "fair housing",
+        "accommodation",
+        "assistance animal",
+        "service animal",
+        "service dog",
+        "support animal",
+        "disability",
+        "discrimination",
+        "legal"
+      ],
+      "status": "pending_approval",
+      "source": "No McKinley-approved wording yet (acceptance MN9, 2026-11-17). The referral below is a PROVISIONAL team draft (wording proposed by the project owner 2026-11-17), not approved by McKinley or legal: NEEDS McKINLEY / LEGAL REVIEW.",
+      "handoff": true,
+      "pending_reply": "Questions about accommodations or community policies may require review by {team}. I can help prepare a note for them so they can review your question.\n\nI can't confirm an accommodation decision or provide a legal determination through this assistant.",
+      "pending_reply_es": "Las preguntas sobre adaptaciones o políticas de la comunidad pueden requerir la revisión de {team}. Puedo ayudarle a preparar una nota para que revisen su pregunta.\n\nA través de este asistente no puedo confirmar una decisión sobre adaptaciones ni dar una determinación legal."
     }
   ]
 }

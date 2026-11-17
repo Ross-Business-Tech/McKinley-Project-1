@@ -28,6 +28,15 @@ code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `guardrails.py`, `
   resident id, and a claimed staff/admin role are refused **before** the model is called, with fixed text; nothing is
   listed and an open card stays unchanged. The same refusal twice in a row gets a shorter line. This only chooses the
   reply: access itself is enforced below.
+- **Legal and fair-housing boundary** (`guardrails.legal_conclusion` / `legal_referral`): a model reply that states
+  what the law requires, allows or prohibits, says what a landlord must, may or cannot do about an accommodation,
+  animal, fee or request, says the person qualifies or won't be charged, or describes a community by who lives there
+  (English and Spanish), is replaced by a referral to the leasing team (prospects) or the management team
+  (residents). The replacement is **mandatory**: it does not depend on `enforce_validation`. The referral wording is
+  the knowledge base topic `fair_housing`: **provisional** (`pending_approval`, not approved by McKinley or legal)
+  until McKinley approves an answer. A note on such a question, new or already open, is routed to the same team (a
+  visitor's repair note stays with maintenance). Ordinary factual answers (pets, amenities) are untouched. This is
+  pattern matching: it reduces, but cannot guarantee against, legal determinations worded in ways it doesn't know.
 
 ## 2. Data access: deny by default
 

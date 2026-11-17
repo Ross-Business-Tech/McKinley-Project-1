@@ -198,6 +198,13 @@ def normalize_for_matching(text: str) -> str:
     return "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
 
 
+def gate_matches(code: str, message: str) -> bool:
+    """One gate pattern on its own (acceptance MN9: the fair-housing / legal gate is used by the MVP's boundary in
+    app.guardrails; the old gate framework that consumed every signal is not rebuilt)."""
+    pat = next(p for c, _, p, _ in _GATES if c == code)
+    return bool(pat.search(normalize_for_matching(message or "")))
+
+
 def pre_model_gates(message: str) -> list[PolicySignal]:
     from app.emergency import LABEL, emergency_kind
 

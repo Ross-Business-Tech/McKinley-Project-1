@@ -651,18 +651,31 @@ def person_concern(message: str) -> bool:
 
 def possible_risk(message: str) -> str | None:
     """'distress' / 'danger' / 'unwell' / None for messages that are not a clear emergency."""
+    return possible_risk_evidence(message)[0]
+
+
+def possible_risk_evidence(message: str) -> tuple[str | None, str | None]:
+    """(tier, name of the check that decided it). The same checks in the same order as always; the name is for the
+    staff diagnostics only (acceptance 2026-11-17: which rule produced a care line) and never holds message text."""
     raw = _prepare(message)
     # Someone who brings up self-harm only to deny it ("I'm not suicidal, but...") still gets the calm 988 line.
-    if _NEGATED_SELF_HARM.search(raw) or (_LAUGH.search(raw) and _kind_of(raw) == "self_harm"):
-        return "distress"
+    if _NEGATED_SELF_HARM.search(raw):
+        return "distress", "negated_self_harm"
+    if _LAUGH.search(raw) and _kind_of(raw) == "self_harm":
+        return "distress", "joking_self_harm"
     text = _clean(raw)
-    if _DISTRESS.search(text) or _SELF_HARM_HINT.search(text) or _stockpile(text) or _veiled_farewell(text):
-        return "distress"
-    if _DANGER.search(_DANGER_NOT.sub(" ", text)) or _DANGER_HINT.search(text) or _concern(text):
-        return "danger"
+    for name, hit in (("distress", lambda: _DISTRESS.search(text)), ("self_harm_hint",
+                      lambda: _SELF_HARM_HINT.search(text)), ("stockpile", lambda: _stockpile(text)),
+                      ("veiled_farewell", lambda: _veiled_farewell(text))):
+        if hit():
+            return "distress", name
+    for name, hit in (("danger_vocabulary", lambda: _DANGER.search(_DANGER_NOT.sub(" ", text))),
+                      ("danger_hint", lambda: _DANGER_HINT.search(text)), ("concern", lambda: _concern(text))):
+        if hit():
+            return "danger", name
     if _UNWELL.search(text):
-        return "unwell"
-    return None
+        return "unwell", "unwell"
+    return None, None
 
 
 _SPACED = re.compile(r"\b[A-Za-z]([ .*_\-])(?:[A-Za-z]\1){1,}[A-Za-z]\b")  # one separator style per word
