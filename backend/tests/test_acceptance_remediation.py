@@ -325,3 +325,12 @@ def test_c_the_decision_log_records_why_a_model_reply_was_replaced(make):
 def test_c_possible_risk_evidence_matches_possible_risk(msg, tier, rule):
     from app.emergency import possible_risk, possible_risk_evidence
     assert possible_risk_evidence(msg) == (tier, rule) and possible_risk(msg) == tier
+
+
+def test_c_backend_templates_are_not_reported_as_failed_reply_checks(make):
+    c, _, store = make([turn("The repair card is ready.", op="start", kind="maintenance_request",
+                             issue="sink clogged", location="bathroom", entry="anytime")])
+    chat(c, "my bathroom sink is clogged, come in anytime", "obs-d", RESIDENT)
+    r = chat(c, "send it", "obs-d", RESIDENT)
+    assert r["records_created"] and r["reply_source"] == "template"
+    assert store.gate_log(1)[0]["validator_failed"] == []  # "no visit is scheduled" is the backend's own text

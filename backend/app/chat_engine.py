@@ -356,7 +356,9 @@ def run_turn(
                 # acceptance 2026-11-17: why the safety layer decided what it did, and which reply checks failed
                 # (codes only: never message text, prompts or resident data)
                 "safety_trace": risk_diagnostics(risk, msg, safety_state),
-                "validator_failed": sorted({c.code for c in checks if not c.passed}),
+                # (only for model-written text: backend templates are not validated output)
+                "validator_failed": sorted({c.code for c in checks if not c.passed})
+                if reply_source in ("model", "template_after_validation") else [],
                 "validator_reasons": sorted({re.split(r"[:\[]", x, maxsplit=1)[0].strip() for x in problems})})
         except Exception as e:  # a failed save never replaces the reply, safety text included
             log.error("turn not persisted: %s", type(e).__name__)
