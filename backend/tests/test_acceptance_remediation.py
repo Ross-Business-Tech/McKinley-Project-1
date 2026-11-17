@@ -437,3 +437,231 @@ def test_final_fair_housing_boundary(make, topic, persona, question, reply, repl
         assert reply.split(",")[0] not in r["reply"]  # the determination itself is never shown
     else:
         assert r["reply_source"] == "model" and r["reply"] == reply  # ordinary facts and referrals stay answerable
+
+
+# ==== PR #20 review (Copilot findings 1-6): each reproduced first, then fixed =======================================
+def _engine(store_dir_make, answers, risk=None):
+    """The real app (for API calls) plus its engine dependencies (for direct run_turn calls)."""
+    from app.state import get_state
+    c, prov, store = store_dir_make(answers, risk)
+    return c, prov, store, get_state().deps
+
+
+# ---- finding 1: the legal boundary is mandatory, whatever enforce_validation says ----
+@pytest.mark.parametrize("enforce", [True, False])
+def test_review1_legal_determination_never_emitted_regardless_of_validation_flag(make, enforce):
+    from app.chat_engine import run_turn
+    _, _, _, deps = _engine(make, [turn("Landlords must waive pet rent for service animals."),
+                                   turn("Done! I've sent it. Landlords must waive pet rent for service animals.")])
+    for i, msg in enumerate(["Do I pay pet rent for my service dog?", "and can you pass that on?"]):
+        r = run_turn(deps, msg, "aware", PROSPECT, f"rv1-{enforce}", enforce_validation=enforce)
+        assert "must waive" not in r.reply, (i, r.reply)  # #2 also fails other checks: still never shown
+        assert r.reply.startswith("Questions about accommodations") and r.reply_source == "template_after_validation"
+
+
+def test_review1_no_customer_facing_caller_disables_validation():
+    from pathlib import Path
+    src = Path(__file__).resolve().parent.parent / "app"
+    offenders = [str(p) for p in src.rglob("*.py") if "enforce_validation=False" in p.read_text()]
+    assert offenders == []  # the flag exists for engine tests only; the boundary does not depend on it anyway
+
+
+# ---- finding 2: English obligation / entitlement / prohibition / permission statements ----
+EN_DETERMINATIONS = [
+    "Landlords must waive pet rent for service animals.",  # review example
+    "The property is obligated to approve this accommodation.",  # review example
+    "Management has to allow your emotional support cat.",
+    "They can't charge you a pet deposit for a service dog.",
+    "The community is not allowed to deny your ramp request.",
+    "Your accommodation request must be approved.",
+    "You qualify for a reasonable accommodation.",
+    "You don't have to pay pet rent for an assistance animal.",
+    "You can't be charged for a support animal.",
+    "Refusing it would be discriminatory.",
+    "The building is required to install grab bars for you.",
+    "Landlords may charge a deposit for emotional support animals.",
+]
+EN_NOT_DETERMINATIONS = [
+    "You must press Send to save the note.",
+    "The leasing team must confirm the tour time.",
+    "Pets must be on a leash in common areas.",
+    "Maintenance needs your permission to enter, or they can contact you first.",
+    "Rent is due on the 1st; the office can explain payment options.",
+    'You said "landlords must waive pet rent for service animals". I can\'t confirm that; '
+    "our leasing team can review it.",
+    "I can't confirm whether the property must approve it; our management team can review your request.",
+    "I can help you prepare a note so the leasing team can review your accommodation request.",
+]
+
+
+@pytest.mark.parametrize("reply", EN_DETERMINATIONS)
+def test_review2_english_determinations_are_detected(reply):
+    from app.guardrails import legal_conclusion_kind
+    assert legal_conclusion_kind(reply) == "legal_determination"
+
+
+@pytest.mark.parametrize("reply", EN_NOT_DETERMINATIONS + [None])
+def test_review2_operational_quoted_and_referral_text_is_not_a_determination(reply):
+    from app.guardrails import legal_conclusion, legal_referral
+    for text in ([reply] if reply else [legal_referral("en", True)[0], legal_referral("en", False)[0]]):
+        assert legal_conclusion(text) is None, text
+
+
+# ---- finding 3: Spanish ----
+ES_DETERMINATIONS = [
+    "La ley prohíbe cobrar renta por un animal de apoyo.",  # review example
+    "Por ley, deben aprobar su solicitud.",  # review example
+    "Tienen que aceptar a su perro de asistencia sin cobrar depósito.",
+    "No le pueden cobrar renta por su animal de apoyo.",
+    "Los perros de servicio no son mascotas, así que no pagan.",
+    "El propietario está obligado a aprobar su adaptación.",
+    "Eso sería discriminación.",
+    "Usted tiene derecho a una adaptación razonable.",
+    "Según la ley federal, la rampa es obligatoria.",
+    "Legalmente no pueden negarle la rampa.",
+    "Su solicitud tiene que ser aprobada.",
+    "La comunidad no puede cobrarle un depósito por su gato de apoyo emocional.",
+]
+ES_NOT_DETERMINATIONS = [
+    "No sé si la ley lo permite; nuestro equipo de arrendamiento puede revisarlo.",
+    "No sé qué dice la ley sobre eso. ¿Quiere que prepare una nota?",
+    "Debe pulsar Enviar para guardar la nota.",
+    "El equipo de arrendamiento debe confirmar la hora de la visita.",
+    "Las mascotas deben ir con correa en las áreas comunes.",
+    'Usted dijo "la ley prohíbe cobrar renta por un animal de apoyo"; no puedo confirmarlo.',
+]
+
+
+@pytest.mark.parametrize("reply", ES_DETERMINATIONS)
+def test_review3_spanish_determinations_are_detected(reply):
+    from app.guardrails import legal_conclusion_kind
+    assert legal_conclusion_kind(reply) == "legal_determination"
+
+
+@pytest.mark.parametrize("reply", ES_NOT_DETERMINATIONS + [None])
+def test_review3_spanish_non_claims_and_referral_are_not_determinations(reply):
+    from app.guardrails import legal_conclusion, legal_referral
+    for text in ([reply] if reply else [legal_referral("es", True)[0], legal_referral("es", False)[0]]):
+        assert legal_conclusion(text) is None, text
+
+
+def test_review3_spanish_multi_turn_referral_and_note_routing(make):
+    c, _, store = make([
+        turn("Por ley, deben aprobar su solicitud de animal de apoyo.", language="es"),
+        turn("Aquí está la nota.", op="start", kind="staff_handoff", message="¿Cobran renta por mi perro de apoyo?",
+             topic="Perro de apoyo"),
+    ])
+    sid = "rv3-es"
+    r = chat(c, "¿Me pueden cobrar renta de mascota por mi perro de apoyo emocional?", sid, PROSPECT)
+    assert r["language"] == "es" and r["reply"].startswith("Las preguntas sobre adaptaciones")
+    assert "nuestro equipo de arrendamiento" in r["reply"] and "deben aprobar" not in r["reply"]
+    r = chat(c, "Sí, por favor prepare una nota sobre mi perro de apoyo emocional.", sid, PROSPECT)
+    assert r["action"]["kind"] == "staff_handoff" and store.get_draft(sid, PROSPECT)["team"] == "leasing"
+
+
+# ---- finding 4: routing applies to an already-open note too ----
+@pytest.mark.parametrize("persona,model_team,want", [(PROSPECT, "management", "leasing"),
+                                                     (RESIDENT, "accounting", "management")])
+def test_review4_an_open_note_is_routed_when_an_accommodation_question_arrives(make, persona, model_team, want):
+    c, _, store = make([
+        turn("Here's a note.", op="start", kind="staff_handoff", team=model_team, message="Question about fees",
+             topic="Fees"),
+        turn("I'll add that to the note.", op="update", kind="staff_handoff", team=model_team,
+             message="Can I get a reasonable accommodation for my support dog?"),
+    ])
+    sid = f"rv4-{persona}"
+    chat(c, "I have a question about fees, please ask the office.", sid, persona)
+    assert store.get_draft(sid, persona)["team"] == model_team
+    chat(c, "Also, can I get a reasonable accommodation for my support dog?", sid, persona)
+    d = store.get_draft(sid, persona)
+    assert d["team"] == want and d["kind"] == "staff_handoff"
+    assert d["fields"]["topic"]["value"] == "Fees" and "accommodation" in d["fields"]["message"]["value"]  # kept
+    assert saved(store) == []
+
+
+def test_review4_a_visitor_repair_note_stays_with_maintenance(make):
+    c, _, store = make([
+        turn("I'll make a note for maintenance. Which community?", op="start", kind="maintenance_request",
+             issue="lobby door lock sticks"),
+        turn("Noted.", op="update", kind="staff_handoff", community="Heron Lake"),
+    ])
+    sid = "rv4-guest"
+    r = chat(c, "the lobby door lock sticks", sid, "")
+    assert r["safety_state"] == "normal" and r["action"]["kind"] == "staff_handoff"
+    chat(c, "Heron Lake. I use a wheelchair, is this an accommodation issue?", sid, "")
+    d = store.get_draft(sid, "none")
+    assert d["guest_repair"] and d["team"] == "maintenance"
+
+
+def test_review4_an_emergency_still_takes_priority_over_routing(make):
+    c, _, store = make([turn("Here's a note.", op="start", kind="staff_handoff", team="management",
+                             message="Accommodation for my wheelchair?", topic="Accommodation")])
+    sid = "rv4-emergency"
+    chat(c, "I need a reasonable accommodation for my wheelchair, please ask the office.", sid, RESIDENT)
+    r = chat(c, "I smell gas in my kitchen and I use a wheelchair", sid, RESIDENT)
+    assert r["safety_state"] == "active" and r["safety_notice"]
+    d = store.get_draft(sid, RESIDENT, include_declined=True)
+    note = d if d.get("kind") == "staff_handoff" and d.get("paused") else next(
+        w for w in d.get("waiting", []) if w.get("paused"))
+    assert note["team"] == "management" and note["priority"] == "normal"  # paused unchanged, nothing sent
+    assert [x["status"] for x in store.records(limit=10)] == ["urgent_queued"]
+
+
+# ---- finding 5: every failed reply check has a controlled reason code, never text ----
+def test_review5_every_failed_check_has_a_controlled_reason_and_no_text(make, caplog):
+    secret = "Zanzibarville"
+    c, _, store = make([turn(f"Done! I've sent it to {secret}. Landlords must waive pet rent for service animals.")])
+    with caplog.at_level("INFO"):
+        chat(c, "can my service dog live here without pet rent?", "rv5", RESIDENT)
+    g = store.gate_log(1)[0]
+    assert "no_legal_conclusion" in g["validator_failed"]
+    assert "no_legal_conclusion:legal_determination" in g["validator_reasons"]
+    assert {r.split(":")[0] for r in g["validator_reasons"]} == set(g["validator_failed"])  # one reason per check
+    from app.guardrails import _CHECK_REASON, _CLAIM_REASON
+    allowed = set(_CHECK_REASON.values()) | {r for _, r in _CLAIM_REASON} | {"legal_determination",
+                                                                           "resident_profile", "unspecified"}
+    assert all(r.split(":", 1)[1] in allowed for r in g["validator_reasons"])
+    assert secret not in json.dumps(g) and "waive" not in json.dumps(g)
+    assert secret not in caplog.text and "waive" not in caplog.text
+
+
+def test_review5_a_demographic_description_has_its_own_reason(make):
+    c, _, store = make([turn("Maple Court has fewer families with children.")])
+    chat(c, "Which community is quieter?", "rv5b", PROSPECT)
+    assert store.gate_log(1)[0]["validator_reasons"] == ["no_legal_conclusion:resident_profile"]
+
+
+# ---- finding 6: a mismatched Send is answered before any earlier saved record ----
+def test_review6_mismatched_send_with_an_older_saved_tour_writes_nothing(make):
+    c, _, store = make([
+        turn("Here's a tour request.", op="start", kind="tour_request", area="Maple Court", days="Friday",
+             time="10am"),
+        turn("Here's a note for the leasing team.", op="start", kind="staff_handoff", team="leasing",
+             message="Is there a waitlist?", topic="Waitlist"),
+    ])
+    sid, P = "rv6", PROSPECT
+    chat(c, "tour Maple Court Friday 10am", sid, P)
+    tour = press_send(c, sid, "tour_request", P)
+    assert tour["ok"]
+    chat(c, "Is there a waitlist? Ask the office.", sid, P)
+    before_draft, before_records = store.get_draft(sid, P), store.records(limit=50)
+    r = press_send(c, sid, "tour_request", P)  # the older saved tour must not answer this press
+    assert not r["ok"] and r["error_code"] == "NO_PENDING_ACTION" and r["record"] is None
+    assert r["action"]["kind"] == "staff_handoff" and "your note" in r["message"]
+    assert store.get_draft(sid, P) == before_draft and store.records(limit=50) == before_records
+
+
+def test_review6_same_kind_retries_stay_idempotent(make):
+    c, _, store = make([
+        turn("Here's a note.", op="start", kind="staff_handoff", team="leasing", message="Parking?", topic="Parking"),
+        turn("Sure.", other=[{"text": "tour Friday", "kind": "tour_request"}]),
+    ])
+    sid, P = "rv6b", PROSPECT
+    chat(c, "Where do guests park? Ask the office.", sid, P)
+    chat(c, "also a tour on Friday", sid, P)
+    first = press_send(c, sid, "staff_handoff", P)
+    assert first["ok"] and first["record"]["kind"] == "staff_handoff"
+    on_screen = store.get_draft(sid, P)
+    again = press_send(c, sid, "staff_handoff", P)  # a repeated press of the Send that just saved: same record
+    assert again["error_code"] == "ALREADY_SAVED" and again["record"]["id"] == first["record"]["id"]
+    assert store.get_draft(sid, P) == on_screen and len(saved(store)) == 1  # the tour card on screen is untouched

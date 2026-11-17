@@ -301,8 +301,10 @@ def run_turn(
             if p.team != "none" or (active and active["kind"] == "staff_handoff" and op_done == "started"):
                 handoff_team = p.team if p.team != "none" else (active or {}).get("team", "management")
                 handoff_reason = p.reason or "A team member should help"
-            if legal and active and active["kind"] == "staff_handoff" and op_done == "started":
-                # acceptance MN9: an accommodation / fair-housing / legal note goes to people who can answer it
+            if legal and active and active["kind"] == "staff_handoff" and not active.get("guest_repair") and \
+                    active.get("priority") != "urgent":
+                # acceptance MN9 (review: new AND already-open notes): an accommodation / fair-housing / legal note goes
+                # to people who can answer it. Only the team changes; a visitor's repair note stays with maintenance
                 active["team"] = handoff_team = "leasing" if ctx.audience == "prospect" else "management"
                 handoff_reason = handoff_reason or "Accommodation, fair housing or legal question"
         trace.add("C_conversation", "ok" if reply_source == "model" else "warn",
@@ -315,6 +317,8 @@ def run_turn(
     session_saved = [r for r in (store.records(session_id=session_id, limit=20) if store else [])
                      if r.get("status") != "urgent_queued"]
     problems: list[str] = []
+    legal_kind: str | None = None
+    model_text = reply_source == "model"
     if reply_source == "model":
         own_items = tasks.my_requests(store, deps.workbook, persona_id, verified)
         history_text = " ".join([*(f.value for f in ctx.fields if f.name == "related_history"),
@@ -327,18 +331,18 @@ def run_turn(
             # what they said earlier in THIS chat is grounded too ("your faucet request from before")
             history_text=" ".join([history_text, *said_ever, msg]),
             own_name=name, saved_now=bool(records) or (active is None and bool(session_saved)))
-        if problems:
-            log.info("model reply replaced: %s", "; ".join(problems))  # reasons only, never the text
         checks.append(OutputCheck(code="grounded_claims", passed=not problems,
                                   detail="; ".join(problems) or "no unsupported claims"))
-        # acceptance MN9: a legal determination is never shown, whatever the question was; the referral replaces it
-        if found := guardrails.legal_conclusion(reply):
+        # acceptance MN9 (review): MANDATORY, whatever `enforce_validation` says: model text that states a legal
+        # determination or describes a community by who lives there is never emitted; the referral replaces it
+        if legal_kind := guardrails.legal_conclusion_kind(reply):
             referral, wording = guardrails.legal_referral(lang, prospect=ctx.audience == "prospect")
             checks.append(OutputCheck(code="no_legal_conclusion", passed=False,
-                                      detail=f"legal determination replaced by the {wording} referral"))
-            if enforce_validation:
-                reply, reply_source = referral, "template_after_validation"
-            log.info("model reply replaced: legal determination (%d chars)", len(found))
+                                      detail=f"{legal_kind}: replaced by the {wording} referral"))
+            reply, reply_source = referral, "template_after_validation"
+    reasons = guardrails.reason_codes(checks, problems, legal_kind) if model_text else []
+    if reasons:
+        log.info("model reply checks failed: %s", ", ".join(reasons))  # controlled codes only, never text
     if enforce_validation and reply_source == "model" and any(
             (c.code in CRITICAL_CHECKS or c.code == "grounded_claims") and not c.passed for c in checks):
         reply, reply_source = _plain_reply(active, lang, session_saved), "template_after_validation"
@@ -364,9 +368,8 @@ def run_turn(
                 # (codes only: never message text, prompts or resident data)
                 "safety_trace": risk_diagnostics(risk, msg, safety_state),
                 # (only for model-written text: backend templates are not validated output)
-                "validator_failed": sorted({c.code for c in checks if not c.passed})
-                if reply_source in ("model", "template_after_validation") else [],
-                "validator_reasons": sorted({re.split(r"[:\[]", x, maxsplit=1)[0].strip() for x in problems})})
+                "validator_failed": sorted({c.code for c in checks if not c.passed}) if model_text else [],
+                "validator_reasons": reasons})
         except Exception as e:  # a failed save never replaces the reply, safety text included
             log.error("turn not persisted: %s", type(e).__name__)
     trace.add("D_tasks", "ok", f"{op_done}; active={active['kind'] if active else None}; waiting={len(waiting)}")

@@ -261,7 +261,22 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
     """COMPLETE: save the active task after an explicit confirmation. Atomic and idempotent (one record at most)."""
     key = persona_id or "none"
     active, waiting = load(store, session_id, key)
-    if store is None or active is None or active["kind"] != kind:
+    if active is not None and active["kind"] != kind:
+        # acceptance MN6 + review: Send only ever saves the card on screen. A mismatch is answered BEFORE any lookup
+        # of earlier saved records (an older saved tour must not answer a tour Send while a note is on screen): no
+        # write, the card on screen is returned unchanged. The one exception is read-only: a repeated press of the
+        # Send that JUST saved this kind (the card on screen came back after it) gets that same record again
+        just = active.get("after_saved") or {}
+        if store is not None and just.get("kind") == kind and (prev := next((
+                r for r in store.records(session_id=session_id, limit=50) if r["id"] == just.get("id")), None)):
+            rec0 = PrototypeRecord.model_validate(prev)
+            return ActionResult(ok=False, error_code="ALREADY_SAVED", record=rec0,
+                                action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
+                                                      fields=rec0.fields, note=_l(NOTE_SAVED, lang), record=rec0),
+                                message=_l(CONFIRMED[kind], lang).format(ref=rec0.id))
+        return ActionResult(ok=False, error_code="NO_PENDING_ACTION", action=card(active, lang),
+                            message=_l(OTHER_CARD, lang).format(what=_l(WHAT[active["kind"]], lang)))
+    if store is None or active is None:
         mine = store.records(session_id=session_id, limit=20) if store else []
         if store is not None and getattr(store, "account_access", True) and (
                 prev := next((r for r in mine if r["kind"] == kind and r.get("status") != "urgent_queued"), None)):
@@ -270,9 +285,6 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                                 action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
                                                       fields=rec0.fields, note=_l(NOTE_SAVED, lang), record=rec0),
                                 message=_l(CONFIRMED[kind], lang).format(ref=rec0.id))
-        if active is not None:  # acceptance MN6: Send only ever saves the card on screen, never a different one
-            return ActionResult(ok=False, error_code="NO_PENDING_ACTION", action=card(active, lang),
-                                message=_l(OTHER_CARD, lang).format(what=_l(WHAT[active["kind"]], lang)))
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION",
                             message="There's nothing waiting to be sent. Tell me what you need and I'll set it up.")
     lang = active.get("lang", lang)
@@ -305,6 +317,8 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
         return ActionResult(ok=False, error_code="SAVE_FAILED", action=card(active, lang),
                             message="Sorry, that didn't save, so nothing was sent. Please try again.")
     nxt_task, rest, _ = apply("resume", None, [w for w in waiting if not w.get("declined")])
+    if nxt_task is not None:  # remembers the save it came back after (a repeated press of that Send is read-only)
+        nxt_task["after_saved"] = {"kind": kind, "id": rec.id}
     save(store, session_id, key, nxt_task, [*rest, *[w for w in waiting if w.get("declined")]])
     message = _l(CONFIRMED[kind], lang).format(ref=rec.id)
     if nxt_task is not None:
