@@ -171,3 +171,52 @@ def property_facts(samples: bool = False) -> str:
         else:
             out.append(f"- {t['label']}: no approved answer; say you don't have it and offer a note for the office")
     return "\n".join(out)
+
+
+# ---- 4. legal / fair housing (acceptance MN9) ------------------------------------------------------------------------
+# The assistant never decides what the law requires, allows or prohibits, and never decides accommodation, assistance-
+# animal, eligibility or discrimination questions: those go to people. A reply that states such a conclusion is
+# replaced by a referral. The wording comes from the knowledge base topic "fair_housing": its `answer` once McKinley
+# approves one, otherwise the PROVISIONAL `pending_reply` (team draft), and the status says which one was shown.
+_LEGAL_CONCLUSION = re.compile(
+    r"\b(?:fair housing|federal|state|local|the)? ?(?:law|laws|act|fha|ada|hud)\b[^.?!]{0,40}?\b(?:prohibits?|"
+    r"requires?|allows?|permits?|forbids?|protects?|bans?|says|means|lets)\b|"
+    r"\b(?:by|under|against) (?:the )?(?:law|fair housing(?: law| rules| act)?|federal law|state law|the fha|"
+    r"the ada)\b|"
+    r"\blegally\b[^.?!]{0,30}?\b(?:can(?:not|'t)?|must|required|allowed|entitled|have to|obligated|permitted)\b|"
+    r"\b(?:is|are|would be|it'?s|that'?s) (?:not )?(?:illegal|unlawful|legal|a fair housing violation)\b|"
+    r"\byou (?:have|'ve got|are entitled to) (?:a |the )?(?:legal )?right to\b|"
+    r"\b(?:service|assistance|support|emotional support) (?:animals?|dogs?|cats?)\b[^.?!]{0,60}?(?:\bnot (?:a |"
+    r"considered |treated as )?pets?\b|\b(?:can(?:not|'t)|may not|won'?t|don'?t|do not|aren'?t|are not|isn'?t|is not)"
+    r" (?:be )?(?:charged|required to pay|subject to|have to pay)\b|\bexempt\b)|"
+    r"(?:\b(?:are|is)|'re|'s) (?:not )?(?:entitled|eligible) (?:to|for) (?:an? )?(?:reasonable )?accommodation",
+    re.I)
+
+_NOT_A_CLAIM = re.compile(r"\b(?:what|whether|if)\s+$|\b(?:what|whether|if)\s+\S*$", re.I)
+
+
+def legal_sensitive(message: str) -> bool:
+    """Fair housing, accommodation, disability, assistance animal or legal action (the existing gate pattern)."""
+    from app.safety import gate_matches
+    return gate_matches("fair_housing_or_legal", message)
+
+
+def legal_conclusion(reply: str) -> str | None:
+    """The first legal determination stated in a reply, or None."""
+    text = reply or ""
+    for m in _LEGAL_CONCLUSION.finditer(text):
+        if not _NOT_A_CLAIM.search(text[max(0, m.start() - 12):m.start() + 1]):  # "I don't know what the law says"
+            return m.group(0)
+    return None
+
+
+def legal_referral(lang: str, prospect: bool) -> tuple[str, str]:
+    """(text, wording status: 'approved' or 'provisional'). Never a legal answer; offers a note, never sends one."""
+    topic = next((t for t in _kb() if t.get("id") == "fair_housing"), {})
+    approved = topic.get("status") == "approved" and topic.get("answer")
+    es = lang == "es"
+    text = (topic.get("answer_es" if es else "answer") if approved else
+            topic.get("pending_reply_es" if es else "pending_reply")) or ""
+    team = ("el equipo de arrendamiento" if prospect else "la oficina") if es else (
+        "the leasing team" if prospect else "the office")
+    return text.replace("{team}", team), "approved" if approved else "provisional"

@@ -46,4 +46,33 @@ def person_danger(decision: RiskDecision, det: DeterministicRisk | None = None) 
     return not exposure_only and (det.concern or bool(people and (fr.get("states") or fr.get("hazards"))))
 
 
-__all__ = ["RiskAssessment", "SemanticRiskClassifier", "assess"]
+def diagnostics(assessment: RiskAssessment, message: str, safety_state: str | None) -> dict:
+    """Staff diagnostics for one turn (acceptance 2026-11-17, observability only: nothing here changes a decision).
+    Rule ids, labels and numbers only: no message text, no matched phrase, no classifier free-text reason, no prompt
+    and no resident data."""
+    from app.emergency import possible_risk_evidence
+
+    det, sem, d = assessment.deterministic, assessment.semantic, assessment.decision
+    fr = det.frame or {}
+    r = sem.risk
+    return {
+        "deterministic": {
+            "kind": det.kind, "care": det.care, "care_rule": possible_risk_evidence(message)[1],
+            "mentioned_kind": det.mentioned_kind, "framing": det.framing, "concern": det.concern,
+            "via_window": det.via_window, "frame_rule": det.frame_rule, "frame_category": fr.get("category"),
+            "frame_reason": fr.get("reason") or None, "frame_hazards": list(fr.get("hazards") or []),
+            "self_harm_intent": det.self_harm_intent, "conditional_danger": det.conditional_danger,
+            "happened": det.happened, "self_harm_words": det.self_harm_words},
+        "classifier": {
+            "status": sem.status, "level": r.risk_level if r else None,
+            "categories": list(r.risk_categories) if r else [],
+            "incident_category": r.incident_category if r else None, "immediate_danger": r.immediate_danger if r
+            else None, "confidence": r.confidence if r else None, "framing": r.framing if r else None,
+            "prompt_version": sem.prompt_version, "model": sem.model, "latency_ms": sem.latency_ms},
+        "policy": {"rule": d.rule, "response": d.response, "care": d.care, "kind": d.kind, "also_988": d.also_988,
+                   "needs_human": d.needs_human, "degraded": d.degraded, "conflict": d.conflict},
+        "safety_level": safety_state,
+    }
+
+
+__all__ = ["RiskAssessment", "SemanticRiskClassifier", "assess", "diagnostics"]

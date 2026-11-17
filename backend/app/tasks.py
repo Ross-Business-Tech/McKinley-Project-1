@@ -270,6 +270,9 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                                 action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
                                                       fields=rec0.fields, note=_l(NOTE_SAVED, lang), record=rec0),
                                 message=_l(CONFIRMED[kind], lang).format(ref=rec0.id))
+        if active is not None:  # acceptance MN6: Send only ever saves the card on screen, never a different one
+            return ActionResult(ok=False, error_code="NO_PENDING_ACTION", action=card(active, lang),
+                                message=_l(OTHER_CARD, lang).format(what=_l(WHAT[active["kind"]], lang)))
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION",
                             message="There's nothing waiting to be sent. Tell me what you need and I'll set it up.")
     lang = active.get("lang", lang)
@@ -312,6 +315,8 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                         action=card(active, lang, record=rec), record=rec, message=message)
 
 
+OTHER_CARD = ("Nothing was sent. The card on screen is your {what}; Send saves only that card.",
+              "No se envió nada. La tarjeta en pantalla es su {what}; Enviar guarda solo esa tarjeta.")
 DUPLICATE = ("This looks like the same problem as {ref}, which is already saved, so I haven't saved it again. If it's "
              "a different problem, tell me and I'll keep it as a separate request.",
              "Parece el mismo problema que {ref}, que ya está guardado, así que no lo guardé de nuevo. Si es otro "

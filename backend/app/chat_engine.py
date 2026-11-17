@@ -57,6 +57,7 @@ from app.risk.incident import prior_hazards as incident_prior_hazards
 from app.risk.incident import step as incident_step
 from app.risk.models import SemanticResult
 from app.risk.pipeline import assess
+from app.risk.pipeline import diagnostics as risk_diagnostics
 from app.risk.policy import decide as risk_decide
 from app.risk.policy import is_people_hazard
 from app.risk.ui_state import safety_ui
@@ -154,6 +155,8 @@ FALLBACK_REPLY = ("Sorry, I couldn't work that out just now. Could you say it an
 KEPT = (" Your {what} is still here, unchanged.", " Su {what} sigue aquí, sin cambios.")
 BACK = ("Thanks for the update. Your {what} from before is back, not sent yet.",
         "Gracias por avisar. Su {what} de antes volvió, sin enviar.")
+NOT_YET = ("I can't send your {what} yet, so nothing was saved. Still needed: {miss}.",
+           "Todavía no puedo enviar su {what}, así que no se guardó nada. Falta: {miss}.")
 
 
 def run_turn(
@@ -168,6 +171,7 @@ def run_turn(
     mode_key = f"aware|{target.key}"
     trace = _Trace()
     msg = clean_message(message)
+    legal = guardrails.legal_sensitive(msg)  # accommodation / fair housing / legal topic (routing only)
 
     # ---- A. identity: derived server-side only; message text and the model never change it --------------------
     if principal is None:
@@ -250,6 +254,12 @@ def run_turn(
         reply, records, shown = res.message, [res.record] if res.record and res.ok else [], res.action
         active, waiting = tasks.load(store, session_id, key)
         before, op_done = (repr(active), repr(waiting)), "complete"
+    elif active and guardrails.explicit_send(msg):
+        # acceptance MN6: "send it" (the whole message) while the card on screen is incomplete. Answered here, not by
+        # the model (it told the person to press a Send button that would also refuse): nothing saved; says what's left
+        miss = ", ".join(tasks._l(tasks.LABEL[m], lang).lower() for m in tasks.missing(active))
+        reply = tasks._l(NOT_YET, lang).format(what=tasks._l(tasks.WHAT[active["kind"]], lang), miss=miss)
+        op_done = "send_refused:incomplete"
     else:
         resumed = None
         if not active and (p := tasks.paused(waiting)) and rd.response != "full_alert" and not (
@@ -286,6 +296,10 @@ def run_turn(
             if p.team != "none" or (active and active["kind"] == "staff_handoff" and op_done == "started"):
                 handoff_team = p.team if p.team != "none" else (active or {}).get("team", "management")
                 handoff_reason = p.reason or "A team member should help"
+            if legal and active and active["kind"] == "staff_handoff" and op_done == "started":
+                # acceptance MN9: an accommodation / fair-housing / legal note goes to people who can answer it
+                active["team"] = handoff_team = "leasing" if ctx.audience == "prospect" else "management"
+                handoff_reason = handoff_reason or "Accommodation, fair housing or legal question"
         trace.add("C_conversation", "ok" if reply_source == "model" else "warn",
                   f"{result.provider}:{result.model} op={op_done}" + (" (MOCK)" if result.is_mock else ""))
 
@@ -295,6 +309,7 @@ def run_turn(
                                               user_text=" ".join([*said_ever, msg]), nothing_sent=not records)
     session_saved = [r for r in (store.records(session_id=session_id, limit=20) if store else [])
                      if r.get("status") != "urgent_queued"]
+    problems: list[str] = []
     if reply_source == "model":
         own_items = tasks.my_requests(store, deps.workbook, persona_id, verified)
         history_text = " ".join([*(f.value for f in ctx.fields if f.name == "related_history"),
@@ -311,6 +326,14 @@ def run_turn(
             log.info("model reply replaced: %s", "; ".join(problems))  # reasons only, never the text
         checks.append(OutputCheck(code="grounded_claims", passed=not problems,
                                   detail="; ".join(problems) or "no unsupported claims"))
+        # acceptance MN9: a legal determination is never shown, whatever the question was; the referral replaces it
+        if found := guardrails.legal_conclusion(reply):
+            referral, wording = guardrails.legal_referral(lang, prospect=ctx.audience == "prospect")
+            checks.append(OutputCheck(code="no_legal_conclusion", passed=False,
+                                      detail=f"legal determination replaced by the {wording} referral"))
+            if enforce_validation:
+                reply, reply_source = referral, "template_after_validation"
+            log.info("model reply replaced: legal determination (%d chars)", len(found))
     if enforce_validation and reply_source == "model" and any(
             (c.code in CRITICAL_CHECKS or c.code == "grounded_claims") and not c.passed for c in checks):
         reply, reply_source = _plain_reply(active, lang, session_saved), "template_after_validation"
@@ -329,7 +352,12 @@ def run_turn(
                 if active else None, "records": [r.id for r in records], "reply_source": reply_source,
                 "safety_rule": rd.rule, "safety_response": rd.response, "safety_semantic": risk.semantic.status,
                 "requires_human": bool(handoff_team), "lang": lang,
-                "workflow": "human_handoff" if handoff_team and not safety_notice else None})
+                "workflow": "human_handoff" if handoff_team and not safety_notice else None,
+                # acceptance 2026-11-17: why the safety layer decided what it did, and which reply checks failed
+                # (codes only: never message text, prompts or resident data)
+                "safety_trace": risk_diagnostics(risk, msg, safety_state),
+                "validator_failed": sorted({c.code for c in checks if not c.passed}),
+                "validator_reasons": sorted({re.split(r"[:\[]", x, maxsplit=1)[0].strip() for x in problems})})
         except Exception as e:  # a failed save never replaces the reply, safety text included
             log.error("turn not persisted: %s", type(e).__name__)
     trace.add("D_tasks", "ok", f"{op_done}; active={active['kind'] if active else None}; waiting={len(waiting)}")
@@ -376,8 +404,7 @@ def _apply_proposal(p: assistant.Proposal, active, waiting, ctx: SafeContext, ve
     values = dict(p.fields)
     new = None
     if op == "start" and kind:
-        guest_repair = not verified and (kind == "maintenance_request" or (
-            kind == "staff_handoff" and bool(values.get("unit") or values.get("community"))))
+        guest_repair = _guest_repair(kind, values, p.team, verified, ctx.audience)
         if guest_repair:
             kind = "staff_handoff"
             values.setdefault("message", values.get("issue") or msg)
@@ -412,11 +439,31 @@ def _apply_proposal(p: assistant.Proposal, active, waiting, ctx: SafeContext, ve
             tasks.set_fields(repair, {"issue": need})
             waiting = [*waiting, repair]
             continue
+        if need_kind == "tour_request":
+            # acceptance MN6: a tour asked for alongside another need waits as a TOUR card (it used to become an "Also
+            # asked about" note, which can never be sent as a tour). No fields are guessed from the text: the card asks.
+            if any(t.get("kind") == "tour_request" and not t.get("declined") for t in [*([active] if active else []),
+                                                                                     *waiting]):
+                continue  # a tour card is already open or waiting
+            waiting = [*waiting, tasks.new_task("tour_request", lang)]
+            continue
         note = tasks.new_task("staff_handoff", lang, topic="Also asked about", team="leasing" if re.search(
             r"leas|renew|rent|contrat|renov", need, re.I) else "management")
         tasks.set_fields(note, {"topic": "Also asked about", "message": need})
         waiting = [*waiting, note]
     return active, waiting, done
+
+
+def _guest_repair(kind: str, values: dict[str, str], team: str, verified: bool, audience: str) -> bool:
+    """A not-signed-in person's REPAIR becomes a note for the office that needs community and unit. Acceptance MN6: a
+    note that merely names a community (a prospect's pricing, leasing or tour question) is not a repair, and a
+    prospect is never asked for an apartment unit number."""
+    if verified:
+        return False
+    if kind == "maintenance_request":
+        return True
+    return kind == "staff_handoff" and audience != "prospect" and (
+        team in ("maintenance", "emergency_maintenance") or bool(values.get("issue")))
 
 
 def _add_history(scope: str, active, waiting, wb, persona_id, verified: bool) -> None:  # noqa: ANN001
