@@ -141,7 +141,9 @@ sequenceDiagram
   hosted backend from the database after `python -m app.seed_synthetic`, which refuses non-synthetic workbooks).
 - The model receives only allowlisted fields: first name, community, tenure band, preferred language/channel and
   topic-gated items (renewal status, open requests and the preferred entry window, a contact-timing clause from staff
-  notes, related history summarized from category/subject/status with counts and repeat / open-commitment flags).
+  notes, related history summarized from category/subject/status with counts and repeat / open-commitment flags;
+  a repair's history is matched by the thing named, such as ceiling, sink or AC, with open items kept and at most 6
+  lines, `context.related_interactions`).
   Never: last name,
   email, phone, rent, balances, household, pets, vehicles, entry permission, raw staff notes, full transcripts. Free
   text is screened for injected instructions, redacted and length-capped.

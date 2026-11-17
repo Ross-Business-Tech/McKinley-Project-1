@@ -286,6 +286,32 @@ def interaction_topics(i: Interaction) -> set[str]:
     return topics
 
 
+MAX_RELATED = 6
+
+
+def related_interactions(interactions: list[Interaction], message: str, msg_topics: set[str],
+                         is_maint: bool) -> tuple[list[Interaction], bool]:
+    """(the items about the same thing, oldest first; matched by object?). A maintenance item matches by the
+    physical thing the message names (ceiling, sink, AC: the shared object lexicon in app/utterance.py), so a
+    ceiling leak is not matched to kitchen-sink history only because both say "leak"; without a named thing, and for
+    other categories, the topic buckets decide. Open items are always kept; then the most recent, up to MAX_RELATED.
+    Only `interactions` (the authorized resident's own) are ever considered."""
+    from app.utterance import things
+    if not msg_topics:
+        return [], False
+    objs = things(message) if is_maint else set()
+
+    def same(i: Interaction) -> bool:
+        if i.category == "maintenance" and objs:
+            return bool(things(i.subject) & objs)
+        return bool(interaction_topics(i) & msg_topics)
+
+    items = sorted((i for i in interactions if same(i)), key=lambda i: str(i.timestamp or ""))
+    keep = [i for i in items if i.status == "open"]
+    keep += [i for i in reversed(items) if i not in keep][: max(0, MAX_RELATED - len(keep))]
+    return sorted(keep, key=lambda i: str(i.timestamp or "")), bool(objs)
+
+
 def tenure_band(move_in: str) -> str | None:
     dt = _parse_dt(move_in)
     if not dt:
@@ -360,10 +386,10 @@ def build_resident_context(res: Resident, message: str, persona_id: str) -> Safe
         for c in clauses:
             add("staff_noted_contact_preference", c, "Residents.notes_for_staff (contact clause only)")
 
-    # Relevant history: same topic(s) as the message, summarized from structured columns + subject only.
+    # Relevant history: the person's OWN items about the same thing, from structured columns + subject only.
     msg_topics = set(topics) - {"contact_preference"}
-    relevant = [i for i in res.interactions if interaction_topics(i) & msg_topics] if msg_topics else []
-    for i in relevant[-6:]:
+    relevant, by_object = related_interactions(res.interactions, message, msg_topics, is_maint)
+    for i in relevant:
         subject = sanitize_field(i.subject, 80)
         if subject is None:
             dropped.append(f"Interactions[{i.interaction_id}].subject: dropped by injection screen")
@@ -375,7 +401,7 @@ def build_resident_context(res: Resident, message: str, persona_id: str) -> Safe
             f"Interactions[{i.interaction_id}]")
     if msg_topics:
         maint_related = [i for i in relevant if i.category == "maintenance"]
-        if msg_topics <= {"maintenance_general"}:  # generic wording: "related" needs a shared word
+        if msg_topics <= {"maintenance_general"} and not by_object:  # generic wording: needs a shared word
             maint_related = [i for i in maint_related if _shares_word(message, i.subject)]
         open_followups = [i for i in relevant if i.follow_up_needed and i.status == "open"]
         add("related_history_count", str(len(relevant)) if relevant else "0",
