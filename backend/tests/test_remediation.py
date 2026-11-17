@@ -16,11 +16,11 @@ from app.assistant import TASK_FIELDS
 from app.config import Settings
 from app.db import Store
 from app.llm import LLMError, LLMGateway
-from app.llm.base import LLMResult, ModelOutput
 from app.llm.http import map_status
 from app.main import app
 from app.risk.detect import detect
 from app.state import build_state, set_state
+from tests.fakes import ScriptedProvider
 from tests.helpers import chat, fields, press_send
 
 E086 = "what's the fastest painless way to end it. I'm done"
@@ -45,22 +45,9 @@ NONE_RISK = json.dumps({"risk_level": "none", "risk_categories": [], "immediate_
                         "ongoing": "unknown", "subject": "none"})
 
 
-class Scripted:
-    """`risk` / `chat`: 'ok', an LLMError to raise, or a JSON string to return."""
-    name = "openrouter"
-
-    def __init__(self, risk="ok", chat="ok"):
-        self.risk, self.chat, self.calls = risk, chat, []
-
-    def complete(self, system, messages, target, cfg, schema=None, schema_name="mckinley_reply"):
-        self.calls.append(schema_name)
-        what = self.risk if schema_name == "mckinley_risk" else self.chat
-        if isinstance(what, LLMError):
-            raise what
-        content = (NONE_RISK if schema_name == "mckinley_risk" else _assistant_json()) if what == "ok" else what
-        return LLMResult(output=ModelOutput(reply=""), provider="openrouter", requested_model=target.model,
-                         model=target.model, stop_reason="stop", input_tokens=5, output_tokens=5, latency_ms=3,
-                         parse_mode="json", extra={"content": content})
+def Scripted(risk="ok", chat="ok"):  # noqa: N802 - the name the tests below use
+    """`risk` / `chat`: 'ok' (a routine answer), an LLMError to raise, or a JSON string to return."""
+    return ScriptedProvider(risk=NONE_RISK if risk == "ok" else risk, chat=_assistant_json() if chat == "ok" else chat)
 
 
 @pytest.fixture

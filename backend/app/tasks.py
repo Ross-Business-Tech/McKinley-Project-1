@@ -269,22 +269,14 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
         just = active.get("after_saved") or {}
         if store is not None and just.get("kind") == kind and (prev := next((
                 r for r in store.records(session_id=session_id, limit=50) if r["id"] == just.get("id")), None)):
-            rec0 = PrototypeRecord.model_validate(prev)
-            return ActionResult(ok=False, error_code="ALREADY_SAVED", record=rec0,
-                                action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
-                                                      fields=rec0.fields, note=_l(NOTE_SAVED, lang), record=rec0),
-                                message=_l(CONFIRMED[kind], lang).format(ref=rec0.id))
+            return _already_saved(prev, kind, lang)
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION", action=card(active, lang),
                             message=_l(OTHER_CARD, lang).format(what=_l(WHAT[active["kind"]], lang)))
     if store is None or active is None:
         mine = store.records(session_id=session_id, limit=20) if store else []
         if store is not None and getattr(store, "account_access", True) and (
                 prev := next((r for r in mine if r["kind"] == kind and r.get("status") != "urgent_queued"), None)):
-            rec0 = PrototypeRecord.model_validate(prev)  # a retried Send gets the record it already saved
-            return ActionResult(ok=False, error_code="ALREADY_SAVED", record=rec0,
-                                action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
-                                                      fields=rec0.fields, note=_l(NOTE_SAVED, lang), record=rec0),
-                                message=_l(CONFIRMED[kind], lang).format(ref=rec0.id))
+            return _already_saved(prev, kind, lang)  # a retried Send gets the record it already saved
         return ActionResult(ok=False, error_code="NO_PENDING_ACTION",
                             message="There's nothing waiting to be sent. Tell me what you need and I'll set it up.")
     lang = active.get("lang", lang)
@@ -327,6 +319,15 @@ def confirm(store: Store | None, session_id: str, persona_id: str | None, kind: 
                                                "enviar.")
     return ActionResult(ok=dup is None, error_code="ALREADY_SAVED" if dup else None,
                         action=card(active, lang, record=rec), record=rec, message=message)
+
+
+def _already_saved(raw: dict[str, Any], kind: ActionKind, lang: Lang) -> ActionResult:
+    """A repeated Send: the record it already saved, read-only (no write)."""
+    rec = PrototypeRecord.model_validate(raw)
+    return ActionResult(ok=False, error_code="ALREADY_SAVED", record=rec,
+                        action=ProposedAction(kind=kind, stage="submitted", title=_l(TITLE[kind], lang),
+                                              fields=rec.fields, note=_l(NOTE_SAVED, lang), record=rec),
+                        message=_l(CONFIRMED[kind], lang).format(ref=rec.id))
 
 
 OTHER_CARD = ("Nothing was sent. The card on screen is your {what}; Send saves only that card.",

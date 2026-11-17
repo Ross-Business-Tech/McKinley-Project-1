@@ -19,7 +19,6 @@ from app.live_eval.preflight import fetch_models, model_info, recommend, run_pre
 from app.llm import FACTORIES, SUPPORTED_PROVIDERS, LLMError, LLMGateway, ModelOutput, Target, parse_output, same_model
 from app.llm.base import OUTPUT_SCHEMA, GenerationConfig
 from app.llm.base import Target as Target_lb
-from app.llm.contracts import CLASSIFY_RISK, CONVERSE, MODEL_USES, complete_for
 from app.llm.gemini_provider import GeminiProvider, _to_contents
 from app.llm.mock import MockProvider
 from app.llm.ollama import OllamaProvider
@@ -246,6 +245,10 @@ RISK = {"risk_level": "emergency", "risk_categories": ["gas"], "immediate_danger
 
 
 SAMPLES = {"generate_response": REPLY, "converse": TURN, "classify_risk": RISK}
+# The structured model uses, taken from their real callers (the old app.llm.contracts facade was test-only)
+MODEL_USES = {"generate_response": ("mckinley_reply", OUTPUT_SCHEMA),  # the providers' default (no MVP caller)
+              "converse": (TURN_SCHEMA_NAME, TURN_SCHEMA),  # app.assistant.ask
+              "classify_risk": (risk_classifier.SCHEMA_NAME, risk_classifier.SCHEMA)}  # SemanticRiskClassifier
 
 
 HISTORY = [{"role": "user", "content": "Hi, I'm looking at 2-bed apartments."},
@@ -419,13 +422,13 @@ def test_default_schema_is_the_reply_schema(h):
 @pytest.mark.usefixtures("no_sleep")
 @pytest.mark.parametrize("use", list(MODEL_USES))
 def test_each_app_schema_is_passed_as_structured_output(h, use):
-    u = MODEL_USES[use]
-    h.provider(h.ok(json.dumps(SAMPLES[use]))).complete("s", HISTORY, target(h), CFG_pc, schema=u.schema,
-                                                          schema_name=u.schema_name)
+    schema_name, app_schema = MODEL_USES[use]
+    h.provider(h.ok(json.dumps(SAMPLES[use]))).complete("s", HISTORY, target(h), CFG_pc, schema=app_schema,
+                                                          schema_name=schema_name)
     name, schema = h.schema()
-    assert schema == u.schema
+    assert schema == app_schema
     if h.wire == "openai":
-        assert name == u.schema_name  # OpenAI json_schema carries a name; Gemini's response_json_schema does not
+        assert name == schema_name  # OpenAI json_schema carries a name; Gemini's response_json_schema does not
 
 
 WRAPS = [("{}", "json"), ("```json\n{}\n```", "json"), ("Sure! {} Thanks", "json_extracted"),
@@ -445,9 +448,9 @@ def test_same_text_parses_to_the_same_model_output(h, wrap, mode):
 @pytest.mark.usefixtures("no_sleep")
 @pytest.mark.parametrize("use", list(MODEL_USES))
 def test_each_schema_round_trips_through_the_callers_parser(h, use):
-    u = MODEL_USES[use]
-    r = complete_for(u, LLMGateway(Settings(_env_file=None), {h.name: h.provider(h.ok(json.dumps(SAMPLES[use])))}),
-                     "s", HISTORY, target(h), CFG_pc)
+    schema_name, app_schema = MODEL_USES[use]
+    gw = LLMGateway(Settings(_env_file=None), {h.name: h.provider(h.ok(json.dumps(SAMPLES[use])))})
+    r = gw.complete("s", HISTORY, target(h), schema=app_schema, schema_name=schema_name, cfg=CFG_pc)
     raw = r.extra["content"]
     if use == "generate_response":
         assert r.output == ModelOutput.model_validate(REPLY)
@@ -538,7 +541,7 @@ def test_conversation_caller_uses_the_assistant_schema_and_parses_a_proposal(h, 
     from app import assistant
     gw = LLMGateway(settings_for(h, tmp_path), {h.name: h.provider(h.ok(json.dumps(TURN)))})
     turn = assistant.ask(gw, target(h), "system", [], "My heat is out")
-    assert h.schema()[1] == CONVERSE.schema and CONVERSE.schema_name == assistant.SCHEMA_NAME  # facade == caller
+    assert h.schema()[1] == assistant.SCHEMA
     assert turn.proposal and (turn.proposal.op, turn.proposal.kind) == ("start", "maintenance_request")
     assert turn.proposal.fields == {"issue": "Heat is out"}
 
@@ -549,7 +552,7 @@ def test_risk_classifier_caller_uses_the_risk_schema_and_classifies(h, tmp_path)
     gw = LLMGateway(s, {h.name: h.provider(h.ok(json.dumps(RISK)))})
     res = risk_classifier.SemanticRiskClassifier(s, gw).classify("I smell something like rotten eggs by the stove")
     assert res.status == "ok" and res.risk.risk_level == "emergency" and res.model == h.model
-    assert h.schema()[1] == CLASSIFY_RISK.schema and CLASSIFY_RISK.schema is risk_classifier.SCHEMA
+    assert h.schema()[1] == risk_classifier.SCHEMA
     assert h.temperature() in (0, None)  # classifier pins temperature 0 where the provider takes one
 
 
@@ -574,7 +577,7 @@ def test_generate_response_through_run_turn(h, tmp_path):
     resp = run_turn(deps, "Do you allow pets at your Florida communities?", "aware", "P-BROWSE-FL", None)
     # one conversational call per ordinary turn, with the assistant schema; a reply that isn't the assistant JSON
     # falls back to a fixed message (never the raw model text)
-    assert h.schema()[1] == CONVERSE.schema and h.system()
+    assert h.schema()[1] == TURN_SCHEMA and h.system()
     assert resp.model == h.model and resp.requested_model == h.model
     assert resp.reply_source in ("model", "template_after_model_error")
 

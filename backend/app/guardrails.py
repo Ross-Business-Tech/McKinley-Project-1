@@ -262,18 +262,23 @@ _NOT_A_CLAIM = re.compile(r"\b(?:what|whether|if|si|qu[eé]|lo que)\s+(?:\S+\s+)
 _QUOTED = re.compile(r"\"[^\"]{1,300}\"|“[^”]{1,300}”|«[^»]{1,300}»")
 
 
-# The shared gate pattern (app.safety) has only a few Spanish words; these are the Spanish topics it misses
-_LEGAL_TOPIC_ES = re.compile(
+# Accommodation / fair-housing / legal topics (EN + ES), used only to ROUTE a note to people who can answer it. This
+# is the one pattern kept from the pre-MVP gate list (the other gates had MVP equivalents: see docs/SECURITY.md).
+_LEGAL_TOPIC = re.compile(
+    r"discriminat|fair housing|lawyer|attorney|\bsue\b|\bsuing\b|lawsuit|evict|reasonable accommodation|"
+    r"(?:take|taking|go|going|see|seeing) (?:you |this |it |us )?(?:to |in )court|small claims|legal action|"
+    r"press charges|retaliat|accommodation|disabilit|disabled|wheelchair|grab bars?|accessib|service (animal|dog)|"
+    r"autis\w*|adhd|special needs|medical condition|mobility|blind(?!s)|deaf|hearing impair|"
+    r"(emotional )?support (animal|dog|cat)|assistance animal|\besa\b|discapacidad|adaptaci[oó]n|discrimina|"
     r"\b(?:animal(?:es)?|perr[oa]s?|gat[oa]s?) de (?:servicio|apoyo|asistencia|gu[ií]a)\b|\bvivienda justa\b|"
     r"\bajustes? razonables?\b|\bsilla de ruedas\b|\brampa\b|\b(?:es|ser[ií]a) (?:legal|ilegal)\b|\babogad[oa]\b|"
-    r"\bdemanda(?:r|rlos)?\b|\bdesalo(?:jo|jar)\b|\bdiscrimin\w*", re.I)
+    r"\bdemanda(?:r|rlos)?\b|\bdesalo(?:jo|jar)\b", re.I)
 
 
 def legal_sensitive(message: str) -> bool:
-    """Fair housing, accommodation, disability, assistance animal or legal action (the existing gate pattern, plus
-    the Spanish topics it misses)."""
-    from app.safety import gate_matches
-    return gate_matches("fair_housing_or_legal", message) or bool(_LEGAL_TOPIC_ES.search(message or ""))
+    """Fair housing, accommodation, disability, assistance animal or legal action (EN + ES): routing only."""
+    from app.safety import normalize_for_matching
+    return bool(_LEGAL_TOPIC.search(normalize_for_matching(message or "")))
 
 
 def _legal_match(reply: str) -> tuple[str, str] | None:
