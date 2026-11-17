@@ -320,10 +320,10 @@
         "legal"
       ],
       "status": "pending_approval",
-      "source": "No McKinley-approved wording yet (acceptance MN9, 2026-11-17). The referral below is a PROVISIONAL team draft: NEEDS McKINLEY / LEGAL REVIEW.",
+      "source": "No McKinley-approved wording yet (acceptance MN9, 2026-11-17). The referral below is a PROVISIONAL team draft (wording proposed by the project owner 2026-11-17), not approved by McKinley or legal: NEEDS McKINLEY / LEGAL REVIEW.",
       "handoff": true,
-      "pending_reply": "I can't give legal advice or decide questions about accommodations, assistance animals or fair housing, and I don't describe a community by who lives there. These questions go to {team}; I can prepare a note for them if you'd like.",
-      "pending_reply_es": "No puedo dar asesoría legal ni decidir preguntas sobre adaptaciones, animales de asistencia o vivienda justa, y no describo una comunidad según quién vive allí. Estas preguntas las atiende {team}; si quiere, preparo una nota para ellos."
+      "pending_reply": "Questions about accommodations or community policies may require review by {team}. I can help prepare a note for them so they can review your question.\n\nI can't confirm an accommodation decision or provide a legal determination through this assistant.",
+      "pending_reply_es": "Las preguntas sobre adaptaciones o políticas de la comunidad pueden requerir la revisión de {team}. Puedo ayudarle a preparar una nota para que revisen su pregunta.\n\nA través de este asistente no puedo confirmar una decisión sobre adaptaciones ni dar una determinación legal."
     }
   ]
 }

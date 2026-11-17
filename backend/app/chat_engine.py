@@ -155,6 +155,8 @@ FALLBACK_REPLY = ("Sorry, I couldn't work that out just now. Could you say it an
 KEPT = (" Your {what} is still here, unchanged.", " Su {what} sigue aquí, sin cambios.")
 BACK = ("Thanks for the update. Your {what} from before is back, not sent yet.",
         "Gracias por avisar. Su {what} de antes volvió, sin enviar.")
+TOUR_NEXT = ("Your tour request is waiting as the next card, after this one. Nothing has been sent.",
+             "Su solicitud de visita espera como la siguiente tarjeta, después de esta. No se envió nada.")
 NOT_YET = ("I can't send your {what} yet, so nothing was saved. Still needed: {miss}.",
            "Todavía no puedo enviar su {what}, así que no se guardó nada. Falta: {miss}.")
 
@@ -211,7 +213,7 @@ def run_turn(
                               next((f.value for f in ctx.fields if f.name == "preferred_language"), None))
     active, waiting = tasks.load(store, session_id, key)
     before, kind_before, shown = (repr(active), repr(waiting)), (active or {}).get("kind"), None
-    records, status_items = [], []
+    records, status_items, queued_tour = [], [], False
     result: LLMResult = _no_model(target, "deterministic")
     reply_source, handoff_team, handoff_reason, op_done = "template", None, "", "none"
     st = risk_responses.select(rd, lang)
@@ -289,7 +291,10 @@ def run_turn(
                 raise turn.exc  # an ordinary turn with no safety text: the API's usual error (never a 988 line)
         else:
             p = turn.proposal
+            tours_before = _waiting_tours(waiting)
             active, waiting, op_done = _apply_proposal(p, active, waiting, ctx, verified, lang, msg)
+            # a tour queued behind the card on screen is said in fixed words, so it is never invisible to the person
+            queued_tour = bool(active) and active["kind"] != "tour_request" and _waiting_tours(waiting) > tours_before
             _add_history(p.include_history, active, waiting, deps.workbook, persona_id, verified)
             reply, reply_source = p.reply, "model"
             status_items = own if p.show_my_requests else []
@@ -337,6 +342,8 @@ def run_turn(
     if enforce_validation and reply_source == "model" and any(
             (c.code in CRITICAL_CHECKS or c.code == "grounded_claims") and not c.passed for c in checks):
         reply, reply_source = _plain_reply(active, lang, session_saved), "template_after_validation"
+    if queued_tour:
+        reply = f"{reply.rstrip()} {tasks._l(TOUR_NEXT, lang)}"
     reply = redact(reply)
 
     # ---- D. persist the task state (only if it changed) and the turn ------------------------------------------
@@ -454,6 +461,10 @@ def _apply_proposal(p: assistant.Proposal, active, waiting, ctx: SafeContext, ve
         tasks.set_fields(note, {"topic": "Also asked about", "message": need})
         waiting = [*waiting, note]
     return active, waiting, done
+
+
+def _waiting_tours(waiting: list) -> int:
+    return sum(1 for t in waiting if t.get("kind") == "tour_request" and not t.get("declined"))
 
 
 def _guest_repair(kind: str, values: dict[str, str], team: str, verified: bool, audience: str) -> bool:

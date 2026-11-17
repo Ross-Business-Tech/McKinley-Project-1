@@ -29,10 +29,11 @@ code as it is (`backend/app/auth.py`, `personas.py`, `db.py`, `guardrails.py`, `
   listed and an open card stays unchanged. The same refusal twice in a row gets a shorter line. This only chooses the
   reply: access itself is enforced below.
 - **Legal and fair-housing boundary** (`guardrails.legal_conclusion` / `legal_referral`): a model reply that states
-  what the law requires, allows or prohibits, or decides an accommodation, assistance-animal or eligibility question,
-  is replaced by a referral to the leasing team (the office, for residents). The referral wording is the knowledge
-  base topic `fair_housing`: **provisional** (team draft, `pending_approval`) until McKinley approves an answer. A note
-  started on such a question is routed to leasing (prospects) or management (residents).
+  what the law requires, allows or prohibits, decides an accommodation, assistance-animal or eligibility question, or
+  describes a community by who lives there (families, children, age...), is replaced by a referral to the leasing team
+  (prospects) or the management team (residents). The referral wording is the knowledge base topic `fair_housing`:
+  **provisional** (`pending_approval`, not approved by McKinley or legal) until McKinley approves an answer. A note
+  started on such a question is routed to the same team. Ordinary factual answers (pets, amenities) are untouched.
 
 ## 2. Data access: deny by default
 

@@ -229,9 +229,10 @@ def test_b_the_referral_is_provisional_until_approved_and_never_a_legal_answer(l
     from app.guardrails import legal_conclusion, legal_referral
     text, status = legal_referral(lang, prospect)
     assert status == "provisional" and text and "{team}" not in text and legal_conclusion(text) is None
-    team = {("en", True): "leasing team", ("en", False): "the office", ("es", True): "equipo de arrendamiento",
-            ("es", False): "la oficina"}[(lang, prospect)]
-    assert team in text
+    team = {("en", True): "our leasing team", ("en", False): "our management team",
+            ("es", True): "nuestro equipo de arrendamiento", ("es", False): "nuestro equipo de administración"}
+    assert team[(lang, prospect)] in text
+    assert ("can't confirm an accommodation decision" in text) if lang == "en" else ("determinación legal" in text)
 
 
 def test_b_an_approved_answer_replaces_the_provisional_wording(monkeypatch):
@@ -239,7 +240,7 @@ def test_b_an_approved_answer_replaces_the_provisional_wording(monkeypatch):
     topic = {"id": "fair_housing", "status": "approved", "answer": "APPROVED: {team} handles these.",
              "answer_es": "APROBADO: {team}."}
     monkeypatch.setattr(guardrails, "_kb", lambda: [topic])
-    assert guardrails.legal_referral("en", True) == ("APPROVED: the leasing team handles these.", "approved")
+    assert guardrails.legal_referral("en", True) == ("APPROVED: our leasing team handles these.", "approved")
 
 
 def test_b_the_knowledge_base_marks_the_fair_housing_wording_as_pending():
@@ -249,8 +250,8 @@ def test_b_the_knowledge_base_marks_the_fair_housing_wording_as_pending():
     assert "accommodations, assistance animals and fair housing: no approved answer" in property_facts()
 
 
-@pytest.mark.parametrize("persona,team,word", [(PROSPECT, "leasing", "leasing team"), (RESIDENT, "management",
-                                                                                         "the office")])
+@pytest.mark.parametrize("persona,team,word", [(PROSPECT, "leasing", "our leasing team"),
+                                              (RESIDENT, "management", "our management team")])
 def test_b_a_legal_conclusion_is_replaced_and_the_note_goes_to_people(make, persona, team, word):
     c, _, store = make([
         turn("Generally, fair housing law prohibits pet rent for a support animal. Want a note?"),
@@ -334,3 +335,105 @@ def test_c_backend_templates_are_not_reported_as_failed_reply_checks(make):
     r = chat(c, "send it", "obs-d", RESIDENT)
     assert r["records_created"] and r["reply_source"] == "template"
     assert store.gate_log(1)[0]["validator_failed"] == []  # "no visit is scheduled" is the backend's own text
+
+
+
+# ==== Final review: a tour placed BEHIND an existing, unsent note (the model keeps the note on screen) ===========
+def test_final_a_tour_behind_an_existing_note_is_kept_shown_and_never_sent_by_mistake(make):
+    c, _, store = make([
+        turn("Here's a note for the leasing team.", op="start", kind="staff_handoff", team="leasing",
+             message="Is there a waitlist at Maple Court?", topic="Waitlist"),
+        turn("Sure, I can help with a visit too.", other=[{"text": "see Maple Court Thursday at 11am",
+                                                           "kind": "tour_request"}]),
+        turn("Here's a visit too.", other=[{"text": "tour Maple Court", "kind": "tour_request"}]),
+        turn("The tour card has Maple Court, Thursday, 11am.", op="update", kind="tour_request",
+             area="Maple Court", days="Thursday", time="11am"),
+    ])
+    sid, P = "fr-a", PROSPECT
+    note = chat(c, "Is there a waitlist at Maple Court? Ask the office.", sid, P)["action"]
+    r = chat(c, "Also can I see Maple Court Thursday at 11am?", sid, P)
+    # not lost, not sent, and the person is told: the note stays on screen unchanged, the tour waits as a TOUR card
+    assert r["action"] == note and r["records_created"] == [] and saved(store) == []
+    assert r["reply"].endswith("Your tour request is waiting as the next card, after this one. Nothing has been sent.")
+    assert [w["kind"] for w in store.get_draft(sid, P)["waiting"]] == ["tour_request"]
+    r = chat(c, "and a tour of Maple Court", sid, P)  # asked again: still exactly one waiting tour, no second line
+    assert [w["kind"] for w in store.get_draft(sid, P)["waiting"]] == ["tour_request"]
+    assert "waiting as the next card" not in r["reply"]
+
+    wrong = press_send(c, sid, "tour_request", P)  # the Send button of a card that is not on screen
+    assert not wrong["ok"] and wrong["error_code"] == "NO_PENDING_ACTION" and saved(store) == []
+    r = chat(c, "send it", sid, P)  # typed consent sends the card ON SCREEN (the note), never the waiting tour
+    assert [x["kind"] for x in r["records_created"]] == ["staff_handoff"]
+    assert "tour request is back on screen, not sent yet" in r["reply"]
+    assert r["action"]["kind"] == "tour_request" and r["action"]["stage"] == "collecting"  # now the card on screen
+    again = press_send(c, sid, "staff_handoff", P)
+    assert not again["ok"] and again["error_code"] == "ALREADY_SAVED" and len(saved(store)) == 1
+
+    r = chat(c, "Thursday 11am at Maple Court", sid, P)
+    assert r["action"]["kind"] == "tour_request" and r["action"]["stage"] == "ready"
+    assert [x["kind"] for x in chat(c, "send it", sid, P)["records_created"]] == ["tour_request"]
+    assert press_send(c, sid, "tour_request", P)["error_code"] == "ALREADY_SAVED"
+    assert chat(c, "send it", sid, P)["records_created"] == []  # nothing left on screen: nothing to send
+    assert sorted(x["kind"] for x in saved(store)) == ["staff_handoff", "tour_request"]  # one each, no duplicates
+
+
+def test_final_an_incomplete_waiting_tour_is_never_sent_by_a_typed_send(make):
+    c, _, store = make([
+        turn("Here's a note.", op="start", kind="staff_handoff", team="leasing", message="Parking?", topic="Parking"),
+        turn("Sure.", other=[{"text": "tour sometime", "kind": "tour_request"}]),
+    ])
+    sid, P = "fr-b", PROSPECT
+    chat(c, "Where do guests park? Ask the office please.", sid, P)
+    chat(c, "also I want a tour sometime", sid, P)
+    assert [x["kind"] for x in chat(c, "send it", sid, P)["records_created"]] == ["staff_handoff"]
+    r = chat(c, "send it", sid, P)  # the tour came back with nothing filled in: refused, not saved
+    assert r["records_created"] == [] and "Still needed" in r["reply"] and r["action"]["kind"] == "tour_request"
+    assert [x["kind"] for x in saved(store)] == ["staff_handoff"]
+
+
+# ==== Final review: fair-housing boundary matrix (sensitive determinations vs ordinary facts) ===================
+BOUNDARY = [
+    # (topic, persona, question, model reply, replaced by the referral?)
+    ("assistance animal", PROSPECT, "Do I pay pet rent for my emotional support dog?",
+     "Assistance animals aren't charged pet rent because they are not pets.", True),
+    ("assistance animal", RESIDENT, "Can I keep a service dog?",
+     "I don't have that policy; the management team handles service animal requests. Want a note?", False),
+    ("wheelchair ramp", RESIDENT, "Can I get a wheelchair ramp at my entrance?",
+     "Under the ADA you're entitled to a reasonable accommodation, so they must build it.", True),
+    ("wheelchair ramp", RESIDENT, "Can I get a wheelchair ramp at my entrance?",
+     "I don't know whether a ramp can be added. I can prepare a note for the management team.", False),
+    ("reasonable accommodation", RESIDENT, "Can I have a reasonable accommodation for a reserved parking spot?",
+     "Fair housing law requires the property to approve that request.", True),
+    ("reasonable accommodation", PROSPECT, "How do I request a reasonable accommodation?",
+     "The leasing team handles accommodation requests; I can prepare a note for them.", False),
+    ("demographics", PROSPECT, "Which community has fewer families with kids?",
+     "Maple Court has fewer families with children, so it's quieter.", True),
+    ("demographics", PROSPECT, "Are the residents at Maple Court mostly older?",
+     "Residents there are mostly older, so it's very calm.", True),
+    ("demographics", PROSPECT, "Which community has fewer families with kids?",
+     "I can't describe or compare communities by who lives there. I can help with floor plans or a tour.", False),
+    ("pet policy", PROSPECT, "Do you allow cats?",
+     "Sample: up to two cats or dogs per home are welcome, with a one-time pet fee; some breed limits apply.", False),
+    ("pet policy", RESIDENT, "Is there pet rent for a cat?",
+     "I don't have the approved pet policy. Want me to prepare a note for the office?", False),
+    ("amenities", PROSPECT, "Is there a playground?",
+     "Sample: the community has a fitness room, a seasonal pool and a playground for kids.", False),
+    ("amenities", RESIDENT, "When does the pool open?",
+     "I don't have the pool hours. Want a note for the office?", False),
+]
+
+
+@pytest.mark.parametrize("topic,persona,question,reply,replaced", BOUNDARY,
+                         ids=[f"{b[0]}-{'referral' if b[4] else 'answer'}-{i}" for i, b in enumerate(BOUNDARY)])
+def test_final_fair_housing_boundary(make, topic, persona, question, reply, replaced):
+    c, _, store = make([turn(reply)])
+    r = chat(c, question, f"fh-{abs(hash((question, reply))) % 99999}", persona)
+    flagged = any(x["code"] == "no_legal_conclusion" for x in r["output_checks"])
+    assert flagged is replaced and r["records_created"] == [] and saved(store) == []
+    if replaced:
+        assert r["reply_source"] == "template_after_validation"
+        assert r["reply"].startswith("Questions about accommodations or community policies may require review by")
+        assert ("our leasing team" if persona == PROSPECT else "our management team") in r["reply"]
+        assert reply.split(",")[0] not in r["reply"]  # the determination itself is never shown
+    else:
+        assert r["reply_source"] == "model" and r["reply"] == reply  # ordinary facts and referrals stay answerable

@@ -192,6 +192,14 @@ _LEGAL_CONCLUSION = re.compile(
     r"(?:\b(?:are|is)|'re|'s) (?:not )?(?:entitled|eligible) (?:to|for) (?:an? )?(?:reasonable )?accommodation",
     re.I)
 
+# Describing a community by who lives there (familial status, age, origin...) is steering, whatever the question was.
+_RESIDENT_PROFILE = re.compile(
+    r"\b(?:fewer|more|lots of|mostly|mainly|largely|primarily|many|a lot of|full of|not many|very few|few|plenty of)"
+    r"\s+(?:\w+\s+)?(?:families|kids|children|seniors|elderly(?: people)?|retirees|students|young (?:people|"
+    r"professionals|couples)|older (?:people|adults|residents)|immigrants|singles)\b|"
+    r"\b(?:residents|tenants|neighbou?rs|people (?:who live|living) (?:there|here))"
+    r"(?:\s+(?:there|here|at \w+(?: \w+)?))?\s+(?:are|tend to be)\s+(?:mostly|"
+    r"mainly|largely|primarily|generally|older|younger)\b|\b(?:family|kid|child)[- ]free\b|\badults?[- ]only\b", re.I)
 _NOT_A_CLAIM = re.compile(r"\b(?:what|whether|if)\s+$|\b(?:what|whether|if)\s+\S*$", re.I)
 
 
@@ -202,12 +210,13 @@ def legal_sensitive(message: str) -> bool:
 
 
 def legal_conclusion(reply: str) -> str | None:
-    """The first legal determination stated in a reply, or None."""
+    """The first legal determination, or description of a community by who lives there, stated in a reply."""
     text = reply or ""
     for m in _LEGAL_CONCLUSION.finditer(text):
         if not _NOT_A_CLAIM.search(text[max(0, m.start() - 12):m.start() + 1]):  # "I don't know what the law says"
             return m.group(0)
-    return None
+    m = _RESIDENT_PROFILE.search(text)
+    return m.group(0) if m else None
 
 
 def legal_referral(lang: str, prospect: bool) -> tuple[str, str]:
@@ -217,6 +226,6 @@ def legal_referral(lang: str, prospect: bool) -> tuple[str, str]:
     es = lang == "es"
     text = (topic.get("answer_es" if es else "answer") if approved else
             topic.get("pending_reply_es" if es else "pending_reply")) or ""
-    team = ("el equipo de arrendamiento" if prospect else "la oficina") if es else (
-        "the leasing team" if prospect else "the office")
+    team = ("nuestro equipo de arrendamiento" if prospect else "nuestro equipo de administración") if es else (
+        "our leasing team" if prospect else "our management team")  # the team the note is routed to (run_turn)
     return text.replace("{team}", team), "approved" if approved else "provisional"
